@@ -688,6 +688,76 @@ cooperative demo ......... BUILDS AND RUNS
           terminalName: 'qemu / riscv64 / preempt.elf',
           terminalLabel: 'Measured RISC-V preemptive scheduler output',
           showRepoLink: true
+        },
+        {
+          id: 'riscv-smp-bring-up',
+          kicker: 'RISC-V MULTICORE',
+          title: 'SMP bring-up, two harts measured',
+          summary: 'Symmetric multiprocessing from reset: two-hart startup on QEMU <code>virt -smp 2</code>, with hart IDs 0 and 1 observed on the wire, per-hart 4 KiB stack slices proven disjoint, and UART output serialized through an <code>amoswap</code> spinlock so both harts print cleanly. Bring-up latency measured with <code>rdcycle</code>: 1,595,175 and 3,554,055 cycles across two runs. Full build log and raw run output committed in <code>src/smp/PROOF.md</code>.',
+          specRows: [
+            ['STARTUP', 'Two harts, IDs 0 and 1 observed on the wire'],
+            ['STACKS', 'Per-hart 4 KiB slices proven disjoint'],
+            ['UART', 'Serialized through an amoswap spinlock'],
+            ['RUN 1', '1,595,175 cycles to bring-up'],
+            ['RUN 2', '3,554,055 cycles to bring-up']
+          ],
+          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt -smp 2
+
+harts observed ........... 0, 1
+per-hart stacks .......... 4 KiB, DISJOINT
+UART serialization ....... amoswap spinlock
+output ................... CLEAN
+run 1 bring-up latency ... 1,595,175 cycles
+run 2 bring-up latency ... 3,554,055 cycles
+
+<span class="result">2 harts brought up</span>
+<span class="comment">Build log and raw output: src/smp/PROOF.md</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 5,
+          failures: 0,
+          stressItems: 0,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View the SMP bring-up proof',
+          terminalName: 'qemu / riscv64 / smp',
+          terminalLabel: 'Measured RISC-V SMP bring-up output',
+          showRepoLink: true
+        },
+        {
+          id: 'virtio-block-driver',
+          kicker: 'RISC-V STORAGE',
+          title: 'virtio block driver, round-trip verified',
+          summary: 'A virtio block driver written from the device spec: virtio-mmio transport with a split virtqueue in RAM, with both the legacy and the 1.x interface paths brought up and verified. Sector 0 write/read round-trip: 512 of 512 bytes matched, 0 mismatches, checksum <code>0xf9e05dc5</code> on both sides, device capacity 32768 sectors. Full build log and raw run output committed in <code>src/virtio-blk/PROOF.md</code>.',
+          specRows: [
+            ['TRANSPORT', 'virtio-mmio'],
+            ['QUEUE', 'Split virtqueue in RAM'],
+            ['INTERFACES', 'Legacy and 1.x paths verified'],
+            ['ROUND-TRIP', '512 of 512 bytes matched, 0 mismatches'],
+            ['CHECKSUM', '0xf9e05dc5 on write and read'],
+            ['CAPACITY', '32768 sectors']
+          ],
+          terminalOutput: `<span class="prompt">$</span> virtio block verification
+transport ................. virtio-mmio
+virtqueue ................. split, in RAM
+legacy interface .......... VERIFIED
+1.x interface ............. VERIFIED
+sector .................... 0
+bytes matched ............. 512 / 512
+mismatches ................ 0
+write checksum ............ 0xf9e05dc5
+read checksum ............. 0xf9e05dc5
+device capacity ........... 32768 sectors
+
+<span class="result">sector 0 round-trip verified</span>
+<span class="comment">Build log and raw output: src/virtio-blk/PROOF.md</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 5,
+          failures: 0,
+          stressItems: 512,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View the virtio block proof',
+          terminalName: 'qemu / riscv64 / virtio-blk',
+          terminalLabel: 'Verified RISC-V virtio block round-trip output',
+          showRepoLink: true
         }
       ];
 
