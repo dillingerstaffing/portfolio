@@ -463,6 +463,9 @@ scheduler: starting 3 tasks...
 
 <span class="result">scheduler: all tasks finished. halting.</span>`,
           verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 0,
           repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
           repoLabel: 'View the RISC-V demo',
           terminalName: 'qemu / riscv64 / demo.elf',
@@ -494,6 +497,9 @@ if (num &gt; 0 &amp;&amp; num &lt; NELEM(syscalls)) {
   p-&gt;trapframe-&gt;a0 = syscalls[num]();
 }`,
           verificationEnvironment: 'QEMU',
+          checks: 4,
+          failures: 0,
+          stressItems: 0,
           repoUrl: 'https://github.com/dillingerstaffing/xv6-getscount',
           repoLabel: 'View the xv6 extension',
           terminalName: 'xv6 / user / scount',
@@ -528,6 +534,9 @@ checksum: producer/consumer MATCH
 
 <span class="comment">Full build log and run output: PROOF.md</span>`,
           verificationEnvironment: 'host',
+          checks: 5,
+          failures: 0,
+          stressItems: 10000000,
           repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
           repoLabel: 'View the growing systems lab',
           terminalName: 'systems-lab / ring-buffer / PROOF.md',
@@ -561,6 +570,9 @@ UBSan .................... CLEAN
 <span class="result">PASS</span>
 <span class="comment">Full build log and run output: PROOF.md</span>`,
           verificationEnvironment: 'host',
+          checks: 7,
+          failures: 0,
+          stressItems: 512,
           repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/02-bump-allocator',
           repoLabel: 'View the allocator proof',
           terminalName: 'systems-lab / bump-allocator / PROOF.md',
@@ -593,6 +605,9 @@ UBSan .................... CLEAN
 <span class="result">609 passed, 0 failed</span>
 <span class="comment">Full build log and run output: PROOF.md</span>`,
           verificationEnvironment: 'host',
+          checks: 609,
+          failures: 0,
+          stressItems: 0,
           repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/03-mini-printf',
           repoLabel: 'View the mini-printf proof',
           terminalName: 'systems-lab / mini-printf / PROOF.md',
@@ -661,19 +676,31 @@ UBSan .................... CLEAN
 
       const environments = [...new Set(PROJECTS.map((project) => project.verificationEnvironment))];
       const environmentSummary = formatList(environments);
+      const formatCompact = (value) => {
+        if (value >= 1e6) return `${value / 1e6}M`;
+        if (value >= 1e3) return `${value / 1e3}k`;
+        return String(value);
+      };
 
       document.querySelector('.fit-list').innerHTML = AUDIENCES
         .map((audience) => `<li>${audience}</li>`)
         .join('');
 
+      const totalFailures = PROJECTS.reduce((sum, project) => sum + project.failures, 0);
       const metrics = [
         {
           value: String(PROJECTS.length),
           label: `${environments.join(' + ').toUpperCase()} VERIFIED DEMOS`
         },
-        { value: 'RV64', label: 'BARE-METAL TARGET' },
-        { value: '0', label: 'LIBC DEPENDENCIES' },
-        { value: 'O(1)', label: 'SYSCALL COUNTER LOOKUP' }
+        {
+          value: String(PROJECTS.reduce((sum, project) => sum + project.checks, 0)),
+          label: `VERIFIED CHECKS, ${totalFailures} FAILURES`
+        },
+        {
+          value: formatCompact(Math.max(...PROJECTS.map((project) => project.stressItems))),
+          label: 'LARGEST STRESS RUN, ITEMS'
+        },
+        { value: 'RV64', label: 'BARE-METAL TARGET' }
       ];
 
       document.querySelector('.metrics-inner').innerHTML = metrics
