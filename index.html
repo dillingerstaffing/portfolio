@@ -613,6 +613,81 @@ UBSan .................... CLEAN
           terminalName: 'systems-lab / mini-printf / PROOF.md',
           terminalLabel: 'Verified mini-printf differential test output',
           showRepoLink: true
+        },
+        {
+          id: 'crc32',
+          kicker: 'ERROR DETECTION',
+          title: 'CRC32 from the generator polynomial',
+          summary: 'CRC32 rebuilt from the mathematics: bitwise polynomial long division over GF(2), plus a table-driven variant whose 256-entry table is derived at startup from <code>0xEDB88320</code>. Verified against published check values (7 inputs x 2 implementations, all match, including <code>123456789 -&gt; 0xCBF43926</code>), 2088 randomized cross-check buffers with bitwise == table on all, and all 256 single-byte table entries verified against the bitwise result. Measured on 32 MiB: 56.1 MB/s bitwise, 231.3 MB/s table-driven (4.1x). Clean under <code>-O0</code> and AddressSanitizer/UBSan, zero warnings under <code>-Wall -Wextra -Werror</code>. Full build log and run output committed in <code>PROOF.md</code>.',
+          specRows: [
+            ['ALGORITHM', 'Polynomial long division over GF(2)'],
+            ['TABLE', '256 entries derived from 0xEDB88320 at startup'],
+            ['CHECK VALUES', '7 inputs x 2 implementations, all match'],
+            ['CROSS-CHECK', '2088 randomized buffers, bitwise == table'],
+            ['TABLE CHECK', 'All 256 single-byte entries verified'],
+            ['32 MiB', '56.1 MB/s bitwise, 231.3 MB/s table-driven']
+          ],
+          terminalOutput: `<span class="prompt">$</span> crc32 verification
+published inputs ......... 7
+implementations .......... 2
+123456789 ................ 0xCBF43926
+randomized buffers ....... 2088
+bitwise == table ......... ALL MATCH
+single-byte entries ...... 256 / 256
+-O0 ...................... CLEAN
+AddressSanitizer/UBSan ... CLEAN
+-Wall -Wextra -Werror .... 0 warnings
+
+<span class="result">32 MiB: 56.1 MB/s bitwise
+32 MiB: 231.3 MB/s table-driven
+speedup: 4.1x</span>
+<span class="comment">Full build log and run output: PROOF.md</span>`,
+          verificationEnvironment: 'host',
+          checks: 2358,
+          failures: 0,
+          stressItems: 33554432,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/04-crc32',
+          repoLabel: 'View the CRC32 proof',
+          terminalName: 'systems-lab / crc32 / PROOF.md',
+          terminalLabel: 'Verified CRC32 test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-preemptive-scheduler',
+          kicker: 'RISC-V INTERRUPTS',
+          title: 'Preemptive scheduler, switch cost measured',
+          summary: 'Preemption added to the bare-metal RISC-V demo as a new module: a machine-mode trap handler written in assembly saves <code>x1-x31</code> plus <code>mepc</code> on every CLINT timer tick (1 ms quantum), a C handler rearms the timer and round-robins three tasks that never yield, and the exit path restores the next context and returns with <code>mret</code>. Measured on QEMU virt: 200 timer ticks produced exactly 200 context switches, interrupt latency minimum 13.6 us, context-switch cost minimum 17.3 us, with <code>rdcycle</code> readings cross-checked against <code>mtime</code> ticks. The existing cooperative demo is untouched and still builds and runs. Full build log, raw run output, and measurement method committed in <code>src/preempt/PROOF.md</code>.',
+          specRows: [
+            ['TRAP', 'Assembly saves x1-x31 plus mepc'],
+            ['TIMER', 'CLINT interrupt, 1 ms quantum'],
+            ['SCHED', 'Round robin across 3 tasks that never yield'],
+            ['SWITCHES', '200 ticks, exactly 200 context switches'],
+            ['LATENCY', '13.6 us minimum interrupt latency'],
+            ['COST', '17.3 us minimum context-switch cost']
+          ],
+          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt \\
+  -nographic -bios none -kernel preempt.elf
+
+quantum .................. 1 ms
+tasks .................... 3
+timer ticks .............. 200
+context switches ......... 200
+interrupt latency min .... 13.6 us
+context-switch cost min .. 17.3 us
+rdcycle / mtime .......... CROSS-CHECKED
+cooperative demo ......... BUILDS AND RUNS
+
+<span class="result">200 ticks, 200 switches</span>
+<span class="comment">Build log, raw output, and method: src/preempt/PROOF.md</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 200,
+          failures: 0,
+          stressItems: 0,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View the preemptive scheduler proof',
+          terminalName: 'qemu / riscv64 / preempt.elf',
+          terminalLabel: 'Measured RISC-V preemptive scheduler output',
+          showRepoLink: true
         }
       ];
 
@@ -677,8 +752,9 @@ UBSan .................... CLEAN
       const environments = [...new Set(PROJECTS.map((project) => project.verificationEnvironment))];
       const environmentSummary = formatList(environments);
       const formatCompact = (value) => {
-        if (value >= 1e6) return `${value / 1e6}M`;
-        if (value >= 1e3) return `${value / 1e3}k`;
+        const formatScaled = (scaled) => scaled.toFixed(1).replace(/\.0$/, '');
+        if (value >= 1e6) return `${formatScaled(value / 1e6)}M`;
+        if (value >= 1e3) return `${formatScaled(value / 1e3)}k`;
         return String(value);
       };
 
