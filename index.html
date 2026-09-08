@@ -337,22 +337,13 @@
     <section class="fit-strip" aria-labelledby="fit-title">
       <div class="frame fit-inner">
         <div class="fit-label" id="fit-title">WHO THIS IS FOR</div>
-        <ul class="fit-list">
-          <li>Firmware teams with a defined blocker</li>
-          <li>Hardware startups bringing up a board</li>
-          <li>Anyone chasing a crash, hang, or hard fault</li>
-        </ul>
+        <ul class="fit-list"></ul>
         <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
       </div>
     </section>
 
     <div class="metrics" aria-label="Technical proof at a glance">
-      <div class="frame metrics-inner">
-        <div class="metric"><strong>2</strong><span>QEMU-VERIFIED DEMOS</span></div>
-        <div class="metric"><strong>RV64</strong><span>BARE-METAL TARGET</span></div>
-        <div class="metric"><strong>0</strong><span>LIBC DEPENDENCIES</span></div>
-        <div class="metric"><strong>O(1)</strong><span>SYSCALL COUNTER LOOKUP</span></div>
-      </div>
+      <div class="frame metrics-inner"></div>
     </div>
 
     <section class="frame section" id="work" aria-labelledby="work-title">
@@ -360,116 +351,11 @@
         <div class="section-index">01 / PROOF</div>
         <div class="section-title">
           <h2 id="work-title">Proof, not adjectives.</h2>
-          <p>Both projects compile and run under QEMU. The source archives include build instructions and the implementation behind every claim below.</p>
+          <p id="work-lede"></p>
         </div>
       </div>
 
-      <article class="project">
-        <div class="project-grid">
-          <div class="project-copy">
-            <div class="project-number">PROJECT 01 / FROM-SCRATCH KERNEL</div>
-            <h3>RISC-V bare-metal scheduler</h3>
-            <p>A freestanding 64-bit RISC-V kernel for QEMU’s <code>virt</code> machine. It boots directly into M-mode, drives an ns16550a UART over MMIO, and interleaves three tasks with real assembly context switches.</p>
-            <ul class="facts">
-              <li><span>BOOT</span><span>Custom entry, stack setup, BSS clear</span></li>
-              <li><span>MEMORY</span><span>Linked at 0x80000000</span></li>
-              <li><span>SCHED</span><span>Private 4 KiB task stacks, round robin</span></li>
-              <li><span>BUILD</span><span>-ffreestanding, -nostdlib, -nostartfiles</span></li>
-            </ul>
-
-          </div>
-          <div class="terminal" aria-label="Verified RISC-V demo output">
-            <div class="terminal-bar"><span class="terminal-name">qemu / riscv64 / demo.elf</span><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span></div>
-            <pre><span class="prompt">$</span> qemu-system-riscv64 -machine virt \
-  -nographic -bios none -kernel demo.elf
-
-scheduler: starting 3 tasks...
-
-[heartbeat] tick 1  <span class="comment">// task 1</span>
-[fibonacci] fib(1) = 1  <span class="comment">// task 2</span>
-[spinner] working |  <span class="comment">// task 3</span>
-[heartbeat] tick 2
-[fibonacci] fib(2) = 1
-[spinner] working /
-[heartbeat] tick 3
-[fibonacci] fib(3) = 2
-[spinner] working -
-
-<span class="result">scheduler: all tasks finished. halting.</span></pre>
-          </div>
-        </div>
-      </article>
-
-      <article class="project">
-        <div class="project-grid">
-          <div class="project-copy">
-            <div class="project-number">PROJECT 02 / KERNEL EXTENSION</div>
-            <h3>xv6 syscall accounting</h3>
-            <p>A focused extension to MIT’s xv6 RISC-V kernel. <code>getscount(n)</code> reports how many times the calling process invoked syscall <code>n</code>, wired from user-space stub through dispatcher to per-process kernel state.</p>
-            <ul class="facts">
-              <li><span>HOOK</span><span>Single syscall dispatch funnel</span></li>
-              <li><span>STATE</span><span>Per-process uint64 counter table</span></li>
-              <li><span>GUARD</span><span>Compile-time dispatch-table size check</span></li>
-              <li><span>TEST</span><span>Counts, bounds, and fork lifecycle</span></li>
-            </ul>
-
-          </div>
-          <div class="terminal" aria-label="Verified xv6 extension test output">
-            <div class="terminal-bar"><span class="terminal-name">xv6 / user / scount</span><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span></div>
-            <pre><span class="prompt">$</span> scount
-getpid called 5 times, kernel reports: 5
-getscount(999) = -1  <span class="comment">// bounded</span>
-getscount(-1)  = -1  <span class="comment">// bounded</span>
-child:  getpid count = 0  <span class="comment">// isolated</span>
-parent: getpid count = 5  <span class="comment">// preserved</span>
-<span class="result">PASS</span>
-
-<span class="comment">// dispatch path</span>
-if (num &gt; 0 &amp;&amp; num &lt; NELEM(syscalls)) {
-  p-&gt;scounts[num]++;
-  p-&gt;trapframe-&gt;a0 = syscalls[num]();
-}</pre>
-          </div>
-        </div>
-      </article>
-
-      <article class="project">
-        <div class="project-grid">
-          <div class="project-copy">
-            <div class="project-number">PROJECT 03 / CONCURRENT DATA STRUCTURE</div>
-            <h3>Wait-free ring buffer, measured at 190 Mops/s</h3>
-            <p>A wait-free single-producer single-consumer ring buffer in C11, built with release/acquire atomics, no locks, no CAS retry loops, and head and tail on separate cache lines. Edge tests cover empty pop, fill-to-full, overfill rejection, FIFO order, and power-of-two validation. Verification also includes counter wrap-around through zero and a 10M-item two-thread stress test with per-item order checking and a matching checksum.</p>
-            <ul class="facts">
-              <li><span>DESIGN</span><span>C11 release/acquire atomics, no locks or CAS loops</span></li>
-              <li><span>LAYOUT</span><span>Head and tail isolated on separate cache lines</span></li>
-              <li><span>STRESS</span><span>10M items, per-item order checked, checksum matched</span></li>
-              <li><span>RESULT</span><span>0.105 s, 190.4 million operations per second</span></li>
-              <li><span>BUILD</span><span>Zero warnings under -Wall -Wextra -Wpedantic</span></li>
-            </ul>
-            <div class="actions">
-              <a class="btn secondary" href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">View the growing systems lab <span class="arrow" aria-hidden="true">↗</span></a>
-            </div>
-          </div>
-          <div class="terminal" aria-label="Verified ring buffer benchmark output">
-            <div class="terminal-bar"><span class="terminal-name">systems-lab / ring-buffer / PROOF.md</span><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span></div>
-            <pre><span class="prompt">$</span> ./test_ring_buffer
-edge: empty pop .......... PASS
-edge: fill to full ....... PASS
-edge: overfill rejected .. PASS
-edge: FIFO order ......... PASS
-edge: power-of-two ....... PASS
-wrap: counter through zero PASS
-stress: 10,000,000 items . PASS
-order: per-item check .... PASS
-checksum: producer/consumer MATCH
-
-<span class="result">10,000,000 items in 0.105 seconds
-190.4 million operations per second</span>
-
-<span class="comment">Full build log and run output: PROOF.md</span></pre>
-          </div>
-        </div>
-      </article>
+      <div id="projects-list"></div>
       <div class="section-cta">
         <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
       </div>
@@ -479,37 +365,12 @@ checksum: producer/consumer MATCH
       <div class="section-head">
         <div class="section-index">02 / SERVICES + PRICING</div>
         <div class="section-title">
-          <h2 id="services-title">Three simple ways to get unstuck.</h2>
+          <h2 id="services-title"></h2>
           <p>Choose the closest fit. Each option is fixed-scope, starts with a clear finish line, and ends with a concrete handoff.</p>
         </div>
       </div>
 
-      <div class="services">
-        <article class="service">
-          <h3>Bare-metal bring-up</h3>
-          <div>
-            <p>Startup code, linker script, clock and peripheral setup, UART or GPIO drivers, and a build you can reproduce on QEMU or supplied hardware.</p>
-            <div class="service-tags"><span class="tag">RISC-V</span><span class="tag">ARM Cortex-M</span><span class="tag">MMIO</span><span class="tag">Linker scripts</span></div>
-          </div>
-          <div class="price">FROM $500 FIXED</div>
-        </article>
-        <article class="service">
-          <h3>C audit and hardening</h3>
-          <div>
-            <p>A line-level pass for undefined behavior, memory errors, integer edge cases, interrupt safety, stack pressure, and volatile misuse, delivered with prioritized findings and fixes.</p>
-            <div class="service-tags"><span class="tag">Embedded C</span><span class="tag">Static analysis</span><span class="tag">Reviewable diffs</span></div>
-          </div>
-          <div class="price">FROM $350 FIXED</div>
-        </article>
-        <article class="service">
-          <h3>Crash triage</h3>
-          <div>
-            <p>One defined hang, hard fault, or data-corruption symptom taken from reproduction to root cause, minimal fix, and regression guidance.</p>
-            <div class="service-tags"><span class="tag">Fault isolation</span><span class="tag">QEMU</span><span class="tag">Root-cause notes</span></div>
-          </div>
-          <div class="price">FROM $250 / SYMPTOM</div>
-        </article>
-      </div>
+      <div class="services"></div>
       <div class="section-cta">
         <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
       </div>
@@ -523,11 +384,7 @@ checksum: producer/consumer MATCH
           <p>A short path from your first email to a result your team can inspect, build, and test.</p>
         </div>
       </div>
-      <div class="approach">
-        <article class="step"><strong>01</strong><h3>Send the details</h3><p>Share the device or project, chip or board, current symptom or build need, and timeline.</p></article>
-        <article class="step"><strong>02</strong><h3>Get a fixed scope</h3><p>I define the finish line, evidence required, price, and any access needed before work begins.</p></article>
-        <article class="step"><strong>03</strong><h3>Receive the test trail</h3><p>You get the implementation or fix with build steps, test evidence, and concise handoff notes.</p></article>
-      </div>
+      <div class="approach"></div>
       <div class="section-cta">
         <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
       </div>
@@ -540,13 +397,8 @@ checksum: producer/consumer MATCH
           <p>Available for small, fixed-scope firmware work and code reviews. A complete first email lets me respond with a useful scope instead of another round of questions.</p>
         </div>
         <div class="contact-brief">
-          <h3>PUT THESE FOUR THINGS IN YOUR EMAIL</h3>
-          <ul class="contact-list">
-            <li>What the device or project is</li>
-            <li>The chip or board</li>
-            <li>What is going wrong or needs building</li>
-            <li>Your timeline</li>
-          </ul>
+          <h3 id="contact-brief-title"></h3>
+          <ul class="contact-list"></ul>
           <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
         </div>
       </div>
@@ -582,6 +434,241 @@ checksum: producer/consumer MATCH
 
   <script>
     (() => {
+      const PROJECTS = [
+        {
+          id: 'riscv-bare-metal-scheduler',
+          kicker: 'FROM-SCRATCH KERNEL',
+          title: 'RISC-V bare-metal scheduler',
+          summary: 'A freestanding 64-bit RISC-V kernel for QEMU’s <code>virt</code> machine. It boots directly into M-mode, drives an ns16550a UART over MMIO, and interleaves three tasks with real assembly context switches.',
+          specRows: [
+            ['BOOT', 'Custom entry, stack setup, BSS clear'],
+            ['MEMORY', 'Linked at 0x80000000'],
+            ['SCHED', 'Private 4 KiB task stacks, round robin'],
+            ['BUILD', '-ffreestanding, -nostdlib, -nostartfiles']
+          ],
+          terminalOutput: String.raw`<span class="prompt">$</span> qemu-system-riscv64 -machine virt \
+  -nographic -bios none -kernel demo.elf
+
+scheduler: starting 3 tasks...
+
+[heartbeat] tick 1  <span class="comment">// task 1</span>
+[fibonacci] fib(1) = 1  <span class="comment">// task 2</span>
+[spinner] working |  <span class="comment">// task 3</span>
+[heartbeat] tick 2
+[fibonacci] fib(2) = 1
+[spinner] working /
+[heartbeat] tick 3
+[fibonacci] fib(3) = 2
+[spinner] working -
+
+<span class="result">scheduler: all tasks finished. halting.</span>`,
+          verificationEnvironment: 'QEMU',
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View the RISC-V demo',
+          terminalName: 'qemu / riscv64 / demo.elf',
+          terminalLabel: 'Verified RISC-V demo output',
+          showRepoLink: false
+        },
+        {
+          id: 'xv6-syscall-accounting',
+          kicker: 'KERNEL EXTENSION',
+          title: 'xv6 syscall accounting',
+          summary: 'A focused extension to MIT’s xv6 RISC-V kernel. <code>getscount(n)</code> reports how many times the calling process invoked syscall <code>n</code>, wired from user-space stub through dispatcher to per-process kernel state.',
+          specRows: [
+            ['HOOK', 'Single syscall dispatch funnel'],
+            ['STATE', 'Per-process uint64 counter table'],
+            ['GUARD', 'Compile-time dispatch-table size check'],
+            ['TEST', 'Counts, bounds, and fork lifecycle']
+          ],
+          terminalOutput: `<span class="prompt">$</span> scount
+getpid called 5 times, kernel reports: 5
+getscount(999) = -1  <span class="comment">// bounded</span>
+getscount(-1)  = -1  <span class="comment">// bounded</span>
+child:  getpid count = 0  <span class="comment">// isolated</span>
+parent: getpid count = 5  <span class="comment">// preserved</span>
+<span class="result">PASS</span>
+
+<span class="comment">// dispatch path</span>
+if (num &gt; 0 &amp;&amp; num &lt; NELEM(syscalls)) {
+  p-&gt;scounts[num]++;
+  p-&gt;trapframe-&gt;a0 = syscalls[num]();
+}`,
+          verificationEnvironment: 'QEMU',
+          repoUrl: 'https://github.com/dillingerstaffing/xv6-getscount',
+          repoLabel: 'View the xv6 extension',
+          terminalName: 'xv6 / user / scount',
+          terminalLabel: 'Verified xv6 extension test output',
+          showRepoLink: false
+        },
+        {
+          id: 'wait-free-ring-buffer',
+          kicker: 'CONCURRENT DATA STRUCTURE',
+          title: 'Wait-free ring buffer, measured at 190 Mops/s',
+          summary: 'A wait-free single-producer single-consumer ring buffer in C11, built with release/acquire atomics, no locks, no CAS retry loops, and head and tail on separate cache lines. Edge tests cover empty pop, fill-to-full, overfill rejection, FIFO order, and power-of-two validation. Verification also includes counter wrap-around through zero and a 10M-item two-thread stress test with per-item order checking and a matching checksum.',
+          specRows: [
+            ['DESIGN', 'C11 release/acquire atomics, no locks or CAS loops'],
+            ['LAYOUT', 'Head and tail isolated on separate cache lines'],
+            ['STRESS', '10M items, per-item order checked, checksum matched'],
+            ['RESULT', '0.105 s, 190.4 million operations per second'],
+            ['BUILD', 'Zero warnings under -Wall -Wextra -Wpedantic']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ./test_ring_buffer
+edge: empty pop .......... PASS
+edge: fill to full ....... PASS
+edge: overfill rejected .. PASS
+edge: FIFO order ......... PASS
+edge: power-of-two ....... PASS
+wrap: counter through zero PASS
+stress: 10,000,000 items . PASS
+order: per-item check .... PASS
+checksum: producer/consumer MATCH
+
+<span class="result">10,000,000 items in 0.105 seconds
+190.4 million operations per second</span>
+
+<span class="comment">Full build log and run output: PROOF.md</span>`,
+          verificationEnvironment: 'host',
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'View the growing systems lab',
+          terminalName: 'systems-lab / ring-buffer / PROOF.md',
+          terminalLabel: 'Verified ring buffer benchmark output',
+          showRepoLink: true
+        }
+      ];
+
+      const AUDIENCES = [
+        'Firmware teams with a defined blocker',
+        'Hardware startups bringing up a board',
+        'Anyone chasing a crash, hang, or hard fault'
+      ];
+
+      const SERVICES = [
+        {
+          title: 'Bare-metal bring-up',
+          description: 'Startup code, linker script, clock and peripheral setup, UART or GPIO drivers, and a build you can reproduce on QEMU or supplied hardware.',
+          tags: ['RISC-V', 'ARM Cortex-M', 'MMIO', 'Linker scripts'],
+          price: 'FROM $500 FIXED'
+        },
+        {
+          title: 'C audit and hardening',
+          description: 'A line-level pass for undefined behavior, memory errors, integer edge cases, interrupt safety, stack pressure, and volatile misuse, delivered with prioritized findings and fixes.',
+          tags: ['Embedded C', 'Static analysis', 'Reviewable diffs'],
+          price: 'FROM $350 FIXED'
+        },
+        {
+          title: 'Crash triage',
+          description: 'One defined hang, hard fault, or data-corruption symptom taken from reproduction to root cause, minimal fix, and regression guidance.',
+          tags: ['Fault isolation', 'QEMU', 'Root-cause notes'],
+          price: 'FROM $250 / SYMPTOM'
+        }
+      ];
+
+      const PROCESS_STEPS = [
+        {
+          title: 'Send the details',
+          description: 'Share the device or project, chip or board, current symptom or build need, and timeline.'
+        },
+        {
+          title: 'Get a fixed scope',
+          description: 'I define the finish line, evidence required, price, and any access needed before work begins.'
+        },
+        {
+          title: 'Receive the test trail',
+          description: 'You get the implementation or fix with build steps, test evidence, and concise handoff notes.'
+        }
+      ];
+
+      const CONTACT_BRIEF_ITEMS = [
+        'What the device or project is',
+        'The chip or board',
+        'What is going wrong or needs building',
+        'Your timeline'
+      ];
+
+      const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+      const numberWord = (count) => NUMBER_WORDS[count] ?? String(count);
+      const padNumber = (number) => String(number).padStart(2, '0');
+      const formatList = (items) => {
+        if (items.length < 2) return items[0] ?? '';
+        if (items.length === 2) return `${items[0]} and ${items[1]}`;
+        return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+      };
+
+      const environments = [...new Set(PROJECTS.map((project) => project.verificationEnvironment))];
+      const environmentSummary = formatList(environments);
+
+      document.querySelector('.fit-list').innerHTML = AUDIENCES
+        .map((audience) => `<li>${audience}</li>`)
+        .join('');
+
+      const metrics = [
+        {
+          value: String(PROJECTS.length),
+          label: `${environments.join(' + ').toUpperCase()} VERIFIED DEMOS`
+        },
+        { value: 'RV64', label: 'BARE-METAL TARGET' },
+        { value: '0', label: 'LIBC DEPENDENCIES' },
+        { value: 'O(1)', label: 'SYSCALL COUNTER LOOKUP' }
+      ];
+
+      document.querySelector('.metrics-inner').innerHTML = metrics
+        .map((metric) => `<div class="metric"><strong>${metric.value}</strong><span>${metric.label}</span></div>`)
+        .join('');
+
+      document.getElementById('work-lede').textContent = `${PROJECTS.length} ${PROJECTS.length === 1 ? 'project compiles and runs' : 'projects compile and run'} in ${PROJECTS.length === 1 ? 'its' : 'their'} verification ${environments.length === 1 ? 'environment' : 'environments'}: ${environmentSummary}. The source archives include build instructions and the implementation behind every claim below.`;
+
+      const projectsContainer = document.getElementById('projects-list');
+      PROJECTS.forEach((project, index) => {
+        const article = document.createElement('article');
+        article.className = 'project';
+        article.id = project.id;
+
+        const facts = project.specRows
+          .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
+          .join('');
+        const repoAction = project.showRepoLink
+          ? `<div class="actions"><a class="btn secondary" href="${project.repoUrl}" target="_blank" rel="noopener">${project.repoLabel} <span class="arrow" aria-hidden="true">↗</span></a></div>`
+          : '';
+
+        article.innerHTML = `
+          <div class="project-grid">
+            <div class="project-copy">
+              <div class="project-number">PROJECT ${padNumber(index + 1)} / ${project.kicker}</div>
+              <h3>${project.title}</h3>
+              <p>${project.summary}</p>
+              <ul class="facts">${facts}</ul>
+              ${repoAction}
+            </div>
+            <div class="terminal" aria-label="${project.terminalLabel}">
+              <div class="terminal-bar"><span class="terminal-name">${project.terminalName}</span><span class="lights" aria-hidden="true"><i></i><i></i><i></i></span></div>
+              <pre>${project.terminalOutput}</pre>
+            </div>
+          </div>`;
+        projectsContainer.appendChild(article);
+      });
+
+      document.getElementById('services-title').textContent = `${numberWord(SERVICES.length)} simple ways to get unstuck.`;
+      document.querySelector('.services').innerHTML = SERVICES
+        .map((service) => `
+          <article class="service">
+            <h3>${service.title}</h3>
+            <div>
+              <p>${service.description}</p>
+              <div class="service-tags">${service.tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}</div>
+            </div>
+            <div class="price">${service.price}</div>
+          </article>`)
+        .join('');
+
+      document.querySelector('.approach').innerHTML = PROCESS_STEPS
+        .map((step, index) => `<article class="step"><strong>${padNumber(index + 1)}</strong><h3>${step.title}</h3><p>${step.description}</p></article>`)
+        .join('');
+
+      document.getElementById('contact-brief-title').textContent = `PUT THESE ${numberWord(CONTACT_BRIEF_ITEMS.length).toUpperCase()} THINGS IN YOUR EMAIL`;
+      document.querySelector('.contact-list').innerHTML = CONTACT_BRIEF_ITEMS
+        .map((item) => `<li>${item}</li>`)
+        .join('');
+
       const chooser = document.getElementById('contact-chooser');
       const closeButton = chooser.querySelector('.chooser-close');
       const copyButton = chooser.querySelector('.copy-email');
