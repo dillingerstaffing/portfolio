@@ -367,65 +367,6 @@
       html { scroll-behavior: auto; }
       .floating-contact { transition: none; }
     }
-
-    /* The Proving Ground: one quiet line, honestly framed as sketches, in the
-       portfolio's own acid/Newsreader voice, not the ember one. */
-    .bench-strip { margin: 64px 0 8px; border-top: 1px solid var(--line); padding-top: 30px; }
-    .bench-strip-lede { display: flex; flex-direction: column; gap: 12px; margin: 0 0 22px; max-width: 640px; }
-    .bench-strip-lede .eyebrow { margin: 0; letter-spacing: 0.18em; font-family: var(--mono); }
-    .bench-strip-lede .lede-line { font-family: var(--display); font-size: clamp(21px, 2.6vw, 29px); line-height: 1.25; color: var(--paper); }
-    .bench-strip-lede .lede-line em { color: var(--acid); font-style: normal; }
-    .bench-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
-    .bench-link {
-      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
-      border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
-      text-decoration: none; transition: border-color 0.18s ease, transform 0.18s ease;
-    }
-    .bench-link:hover { border-color: var(--acid); transform: translateY(-2px); }
-    .bench-link:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
-    .bl-spec {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--acid);
-      border: 1px solid var(--line); padding: 4px 8px; border-radius: 999px; white-space: nowrap; flex: none;
-    }
-    .bl-name { color: var(--paper); font-size: 15px; flex: 1; min-width: 0; }
-    .bl-go { color: var(--acid); flex: none; }
-    .bench-note { font-family: var(--mono); font-size: 12px; color: var(--dim); margin: 16px 0 0; letter-spacing: 0.02em; }
-    /* The Proving Ground: one quiet line, honestly framed as sketches. */
-    .pg-quiet {
-      margin: 56px 0 8px; border-top: 1px solid var(--line); padding-top: 24px;
-      font-family: var(--mono); font-size: 13px; letter-spacing: 0.02em; color: var(--dim);
-    }
-    .pg-quiet a { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
-    .pg-quiet a:hover { color: var(--acid); }
-    /* Motion system: custom easing curves and a timing scale as brand
-       signature. The layout and theme stay exactly as they are; this only
-       sharpens how the page moves and responds. */
-    :root {
-      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-      --ease-pop: cubic-bezier(0.2, 0.9, 0.25, 1.12);
-      --t-fast: 140ms;
-      --t-base: 240ms;
-      --t-slow: 520ms;
-    }
-    /* Scroll reveals: rise and fade with per-element stagger. */
-    [data-reveal] {
-      opacity: 0; transform: translateY(26px);
-      transition: opacity var(--t-slow) var(--ease-out), transform var(--t-slow) var(--ease-out);
-      transition-delay: var(--rv-delay, 0ms);
-    }
-    [data-reveal].in { opacity: 1; transform: none; }
-    /* Terminals are the instruments: they lift a hair on hover, settle on press.
-       Transform only, so the page never reflows under the pointer. */
-    .terminal { transition: transform var(--t-base) var(--ease-out), border-color var(--t-fast) var(--ease-out); }
-    .terminal:hover { transform: translateY(-3px); border-color: var(--acid); }
-    /* Buttons: press anticipation before they fire. */
-    .btn, .bench-link, .chooser-option { transition: transform 120ms ease-out, border-color var(--t-fast) var(--ease-out); }
-    .btn:active, .bench-link:active, .chooser-option:active { transform: scale(0.97); }
-    @media (prefers-reduced-motion: reduce) {
-      [data-reveal] { opacity: 1; transform: none; transition: none; }
-      .terminal:hover { transform: none; }
-      .btn:active, .bench-link:active, .chooser-option:active { transform: none; }
-    }
   </style>
 </head>
 <body>
@@ -487,12 +428,6 @@
       </div>
 
       <div id="projects-list"></div>
-
-      <p class="pg-quiet" aria-label="Interactive sketches">
-        The ideas above, as small interactive sketches:
-        <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">See Proving Ground for various simulations <span aria-hidden="true">&#8599;</span></a>
-      </p>
-
       <div class="section-cta">
         <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
       </div>
@@ -544,7 +479,7 @@
 
   <footer class="frame">
     <span>Chris / C, firmware, and OS internals</span>
-    <a href="https://dillingerstaffing.github.io/proving-ground/#bench=riscv-playground" target="_blank" rel="noopener">A hands-on RISC-V tutorial <span aria-hidden="true">&#8599;</span></a>
+    <a href="https://dillingerstaffing.github.io/riscv-playground/" target="_blank" rel="noopener">learn RISC-V in my interactive playground</a>
     <button class="footer-cta cta-trigger" type="button">Start your project</button>
   </footer>
 
@@ -580,6 +515,149 @@
   <script>
     (() => {
       const PROJECTS = [
+        {
+          id: 'strnlen-wordscan',
+          kicker: 'BOUNDED STRING SCAN',
+          title: 'lab/50-strnlen-wordscan',
+          summary: 'Bounded <code>my_strnlen(s, max)</code> built on the word-at-a-time zero-byte detection identity, loading only words fully inside the <code>max</code> bound so it never reads past <code>max</code>. Verified: 20,480 differential checks against libc <code>strnlen</code> over lengths 0..256 at every misalignment 0..7, 0 mismatches; 33 guard-page cases with mmaped pages followed by a guard page, 0 faults; clean under ASan/UBSan; identical fingerprint across <code>-O0</code>, <code>-O2</code>, ASan, and UBSan builds; measured 31.6 ns/value at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'Bounded my_strnlen(s, max), word-at-a-time zero-byte detection'],
+            ['BOUND', 'Only words fully inside max are loaded'],
+            ['DIFFERENTIAL', '20,480 checks, lengths 0..256, misalignments 0..7'],
+            ['RESULT', '0 mismatches'],
+            ['GUARD PAGES', '33 cases, 0 faults'],
+            ['BUILDS', 'Identical fingerprint across -O0, -O2, ASan, and UBSan'],
+            ['MEASURED', '31.6 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ./test_strnlen_wordscan
+libc differential checks . 20,480
+lengths ................... 0..256
+misalignments ............. 0..7
+mismatches ................ 0
+guard-page cases .......... 33
+guard-page faults ......... 0
+-O0 / -O2 fingerprints .... IDENTICAL
+ASan / UBSan .............. CLEAN
+
+<span class="result">31.6 ns/value at -O2</span>`,
+          verificationEnvironment: 'host',
+          checks: 20513,
+          failures: 0,
+          stressItems: 20480,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/50-strnlen-wordscan',
+          repoLabel: 'GitHub: systems-lab/lab/50-strnlen-wordscan',
+          terminalName: 'systems-lab / lab / 50-strnlen-wordscan',
+          terminalLabel: 'Verified bounded strnlen test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mtvec-vectored-dispatch',
+          kicker: 'RISC-V TRAP DISPATCH',
+          title: 'riscv mtvec vectored dispatch',
+          summary: 'Bare-metal RV64 M-mode program setting <code>mtvec</code> to <code>0x80000201</code> (BASE <code>0x80000200</code>, MODE=1) over a 16-entry vector table. Two U-mode <code>ecall</code>s trap with <code>mcause=0x8</code> and land at BASE; one machine timer interrupt traps with <code>mcause=0x8000000000000007</code> and lands at BASE+28. <code>mtimecmp</code> is disarmed after the handler, with no refire. RESULT: PASS, program output byte-identical across 3 QEMU 8.2.2 runs.',
+          specRows: [
+            ['MODE', 'Bare-metal RV64 M-mode'],
+            ['MTVEC', '0x80000201, BASE 0x80000200, MODE=1'],
+            ['TABLE', '16 entries'],
+            ['U-MODE ECALLS', '2, mcause=0x8, both land at BASE'],
+            ['MACHINE TIMER', 'mcause=0x8000000000000007, lands at BASE+28'],
+            ['DISARM', 'mtimecmp disarmed after handler, 0 refires'],
+            ['RUNS', '3 QEMU 8.2.2 runs, byte-identical, PASS']
+          ],
+          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt \\
+  -nographic -bios none -kernel mtvec-vectored.elf
+
+mtvec ..................... 0x80000201
+BASE / MODE ............... 0x80000200 / 1
+vector entries ............ 16
+U-mode ecalls ............. 2
+U-mode ecall mcause ....... 0x8
+ecall target .............. BASE
+machine timer mcause ...... 0x8000000000000007
+timer target .............. BASE+28
+mtimecmp refires .......... 0
+QEMU 8.2.2 runs ........... 3, byte-identical
+
+<span class="result">RESULT: PASS</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-vectored/',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/mtvec-vectored',
+          terminalName: 'qemu / riscv64 / mtvec-vectored.elf',
+          terminalLabel: 'Verified mtvec vectored dispatch output',
+          showRepoLink: true
+        },
+        {
+          id: 'div-round-pow2',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'div-round-pow2 (systems-lab/lab/49)',
+          summary: 'Round-to-nearest division of a u32 by 2^k, computed in a 64-bit intermediate so the identity stays exact over the whole u32 domain. Verified: 17/17 hand-checked vectors pass; 1,983,040 differential checks against an independent rational reference, 0 mismatches; FNV-1a checksum 0xee4a225fd47d1345 identical across -O0, -O2, ASan+UBSan, and UBSan builds; measured at -O2: 4.9 ns/value.',
+          specRows: [
+            ['OPERATION', 'Round-to-nearest u32 division by 2^k'],
+            ['INTERMEDIATE', '64-bit'],
+            ['VECTORS', '17/17 pass'],
+            ['DIFFERENTIAL', '1,983,040 checks, 0 mismatches'],
+            ['CHECKSUM', '0xee4a225fd47d1345 across 4 builds'],
+            ['MEASURED', '4.9 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ./test_div_round_pow2
+hand-checked vectors ...... 17/17 PASS
+differential checks ...... 1,983,040
+mismatches ................ 0
+FNV-1a checksum ........... 0xee4a225fd47d1345
+-O0 ....................... IDENTICAL
+-O2 ....................... IDENTICAL
+ASan+UBSan ................ IDENTICAL
+UBSan ..................... IDENTICAL
+
+<span class="result">4.9 ns/value at -O2</span>`,
+          verificationEnvironment: 'host',
+          checks: 1983057,
+          failures: 0,
+          stressItems: 1983040,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/49-div-round-pow2',
+          repoLabel: 'GitHub: systems-lab/lab/49-div-round-pow2',
+          terminalName: 'systems-lab / lab / 49-div-round-pow2',
+          terminalLabel: 'Verified div-round-pow2 test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-msip-software-interrupt-delivery',
+          kicker: 'RISC-V INTERRUPTS',
+          title: 'msip software-interrupt delivery (riscv-baremetal-demo/src/msip)',
+          summary: 'Bare-metal M-mode on QEMU: CLINT msip set for hart 0 fires exactly one machine software interrupt (mcause=0x8000000000000003) over two set/clear cycles, with zero re-delivery traps in the quiet windows after each clear. Measured: delivery latency 27,240 to 82,155 rdcycle units across 3 QEMU 8.2.2 runs, RESULT: PASS on all 3.',
+          specRows: [
+            ['MODE', 'Bare-metal M-mode on QEMU'],
+            ['SOURCE', 'CLINT msip for hart 0'],
+            ['CAUSE', 'mcause=0x8000000000000003'],
+            ['CYCLES', '2 set/clear cycles, 0 re-delivery traps'],
+            ['LATENCY', '27,240 to 82,155 rdcycle units'],
+            ['RUNS', '3 QEMU 8.2.2 runs, all PASS']
+          ],
+          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt \\
+  -nographic -bios none -kernel msip.elf
+
+hart ...................... 0
+set/clear cycles .......... 2
+machine software IRQs ..... exactly 1 per set
+mcause .................... 0x8000000000000003
+quiet-window re-delivery .. 0 traps
+latency range ............. 27,240 to 82,155 rdcycle units
+QEMU 8.2.2 runs ........... 3
+
+<span class="result">RESULT: PASS on all 3</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 0,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/msip',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/msip',
+          terminalName: 'qemu / riscv64 / msip.elf',
+          terminalLabel: 'Measured machine software interrupt delivery output',
+          showRepoLink: true
+        },
         {
           id: 'riscv-bare-metal-scheduler',
           kicker: 'BARE-METAL KERNEL',
@@ -2122,45 +2200,6 @@ platform .................. QEMU 8.2.2
           showRepoLink: true
         },
         {
-          id: 'gray-code-16-bit',
-          kicker: 'BIT MANIPULATION',
-          title: '16-bit Gray code encode and decode',
-          summary: '16-bit Gray code encoding from <code>n ^ (n &gt;&gt; 1)</code> and decoding with an xor-fold, with the single-bit adjacency property checked directly. Differential-tested against a naive bit-loop reference over all 65,536 16-bit inputs: 262,143 total checks covering encode, decode, <code>decode(encode(x)) == x</code>, and all 65,535 adjacent pairs, with 0 mismatches. The FNV-1a checksum was identical across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Measured about 4.3 ns/value at <code>-O2</code>.',
-          specRows: [
-            ['ENCODE', 'n ^ (n >> 1)'],
-            ['DECODE', 'Xor-fold'],
-            ['REFERENCE', 'Naive bit loop'],
-            ['COVERAGE', 'All 65,536 16-bit inputs and 65,535 adjacent pairs'],
-            ['TOTAL', '262,143 checks'],
-            ['RESULT', '0 mismatches'],
-            ['CHECKSUM', 'Identical FNV-1a across -O0, -O2, and ASan+UBSan'],
-            ['THROUGHPUT', '~4.3 ns/value at -O2']
-          ],
-          terminalOutput: `<span class="prompt">$</span> 16-bit Gray code verification
-encode .................... n ^ (n >> 1)
-decode .................... xor-fold
-reference ................. naive bit loop
-16-bit inputs ............. 65,536
-adjacent pairs ............ 65,535
-encode / decode checks .... 131,072
-round-trip checks ......... 65,536
-total checks .............. 262,143
-mismatches ................ 0
-FNV-1a -O0 / -O2 ......... MATCH
-FNV-1a ASan + UBSan ....... MATCH
-
-<span class="result">~4.3 ns/value at -O2</span>`,
-          verificationEnvironment: 'Host',
-          checks: 262143,
-          failures: 0,
-          stressItems: 65536,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/33-gray-code',
-          repoLabel: 'View the Gray code proof',
-          terminalName: 'systems-lab / lab/33-gray-code',
-          terminalLabel: 'Measured 16-bit Gray code verification output',
-          showRepoLink: true
-        },
-        {
           id: 'branchless-minmax-32-bit',
           kicker: 'INTEGER ARITHMETIC',
           title: 'Branchless 32-bit min/max, 4.3B checks',
@@ -2744,115 +2783,213 @@ output .................... BYTE-IDENTICAL
           showRepoLink: true
         },
         {
-          id: 'fletcher16-dual-sum',
+          id: 'gray-code-16-bit',
+          kicker: 'BIT IDENTITIES',
+          title: 'Gray code encode and decode, exhaustively checked',
+          summary: '16-bit Gray code: <code>gray16_encode(n)</code> returns <code>n ^ (n &gt;&gt; 1)</code>, and decode inverts it by xor-folding (<code>g ^= g&gt;&gt;8; g ^= g&gt;&gt;4; g ^= g&gt;&gt;2; g ^= g&gt;&gt;1</code>). Shifts and XORs on <code>uint16_t</code> only, no tables, no library calls. Differential-tested against an independent naive bit-loop reference over all 65,536 16-bit inputs: 65,536 encode checks and 65,536 decode checks, 0 mismatches. The involution <code>decode(encode(x)) == x</code> checked on every input (65,536 checks, 0 mismatches), and single-bit adjacency <code>popcount(encode(x) ^ encode(x + 1)) == 1</code> checked on all 65,535 adjacent pairs, 0 mismatches. 262,143 total checks, identical FNV-1a checksum 9751602672369123877 across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Clean under <code>-Wall -Wextra -Werror</code>, zero sanitizer reports. Measured at <code>-O2</code>: encode 4.32-4.46 ns/value, decode 4.31-4.35 ns/value over 100M timed values. Full build log and run output committed in <code>PROOF.md</code>.',
+          specRows: [
+            ['ENCODE', 'n ^ (n >> 1)'],
+            ['DECODE', 'xor-fold, four steps, all 16 positions'],
+            ['EXHAUSTIVE', 'All 65536 16-bit inputs, encode and decode'],
+            ['INVOLUTION', 'decode(encode(x)) == x on every input'],
+            ['ADJACENCY', 'Single-bit change on all 65535 pairs'],
+            ['TOTAL', '262143 checks, 0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 9751602672369123877 identical on all builds'],
+            ['RESULT', 'Encode 4.32-4.46 ns/value, decode 4.31-4.35 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> gray code verification
+encode differential (impl vs bit-loop ref): 65536 checks, 0 mismatches
+decode differential (impl vs bit-loop ref): 65536 checks, 0 mismatches
+involution decode(encode(x)) == x: 65536 checks, 0 mismatches
+adjacent single-bit change: 65535 checks, 0 mismatches
+FNV-1a checksum: 9751602672369123877
+encode throughput: 4.46 ns/value (100M values)
+decode throughput: 4.35 ns/value (100M values)
+
+<span class="result">262143 total checks, 0 mismatches</span>
+<span class="comment">Full build log and run output: PROOF.md</span>`,
+          verificationEnvironment: 'host',
+          checks: 262143,
+          failures: 0,
+          stressItems: 262143,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/33-gray-code',
+          repoLabel: 'View the Gray code proof',
+          terminalName: 'systems-lab / gray-code / PROOF.md',
+          terminalLabel: 'Verified Gray code test output',
+          showRepoLink: true
+        },
+        {
+          id: 'fletcher16-dual-recurrence',
           kicker: 'CHECKSUMS',
-          title: 'Fletcher-16 from dual running sums',
-          summary: 'Fletcher-16 built only from the dual running-sum recurrence (<code>sum1 = (sum1 + byte) % 255</code>, <code>sum2 = (sum2 + sum1) % 255</code>), differential-tested against an independent closed-form weighted-sum reference. 8/8 published and hand-checked vectors pass (<code>"abcde" -&gt; 0xC8F0</code>, <code>"abcdef" -&gt; 0x2057</code>, <code>"abcdefgh" -&gt; 0x0627</code>); 1,000,000 fixed-seed random buffers (1,388,938,179 bytes), 0 mismatches; FNV-1a <code>0x903aa7957d888495</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; measured 219.8 MiB/s at <code>-O2</code>. PROOF.md also documents a correction: the backlog\'s suggested <code>"123456789" -&gt; 0xBB3D</code> is not the Fletcher-16 value; the verified value is <code>0x1EDE</code>.',
+          title: 'Fletcher-16 from the dual running-sum recurrence',
+          summary: '<code>fletcher16()</code> computed directly from its dual running-sum recurrence: <code>sum1 = (sum1 + byte) % 255</code>, <code>sum2 = (sum2 + sum1) % 255</code>, result <code>(sum2 &lt;&lt; 8) | sum1</code>. No tables, no deferred reduction, no library code. 8/8 known-answer vectors pass: the published vectors "abcde" -> 0xC8F0, "abcdef" -> 0x2057, "abcdefgh" -> 0x0627, plus "123456789" -> 0x1EDE verified by hand arithmetic, empty -> 0x0000, "a" -> 0x6161, {0xFF} -> 0x0000, {0x01,0xFF} -> 0x0201. Differential-tested against an independent closed-form two-loop weighted-sum reference: 1,000,000 fixed-seed random buffers, 1,388,938,179 bytes total, 0 mismatches. FNV-1a checksum <code>0x903aa7957d888495</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; zero warnings under <code>-std=c11 -Wall -Wextra -Werror</code>, zero sanitizer reports. Measured at <code>-O2</code>: 219.8 MiB/s. Full build log and run output committed in <code>PROOF.md</code>.',
+          specRows: [
+            ['DESIGN', 'Dual running-sum recurrence, mod 255 per byte'],
+            ['VECTORS', '8/8 pass, published plus hand-checked'],
+            ['DIFF TEST', '1M fixed-seed buffers, 1388938179 bytes, 0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 0x903aa7957d888495 identical on all builds'],
+            ['THROUGHPUT', '219.8 MiB/s at -O2'],
+            ['SANITIZERS', 'Clean under ASan+UBSan and UBSan']
+          ],
+          terminalOutput: `<span class="prompt">$</span> fletcher-16 verification
+vectors: 8/8 passed
+differential: 1000000 buffers, 1388938179 bytes total, mismatches=0
+fnv1a=0x903aa7957d888495
+throughput: 256.0 MiB in 1.165 s = 219.8 MiB/s
+ASan+UBSan ................ CLEAN
+UBSan ..................... CLEAN
+
+<span class="result">RESULT: PASS</span>
+<span class="comment">Full build log and run output: PROOF.md</span>`,
+          verificationEnvironment: 'host',
+          checks: 1000008,
+          failures: 0,
+          stressItems: 1388938179,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/46-fletcher16',
+          repoLabel: 'View the Fletcher-16 proof',
+          terminalName: 'systems-lab / fletcher16 / PROOF.md',
+          terminalLabel: 'Verified Fletcher-16 test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'ones-complement-sum',
+          kicker: 'CHECKSUMS',
+          title: 'Ones-complement checksum with end-around carry',
+          summary: '<code>ones_complement_sum()</code> over a byte buffer, the layout used by IPv4 headers: 16-bit big-endian words assembled from bytes (no casts, no alignment assumptions), each word added into a 16-bit accumulator with end-around carry (carry out of bit 15 folded into bit 0 of the same addition), odd trailing byte zero-padded, empty buffer -> 0xFFFF. 9/9 hand-computed vectors pass, including four 0xFF bytes -> 0x0000 exercising carry folding (<code>0xFFFF + 0xFFFF = 0x1FFFE</code> folds to 0xFFFF) and odd-length padding cases. Differential-tested against an independent 64-bit reference that accumulates without folding and folds carries once at the end: 1,000,000 fixed-seed random buffers, 172,733,565 bytes total, mixed empty, odd, and even lengths, 0 mismatches. FNV-1a fingerprint <code>0x7ae87b2b2fb7e3e1</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds. Clean compile with <code>-std=c11 -Wall -Wextra -Werror</code>, zero warnings, zero sanitizer reports. Measured at <code>-O2</code>: 857.4 MiB/s. Full build log and run output committed in <code>PROOF.md</code>.',
+          specRows: [
+            ['DESIGN', '16-bit accumulator, end-around carry per add'],
+            ['WORDS', 'Big-endian from bytes, no casts, no alignment assumptions'],
+            ['VECTORS', '9/9 hand-computed pass, incl. carry folding'],
+            ['DIFF TEST', '1M fixed-seed buffers, 172733565 bytes, 0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 0x7ae87b2b2fb7e3e1 identical on all builds'],
+            ['THROUGHPUT', '857.4 MiB/s at -O2'],
+            ['SANITIZERS', 'Clean under ASan+UBSan and UBSan']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ones-complement-sum verification
+vectors: 9/9 passed
+differential: 1000000 buffers, 172733565 bytes total, mismatches=0
+fnv1a=0x7ae87b2b2fb7e3e1
+throughput: 256.0 MiB in 0.299 s = 857.4 MiB/s
+ASan+UBSan ................ CLEAN
+UBSan ..................... CLEAN
+
+<span class="result">RESULT: PASS</span>
+<span class="comment">Full build log and run output: PROOF.md</span>`,
+          verificationEnvironment: 'host',
+          checks: 1000009,
+          failures: 0,
+          stressItems: 172733565,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/47-ones-complement-sum',
+          repoLabel: 'View the ones-complement proof',
+          terminalName: 'systems-lab / ones-complement-sum / PROOF.md',
+          terminalLabel: 'Verified ones-complement checksum test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'nibble-pack-64-bit',
+          kicker: 'BIT IDENTITIES',
+          title: '16 nibbles packed into one 64-bit word',
+          summary: '<code>pack_nibbles16()</code> packs 16 4-bit nibbles into one 64-bit word by <code>word |= (uint64_t)(n[i] &amp; 0xF) &lt;&lt; (4*i)</code>: nibble <code>i</code> occupies bits <code>[4i, 4i+3]</code>. <code>unpack_nibbles16()</code> inverts it with <code>(w &gt;&gt; (4*i)) &amp; 0xF</code>. Shift/OR/mask composition only: no tables, no library bit tricks; inputs above 0xF are reduced to their low 4 bits. 5/5 hand-checked vectors pass (nibbles 0..15 -> 0xFEDCBA9876543210). Differential-tested against an independent reference that builds each word bit by bit from a 16x4 truth table using only multiply, add, and divide: all 65,536 16-bit values packed into each of the 4 nibble lanes, 262,144 pack checks and 262,144 unpack checks, 0 mismatches. Round-trip invariants <code>unpack(pack(n)) == n</code> and <code>pack(unpack(w)) == w</code> hold on 1,000,000 fixed-seed random words, 0 mismatches. FNV-1a fingerprint <code>0x55bf0e9a9dad34f2</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds. Measured at <code>-O2</code>: 27.7 ns per pack+unpack pair. Clean under <code>-std=c11 -Wall -Wextra -Werror</code>, zero sanitizer reports. Full build log and run output committed in <code>PROOF.md</code>.',
+          specRows: [
+            ['DESIGN', 'word |= (n[i] & 0xF) << (4*i), shift/OR/mask only'],
+            ['VECTORS', '5/5 hand-checked pass, incl. 0..15 -> 0xFEDCBA9876543210'],
+            ['EXHAUSTIVE', 'All 65536 values x 4 nibble lanes, pack and unpack'],
+            ['DIFF TEST', '524288 checks vs bit-loop reference, 0 mismatches'],
+            ['ROUND TRIP', 'unpack(pack(n)) == n and pack(unpack(w)) == w on 1M words'],
+            ['CHECKSUM', 'FNV-1a 0x55bf0e9a9dad34f2 identical on all builds'],
+            ['RESULT', '27.7 ns per pack+unpack pair at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> nibble-pack verification
+vectors: 5/5 passed
+differential: 262144 pack checks, 262144 unpack checks, 0 mismatches
+round trip: 1000000 random words, 0 mismatches
+fnv1a-64 over all packed outputs: 0x55bf0e9a9dad34f2
+benchmark: 2000000 pack+unpack pairs in 0.055 s = 27.7 ns/pair
+ASan+UBSan ................ CLEAN
+UBSan ..................... CLEAN
+
+<span class="result">ALL TESTS PASSED</span>
+<span class="comment">Full build log and run output: PROOF.md</span>`,
+          verificationEnvironment: 'host',
+          checks: 1524288,
+          failures: 0,
+          stressItems: 2000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/48-nibble-pack',
+          repoLabel: 'View the nibble-pack proof',
+          terminalName: 'systems-lab / nibble-pack / PROOF.md',
+          terminalLabel: 'Verified nibble-pack test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'fletcher16',
+          kicker: 'CHECKSUM',
+          title: 'lab/46-fletcher16',
+          summary: 'Fletcher-16 checksum implemented only from the dual running-sum recurrence. Verified: 8/8 published and hand-checked test vectors pass; 1,000,000 fixed-seed random buffers (1,388,938,179 bytes) differential-tested against an independent reference, 0 mismatches; identical FNV-1a checksum across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; zero warnings under <code>-Wall -Wextra -Werror</code>; measured 219.8 MiB/s at <code>-O2</code>.',
           specRows: [
             ['BUILD', 'Fletcher-16 from the dual running-sum recurrence'],
-            ['VECTORS', '8/8 published and hand-checked pass'],
-            ['DIFF TEST', '1,000,000 fixed-seed buffers, 1,388,938,179 bytes'],
-            ['REFERENCE', 'Independent closed-form weighted-sum'],
+            ['VECTORS', '8/8 published and hand-checked vectors pass'],
+            ['DIFFERENTIAL', '1,000,000 fixed-seed random buffers'],
+            ['BYTES', '1,388,938,179'],
             ['RESULT', '0 mismatches'],
-            ['CHECKSUM', 'FNV-1a 0x903aa7957d888495 across -O0, -O2, ASan+UBSan, UBSan'],
-            ['CORRECTION', '"123456789" -> 0x1EDE, not 0xBB3D'],
-            ['THROUGHPUT', '219.8 MiB/s at -O2']
+            ['BUILDS', 'Identical FNV-1a checksum across -O0, -O2, ASan+UBSan, and UBSan'],
+            ['WARNINGS', '0 under -Wall -Wextra -Werror'],
+            ['-O2', '219.8 MiB/s']
           ],
           terminalOutput: `<span class="prompt">$</span> Fletcher-16 verification
-construction .............. dual running-sum recurrence
-published vectors ......... 8/8 pass
-fixed-seed buffers ........ 1,000,000
-total bytes ............... 1,388,938,179
-mismatches ................ 0
-checksum -O0 .............. MATCH
-checksum -O2 .............. MATCH
-checksum ASan + UBSan ..... MATCH
-checksum UBSan ............ MATCH
-"123456789" -> 0x1EDE (backlog suggested 0xBB3D: wrong)
+published and hand-checked vectors  8 / 8 PASS
+fixed-seed random buffers ........ 1,000,000
+bytes differential-tested ........ 1,388,938,179
+reference mismatches ............. 0
+FNV-1a across all builds ......... IDENTICAL
+-Wall -Wextra -Werror ............ 0 warnings
+-O2 measurement ................. 219.8 MiB/s
 
-<span class="result">219.8 MiB/s at -O2</span>`,
+<span class="result">0 mismatches</span>`,
           verificationEnvironment: 'Host',
           checks: 1000008,
           failures: 0,
           stressItems: 1000000,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/46-fletcher16',
-          repoLabel: 'View lab/46-fletcher16',
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'lab/46-fletcher16',
           terminalName: 'systems-lab / lab/46-fletcher16',
           terminalLabel: 'Measured Fletcher-16 verification output',
           showRepoLink: true
         },
         {
-          id: 'ones-complement-checksum',
-          kicker: 'ONE\u2019S COMPLEMENT',
-          title: 'One\u2019s-complement Internet checksum',
-          summary: 'IPv4-style one\u2019s-complement checksum with per-addition end-around carry, 16-bit words built from bytes with no casts. 9/9 hand-computed vectors pass; 1,000,000 fixed-seed random buffers (172,733,565 bytes, mixed empty/odd/even lengths) differential-tested against a 64-bit fold-at-end naive reference, 0 mismatches; FNV-1a <code>0x7ae87b2b2fb7e3e1</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; measured 857.4 MiB/s at <code>-O2</code>.',
+          id: 'riscv-umode-ecall-transition',
+          kicker: 'RISC-V PRIVILEGE TRANSITION',
+          title: 'RISC-V M-mode to U-mode trap transition',
+          summary: 'Bare-metal M-mode program drops into a one-instruction U-mode <code>ecall</code> payload via <code>mret</code> with <code>mstatus.MPP</code> cleared, trap handler recording <code>mcause</code>/<code>mepc</code>/<code>mtval</code>. Verified: <code>mcause=0x8</code> (environment call from U-mode; a failed drop would have raised 11), <code>mepc</code> exactly the payload <code>ecall</code> instruction, <code>mtval=0x0</code>, trap-entry <code>mstatus</code> confirms U-mode; exactly 1 trap per run, byte-identical across 3 QEMU 8.2.2 runs, <code>RESULT: PASS</code>.',
           specRows: [
-            ['BUILD', 'One\u2019s-complement checksum with end-around carry'],
-            ['WORD CONSTRUCTION', '16-bit words from bytes, no casts'],
-            ['VECTORS', '9/9 hand-computed pass'],
-            ['DIFF TEST', '1,000,000 fixed-seed buffers, 172,733,565 bytes'],
-            ['REFERENCE', '64-bit fold-at-end naive implementation'],
-            ['RESULT', '0 mismatches'],
-            ['CHECKSUM', 'FNV-1a 0x7ae87b2b2fb7e3e1 across -O0, -O2, ASan+UBSan, UBSan'],
-            ['THROUGHPUT', '857.4 MiB/s at -O2']
+            ['BUILD', 'M-mode to one-instruction U-mode ecall via mret'],
+            ['MPP', 'Cleared before the transition'],
+            ['MCAUSE', '0x8, environment call from U-mode'],
+            ['MEPC', 'Exactly the payload ecall instruction'],
+            ['MTVAL', '0x0'],
+            ['TRAP ENTRY', 'mstatus confirms U-mode'],
+            ['REPEATABILITY', 'Exactly 1 trap per run, byte-identical across 3 QEMU 8.2.2 runs'],
+            ['RESULT', 'PASS']
           ],
-          terminalOutput: `<span class="prompt">$</span> one\u2019s-complement checksum verification
-construction .............. per-addition end-around carry
-hand-computed vectors .... 9/9 pass
-fixed-seed buffers ........ 1,000,000
-total bytes ............... 172,733,565
-mismatches ................ 0
-checksum -O0 .............. MATCH
-checksum -O2 .............. MATCH
-checksum ASan + UBSan ..... MATCH
-checksum UBSan ............ MATCH
+          terminalOutput: `<span class="prompt">$</span> M-mode to U-mode trap verification
+entry mode ................ M-mode
+transition ................. mret with mstatus.MPP cleared
+payload .................... one U-mode ecall
+mcause ..................... 0x8
+mepc ....................... exact payload ecall instruction
+mtval ...................... 0x0
+trap-entry mstatus ......... confirms U-mode
+traps per run .............. 1
+QEMU 8.2.2 runs ............ 3, byte-identical
 
-<span class="result">857.4 MiB/s at -O2</span>`,
-          verificationEnvironment: 'Host',
-          checks: 1000009,
+<span class="result">RESULT: PASS</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
           failures: 0,
-          stressItems: 1000000,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/47-ones-complement-sum',
-          repoLabel: 'View lab/47-ones-complement-sum',
-          terminalName: 'systems-lab / lab/47-ones-complement-sum',
-          terminalLabel: 'Measured one\u2019s-complement checksum output',
-          showRepoLink: true
-        },
-        {
-          id: 'nibble-pack-64',
-          kicker: 'BIT PACKING',
-          title: '16 nibbles packed into one word',
-          summary: 'Packing sixteen 4-bit nibbles into one 64-bit word from shift/OR/mask identities only, no tables. 262,144 pack plus 262,144 unpack checks (all 65,536 16-bit values across 4 nibble lanes) differential-tested against a bit-loop reference, 0 mismatches; round-trip invariants <code>unpack(pack(n)) == n</code> and <code>pack(unpack(w)) == w</code> on 1,000,000 fixed-seed random words, 0 mismatches; FNV-1a <code>0x55bf0e9a9dad34f2</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; measured 27.7 ns per pack+unpack pair at <code>-O2</code>.',
-          specRows: [
-            ['BUILD', '16 nibbles into one 64-bit word'],
-            ['METHOD', 'Shift/OR/mask identities, no tables'],
-            ['DIFF TEST', '262,144 pack + 262,144 unpack checks'],
-            ['COVERAGE', 'All 65,536 16-bit values across 4 nibble lanes'],
-            ['ROUND-TRIP', '1,000,000 random words, 0 mismatches'],
-            ['RESULT', '0 mismatches'],
-            ['CHECKSUM', 'FNV-1a 0x55bf0e9a9dad34f2 across -O0, -O2, ASan+UBSan, UBSan'],
-            ['THROUGHPUT', '27.7 ns per pack+unpack pair at -O2']
-          ],
-          terminalOutput: `<span class="prompt">$</span> nibble-pack verification
-construction .............. shift/OR/mask identities, no tables
-pack checks ............... 262,144
-unpack checks ............. 262,144
-round-trip words .......... 1,000,000
-mismatches ................ 0
-checksum -O0 .............. MATCH
-checksum -O2 .............. MATCH
-checksum ASan + UBSan ..... MATCH
-checksum UBSan ............ MATCH
-
-<span class="result">27.7 ns per pack+unpack pair at -O2</span>`,
-          verificationEnvironment: 'Host',
-          checks: 2524288,
-          failures: 0,
-          stressItems: 1000000,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/48-nibble-pack',
-          repoLabel: 'View lab/48-nibble-pack',
-          terminalName: 'systems-lab / lab/48-nibble-pack',
-          terminalLabel: 'Measured nibble-pack verification output',
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'src/umode',
+          terminalName: 'riscv-baremetal-demo / src/umode',
+          terminalLabel: 'Measured RISC-V M-mode to U-mode trap transition output',
           showRepoLink: true
         }
       ];
@@ -3086,67 +3223,6 @@ checksum UBSan ............ MATCH
         }
         copyStatus.textContent = 'Email address copied.';
       });
-    })();
-  </script>
-  <script>
-    /* Motion choreography: scroll reveals with stagger, telemetry scramble
-       on eyebrow labels and project kickers. Transform/opacity only; fully
-       inert under prefers-reduced-motion. Runs after the project render. */
-    (function () {
-      "use strict";
-      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-      function stagger(sel, step) {
-        var els = document.querySelectorAll(sel);
-        els.forEach(function (el, i) {
-          el.setAttribute("data-reveal", "");
-          el.style.setProperty("--rv-delay", (i * step) + "ms");
-        });
-        return els;
-      }
-      stagger(".section-head", 0);
-      stagger(".project", 0);
-      stagger(".bench-link", 60);
-      stagger(".fit-list li, .step", 70);
-
-      var revealed = document.querySelectorAll("[data-reveal]");
-      if (!reduce && "IntersectionObserver" in window && revealed.length) {
-        var io = new IntersectionObserver(function (entries) {
-          entries.forEach(function (en) {
-            if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
-          });
-        }, { threshold: 0.08, rootMargin: "0px 0px -6% 0px" });
-        revealed.forEach(function (el) { io.observe(el); });
-      } else {
-        revealed.forEach(function (el) { el.classList.add("in"); });
-      }
-
-      /* Telemetry scramble: labels decrypt left to right. */
-      var GLYPHS = "!<>-_\\/[]{}+=*^?#";
-      function scramble(el) {
-        if (el.dataset.scrambled) return;
-        el.dataset.scrambled = "1";
-        var orig = el.textContent, n = orig.length, i = 0;
-        if (!n) return;
-        var timer = setInterval(function () {
-          i++;
-          var out = "";
-          for (var j = 0; j < n; j++) {
-            out += (j < i || orig[j] === " ") ? orig[j] : GLYPHS[(Math.random() * GLYPHS.length) | 0];
-          }
-          el.textContent = out;
-          if (i >= n) { clearInterval(timer); el.textContent = orig; }
-        }, 26);
-      }
-      var scr = document.querySelectorAll(".eyebrow, .project-number, .section-index");
-      if (!reduce && "IntersectionObserver" in window && scr.length) {
-        var io2 = new IntersectionObserver(function (entries) {
-          entries.forEach(function (en) {
-            if (en.isIntersecting) { scramble(en.target); io2.unobserve(en.target); }
-          });
-        }, { threshold: 0.5 });
-        scr.forEach(function (el) { io2.observe(el); });
-      }
     })();
   </script>
 </body>
