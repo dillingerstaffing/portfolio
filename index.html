@@ -2364,6 +2364,84 @@ output across runs ........ BYTE-IDENTICAL
           terminalName: 'riscv-baremetal-demo / src/ecall',
           terminalLabel: 'Measured ecall ABI round-trip output',
           showRepoLink: true
+        },
+        {
+          id: 'rotate-64-bit',
+          kicker: 'BIT MANIPULATION',
+          title: '64-bit rotates, 4,194,304 checks',
+          summary: '64-bit rotate right and rotate left built directly from the shift/OR identity <code>(x &gt;&gt; r) | (x &lt;&lt; ((64 - r) &amp; 63))</code>, with no narrowing shift hiding the edge case. Verification compares against a naive bit-loop reference and checks the <code>rotr(rotl(x, r), r) == x</code> round-trip invariant over every 16-bit input and all 32 rotation amounts: 4,194,304 checks, 0 mismatches. The FNV-1a checksum <code>501688248194884901</code> is identical across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds. At <code>-O2</code>, rotate right measured 2.65 to 2.77 ns/value and rotate left measured 2.65 to 2.66 ns/value.',
+          specRows: [
+            ['BUILD', '64-bit rotate right and rotate left from shift/OR'],
+            ['EDGE CASE', 'No narrowing shift'],
+            ['REFERENCE', 'Naive bit loop'],
+            ['INVARIANT', 'rotr(rotl(x, r), r) == x'],
+            ['CHECKS', '4,194,304 across all 16-bit inputs and 32 rotations'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '501688248194884901 across every build'],
+            ['-O2', 'rotr 2.65 to 2.77 ns/value, rotl 2.65 to 2.66 ns/value']
+          ],
+          terminalOutput: `<span class="prompt">$</span> 64-bit rotate verification
+construction .............. shift / OR identity
+reference ................. naive bit loop
+round-trip invariant ...... rotr(rotl(x, r), r) == x
+inputs .................... every 16-bit value
+rotation amounts .......... 32
+checks .................... 4,194,304
+mismatches ................ 0
+FNV-1a checksum ........... 501688248194884901
+-O0 / -O2 / ASan+UBSan .... IDENTICAL
+rotr at -O2 ............... 2.65 to 2.77 ns/value
+rotl at -O2 ............... 2.65 to 2.66 ns/value
+
+<span class="result">4,194,304 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 4194304,
+          failures: 0,
+          stressItems: 4194304,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/39-rotr',
+          repoLabel: 'View the 64-bit rotate proof',
+          terminalName: 'systems-lab / lab/39-rotr',
+          terminalLabel: 'Measured 64-bit rotate verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-counter-alias',
+          kicker: 'RISC-V MACHINE COUNTERS',
+          title: 'mcycle and rdcycle, lockstep verified',
+          summary: 'A bare-metal RISC-V M-mode program on QEMU 8.2.2 checks that the <code>mcycle</code> and <code>rdcycle</code> counters advance in lockstep. It reads them back to back over 1,000 samples and cross-checks them against <code>mtime</code>. Calibration reads agreed exactly at 119/119 on all 3 runs. Back-to-back delta measured a minimum of 108 and a median of 120, with a 1 to 2% counter-rate difference, no backward counter, and no borrow. Every run printed <code>RESULT: PASS</code>.',
+          specRows: [
+            ['BUILD', 'Bare-metal RISC-V M-mode counter check'],
+            ['PLATFORM', 'QEMU 8.2.2'],
+            ['SAMPLES', '1,000 back-to-back reads per run'],
+            ['CROSS-CHECK', 'mcycle and rdcycle against mtime'],
+            ['CALIBRATION', '119 / 119 exact agreement on all 3 runs'],
+            ['DELTA', 'Minimum 108, median 120'],
+            ['RATE DIFF', '1 to 2%'],
+            ['RESULT', 'No backward counter, no borrow, PASS on all 3 runs']
+          ],
+          terminalOutput: `<span class="prompt">$</span> counter alias verification
+platform .................. QEMU 8.2.2 virt
+privilege mode ............ M-mode
+samples per run ........... 1,000
+cross-check ............... mtime
+calibration reads ......... 119 / 119 exact
+repeated runs ............. 3
+back-to-back delta min .... 108
+back-to-back delta median . 120
+counter-rate difference ... 1 to 2%
+backward counter .......... NONE
+borrow .................... NONE
+
+<span class="result">RESULT: PASS on all 3 runs</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 3000,
+          failures: 0,
+          stressItems: 1000,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/counter-alias',
+          repoLabel: 'View the counter alias proof',
+          terminalName: 'riscv-baremetal-demo / src/counter-alias',
+          terminalLabel: 'Measured mcycle and rdcycle lockstep output',
+          showRepoLink: true
         }
       ];
 
