@@ -279,6 +279,39 @@
     .chooser-option span:last-child { color: var(--dim); font-size: 16px; }
     .copy-status { min-height: 18px; margin: 2px 0 0; color: var(--acid); font-size: 11px; }
 
+    .floating-contact {
+      position: fixed;
+      z-index: 20;
+      right: max(calc(18px + env(safe-area-inset-right)), calc((100vw - var(--max)) / 2 + 18px));
+      bottom: max(24px, calc(18px + env(safe-area-inset-bottom)));
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--acid);
+      border-radius: 50%;
+      background: var(--acid);
+      color: var(--black);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .38);
+      cursor: pointer;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms, background-color 140ms ease;
+    }
+    .floating-contact.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateY(0);
+      transition-delay: 0s;
+    }
+    .floating-contact:hover { background: var(--acid-soft); }
+    .floating-contact:focus-visible { outline: 3px solid var(--acid-soft); outline-offset: 4px; }
+    .floating-contact svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
     footer { min-height: 110px; padding-block: 26px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 30px; color: var(--dim); font-size: 11px; }
     footer a, .footer-cta { color: var(--muted); text-decoration: none; overflow-wrap: anywhere; }
     .footer-cta { padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
@@ -332,6 +365,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
+      .floating-contact { transition: none; }
     }
   </style>
 </head>
@@ -448,6 +482,13 @@
     <a href="https://dillingerstaffing.github.io/riscv-playground/" target="_blank" rel="noopener">learn RISC-V in my interactive playground</a>
     <button class="footer-cta cta-trigger" type="button">Start your project</button>
   </footer>
+
+  <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1" disabled>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="3" y="5" width="18" height="14" rx="1"></rect>
+      <path d="m4 7 8 6 8-6"></path>
+    </svg>
+  </button>
 
   <dialog class="contact-chooser" id="contact-chooser" aria-labelledby="chooser-title" aria-describedby="chooser-description">
     <div class="chooser-head">
@@ -1792,18 +1833,46 @@ about 4.9 ns per step</span>`,
       const copyButton = chooser.querySelector('.copy-email');
       const copyStatus = chooser.querySelector('.copy-status');
       const email = 'shipthisgroup@gmail.com';
+      const floatingContact = document.querySelector('.floating-contact');
       let lastTrigger = null;
+
+      const hideZones = [
+        document.querySelector('.hero'),
+        document.getElementById('contact'),
+        document.querySelector('footer'),
+        ...document.querySelectorAll('.cta-trigger:not(.floating-contact)')
+      ];
+      const zoneVisibility = new Map(hideZones.map((zone) => [zone, false]));
+      const updateFloatingContact = () => {
+        const contactOptionOnScreen = [...zoneVisibility.values()].some(Boolean);
+        const shouldShow = !chooser.open && !contactOptionOnScreen;
+        floatingContact.classList.toggle('is-visible', shouldShow);
+        floatingContact.disabled = !shouldShow;
+        floatingContact.setAttribute('aria-hidden', String(!shouldShow));
+        floatingContact.tabIndex = shouldShow ? 0 : -1;
+        if (!shouldShow && document.activeElement === floatingContact) floatingContact.blur();
+      };
+
+      if ('IntersectionObserver' in window) {
+        const visibilityObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => zoneVisibility.set(entry.target, entry.isIntersecting));
+          updateFloatingContact();
+        }, { threshold: 0.01 });
+        hideZones.forEach((zone) => visibilityObserver.observe(zone));
+      }
 
       document.querySelectorAll('.cta-trigger').forEach((trigger) => {
         trigger.addEventListener('click', () => {
           lastTrigger = trigger;
           copyStatus.textContent = '';
           chooser.showModal();
+          updateFloatingContact();
         });
       });
 
       const closeChooser = () => {
         chooser.close();
+        updateFloatingContact();
         lastTrigger?.focus();
       };
 
@@ -1811,6 +1880,7 @@ about 4.9 ns per step</span>`,
       chooser.addEventListener('click', (event) => {
         if (event.target === chooser) closeChooser();
       });
+      chooser.addEventListener('close', updateFloatingContact);
 
       chooser.querySelectorAll('a').forEach((link) => {
         link.addEventListener('click', () => chooser.close());
