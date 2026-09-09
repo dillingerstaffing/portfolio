@@ -390,6 +390,35 @@
     .bl-name { color: var(--paper); font-size: 15px; flex: 1; min-width: 0; }
     .bl-go { color: var(--acid); flex: none; }
     .bench-note { font-family: var(--mono); font-size: 12px; color: var(--dim); margin: 16px 0 0; letter-spacing: 0.02em; }
+    /* Motion system: custom easing curves and a timing scale as brand
+       signature. The layout and theme stay exactly as they are; this only
+       sharpens how the page moves and responds. */
+    :root {
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-pop: cubic-bezier(0.2, 0.9, 0.25, 1.12);
+      --t-fast: 140ms;
+      --t-base: 240ms;
+      --t-slow: 520ms;
+    }
+    /* Scroll reveals: rise and fade with per-element stagger. */
+    [data-reveal] {
+      opacity: 0; transform: translateY(26px);
+      transition: opacity var(--t-slow) var(--ease-out), transform var(--t-slow) var(--ease-out);
+      transition-delay: var(--rv-delay, 0ms);
+    }
+    [data-reveal].in { opacity: 1; transform: none; }
+    /* Terminals are the instruments: they lift a hair on hover, settle on press.
+       Transform only, so the page never reflows under the pointer. */
+    .terminal { transition: transform var(--t-base) var(--ease-out), border-color var(--t-fast) var(--ease-out); }
+    .terminal:hover { transform: translateY(-3px); border-color: var(--acid); }
+    /* Buttons: press anticipation before they fire. */
+    .btn, .bench-link, .chooser-option { transition: transform 120ms ease-out, border-color var(--t-fast) var(--ease-out); }
+    .btn:active, .bench-link:active, .chooser-option:active { transform: scale(0.97); }
+    @media (prefers-reduced-motion: reduce) {
+      [data-reveal] { opacity: 1; transform: none; transition: none; }
+      .terminal:hover { transform: none; }
+      .btn:active, .bench-link:active, .chooser-option:active { transform: none; }
+    }
   </style>
 </head>
 <body>
@@ -3060,6 +3089,67 @@ checksum UBSan ............ MATCH
         }
         copyStatus.textContent = 'Email address copied.';
       });
+    })();
+  </script>
+  <script>
+    /* Motion choreography: scroll reveals with stagger, telemetry scramble
+       on eyebrow labels and project kickers. Transform/opacity only; fully
+       inert under prefers-reduced-motion. Runs after the project render. */
+    (function () {
+      "use strict";
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      function stagger(sel, step) {
+        var els = document.querySelectorAll(sel);
+        els.forEach(function (el, i) {
+          el.setAttribute("data-reveal", "");
+          el.style.setProperty("--rv-delay", (i * step) + "ms");
+        });
+        return els;
+      }
+      stagger(".section-head", 0);
+      stagger(".project", 0);
+      stagger(".bench-link", 60);
+      stagger(".fit-list li, .step", 70);
+
+      var revealed = document.querySelectorAll("[data-reveal]");
+      if (!reduce && "IntersectionObserver" in window && revealed.length) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+          });
+        }, { threshold: 0.08, rootMargin: "0px 0px -6% 0px" });
+        revealed.forEach(function (el) { io.observe(el); });
+      } else {
+        revealed.forEach(function (el) { el.classList.add("in"); });
+      }
+
+      /* Telemetry scramble: labels decrypt left to right. */
+      var GLYPHS = "!<>-_\\/[]{}+=*^?#";
+      function scramble(el) {
+        if (el.dataset.scrambled) return;
+        el.dataset.scrambled = "1";
+        var orig = el.textContent, n = orig.length, i = 0;
+        if (!n) return;
+        var timer = setInterval(function () {
+          i++;
+          var out = "";
+          for (var j = 0; j < n; j++) {
+            out += (j < i || orig[j] === " ") ? orig[j] : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+          }
+          el.textContent = out;
+          if (i >= n) { clearInterval(timer); el.textContent = orig; }
+        }, 26);
+      }
+      var scr = document.querySelectorAll(".eyebrow, .project-number, .section-index");
+      if (!reduce && "IntersectionObserver" in window && scr.length) {
+        var io2 = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { scramble(en.target); io2.unobserve(en.target); }
+          });
+        }, { threshold: 0.5 });
+        scr.forEach(function (el) { io2.observe(el); });
+      }
     })();
   </script>
 </body>
