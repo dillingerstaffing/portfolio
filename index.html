@@ -516,153 +516,6 @@
     (() => {
       const PROJECTS = [
         {
-          id: 'ctz-debruijn-multiply',
-          kicker: 'BIT MANIPULATION',
-          title: 'Count-trailing-zeros via de Bruijn multiply',
-          summary: 'Count-trailing-zeros built from the de Bruijn multiply identity with a 32-entry table. Differential-checked against __builtin_ctz (all nonzero 16-bit values) and a naive bit-loop reference (includes 0): 2,065,536 checks, 0 mismatches. FNV-1a checksum 7337941371035615009 identical across -O0, -O2, and ASan+UBSan builds. Disassembly confirms the multiply-and-table construction is kept as written (no hardware tzcnt substituted). Measured 3.4-5.1 ns/value at -O2 over 100M timed values.',
-          specRows: [
-            ['MECHANISM', 'De Bruijn multiply identity with a 32-entry table'],
-            ['ZERO INPUT', 'ctz(0) = 32, checked against a naive bit-loop reference'],
-            ['DIFF TEST', '2,065,536 checks against __builtin_ctz and the naive reference'],
-            ['COVERAGE', 'All 65,536 16-bit values plus 2,000,000 fixed-seed random 32-bit values'],
-            ['RESULT', '0 mismatches'],
-            ['CHECKSUM', '7337941371035615009 across -O0, -O2, and ASan+UBSan'],
-            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
-          ],
-          terminalOutput: `<span class="prompt">$</span> CTZ verification
-exhaustive 16-bit ........ 65,536
-fixed-seed random 32-bit . 2,000,000
-total checks ............. 2,065,536
-references ............... __builtin_ctz, naive bit-loop
-mismatches ............... 0
-checksum -O0 ............. 7337941371035615009
-checksum -O2 ............. 7337941371035615009
-checksum ASan + UBSan .... 7337941371035615009
--Wall -Wextra -Werror .... 0 warnings
-disassembly .............. multiply-and-table kept, no tzcnt
-
-<span class="result">2,065,536 checks, 0 mismatches</span>`,
-          verificationEnvironment: 'Host',
-          checks: 2065536,
-          failures: 0,
-          stressItems: 2000000,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/22-ctz',
-          repoLabel: 'View the CTZ repository',
-          terminalName: 'systems-lab / lab/22-ctz',
-          terminalLabel: 'Measured CTZ verification output',
-          showRepoLink: true
-        },
-        {
-          id: 'memmove-overlap-direction',
-          kicker: 'MEMORY',
-          title: 'memmove with overlap-direction copy',
-          summary: 'Byte-level my_memmove built from the overlap copy-direction identity: copy forward when dest < src, backward when dest > src. Differential-tested against libc memmove: 8,385 cases (sizes 0..64 x dest offsets -64..+64), 0 mismatches. Checksum 13318231107937211255 identical across -O0, -O2, and ASan+UBSan builds. A directed case shows a naive always-forward copy corrupting backward overlaps while my_memmove stays byte-exact. Measured ~1.2 GiB/s vs libc ~43 GiB/s; the gap is honestly the cost of the byte-at-a-time design.',
-          specRows: [
-            ['MECHANISM', 'Overlap copy-direction identity (forward when dest < src, backward when dest > src)'],
-            ['DESIGN', 'Byte-at-a-time copy, no word-aligned fast path'],
-            ['DIFF TEST', '8,385 cases against libc memmove'],
-            ['COVERAGE', 'Sizes 0..64 x dest offsets -64..+64, exhaustive over the offset space'],
-            ['RESULT', '0 mismatches'],
-            ['CHECKSUM', '13318231107937211255 across -O0, -O2, and ASan+UBSan'],
-            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
-          ],
-          terminalOutput: `<span class="prompt">$</span> memmove overlap verification
-sizes .................... 0..64
-dest offsets ............. -64..+64
-total cases .............. 8,385
-reference ................ libc memmove
-mismatches ............... 0
-checksum -O0 ............. 13318231107937211255
-checksum -O2 ............. 13318231107937211255
-checksum ASan + UBSan .... 13318231107937211255
-naive forward on overlap . corrupts (ABCDABCD)
-my_memmove on overlap .... byte-exact
-
-<span class="result">8,385 cases, 0 mismatches</span>`,
-          verificationEnvironment: 'Host',
-          checks: 8385,
-          failures: 0,
-          stressItems: 8385,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/30-memmove-overlap',
-          repoLabel: 'View the memmove repository',
-          terminalName: 'systems-lab / lab/30-memmove-overlap',
-          terminalLabel: 'Measured memmove verification output',
-          showRepoLink: true
-        },
-        {
-          id: 'binary-gcd-steins-algorithm',
-          kicker: 'INTEGER ALGORITHM',
-          title: "Binary GCD (Stein's algorithm)",
-          summary: "Stein's binary GCD for 32-bit integers, built from the shift/subtract identities with no library gcd call. Differential-tested against a naive Euclid reference: 2,048,576 checks (1,048,576 exhaustive 0..1023 pairs plus 1,000,000 fixed-seed random 32-bit pairs), 0 mismatches. FNV-1a checksum 11576187220487214191 identical across -O0, -O2, and ASan+UBSan builds. Zero warnings under -Wall -Wextra -Werror.",
-          specRows: [
-            ['ALGORITHM', 'Stein\'s binary GCD for 32-bit integers'],
-            ['IMPLEMENTATION', 'Shift/subtract identities, no library gcd call'],
-            ['DIFF TEST', '2,048,576 checks against naive Euclid'],
-            ['COVERAGE', '1,048,576 exhaustive pairs plus 1,000,000 fixed-seed random pairs'],
-            ['RESULT', '0 mismatches'],
-            ['CHECKSUM', '11576187220487214191 across -O0, -O2, and ASan+UBSan'],
-            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
-          ],
-          terminalOutput: `<span class="prompt">$</span> binary GCD verification
-exhaustive pairs ........ 1,048,576
-fixed-seed random pairs . 1,000,000
-total checks ............ 2,048,576
-reference ............... naive Euclid
-mismatches .............. 0
-checksum -O0 ............ 11576187220487214191
-checksum -O2 ............ 11576187220487214191
-checksum ASan + UBSan ... 11576187220487214191
--Wall -Wextra -Werror ... 0 warnings
-
-<span class="result">2,048,576 checks, 0 mismatches</span>`,
-          verificationEnvironment: 'Host',
-          checks: 2048576,
-          failures: 0,
-          stressItems: 1000000,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/21-binary-gcd',
-          repoLabel: 'View the binary GCD repository',
-          terminalName: 'systems-lab / lab/21-binary-gcd',
-          terminalLabel: 'Measured binary GCD verification output',
-          showRepoLink: true
-        },
-        {
-          id: 'misaligned-load-store-riscv',
-          kicker: 'RISC-V MEMORY ACCESS',
-          title: 'Misaligned load/store experiment (RISC-V)',
-          summary: 'Bare-metal RISC-V program installing an M-mode trap handler that records mcause, mepc, and mtval, then issuing a misaligned lw and a misaligned sw at known addresses. Measured on QEMU 8.2.2 virt: both accesses complete transparently with no trap. The lw loaded 0xffffffffd5a1b2c3, matching the sign-extended byte-wise reference; the sw of 0x12345678 round-tripped exactly with the neighboring byte untouched. Identical across 3 runs. Limits: emulator behavior, not silicon.',
-          specRows: [
-            ['PROGRAM', 'Bare-metal RISC-V with an M-mode trap handler'],
-            ['TRAP RECORD', 'mcause, mepc, and mtval'],
-            ['LOAD', 'Misaligned lw completed with no trap'],
-            ['LOAD VALUE', '0xffffffffd5a1b2c3, matching the sign-extended byte-wise reference'],
-            ['STORE', '0x12345678 round-tripped exactly'],
-            ['NEIGHBOR', 'Neighboring byte untouched'],
-            ['RUNS', '3 identical runs on QEMU 8.2.2 virt'],
-            ['LIMIT', 'Emulator behavior, not silicon']
-          ],
-          terminalOutput: `<span class="prompt">$</span> misaligned load/store experiment
-platform ................ QEMU 8.2.2 virt
-misaligned lw ........... completed, no trap
-loaded value ............ 0xffffffffd5a1b2c3
-byte-wise reference ..... MATCH
-misaligned sw ........... 0x12345678
-store round-trip ........ EXACT
-neighboring byte ........ UNTOUCHED
-runs .................... 3 / 3 identical
-
-<span class="result">both accesses completed transparently</span>
-<span class="comment">Limit: emulator behavior, not silicon</span>`,
-          verificationEnvironment: 'QEMU 8.2.2 virt',
-          checks: 3,
-          failures: 0,
-          stressItems: 3,
-          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned',
-          repoLabel: 'View the misaligned access repository',
-          terminalName: 'riscv-baremetal-demo / src/misaligned',
-          terminalLabel: 'Measured misaligned load and store output',
-          showRepoLink: true
-        },
-        {
           id: 'riscv-bare-metal-scheduler',
           kicker: 'BARE-METAL KERNEL',
           title: 'RISC-V bare-metal scheduler',
@@ -1682,6 +1535,79 @@ mcause .............. 0x8000000000000007 on every trial
           showRepoLink: true
         },
         {
+          id: 'binary-gcd-steins-algorithm',
+          kicker: 'INTEGER ALGORITHM',
+          title: "Binary GCD (Stein's algorithm)",
+          summary: "Stein's binary GCD for 32-bit integers, built from the shift/subtract identities with no library gcd call. Differential-tested against a naive Euclid reference: 2,048,576 checks (1,048,576 exhaustive 0..1023 pairs plus 1,000,000 fixed-seed random 32-bit pairs), 0 mismatches. FNV-1a checksum 11576187220487214191 identical across -O0, -O2, and ASan+UBSan builds. Zero warnings under -Wall -Wextra -Werror.",
+          specRows: [
+            ['ALGORITHM', 'Stein\'s binary GCD for 32-bit integers'],
+            ['IMPLEMENTATION', 'Shift/subtract identities, no library gcd call'],
+            ['DIFF TEST', '2,048,576 checks against naive Euclid'],
+            ['COVERAGE', '1,048,576 exhaustive pairs plus 1,000,000 fixed-seed random pairs'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '11576187220487214191 across -O0, -O2, and ASan+UBSan'],
+            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
+          ],
+          terminalOutput: `<span class="prompt">$</span> binary GCD verification
+exhaustive pairs ........ 1,048,576
+fixed-seed random pairs . 1,000,000
+total checks ............ 2,048,576
+reference ............... naive Euclid
+mismatches .............. 0
+checksum -O0 ............ 11576187220487214191
+checksum -O2 ............ 11576187220487214191
+checksum ASan + UBSan ... 11576187220487214191
+-Wall -Wextra -Werror ... 0 warnings
+
+<span class="result">2,048,576 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2048576,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/21-binary-gcd',
+          repoLabel: 'View the binary GCD repository',
+          terminalName: 'systems-lab / lab/21-binary-gcd',
+          terminalLabel: 'Measured binary GCD verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'misaligned-load-store-riscv',
+          kicker: 'RISC-V MEMORY ACCESS',
+          title: 'Misaligned load/store experiment (RISC-V)',
+          summary: 'Bare-metal RISC-V program installing an M-mode trap handler that records mcause, mepc, and mtval, then issuing a misaligned lw and a misaligned sw at known addresses. Measured on QEMU 8.2.2 virt: both accesses complete transparently with no trap. The lw loaded 0xffffffffd5a1b2c3, matching the sign-extended byte-wise reference; the sw of 0x12345678 round-tripped exactly with the neighboring byte untouched. Identical across 3 runs. Limits: emulator behavior, not silicon.',
+          specRows: [
+            ['PROGRAM', 'Bare-metal RISC-V with an M-mode trap handler'],
+            ['TRAP RECORD', 'mcause, mepc, and mtval'],
+            ['LOAD', 'Misaligned lw completed with no trap'],
+            ['LOAD VALUE', '0xffffffffd5a1b2c3, matching the sign-extended byte-wise reference'],
+            ['STORE', '0x12345678 round-tripped exactly'],
+            ['NEIGHBOR', 'Neighboring byte untouched'],
+            ['RUNS', '3 identical runs on QEMU 8.2.2 virt'],
+            ['LIMIT', 'Emulator behavior, not silicon']
+          ],
+          terminalOutput: `<span class="prompt">$</span> misaligned load/store experiment
+platform ................ QEMU 8.2.2 virt
+misaligned lw ........... completed, no trap
+loaded value ............ 0xffffffffd5a1b2c3
+byte-wise reference ..... MATCH
+misaligned sw ........... 0x12345678
+store round-trip ........ EXACT
+neighboring byte ........ UNTOUCHED
+runs .................... 3 / 3 identical
+
+<span class="result">both accesses completed transparently</span>
+<span class="comment">Limit: emulator behavior, not silicon</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned',
+          repoLabel: 'View the misaligned access repository',
+          terminalName: 'riscv-baremetal-demo / src/misaligned',
+          terminalLabel: 'Measured misaligned load and store output',
+          showRepoLink: true
+        },
+        {
           id: 'saturating-arithmetic',
           kicker: 'INTEGER ARITHMETIC',
           title: '32-bit saturating arithmetic',
@@ -1743,6 +1669,80 @@ about 4.9 ns per step</span>`,
           repoLabel: 'View the xorshift period proof',
           terminalName: 'systems-lab / lab/20-xorshift-period',
           terminalLabel: 'Measured xorshift16 period verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'ctz-debruijn-multiply',
+          kicker: 'BIT MANIPULATION',
+          title: 'Count-trailing-zeros via de Bruijn multiply',
+          summary: 'Count-trailing-zeros built from the de Bruijn multiply identity with a 32-entry table. Differential-checked against __builtin_ctz (all nonzero 16-bit values) and a naive bit-loop reference (includes 0): 2,065,536 checks, 0 mismatches. FNV-1a checksum 7337941371035615009 identical across -O0, -O2, and ASan+UBSan builds. Disassembly confirms the multiply-and-table construction is kept as written (no hardware tzcnt substituted). Measured 3.4-5.1 ns/value at -O2 over 100M timed values.',
+          specRows: [
+            ['MECHANISM', 'De Bruijn multiply identity with a 32-entry table'],
+            ['ZERO INPUT', 'ctz(0) = 32, checked against a naive bit-loop reference'],
+            ['DIFF TEST', '2,065,536 checks against __builtin_ctz and the naive reference'],
+            ['COVERAGE', 'All 65,536 16-bit values plus 2,000,000 fixed-seed random 32-bit values'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '7337941371035615009 across -O0, -O2, and ASan+UBSan'],
+            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
+          ],
+          terminalOutput: `<span class="prompt">$</span> CTZ verification
+exhaustive 16-bit ........ 65,536
+fixed-seed random 32-bit . 2,000,000
+total checks ............. 2,065,536
+references ............... __builtin_ctz, naive bit-loop
+mismatches ............... 0
+checksum -O0 ............. 7337941371035615009
+checksum -O2 ............. 7337941371035615009
+checksum ASan + UBSan .... 7337941371035615009
+-Wall -Wextra -Werror .... 0 warnings
+disassembly .............. multiply-and-table kept, no tzcnt
+
+<span class="result">2,065,536 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2065536,
+          failures: 0,
+          stressItems: 2000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/22-ctz',
+          repoLabel: 'View the CTZ repository',
+          terminalName: 'systems-lab / lab/22-ctz',
+          terminalLabel: 'Measured CTZ verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'memmove-overlap-direction',
+          kicker: 'MEMORY',
+          title: 'memmove with overlap-direction copy',
+          summary: 'Byte-level my_memmove built from the overlap copy-direction identity: copy forward when dest < src, backward when dest > src. Differential-tested against libc memmove: 8,385 cases (sizes 0..64 x dest offsets -64..+64), 0 mismatches. Checksum 13318231107937211255 identical across -O0, -O2, and ASan+UBSan builds. A directed case shows a naive always-forward copy corrupting backward overlaps while my_memmove stays byte-exact. Measured ~1.2 GiB/s vs libc ~43 GiB/s; the gap is honestly the cost of the byte-at-a-time design.',
+          specRows: [
+            ['MECHANISM', 'Overlap copy-direction identity (forward when dest < src, backward when dest > src)'],
+            ['DESIGN', 'Byte-at-a-time copy, no word-aligned fast path'],
+            ['DIFF TEST', '8,385 cases against libc memmove'],
+            ['COVERAGE', 'Sizes 0..64 x dest offsets -64..+64, exhaustive over the offset space'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '13318231107937211255 across -O0, -O2, and ASan+UBSan'],
+            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
+          ],
+          terminalOutput: `<span class="prompt">$</span> memmove overlap verification
+sizes .................... 0..64
+dest offsets ............. -64..+64
+total cases .............. 8,385
+reference ................ libc memmove
+mismatches ............... 0
+checksum -O0 ............. 13318231107937211255
+checksum -O2 ............. 13318231107937211255
+checksum ASan + UBSan .... 13318231107937211255
+naive forward on overlap . corrupts (ABCDABCD)
+my_memmove on overlap .... byte-exact
+
+<span class="result">8,385 cases, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 8385,
+          failures: 0,
+          stressItems: 8385,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/30-memmove-overlap',
+          repoLabel: 'View the memmove repository',
+          terminalName: 'systems-lab / lab/30-memmove-overlap',
+          terminalLabel: 'Measured memmove verification output',
           showRepoLink: true
         },
         {
@@ -1857,6 +1857,50 @@ clz-class instructions .... none
           showRepoLink: true
         },
         {
+          id: 'riscv-timer-interrupt-delivery-offset',
+          kicker: 'RISC-V INTERRUPTS',
+          title: 'RISC-V timer interrupt delivery offset',
+          summary: 'Bare-metal M-mode experiment on QEMU 8.2.2: the CLINT <code>mtimecmp</code> register is programmed 5000 ticks ahead of <code>mtime</code>, and actual timer-trap delivery is measured over 1000 trials per run across 3 runs, with the first 8 trials of each run discarded (992 recorded trials per run, 2976 total). Measured delivery offset in <code>mtime</code> ticks: min 102-115, median 152-198, p99 814-881, max 992-998; <code>rdcycle</code>-to-<code>mtime</code> calibration measured at exactly 149 on every run. Every trial delivered exactly one timer interrupt, zero spurious traps, offset never negative across all 2976 recorded trials.',
+          specRows: [
+            ['BUILD', 'Bare-metal M-mode timer interrupt experiment'],
+            ['PLATFORM', 'QEMU 8.2.2'],
+            ['TIMER', 'mtimecmp programmed 5000 ticks ahead of mtime'],
+            ['TRIALS', '1000 per run across 3 runs; first 8 per run discarded; 992 recorded per run, 2976 total'],
+            ['MIN', '102-115 mtime ticks'],
+            ['MEDIAN', '152-198 mtime ticks'],
+            ['P99', '814-881 mtime ticks'],
+            ['MAX', '992-998 mtime ticks'],
+            ['CALIBRATION', 'rdcycle-to-mtime exactly 149 on every run'],
+            ['RESULT', 'One interrupt per trial, zero spurious traps, no negative offsets']
+          ],
+          terminalOutput: `<span class="prompt">$</span> timer interrupt delivery offset
+platform .................. QEMU 8.2.2
+mtimecmp lead ............. 5000 mtime ticks
+trials per run ............ 1000
+discarded per run ......... 8
+recorded per run .......... 992
+runs ...................... 3
+recorded trials ........... 2976
+minimum offset ............ 102-115 ticks
+median offset ............. 152-198 ticks
+p99 offset ................ 814-881 ticks
+maximum offset ............ 992-998 ticks
+rdcycle / mtime ........... 149 on every run
+spurious traps ............ 0
+negative offsets .......... 0
+
+<span class="result">exactly one timer interrupt per trial</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 2976,
+          failures: 0,
+          stressItems: 2976,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtimecmp',
+          repoLabel: 'src/mtimecmp/',
+          terminalName: 'riscv-baremetal-demo / src/mtimecmp',
+          terminalLabel: 'Measured timer interrupt delivery offset output',
+          showRepoLink: true
+        },
+        {
           id: 'bit-deposit-shift-mask',
           kicker: 'BIT MANIPULATION',
           title: 'Bitfield extract/insert from shift/mask identities',
@@ -1935,50 +1979,6 @@ disassembly ............... shift/and/or + bswap tail
           repoLabel: 'lab/25-bit-reversal',
           terminalName: 'systems-lab / lab/25-bit-reversal',
           terminalLabel: 'Measured bit reversal verification output',
-          showRepoLink: true
-        },
-        {
-          id: 'riscv-timer-interrupt-delivery-offset',
-          kicker: 'RISC-V INTERRUPTS',
-          title: 'RISC-V timer interrupt delivery offset',
-          summary: 'Bare-metal M-mode experiment on QEMU 8.2.2: the CLINT <code>mtimecmp</code> register is programmed 5000 ticks ahead of <code>mtime</code>, and actual timer-trap delivery is measured over 1000 trials per run across 3 runs, with the first 8 trials of each run discarded (992 recorded trials per run, 2976 total). Measured delivery offset in <code>mtime</code> ticks: min 102-115, median 152-198, p99 814-881, max 992-998; <code>rdcycle</code>-to-<code>mtime</code> calibration measured at exactly 149 on every run. Every trial delivered exactly one timer interrupt, zero spurious traps, offset never negative across all 2976 recorded trials.',
-          specRows: [
-            ['BUILD', 'Bare-metal M-mode timer interrupt experiment'],
-            ['PLATFORM', 'QEMU 8.2.2'],
-            ['TIMER', 'mtimecmp programmed 5000 ticks ahead of mtime'],
-            ['TRIALS', '1000 per run across 3 runs; first 8 per run discarded; 992 recorded per run, 2976 total'],
-            ['MIN', '102-115 mtime ticks'],
-            ['MEDIAN', '152-198 mtime ticks'],
-            ['P99', '814-881 mtime ticks'],
-            ['MAX', '992-998 mtime ticks'],
-            ['CALIBRATION', 'rdcycle-to-mtime exactly 149 on every run'],
-            ['RESULT', 'One interrupt per trial, zero spurious traps, no negative offsets']
-          ],
-          terminalOutput: `<span class="prompt">$</span> timer interrupt delivery offset
-platform .................. QEMU 8.2.2
-mtimecmp lead ............. 5000 mtime ticks
-trials per run ............ 1000
-discarded per run ......... 8
-recorded per run .......... 992
-runs ...................... 3
-recorded trials ........... 2976
-minimum offset ............ 102-115 ticks
-median offset ............. 152-198 ticks
-p99 offset ................ 814-881 ticks
-maximum offset ............ 992-998 ticks
-rdcycle / mtime ........... 149 on every run
-spurious traps ............ 0
-negative offsets .......... 0
-
-<span class="result">exactly one timer interrupt per trial</span>`,
-          verificationEnvironment: 'QEMU 8.2.2 virt',
-          checks: 2976,
-          failures: 0,
-          stressItems: 2976,
-          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtimecmp',
-          repoLabel: 'src/mtimecmp/',
-          terminalName: 'riscv-baremetal-demo / src/mtimecmp',
-          terminalLabel: 'Measured timer interrupt delivery offset output',
           showRepoLink: true
         }
       ];
