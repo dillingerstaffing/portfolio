@@ -2210,6 +2210,160 @@ FNV-1a: 458.0 MB/s at -O2</span>`,
           terminalName: 'systems-lab / lab/29-djb2-vs-fnv',
           terminalLabel: 'Measured djb2 and FNV-1a verification output',
           showRepoLink: true
+        },
+        {
+          id: 'mul-by-constant-shift-add',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'Multiply by constant via shift-add',
+          summary: '<code>mul_const32(x, k)</code> for 8-bit <code>k</code> is built from the distributive law as the sum over the set bits of <code>k</code> of <code>x &lt;&lt; i</code>, using only shifts and adds; the native multiply appears only as the differential oracle. Verified with 256,000,000 differential checks against the native product: all 256 constants times 1M fixed-seed random 32-bit values each, 0 mismatches. FNV-1a checksum 18440810711898140094 is identical across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds; zero warnings at <code>-Wall -Wextra -Werror</code>. The <code>-O2</code> disassembly was inspected: the shift-add loop survives, no <code>imul</code>. Measured at <code>-O2</code>: 9.09 ns per multiply (110.0 Mops/s).',
+          specRows: [
+            ['BUILD', 'Shift-add multiply by 8-bit constant'],
+            ['MECHANISM', 'Sum over set bits of k of x << i'],
+            ['DIFF TEST', '256,000,000 checks against native multiply'],
+            ['COVERAGE', 'All 256 constants, 1M fixed-seed values each'],
+            ['RESULT', '0 mismatches; checksum identical across builds'],
+            ['DISASM', 'Shift-add loop survives -O2, no imul'],
+            ['THROUGHPUT', '9.09 ns/multiply (110.0 Mops/s) at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> mul-by-constant verification
+constants ................. all 256 (8-bit)
+values per constant ....... 1,000,000 fixed-seed
+total checks .............. 256,000,000
+mismatches ................ 0
+checksum across builds .... IDENTICAL
+-O2 disassembly ........... shift-add loop, no imul
+
+<span class="result">9.09 ns/multiply, 110.0 Mops/s at -O2</span>
+<span class="comment">Measured on the same host.</span>`,
+          verificationEnvironment: 'Host',
+          checks: 256000000,
+          failures: 0,
+          stressItems: 256000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/31-mul-by-constant',
+          repoLabel: 'View the multiply-by-constant proof',
+          terminalName: 'systems-lab / lab/31-mul-by-constant',
+          terminalLabel: 'Measured multiply-by-constant verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-csr-alias-check',
+          kicker: 'RISC-V CSRS',
+          title: 'misa readback with instruction probes',
+          summary: 'Bare-metal M-mode program on QEMU 8.2.2: <code>misa</code>, <code>marchid</code>, and <code>mimpid</code> are read with <code>csrr</code> instructions (each read twice, double-read stable), and a trap handler recording <code>mcause</code>/<code>mepc</code> executes exactly one hand-written probe instruction for each of seven probed ISA extensions. Reported <code>misa</code> is 0x80000000001411ad: MXL=2 (RV64), extension letters ACDFHIMSU; S and U are reported by misa but were not instruction-probed. <code>marchid</code> 0x0, <code>mimpid</code> 0x0. Every probe passes with the exact expected result and no trap: <code>amoswap.w</code> (A), <code>c.addi</code> (C), <code>fadd.d</code> (D), <code>fadd.s</code> (F), <code>hfence.gvma</code> (H), <code>add</code> (I), <code>mul</code> (M). Verified across 3 QEMU runs, all RESULT: PASS.',
+          specRows: [
+            ['BUILD', 'Bare-metal M-mode CSR readback and probe program'],
+            ['PLATFORM', 'QEMU 8.2.2 virt'],
+            ['READBACK', 'misa, marchid, mimpid via csrr, double-read stable'],
+            ['MISA', '0x80000000001411ad; MXL=2 (RV64)'],
+            ['LETTERS', 'ACDFHIMSU'],
+            ['MARCHID', '0x0'],
+            ['MIMPID', '0x0'],
+            ['PROBES', 'One executed instruction per reported extension'],
+            ['RESULT', 'All probes PASS, zero traps, 3 runs']
+          ],
+          terminalOutput: `<span class="prompt">$</span> misa readback and ISA probe
+platform .................. QEMU 8.2.2 virt
+misa ...................... 0x80000000001411ad
+MXL ....................... 2 (RV64)
+letters ................... ACDFHIMSU
+marchid ................... 0x0
+mimpid .................... 0x0
+probe A amoswap.w ......... PASS
+probe C c.addi ............ PASS
+probe D fadd.d ............ PASS
+probe F fadd.s ............ PASS
+probe H hfence.gvma ....... PASS
+probe I add ............... PASS
+probe M mul ............... PASS
+traps fired ............... 0
+runs ...................... 3
+
+<span class="result">RESULT: PASS on all 3 runs</span>
+<span class="comment">Emulator behavior, not silicon.</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 21,
+          failures: 0,
+          stressItems: 21,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/csr',
+          repoLabel: 'src/csr/',
+          terminalName: 'riscv-baremetal-demo / src/csr',
+          terminalLabel: 'Measured CSR alias check output',
+          showRepoLink: true
+        },
+        {
+          id: 'adler32-rolling-sum',
+          kicker: 'CHECKSUMS',
+          title: 'Adler-32 rolling sums, differential-tested',
+          summary: 'Adler-32 is built directly from the rolling-sum recurrence in RFC 1950 section 8.2: <code>A = 1 + sum(bytes) mod 65521</code>, with <code>B</code> as the running sum of <code>A mod 65521</code>. Reduction is deferred in 5,552-byte blocks, the largest block size that cannot overflow 32 bits. All 6 RFC 1950 known-answer vectors pass. Differential testing against a naive per-byte-modulo reference covered 1,000,000 fixed-seed random buffers and 3,256,296,802 total bytes with 0 mismatches. Builds were clean at <code>-O0</code>, <code>-O2</code>, and under ASan/UBSan. Measured at <code>-O2</code>: 1627.8 to 1787.9 MiB/s.',
+          specRows: [
+            ['BUILD', 'RFC 1950 section 8.2 rolling-sum recurrence'],
+            ['REDUCTION', 'Deferred in 5,552-byte blocks'],
+            ['KNOWN ANSWERS', '6 of 6 RFC 1950 vectors pass'],
+            ['DIFF TEST', '1,000,000 fixed-seed random buffers'],
+            ['BYTES', '3,256,296,802 total'],
+            ['RESULT', '0 mismatches'],
+            ['BUILDS', '-O0, -O2, and ASan/UBSan clean'],
+            ['THROUGHPUT', '1627.8 to 1787.9 MiB/s at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> Adler-32 verification
+recurrence ................ RFC 1950 section 8.2
+modulus ................... 65,521
+reduction block ........... 5,552 bytes
+known-answer vectors ...... 6 / 6 PASS
+random buffers ............ 1,000,000 fixed-seed
+total bytes ............... 3,256,296,802
+reference ................. naive per-byte modulo
+mismatches ................ 0
+-O0 / -O2 / ASan+UBSan .... CLEAN
+
+<span class="result">1627.8 to 1787.9 MiB/s at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 1000006,
+          failures: 0,
+          stressItems: 3256296802,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/32-adler32',
+          repoLabel: 'View the Adler-32 proof',
+          terminalName: 'systems-lab / lab/32-adler32',
+          terminalLabel: 'Measured Adler-32 verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-ecall-abi-round-trip',
+          kicker: 'RISC-V PRIVILEGE TRANSITIONS',
+          title: 'Bare-metal ecall ABI round trip',
+          summary: 'A bare-metal RISC-V program on QEMU 8.2.2 drops from M-mode to S-mode and issues environment calls. The M-mode trap handler saves and restores every register <code>x1-x31</code> around the C dispatcher. Ground truth is checked on every call: <code>mcause</code> reads 9, environment call from S-mode, and the instruction word at <code>mepc</code> reads <code>0x00000073</code>, the <code>ecall</code> encoding. The handler’s received <code>a0-a5</code> are compared word for word against the payload’s loaded constants, and returned <code>a0</code> is checked against an independently computed XOR. Program output is byte-identical across 3 QEMU runs, and every run prints <code>RESULT: PASS</code>.',
+          specRows: [
+            ['BUILD', 'M-mode to S-mode environment-call round trip'],
+            ['TRAP FRAME', 'Every register x1-x31 saved and restored'],
+            ['MCAUSE', '9 on every call'],
+            ['MEPC WORD', '0x00000073 on every call'],
+            ['ARGUMENTS', 'Received a0-a5 match loaded constants word for word'],
+            ['RETURN', 'a0 matches independently computed XOR'],
+            ['REPEATABILITY', 'Byte-identical output across 3 QEMU runs'],
+            ['RESULT', 'RESULT: PASS on every run']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ecall ABI round-trip verification
+platform .................. QEMU 8.2.2 virt
+privilege transition ...... M-mode to S-mode
+ecall trap ................ S-mode to M-mode
+saved / restored .......... x1-x31
+mcause per call ........... 9
+instruction at mepc ....... 0x00000073
+a0-a5 payload words ....... MATCH
+returned a0 ............... XOR MATCH
+repeated runs ............. 3
+output across runs ........ BYTE-IDENTICAL
+
+<span class="result">RESULT: PASS on all 3 runs</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/ecall',
+          repoLabel: 'View the ecall ABI proof',
+          terminalName: 'riscv-baremetal-demo / src/ecall',
+          terminalLabel: 'Measured ecall ABI round-trip output',
+          showRepoLink: true
         }
       ];
 
