@@ -2603,6 +2603,80 @@ sanitizer reports ......... 0
           terminalName: 'systems-lab / lab/43-byte-permute',
           terminalLabel: 'Measured fixed byte permutation verification output',
           showRepoLink: true
+        },
+        {
+          id: 'packed-bcd-add-sub',
+          kicker: 'DECIMAL ARITHMETIC',
+          title: 'Packed BCD add/sub, 20,000 checks',
+          summary: 'Packed BCD addition and subtraction built from the plus/minus-6 nibble correction identities: add 6 when a nibble exceeds 9 after the binary add, and subtract 6 on borrow. Differential testing against a decimal-digit naive reference covered 20,000 checks with 0 mismatches. FNV-1a checksum <code>ff64fdf0ec2142e5</code> was identical across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds. Measured at <code>-O2</code>: 3.296 ns/op.',
+          specRows: [
+            ['BUILD', 'Packed BCD addition and subtraction'],
+            ['CORRECTION', 'Add 6 above 9, subtract 6 on borrow'],
+            ['REFERENCE', 'Decimal-digit naive implementation'],
+            ['CHECKS', '20,000'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'ff64fdf0ec2142e5 across every build'],
+            ['-O2', '3.296 ns/op']
+          ],
+          terminalOutput: `<span class="prompt">$</span> packed BCD add/sub verification
+addition correction ....... add 6 when nibble exceeds 9
+subtraction correction .... subtract 6 on borrow
+reference ................. decimal-digit naive implementation
+checks .................... 20,000
+mismatches ................ 0
+FNV-1a checksum ........... ff64fdf0ec2142e5
+-O0 / -O2 / ASan+UBSan .... IDENTICAL
+-O2 measurement ........... 3.296 ns/op
+
+<span class="result">20,000 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 20000,
+          failures: 0,
+          stressItems: 20000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/44-bcd-add',
+          repoLabel: 'View the packed BCD proof',
+          terminalName: 'systems-lab / lab/44-bcd-add',
+          terminalLabel: 'Measured packed BCD differential test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-misaligned-amo',
+          kicker: 'RISC-V ATOMICS',
+          title: 'Misaligned AMOs, traps recorded',
+          summary: 'A bare-metal RISC-V program on QEMU testing misaligned atomic-memory-operation sequences. An M-mode trap handler records <code>mcause</code>, <code>mepc</code>, and <code>mtval</code>. A misaligned <code>lr.w</code> at <code>base+2</code> traps every run with <code>mcause=4</code>, <code>mepc</code> exactly the faulting instruction, and <code>mtval</code> the faulting address. A misaligned <code>sc.w</code> after an aligned <code>lr</code> does not trap but returns 1, with the reservation dropped and memory unchanged. A misaligned <code>lr/sc</code> pair never reaches the <code>sc</code> because the <code>lr</code> traps. Output was byte-identical across three QEMU runs, with <code>RESULT: PASS</code> on all three.',
+          specRows: [
+            ['BUILD', 'Bare-metal RISC-V misaligned AMO probe'],
+            ['TRAP LOG', 'M-mode records mcause, mepc, and mtval'],
+            ['MISALIGNED LR.W', 'mcause=4, exact mepc and mtval'],
+            ['MISALIGNED SC.W', 'Returns 1, memory unchanged'],
+            ['LR/SC PAIR', 'LR traps before SC can execute'],
+            ['REPEATABILITY', 'Byte-identical output across 3 QEMU runs'],
+            ['RESULT', 'PASS on all 3 runs']
+          ],
+          terminalOutput: `<span class="prompt">$</span> misaligned AMO verification
+platform .................. QEMU / bare-metal RISC-V
+trap mode ................. M-mode
+misaligned lr.w ........... TRAP
+mcause .................... 4 (load address misaligned)
+mepc ...................... exact faulting instruction
+mtval ..................... exact faulting address
+aligned lr + misaligned sc  returns 1, no trap
+reservation ............... DROPPED
+memory .................... UNCHANGED
+misaligned lr/sc pair ..... LR traps before SC
+QEMU runs ................. 3
+output .................... BYTE-IDENTICAL
+
+<span class="result">RESULT: PASS on all 3 runs</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/amo',
+          repoLabel: 'View the misaligned AMO proof',
+          terminalName: 'riscv-baremetal-demo / src/amo',
+          terminalLabel: 'Measured misaligned RISC-V atomic operation output',
+          showRepoLink: true
         }
       ];
 
