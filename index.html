@@ -182,7 +182,7 @@
     .project h3 { margin: 16px 0 20px; font: 600 clamp(32px, 4vw, 54px)/.98 var(--display); letter-spacing: -.03em; }
     .project-copy > p { color: var(--muted); }
     .facts { margin: 28px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
-    .facts li { display: grid; grid-template-columns: 86px 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+    .facts li { display: grid; grid-template-columns: minmax(112px, auto) 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .facts span:first-child { color: var(--dim); }
     .section-cta { display: flex; justify-content: flex-end; margin-top: 36px; }
 
@@ -437,7 +437,7 @@
       const PROJECTS = [
         {
           id: 'riscv-bare-metal-scheduler',
-          kicker: 'FROM-SCRATCH KERNEL',
+          kicker: 'BARE-METAL KERNEL',
           title: 'RISC-V bare-metal scheduler',
           summary: 'A freestanding 64-bit RISC-V kernel for QEMU’s <code>virt</code> machine. It boots directly into M-mode, drives an ns16550a UART over MMIO, and interleaves three tasks with real assembly context switches.',
           specRows: [
@@ -547,7 +547,7 @@ checksum: producer/consumer MATCH
           id: 'bump-allocator',
           kicker: 'MEMORY MANAGEMENT',
           title: 'Bare-metal allocator, fragmentation measured',
-          summary: 'A bare-metal bump allocator with free-list reuse, built from allocation fundamentals: alignment handling, block splitting, and reuse. Verified with 7 test groups: alignment proven to 128 bytes, free-list reuse confirmed by identical returned addresses, out-of-memory behavior pinned down to exactly 8 x 64-byte blocks in a 512-byte heap, churn test over 512 allocations measuring a fragmentation ratio of 0.357, and 19306.6 kops/s churn throughput. Clean under AddressSanitizer and UBSan. Full build log and run output committed in <code>PROOF.md</code>.',
+          summary: 'A bare-metal bump allocator with free-list reuse, including alignment handling, block splitting, and reuse. Verified with 7 test groups: alignment proven to 128 bytes, free-list reuse confirmed by identical returned addresses, out-of-memory behavior pinned down to exactly 8 x 64-byte blocks in a 512-byte heap, churn test over 512 allocations measuring a fragmentation ratio of 0.357, and 19306.6 kops/s churn throughput. Clean under AddressSanitizer and UBSan. Full build log and run output committed in <code>PROOF.md</code>.',
           specRows: [
             ['DESIGN', 'Bump allocation, block splitting, free-list reuse'],
             ['ALIGN', 'Proven to 128 bytes'],
@@ -581,9 +581,9 @@ UBSan .................... CLEAN
         },
         {
           id: 'mini-printf',
-          kicker: 'FROM-SCRATCH LIBC',
+          kicker: 'LIBC IMPLEMENTATION',
           title: 'No-libc printf, differential-tested',
-          summary: '<code>printf</code> and <code>snprintf</code> rebuilt from format-string fundamentals with no libc underneath: <code>%d %u %x %s %c %p</code>, caller-supplied <code>putc</code>, zero dynamic allocation. Verified by differential testing against the host <code>snprintf</code>: 609 test cases, 0 failures, 5104 bytes of machine code, clean under <code>-O0</code> and under AddressSanitizer and UBSan. Full build log and run output committed in <code>PROOF.md</code>.',
+          summary: '<code>printf</code> and <code>snprintf</code> implemented with no libc underneath: <code>%d %u %x %s %c %p</code>, caller-supplied <code>putc</code>, zero dynamic allocation. Verified by differential testing against the host <code>snprintf</code>: 609 test cases, 0 failures, 5104 bytes of machine code, clean under <code>-O0</code> and under AddressSanitizer and UBSan. Full build log and run output committed in <code>PROOF.md</code>.',
           specRows: [
             ['FORMATS', '%d, %u, %x, %s, %c, %p'],
             ['OUTPUT', 'Caller-supplied putc'],
@@ -618,7 +618,7 @@ UBSan .................... CLEAN
           id: 'crc32',
           kicker: 'ERROR DETECTION',
           title: 'CRC32 from the generator polynomial',
-          summary: 'CRC32 rebuilt from the mathematics: bitwise polynomial long division over GF(2), plus a table-driven variant whose 256-entry table is derived at startup from <code>0xEDB88320</code>. Verified against published check values (7 inputs x 2 implementations, all match, including <code>123456789 -&gt; 0xCBF43926</code>), 2088 randomized cross-check buffers with bitwise == table on all, and all 256 single-byte table entries verified against the bitwise result. Measured on 32 MiB: 56.1 MB/s bitwise, 231.3 MB/s table-driven (4.1x). Clean under <code>-O0</code> and AddressSanitizer/UBSan, zero warnings under <code>-Wall -Wextra -Werror</code>. Full build log and run output committed in <code>PROOF.md</code>.',
+          summary: 'CRC32 implemented with bitwise polynomial long division over GF(2), plus a table-driven variant whose 256-entry table is derived at startup from <code>0xEDB88320</code>. Verified against published check values (7 inputs x 2 implementations, all match, including <code>123456789 -&gt; 0xCBF43926</code>), 2088 randomized cross-check buffers with bitwise == table on all, and all 256 single-byte table entries verified against the bitwise result. Measured on 32 MiB: 56.1 MB/s bitwise, 231.3 MB/s table-driven (4.1x). Clean under <code>-O0</code> and AddressSanitizer/UBSan, zero warnings under <code>-Wall -Wextra -Werror</code>. Full build log and run output committed in <code>PROOF.md</code>.',
           specRows: [
             ['ALGORITHM', 'Polynomial long division over GF(2)'],
             ['TABLE', '256 entries derived from 0xEDB88320 at startup'],
@@ -726,7 +726,7 @@ run 2 bring-up latency ... 3,554,055 cycles
           id: 'virtio-block-driver',
           kicker: 'RISC-V STORAGE',
           title: 'virtio block driver, round-trip verified',
-          summary: 'A virtio block driver written from the device spec: virtio-mmio transport with a split virtqueue in RAM, with both the legacy and the 1.x interface paths brought up and verified. Sector 0 write/read round-trip: 512 of 512 bytes matched, 0 mismatches, checksum <code>0xf9e05dc5</code> on both sides, device capacity 32768 sectors. Full build log and raw run output committed in <code>src/virtio-blk/PROOF.md</code>.',
+          summary: 'A virtio block driver using virtio-mmio transport with a split virtqueue in RAM, with both the legacy and the 1.x interface paths brought up and verified. Sector 0 write/read round-trip: 512 of 512 bytes matched, 0 mismatches, checksum <code>0xf9e05dc5</code> on both sides, device capacity 32768 sectors. Full build log and raw run output committed in <code>src/virtio-blk/PROOF.md</code>.',
           specRows: [
             ['TRANSPORT', 'virtio-mmio'],
             ['QUEUE', 'Split virtqueue in RAM'],
@@ -860,7 +860,7 @@ UBSan .................... 0 violations
           id: 'seqlock',
           kicker: 'CONCURRENCY',
           title: 'Seqlock, 10M reads untorn',
-          summary: 'A sequence lock for single-writer, multi-reader shared state, built from the counter protocol. One writer, 4 readers: 10M reads, 0 torn reads, 0 monotonicity violations. Full build log and raw run output committed in <code>lab/08-seqlock/PROOF.md</code>.',
+          summary: 'A sequence lock for single-writer, multi-reader shared state using a counter protocol. One writer, 4 readers: 10M reads, 0 torn reads, 0 monotonicity violations. Full build log and raw run output committed in <code>lab/08-seqlock/PROOF.md</code>.',
           specRows: [
             ['DESIGN', 'Single-writer, multi-reader sequence lock'],
             ['PROTOCOL', 'Counter protocol'],
@@ -1059,8 +1059,8 @@ n=1048576: 585-692 vs 486-514 cycles/lookup</span>
         {
           id: 'memcpy-alignment-fundamentals',
           kicker: 'MEMORY COPY',
-          title: 'memcpy from alignment fundamentals',
-          summary: '<code>memcpy</code> rebuilt around destination-word alignment: a byte head loop, a word-sized body where each source word is assembled from single bytes so every access is aligned-safe at any source alignment, then a byte tail. The implementation does not call libc <code>memcpy</code>. Verified with 1,004,160 differential cases against libc <code>memcpy</code>: exhaustive sizes 0-64 at all 64 source and destination misalignment combinations, plus 1M random sizes up to 64 KiB, with 0 mismatches. Clean under ASan and UBSan. Measured on the same host at 1338.8-1398.8 MiB/s versus 20085.1-21635.4 MiB/s for libc <code>memcpy</code>.',
+          title: 'Alignment-safe memcpy',
+          summary: '<code>memcpy</code> implemented around destination-word alignment: a byte head loop, a word-sized body where each source word is assembled from single bytes so every access is aligned-safe at any source alignment, then a byte tail. The implementation does not call libc <code>memcpy</code>. Verified with 1,004,160 differential cases against libc <code>memcpy</code>: exhaustive sizes 0-64 at all 64 source and destination misalignment combinations, plus 1M random sizes up to 64 KiB, with 0 mismatches. Clean under ASan and UBSan. Measured on the same host at 1338.8-1398.8 MiB/s versus 20085.1-21635.4 MiB/s for libc <code>memcpy</code>.',
           specRows: [
             ['BUILD', 'Byte head, word-sized body, byte tail'],
             ['SOURCE', 'Words assembled from bytes at any source alignment'],
@@ -1088,6 +1088,74 @@ libc memcpy:   20085.1-21635.4 MiB/s</span>
           repoLabel: 'View the memcpy proof',
           terminalName: 'systems-lab / lab/10-from-scratch-memcpy',
           terminalLabel: 'Measured memcpy verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'ieee754-software-floats',
+          kicker: 'FLOATING POINT',
+          title: 'IEEE-754 software floats',
+          summary: 'Binary32 add and multiply implemented from the IEEE-754 bit layout with integer arithmetic only and no float operations in the implementation. Differential-tested against the hardware FPU over 4,000,152 comparisons, including NaN, infinity, subnormal, signed-zero, and rounding-tie edge cases: 0 mismatches.',
+          specRows: [
+            ['BUILD', 'Binary32 add and multiply'],
+            ['ARITHMETIC', 'Integer operations only'],
+            ['REFERENCE', 'Hardware FPU'],
+            ['DIFF TEST', '4,000,152 comparisons'],
+            ['EDGE CASES', 'NaN, infinity, subnormal, signed zero, rounding ties'],
+            ['RESULT', '0 mismatches']
+          ],
+          terminalOutput: `<span class="prompt">$</span> IEEE-754 software float verification
+operations ................ binary32 add, multiply
+implementation ............ integer arithmetic only
+float operations .......... 0
+reference ................ hardware FPU
+comparisons .............. 4,000,152
+NaN / infinity ........... CHECKED
+subnormal / signed zero .. CHECKED
+rounding ties ............ CHECKED
+mismatches ............... 0
+
+<span class="result">4,000,152 comparisons, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 4000152,
+          failures: 0,
+          stressItems: 4000152,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/11-ieee754',
+          repoLabel: 'View the IEEE-754 software float proof',
+          terminalName: 'systems-lab / lab/11-ieee754',
+          terminalLabel: 'Measured IEEE-754 software float verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'buddy-allocator',
+          kicker: 'MEMORY MANAGEMENT',
+          title: 'Buddy allocator',
+          summary: 'A power-of-two buddy allocator with splitting and xor-buddy coalescing, validated against the bump allocator on an identical churn workload. Checkerboard fragmentation measured 0.789 for the buddy allocator versus 0.357 for the bump allocator; large-block success measured 5/64 versus 30/64.',
+          specRows: [
+            ['BUILD', 'Power-of-two buddy allocator'],
+            ['REUSE', 'Split and xor-buddy coalescing'],
+            ['WORKLOAD', 'Identical allocator churn'],
+            ['FRAGMENTATION', 'Buddy 0.789 vs bump 0.357'],
+            ['LARGE BLOCK', 'Buddy 5/64 vs bump 30/64']
+          ],
+          terminalOutput: `<span class="prompt">$</span> buddy allocator comparison
+workload ................ identical churn
+coalescing .............. xor buddy
+checkerboard fragmentation
+  buddy ................. 0.789
+  bump .................. 0.357
+large-block success
+  buddy ................. 5 / 64
+  bump .................. 30 / 64
+
+<span class="result">fragmentation and large-block trade-off measured</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2,
+          failures: 0,
+          stressItems: 64,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/12-buddy-allocator',
+          repoLabel: 'View the buddy allocator proof',
+          terminalName: 'systems-lab / lab/12-buddy-allocator',
+          terminalLabel: 'Measured buddy allocator comparison output',
           showRepoLink: true
         }
       ];
