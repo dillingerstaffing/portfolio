@@ -445,6 +445,7 @@
 
   <footer class="frame">
     <span>Chris / C, firmware, and OS internals</span>
+    <a href="https://dillingerstaffing.github.io/riscv-playground/" target="_blank" rel="noopener">learn RISC-V in my interactive playground</a>
     <button class="footer-cta cta-trigger" type="button">Start your project</button>
   </footer>
 
@@ -473,6 +474,79 @@
   <script>
     (() => {
       const PROJECTS = [
+        {
+          id: 'binary-gcd-steins-algorithm',
+          kicker: 'INTEGER ALGORITHM',
+          title: "Binary GCD (Stein's algorithm)",
+          summary: "Stein's binary GCD for 32-bit integers, built from the shift/subtract identities with no library gcd call. Differential-tested against a naive Euclid reference: 2,048,576 checks (1,048,576 exhaustive 0..1023 pairs plus 1,000,000 fixed-seed random 32-bit pairs), 0 mismatches. FNV-1a checksum 11576187220487214191 identical across -O0, -O2, and ASan+UBSan builds. Zero warnings under -Wall -Wextra -Werror.",
+          specRows: [
+            ['ALGORITHM', 'Stein\'s binary GCD for 32-bit integers'],
+            ['IMPLEMENTATION', 'Shift/subtract identities, no library gcd call'],
+            ['DIFF TEST', '2,048,576 checks against naive Euclid'],
+            ['COVERAGE', '1,048,576 exhaustive pairs plus 1,000,000 fixed-seed random pairs'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '11576187220487214191 across -O0, -O2, and ASan+UBSan'],
+            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
+          ],
+          terminalOutput: `<span class="prompt">$</span> binary GCD verification
+exhaustive pairs ........ 1,048,576
+fixed-seed random pairs . 1,000,000
+total checks ............ 2,048,576
+reference ............... naive Euclid
+mismatches .............. 0
+checksum -O0 ............ 11576187220487214191
+checksum -O2 ............ 11576187220487214191
+checksum ASan + UBSan ... 11576187220487214191
+-Wall -Wextra -Werror ... 0 warnings
+
+<span class="result">2,048,576 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2048576,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/21-binary-gcd',
+          repoLabel: 'View the binary GCD repository',
+          terminalName: 'systems-lab / lab/21-binary-gcd',
+          terminalLabel: 'Measured binary GCD verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'misaligned-load-store-riscv',
+          kicker: 'RISC-V MEMORY ACCESS',
+          title: 'Misaligned load/store experiment (RISC-V)',
+          summary: 'Bare-metal RISC-V program installing an M-mode trap handler that records mcause, mepc, and mtval, then issuing a misaligned lw and a misaligned sw at known addresses. Measured on QEMU 8.2.2 virt: both accesses complete transparently with no trap. The lw loaded 0xffffffffd5a1b2c3, matching the sign-extended byte-wise reference; the sw of 0x12345678 round-tripped exactly with the neighboring byte untouched. Identical across 3 runs. Limits: emulator behavior, not silicon.',
+          specRows: [
+            ['PROGRAM', 'Bare-metal RISC-V with an M-mode trap handler'],
+            ['TRAP RECORD', 'mcause, mepc, and mtval'],
+            ['LOAD', 'Misaligned lw completed with no trap'],
+            ['LOAD VALUE', '0xffffffffd5a1b2c3, matching the sign-extended byte-wise reference'],
+            ['STORE', '0x12345678 round-tripped exactly'],
+            ['NEIGHBOR', 'Neighboring byte untouched'],
+            ['RUNS', '3 identical runs on QEMU 8.2.2 virt'],
+            ['LIMIT', 'Emulator behavior, not silicon']
+          ],
+          terminalOutput: `<span class="prompt">$</span> misaligned load/store experiment
+platform ................ QEMU 8.2.2 virt
+misaligned lw ........... completed, no trap
+loaded value ............ 0xffffffffd5a1b2c3
+byte-wise reference ..... MATCH
+misaligned sw ........... 0x12345678
+store round-trip ........ EXACT
+neighboring byte ........ UNTOUCHED
+runs .................... 3 / 3 identical
+
+<span class="result">both accesses completed transparently</span>
+<span class="comment">Limit: emulator behavior, not silicon</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned',
+          repoLabel: 'View the misaligned access repository',
+          terminalName: 'riscv-baremetal-demo / src/misaligned',
+          terminalLabel: 'Measured misaligned load and store output',
+          showRepoLink: true
+        },
         {
           id: 'riscv-bare-metal-scheduler',
           kicker: 'BARE-METAL KERNEL',
@@ -506,8 +580,6 @@ scheduler: starting 3 tasks...
           stressItems: 0,
           repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
           repoLabel: 'View the RISC-V demo',
-          companionUrl: 'https://dillingerstaffing.github.io/riscv-playground/',
-          companionLabel: 'Step through RV32I instructions',
           terminalName: 'qemu / riscv64 / demo.elf',
           terminalLabel: 'Verified RISC-V demo output',
           showRepoLink: false
@@ -1492,6 +1564,70 @@ mcause .............. 0x8000000000000007 on every trial
           repoLabel: 'View the WFI latency proof',
           terminalName: 'riscv-baremetal-demo / src/wfi-latency',
           terminalLabel: 'Measured WFI wakeup latency output',
+          showRepoLink: true
+        },
+        {
+          id: 'saturating-arithmetic',
+          kicker: 'INTEGER ARITHMETIC',
+          title: '32-bit saturating arithmetic',
+          summary: '32-bit saturating add and subtract built from sign-bit overflow identities. Differential-tested against a 64-bit reference across 10,000,338 checks with 0 mismatches. Measured at 18.2 ns per add under <code>-O2</code>.',
+          specRows: [
+            ['BUILD', '32-bit saturating add and subtract'],
+            ['METHOD', 'Sign-bit overflow identities'],
+            ['REFERENCE', '64-bit arithmetic oracle'],
+            ['DIFF TEST', '10,000,338 checks'],
+            ['RESULT', '0 mismatches'],
+            ['THROUGHPUT', '18.2 ns per add at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> saturating arithmetic verification
+operations ................ 32-bit add and subtract
+reference ................. 64-bit arithmetic
+checks .................... 10,000,338
+mismatches ................ 0
+optimization .............. -O2
+
+<span class="result">18.2 ns per add</span>`,
+          verificationEnvironment: 'Host',
+          checks: 10000338,
+          failures: 0,
+          stressItems: 10000338,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/19-saturating-arith',
+          repoLabel: 'View the saturating arithmetic proof',
+          terminalName: 'systems-lab / lab/19-saturating-arith',
+          terminalLabel: 'Measured saturating arithmetic verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'xorshift16-full-period',
+          kicker: 'PSEUDORANDOM GENERATOR',
+          title: 'xorshift16 full-period verification',
+          summary: 'A xorshift16 PRNG with its full period verified by exhaustive state-space walk. Two seeds each visited all 65,535 nonzero states exactly once before returning to the starting state. Measured at about 4.9 ns per step under <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'xorshift16 pseudorandom number generator'],
+            ['METHOD', 'Exhaustive state-space walk'],
+            ['SEEDS', '2 independently verified'],
+            ['PERIOD', '65,535 nonzero states per seed'],
+            ['RESULT', 'Every state visited exactly once before return'],
+            ['THROUGHPUT', 'About 4.9 ns per step at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> xorshift16 period verification
+seeds ..................... 2
+nonzero states per seed ... 65,535
+unique visits ............. 65,535 / 65,535
+repeat before return ...... none
+returned to seed .......... yes
+optimization .............. -O2
+
+<span class="result">full period verified
+about 4.9 ns per step</span>`,
+          verificationEnvironment: 'Host',
+          checks: 131070,
+          failures: 0,
+          stressItems: 65535,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/20-xorshift-period',
+          repoLabel: 'View the xorshift period proof',
+          terminalName: 'systems-lab / lab/20-xorshift-period',
+          terminalLabel: 'Measured xorshift16 period verification output',
           showRepoLink: true
         }
       ];
