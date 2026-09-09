@@ -824,6 +824,131 @@ stale observations ....... 28,150 rejected
           terminalName: 'systems-lab / lockfree-stack / PROOF.md',
           terminalLabel: 'Verified Treiber stack stress output',
           showRepoLink: true
+        },
+        {
+          id: 'fuzz-harness',
+          kicker: 'TESTING',
+          title: 'Fuzz harness, 6M ops clean',
+          summary: 'A deterministic fuzz harness over the ring buffer and bump allocator: the same seed produces the same digest on every run, so a passing run means something. 6M operations under ASan and UBSan, zero violations. Full build log and raw run output committed in <code>lab/05-fuzz-harness/PROOF.md</code>.',
+          specRows: [
+            ['TARGETS', 'Ring buffer and bump allocator'],
+            ['REPEAT', 'Same seed, same digest'],
+            ['STRESS', '6,000,000 operations'],
+            ['SANITIZERS', 'ASan and UBSan'],
+            ['RESULT', '0 violations']
+          ],
+          terminalOutput: `<span class="prompt">$</span> fuzz harness verification
+targets .................. ring buffer, bump allocator
+repeatability ............ same seed, same digest
+operations ............... 6,000,000
+ASan ..................... 0 violations
+UBSan .................... 0 violations
+
+<span class="result">6,000,000 operations, zero violations</span>
+<span class="comment">Build log and raw output: lab/05-fuzz-harness/PROOF.md</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2,
+          failures: 0,
+          stressItems: 6000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'View the fuzz harness proof',
+          terminalName: 'systems-lab / fuzz-harness / PROOF.md',
+          terminalLabel: 'Verified fuzz harness output',
+          showRepoLink: true
+        },
+        {
+          id: 'seqlock',
+          kicker: 'CONCURRENCY',
+          title: 'Seqlock, 10M reads untorn',
+          summary: 'A sequence lock for single-writer, multi-reader shared state, built from the counter protocol. One writer, 4 readers: 10M reads, 0 torn reads, 0 monotonicity violations. Full build log and raw run output committed in <code>lab/08-seqlock/PROOF.md</code>.',
+          specRows: [
+            ['DESIGN', 'Single-writer, multi-reader sequence lock'],
+            ['PROTOCOL', 'Counter protocol'],
+            ['THREADS', '1 writer, 4 readers'],
+            ['STRESS', '10,000,000 reads'],
+            ['RESULT', '0 torn reads, 0 monotonicity violations']
+          ],
+          terminalOutput: `<span class="prompt">$</span> seqlock verification
+writer ................... 1
+readers .................. 4
+reads .................... 10,000,000
+torn reads ............... 0
+monotonicity violations .. 0
+
+<span class="result">10,000,000 reads, zero violations</span>
+<span class="comment">Build log and raw output: lab/08-seqlock/PROOF.md</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2,
+          failures: 0,
+          stressItems: 10000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'View the seqlock proof',
+          terminalName: 'systems-lab / seqlock / PROOF.md',
+          terminalLabel: 'Verified seqlock stress output',
+          showRepoLink: true
+        },
+        {
+          id: 'scheduler-benchmarks-o0-o2',
+          kicker: 'BENCHMARKS',
+          title: 'Scheduler benchmarks, -O0 vs -O2',
+          summary: 'Published <code>-O0</code> vs <code>-O2</code> measurements of the preemptive scheduler. <code>.text</code> is 4761 bytes at <code>-O0</code> vs 3831 bytes at <code>-O2</code> (<code>riscv64-unknown-elf-size</code>); four QEMU runs put best-case switch cost at 9360-24255 cycles, with the honest statement in <code>PROOF.md</code> that no reliable <code>-O0</code> vs <code>-O2</code> timing ranking can be claimed from 200-switch samples. Raw logs are in <code>src/preempt/bench-logs/</code> of <code>riscv-baremetal-demo</code>.',
+          specRows: [
+            ['BUILD', '-O0 and -O2'],
+            ['.TEXT', '4761 bytes at -O0, 3831 bytes at -O2'],
+            ['RUNS', '4 on QEMU'],
+            ['SWITCH COST', '9360-24255 cycles, best case'],
+            ['SAMPLES', '200 switches per sample'],
+            ['CONCLUSION', 'No reliable timing ranking claimed']
+          ],
+          terminalOutput: `<span class="prompt">$</span> scheduler benchmark summary
+-O0 .text ................ 4761 bytes
+-O2 .text ................ 3831 bytes
+QEMU runs ................ 4
+best-case switch cost .... 9360-24255 cycles
+sample size .............. 200 switches
+
+<span class="result">no reliable -O0 vs -O2 timing ranking claimed</span>
+<span class="comment">Raw logs: src/preempt/bench-logs/</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 2,
+          failures: 0,
+          stressItems: 200,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View the scheduler benchmarks',
+          terminalName: 'qemu / riscv64 / preempt benchmarks',
+          terminalLabel: 'Measured RISC-V scheduler benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'bare-metal-uart-shell',
+          kicker: 'RISC-V',
+          title: 'Bare-metal UART shell',
+          summary: 'An interactive command interpreter on the bare-metal UART driver: <code>help</code>, <code>echo</code>, <code>regs</code>, and <code>uptime</code>. The <code>regs</code> command issues an <code>ecall</code> and prints the trap-saved register dump, exercising the same trap entry path the scheduler uses. Verified on QEMU, with raw output in <code>src/shell/PROOF.md</code> of <code>riscv-baremetal-demo</code>.',
+          specRows: [
+            ['INTERFACE', 'Interactive UART command interpreter'],
+            ['COMMANDS', 'help, echo, regs, uptime'],
+            ['REGS', 'ecall with trap-saved register dump'],
+            ['TRAP PATH', 'Same entry path used by the scheduler'],
+            ['VERIFY', 'QEMU, raw output in src/shell/PROOF.md']
+          ],
+          terminalOutput: `<span class="prompt">$</span> bare-metal UART shell verification
+commands ................ help, echo, regs, uptime
+regs trap ................ ecall
+register dump ............ trap-saved state
+scheduler trap entry ..... exercised
+QEMU ..................... VERIFIED
+
+<span class="result">4 commands verified</span>
+<span class="comment">Raw output: src/shell/PROOF.md</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 1,
+          failures: 0,
+          stressItems: 4,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View the bare-metal UART shell',
+          terminalName: 'qemu / riscv64 / UART shell',
+          terminalLabel: 'Verified bare-metal UART shell output',
+          showRepoLink: true
         }
       ];
 
