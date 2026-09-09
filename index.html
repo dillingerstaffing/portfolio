@@ -184,6 +184,8 @@
     .facts { margin: 28px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
     .facts li { display: grid; grid-template-columns: minmax(112px, auto) 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .facts span:first-child { color: var(--dim); }
+    .quiet-link { display: inline-block; color: var(--dim); font-size: 11px; text-decoration: none; border-bottom: 1px solid #394138; }
+    .quiet-link:hover, .quiet-link:focus-visible { color: var(--acid); border-color: var(--acid); }
     .section-cta { display: flex; justify-content: flex-end; margin-top: 36px; }
 
     .terminal { background: #060806; border: 1px solid #30382f; min-width: 0; }
@@ -468,6 +470,8 @@ scheduler: starting 3 tasks...
           stressItems: 0,
           repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
           repoLabel: 'View the RISC-V demo',
+          companionUrl: 'https://dillingerstaffing.github.io/riscv-playground/',
+          companionLabel: 'Step through RV32I instructions',
           terminalName: 'qemu / riscv64 / demo.elf',
           terminalLabel: 'Verified RISC-V demo output',
           showRepoLink: false
@@ -1373,7 +1377,6 @@ store trap .............. mcause=7 (store/AMO access fault)
 store mepc .............. 0x800004be (= resume-4)
 mtval ................... 0x80002000
 QEMU runs ............... 3 / 3 identical
-
 <span class="result">RESULT: PASS on all 3 runs</span>`,
           verificationEnvironment: 'QEMU 8.2.2 virt',
           checks: 3,
@@ -1383,6 +1386,46 @@ QEMU runs ............... 3 / 3 identical
           repoLabel: 'View the PMP denial test proof',
           terminalName: 'riscv-baremetal-demo / src/pmp',
           terminalLabel: 'Measured PMP denial test output',
+          showRepoLink: true
+        },
+        {
+          id: 'endian-byte-swap-primitives',
+          kicker: 'BIT MANIPULATION',
+          title: 'Endian byte-swap primitives',
+          summary: '16-, 32-, and 64-bit byte-swap routines built entirely from shift, OR, and mask operations. Differential testing against the compiler builtins covered 12,000,304 comparisons with 0 mismatches, and <code>swap(swap(x)) == x</code> held for every value. Checksum <code>9210020399109146351</code> was identical across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds. Disassembly confirms GCC recognizes the hand-built idiom and emits one <code>bswap</code> instruction per width. Measured throughput was 2.74 ns/value (365.6 Mvalues/s) at <code>-O2</code> over 100 million timed values.',
+          specRows: [
+            ['BUILD', '16-, 32-, and 64-bit swaps using shift, OR, and masks'],
+            ['DIFF TEST', '12,000,304 comparisons against compiler builtins'],
+            ['RESULT', '0 mismatches'],
+            ['INVARIANT', 'swap(swap(x)) == x for every value'],
+            ['CHECKSUM', '9210020399109146351 across -O0, -O2, and ASan/UBSan'],
+            ['DISASSEMBLY', 'One bswap instruction per width'],
+            ['THROUGHPUT', '2.74 ns/value, 365.6 Mvalues/s'],
+            ['TIMED LOAD', '100 million values at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> endian byte-swap verification
+widths .................... 16, 32, 64 bits
+operations ................ shift, OR, mask
+reference ................. compiler builtins
+comparisons ............... 12,000,304
+mismatches ................ 0
+involution ................ swap(swap(x)) == x
+checksum -O0 .............. 9210020399109146351
+checksum -O2 .............. 9210020399109146351
+checksum ASan / UBSan ..... 9210020399109146351
+disassembly ............... one bswap per width
+timed values .............. 100,000,000
+
+<span class="result">2.74 ns/value
+365.6 Mvalues/s</span>`,
+          verificationEnvironment: 'Host',
+          checks: 12000304,
+          failures: 0,
+          stressItems: 100000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/18-endian',
+          repoLabel: 'View the endian byte-swap proof',
+          terminalName: 'systems-lab / lab/18-endian',
+          terminalLabel: 'Measured endian byte-swap verification output',
           showRepoLink: true
         }
       ];
@@ -1498,6 +1541,9 @@ QEMU runs ............... 3 / 3 identical
         const repoAction = project.showRepoLink
           ? `<div class="actions"><a class="btn secondary" href="${project.repoUrl}" target="_blank" rel="noopener">${project.repoLabel} <span class="arrow" aria-hidden="true">↗</span></a></div>`
           : '';
+        const companionAction = project.companionUrl
+          ? `<a class="quiet-link" href="${project.companionUrl}" target="_blank" rel="noopener">${project.companionLabel} <span aria-hidden="true">↗</span></a>`
+          : '';
 
         article.innerHTML = `
           <div class="project-grid">
@@ -1506,6 +1552,7 @@ QEMU runs ............... 3 / 3 identical
               <h3>${project.title}</h3>
               <p>${project.summary}</p>
               <ul class="facts">${facts}</ul>
+              ${companionAction}
               ${repoAction}
             </div>
             <div class="terminal" aria-label="${project.terminalLabel}">
