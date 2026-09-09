@@ -1196,6 +1196,43 @@ ASan / UBSan .............. CLEAN
           terminalName: 'systems-lab / lab/14-align-arith',
           terminalLabel: 'Measured alignment arithmetic verification output',
           showRepoLink: true
+        },
+        {
+          id: 'smode-trap-delegation',
+          kicker: 'RISC-V PRIVILEGE MODES',
+          title: 'S-mode trap delegation',
+          summary: 'The preemptive scheduler’s trap handling moved from M-mode to S-mode on RISC-V bare metal. The M-mode boot stub delegates supervisor interrupts and S-mode exceptions through <code>medeleg</code> and <code>mideleg</code>, installs <code>stvec</code>, opens S-mode memory with a PMP NAPOT entry, enables counters through <code>mcounteren</code>, probes <code>menvcfg.STCE</code> for Sstc, then drops to S-mode with <code>sret</code>. The scheduler then runs entirely in S-mode on the delegated supervisor timer interrupt through <code>stimecmp</code>, with no M-mode involvement after boot.',
+          specRows: [
+            ['BOOT', 'M-mode setup, then sret to S-mode'],
+            ['DELEGATION', 'medeleg and mideleg'],
+            ['S-MODE TRAPS', 'stvec and delegated supervisor timer interrupt'],
+            ['ACCESS', 'PMP NAPOT memory entry and mcounteren'],
+            ['TIMER', 'menvcfg.STCE probe, then stimecmp'],
+            ['TRIALS', '5 per binary, 200 ticks each'],
+            ['COUNTS', 'Exact 200/200 ticks and switches every trial'],
+            ['COMPARISON', 'No systematic delegation penalty above host noise']
+          ],
+          terminalOutput: `<span class="prompt">$</span> S-mode scheduler verification
+machine ................... QEMU 8.2.2
+runs per binary ........... 5
+ticks per run ............. 200 / 200
+switches per run .......... 200 / 200
+trap handling ............. S-mode
+supervisor timer .......... stimecmp
+M-mode after boot ......... none
+latency ................... same band as M-mode baseline
+switch cost ............... same band as M-mode baseline
+
+<span class="result">no systematic delegation penalty above host noise</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 10,
+          failures: 0,
+          stressItems: 200,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/smode',
+          repoLabel: 'View the S-mode trap delegation proof',
+          terminalName: 'qemu 8.2.2 / riscv64 / smode',
+          terminalLabel: 'Measured S-mode trap delegation output',
+          showRepoLink: true
         }
       ];
 
