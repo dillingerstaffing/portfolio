@@ -2991,6 +2991,58 @@ QEMU 8.2.2 runs ............ 3, byte-identical
           terminalName: 'riscv-baremetal-demo / src/umode',
           terminalLabel: 'Measured RISC-V M-mode to U-mode trap transition output',
           showRepoLink: true
+        },
+        {
+          id: 'branchless-abs-diff',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'abs-diff-64 (systems-lab/lab/51)',
+          summary: 'Branchless absolute difference of two <code>int64_t</code> as <code>uint64_t</code>, via the sign-mask identity <code>(d ^ (d &gt;&gt; 63)) - (d &gt;&gt; 63)</code> on the difference, entirely in unsigned arithmetic, no signed negation anywhere. Verified: 4,294,967,296 exhaustive 16-bit pairs, 57 directed 64-bit edge pairs, and 1,000,000 fixed-seed 64-bit pairs, 4,295,967,353 differential checks against <code>llabs</code>, 0 mismatches, at <code>-O2</code>, <code>-O0</code>, and under ASan+UBSan; disassembly shows <code>sub</code>/<code>sar</code>/<code>xor</code>/<code>sub</code> with no conditional jump and no <code>cmov</code>, identical instruction path for every input; measured 4.389 ns/pair at <code>-O2</code>. Contract excludes only the true difference <code>INT64_MIN</code> (signed negation undefined there); 24 directed pairs outside the contract were skipped explicitly and recomputed independently.',
+          specRows: [
+            ['IDENTITY', '(d ^ (d >> 63)) - (d >> 63), all unsigned'],
+            ['EXHAUSTIVE', '4,294,967,296 16-bit pairs vs llabs'],
+            ['EDGES', '57 directed 64-bit pairs checked'],
+            ['RANDOM', '1,000,000 fixed-seed splitmix64 pairs'],
+            ['CHECKS', '4,295,967,353 differential, 0 mismatches'],
+            ['DISASM', 'No conditional jump, no cmov, same path every input'],
+            ['BUILDS', 'Identical sink checksum across -O2, -O0, ASan+UBSan'],
+            ['MEASURED', '4.389 ns/pair at -O2']
+          ],
+          terminalOutput: `<span class=\"prompt\">$</span> ./test_absdiff\nexhaustive 16-bit sweep .... 4294967296 pairs\nphase 2 directed edges ..... 81 pairs, 24 outside contract skipped\nphase 3 random pairs ....... 1000000 pairs\ncorrectness ................ 4295967353 differential checks\nmismatches ................. 0\nsink checksum .............. 0xb2fe6b37b79e710f (identical, all builds)\nbranch in compiled fn ...... none (sub/sar/xor/sub)\n\n<span class=\"result\">4.389 ns/pair at -O2</span>`,
+          verificationEnvironment: 'host',
+          checks: 4295967353,
+          failures: 0,
+          stressItems: 4294967296,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/51-branchless-abs-diff',
+          repoLabel: 'GitHub: systems-lab/lab/51-branchless-abs-diff',
+          terminalName: 'systems-lab / lab / 51-branchless-abs-diff',
+          terminalLabel: 'Verified branchless absolute-difference test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-cycmon',
+          kicker: 'RISC-V CYCLE COUNTER',
+          title: 'rdcycle monotonicity over a 100-nop window',
+          summary: 'Bare-metal RV64 M-mode program reading <code>rdcycle</code> around exactly 100 <code>nop</code>s (verified in the disassembly of the shipped binary: exactly 100 <code>nop</code> encodings between the two <code>rdcycle</code>s), 1000 samples per run, checking every delta strictly positive and reads monotonic across samples. Verified: 3 QEMU 8.2.2 runs, 3000 samples total, every delta strictly positive, 0 backward reads, 0 outliers above 2^20 ticks; min/median deltas 135/150, 135/135, 135/150 host ticks; <code>RESULT: PASS</code>, qemu exit 0, identical across runs. Honest limit: under QEMU, <code>rdcycle</code> samples host ticks (<code>rdtsc</code>), not guest instructions, so the check gates on positivity and monotonicity of the reads and treats host scheduling stalls as counted outliers.',
+          specRows: [
+            ['MODE', 'Bare-metal RV64 M-mode'],
+            ['WINDOW', 'rdcycle, exactly 100 nops, rdcycle (volatile asm)'],
+            ['SAMPLES', '1000 per run, 3 runs'],
+            ['POSITIVITY', 'Every delta strictly positive, 3000/3000'],
+            ['MONOTONICITY', '0 backward reads across samples'],
+            ['OUTLIERS', '0 above 2^20 ticks in every run'],
+            ['DELTAS MIN/MED', '135/150, 135/135, 135/150 host ticks'],
+            ['RESULT', 'PASS, qemu exit 0, identical across 3 QEMU 8.2.2 runs']
+          ],
+          terminalOutput: `<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt \\\\\n  -nographic -bios none -kernel cycmon.elf\n\ncycmon: rdcycle monotonicity over 100-nop window\nsamples: 1000\ndelta (after - before): min=135 median=150 max=34620 outliers(>2^20)=0\nbackward reads across samples: 0\nRESULT: PASS\n[harness] qemu exit status: 0\n\n<span class=\"result\">3000 samples, 0 backward reads, PASS across 3 runs</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3000,
+          failures: 0,
+          stressItems: 3000,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/cycmon/',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/cycmon',
+          terminalName: 'qemu / riscv64 / cycmon.elf',
+          terminalLabel: 'Measured rdcycle monotonicity output',
+          showRepoLink: true
         }
       ];
 
