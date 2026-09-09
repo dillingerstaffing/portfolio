@@ -2677,6 +2677,118 @@ output .................... BYTE-IDENTICAL
           terminalName: 'riscv-baremetal-demo / src/amo',
           terminalLabel: 'Measured misaligned RISC-V atomic operation output',
           showRepoLink: true
+        },
+        {
+          id: 'fletcher16-dual-sum',
+          kicker: 'CHECKSUMS',
+          title: 'Fletcher-16 from dual running sums',
+          summary: 'Fletcher-16 built only from the dual running-sum recurrence (<code>sum1 = (sum1 + byte) % 255</code>, <code>sum2 = (sum2 + sum1) % 255</code>), differential-tested against an independent closed-form weighted-sum reference. 8/8 published and hand-checked vectors pass (<code>"abcde" -&gt; 0xC8F0</code>, <code>"abcdef" -&gt; 0x2057</code>, <code>"abcdefgh" -&gt; 0x0627</code>); 1,000,000 fixed-seed random buffers (1,388,938,179 bytes), 0 mismatches; FNV-1a <code>0x903aa7957d888495</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; measured 219.8 MiB/s at <code>-O2</code>. PROOF.md also documents a correction: the backlog\'s suggested <code>"123456789" -&gt; 0xBB3D</code> is not the Fletcher-16 value; the verified value is <code>0x1EDE</code>.',
+          specRows: [
+            ['BUILD', 'Fletcher-16 from the dual running-sum recurrence'],
+            ['VECTORS', '8/8 published and hand-checked pass'],
+            ['DIFF TEST', '1,000,000 fixed-seed buffers, 1,388,938,179 bytes'],
+            ['REFERENCE', 'Independent closed-form weighted-sum'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 0x903aa7957d888495 across -O0, -O2, ASan+UBSan, UBSan'],
+            ['CORRECTION', '"123456789" -> 0x1EDE, not 0xBB3D'],
+            ['THROUGHPUT', '219.8 MiB/s at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> Fletcher-16 verification
+construction .............. dual running-sum recurrence
+published vectors ......... 8/8 pass
+fixed-seed buffers ........ 1,000,000
+total bytes ............... 1,388,938,179
+mismatches ................ 0
+checksum -O0 .............. MATCH
+checksum -O2 .............. MATCH
+checksum ASan + UBSan ..... MATCH
+checksum UBSan ............ MATCH
+"123456789" -> 0x1EDE (backlog suggested 0xBB3D: wrong)
+
+<span class="result">219.8 MiB/s at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 1000008,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/46-fletcher16',
+          repoLabel: 'View lab/46-fletcher16',
+          terminalName: 'systems-lab / lab/46-fletcher16',
+          terminalLabel: 'Measured Fletcher-16 verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'ones-complement-checksum',
+          kicker: 'ONE\u2019S COMPLEMENT',
+          title: 'One\u2019s-complement Internet checksum',
+          summary: 'IPv4-style one\u2019s-complement checksum with per-addition end-around carry, 16-bit words built from bytes with no casts. 9/9 hand-computed vectors pass; 1,000,000 fixed-seed random buffers (172,733,565 bytes, mixed empty/odd/even lengths) differential-tested against a 64-bit fold-at-end naive reference, 0 mismatches; FNV-1a <code>0x7ae87b2b2fb7e3e1</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; measured 857.4 MiB/s at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'One\u2019s-complement checksum with end-around carry'],
+            ['WORD CONSTRUCTION', '16-bit words from bytes, no casts'],
+            ['VECTORS', '9/9 hand-computed pass'],
+            ['DIFF TEST', '1,000,000 fixed-seed buffers, 172,733,565 bytes'],
+            ['REFERENCE', '64-bit fold-at-end naive implementation'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 0x7ae87b2b2fb7e3e1 across -O0, -O2, ASan+UBSan, UBSan'],
+            ['THROUGHPUT', '857.4 MiB/s at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> one\u2019s-complement checksum verification
+construction .............. per-addition end-around carry
+hand-computed vectors .... 9/9 pass
+fixed-seed buffers ........ 1,000,000
+total bytes ............... 172,733,565
+mismatches ................ 0
+checksum -O0 .............. MATCH
+checksum -O2 .............. MATCH
+checksum ASan + UBSan ..... MATCH
+checksum UBSan ............ MATCH
+
+<span class="result">857.4 MiB/s at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 1000009,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/47-ones-complement-sum',
+          repoLabel: 'View lab/47-ones-complement-sum',
+          terminalName: 'systems-lab / lab/47-ones-complement-sum',
+          terminalLabel: 'Measured one\u2019s-complement checksum output',
+          showRepoLink: true
+        },
+        {
+          id: 'nibble-pack-64',
+          kicker: 'BIT PACKING',
+          title: '16 nibbles packed into one word',
+          summary: 'Packing sixteen 4-bit nibbles into one 64-bit word from shift/OR/mask identities only, no tables. 262,144 pack plus 262,144 unpack checks (all 65,536 16-bit values across 4 nibble lanes) differential-tested against a bit-loop reference, 0 mismatches; round-trip invariants <code>unpack(pack(n)) == n</code> and <code>pack(unpack(w)) == w</code> on 1,000,000 fixed-seed random words, 0 mismatches; FNV-1a <code>0x55bf0e9a9dad34f2</code> identical across <code>-O0</code>, <code>-O2</code>, ASan+UBSan, and UBSan builds; measured 27.7 ns per pack+unpack pair at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', '16 nibbles into one 64-bit word'],
+            ['METHOD', 'Shift/OR/mask identities, no tables'],
+            ['DIFF TEST', '262,144 pack + 262,144 unpack checks'],
+            ['COVERAGE', 'All 65,536 16-bit values across 4 nibble lanes'],
+            ['ROUND-TRIP', '1,000,000 random words, 0 mismatches'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 0x55bf0e9a9dad34f2 across -O0, -O2, ASan+UBSan, UBSan'],
+            ['THROUGHPUT', '27.7 ns per pack+unpack pair at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> nibble-pack verification
+construction .............. shift/OR/mask identities, no tables
+pack checks ............... 262,144
+unpack checks ............. 262,144
+round-trip words .......... 1,000,000
+mismatches ................ 0
+checksum -O0 .............. MATCH
+checksum -O2 .............. MATCH
+checksum ASan + UBSan ..... MATCH
+checksum UBSan ............ MATCH
+
+<span class="result">27.7 ns per pack+unpack pair at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2524288,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/48-nibble-pack',
+          repoLabel: 'View lab/48-nibble-pack',
+          terminalName: 'systems-lab / lab/48-nibble-pack',
+          terminalLabel: 'Measured nibble-pack verification output',
+          showRepoLink: true
         }
       ];
 
