@@ -1857,6 +1857,87 @@ clz-class instructions .... none
           showRepoLink: true
         },
         {
+          id: 'bit-deposit-shift-mask',
+          kicker: 'BIT MANIPULATION',
+          title: 'Bitfield extract/insert from shift/mask identities',
+          summary: 'Bitfield extract and insert built only from shift/mask identities, with the width-64 mask case handled so no <code>1ULL &lt;&lt; 64</code> is ever executed. Verified with 79,777,216 differential checks against a naive per-bit loop reference: 16,777,216 exhaustive checks across widths 1-8, offsets 0-15, and all 65,536 16-bit inputs per primitive pair, plus 63,000,000 round-trip cases checking <code>insert(0, off, w, extract(x, off, w))</code> equals <code>x</code> masked to the field. Measured 0 mismatches, identical FNV-1a checksum <code>1148145629208527209</code> across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds, zero sanitizer reports, and about 5.1 ns per case at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'Bitfield extract and insert'],
+            ['METHOD', 'Shift/mask identities only'],
+            ['EXHAUSTIVE', '16,777,216 checks per primitive pair (widths 1-8, offsets 0-15, all 16-bit inputs)'],
+            ['ROUND TRIP', '63,000,000 cases (widths 1-63, fixed-seed values)'],
+            ['TOTAL', '79,777,216 checks'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'Identical across -O0, -O2, and ASan+UBSan'],
+            ['SHIFT SAFETY', 'UBSan never fired on a shift'],
+            ['THROUGHPUT', '~5.1 ns/case at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> bitfield extract/insert verification
+construction .............. shift/mask identities only
+reference ................. naive per-bit loop
+exhaustive checks ......... 16,777,216
+round-trip cases .......... 63,000,000
+total checks .............. 79,777,216
+mismatches ................ 0
+checksum -O0 .............. 1148145629208527209
+checksum -O2 .............. 1148145629208527209
+checksum ASan + UBSan ..... 1148145629208527209
+sanitizer reports ......... 0
+
+<span class="result">79,777,216 checks, 0 mismatches, ~5.1 ns/case</span>`,
+          verificationEnvironment: 'Host',
+          checks: 79777216,
+          failures: 0,
+          stressItems: 63000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/24-bit-deposit',
+          repoLabel: 'lab/24-bit-deposit',
+          terminalName: 'systems-lab / lab/24-bit-deposit',
+          terminalLabel: 'Measured bitfield extract/insert verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'bit-reversal-swar',
+          kicker: 'BIT MANIPULATION',
+          title: '64-bit bit reversal from SWAR group swaps',
+          summary: '64-bit bit reversal built from the SWAR group-swap identities: adjacent bits, then 2-bit groups, then nibbles, then bytes via shift/OR, with no bit-reverse builtin in the source. Verified with 10,262,212 differential checks against a naive bit-loop reference plus the <code>reverse(reverse(x)) == x</code> involution on every case: 68 directed values, 262,144 exhaustive 16-bit lanes, and 10,000,000 fixed-seed random values. Measured 0 mismatches, identical FNV-1a checksum <code>8367746376622110355</code> across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds, with the size-1/2/4 group swaps present in disassembly as shift/and/or sequences and the byte-swap tail folded into one semantics-preserving <code>bswap</code>. Measured about 6.1 ns per value at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', '64-bit bit reversal'],
+            ['METHOD', 'SWAR group-swap identities (sizes 1, 2, 4, 8)'],
+            ['REFERENCE', 'Naive bit-loop plus reverse(reverse(x)) == x'],
+            ['DIRECTED', '68 values (0, all-ones, single bits, alternating)'],
+            ['EXHAUSTIVE', '262,144 16-bit lanes'],
+            ['RANDOM', '10,000,000 fixed-seed values'],
+            ['TOTAL', '10,262,212 checks'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'Identical across -O0, -O2, and ASan+UBSan'],
+            ['DISASSEMBLY', 'Group swaps as shift/and/or; byte tail folded to bswap'],
+            ['THROUGHPUT', '~6.1 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> 64-bit bit reversal verification
+construction .............. SWAR group swaps (1, 2, 4, 8)
+reference ................. naive bit-loop + involution
+directed values ........... 68
+exhaustive 16-bit lanes ... 262,144
+fixed-seed random values .. 10,000,000
+total checks .............. 10,262,212
+mismatches ................ 0
+checksum -O0 .............. 8367746376622110355
+checksum -O2 .............. 8367746376622110355
+checksum ASan + UBSan ..... 8367746376622110355
+disassembly ............... shift/and/or + bswap tail
+
+<span class="result">10,262,212 checks, 0 mismatches, ~6.1 ns/value</span>`,
+          verificationEnvironment: 'Host',
+          checks: 10262212,
+          failures: 0,
+          stressItems: 10000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/25-bit-reversal',
+          repoLabel: 'lab/25-bit-reversal',
+          terminalName: 'systems-lab / lab/25-bit-reversal',
+          terminalLabel: 'Measured bit reversal verification output',
+          showRepoLink: true
+        },
+        {
           id: 'riscv-timer-interrupt-delivery-offset',
           kicker: 'RISC-V INTERRUPTS',
           title: 'RISC-V timer interrupt delivery offset',
