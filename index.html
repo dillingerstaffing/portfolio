@@ -758,6 +758,72 @@ device capacity ........... 32768 sectors
           terminalName: 'qemu / riscv64 / virtio-blk',
           terminalLabel: 'Verified RISC-V virtio block round-trip output',
           showRepoLink: true
+        },
+        {
+          id: 'xv6-nprocs-syscall',
+          kicker: 'XV6 SYSCALL',
+          title: 'nprocs syscall, table count verified',
+          summary: 'A second xv6 system call, number 24, returning the live count of in-use process table entries. Verified in QEMU by forking children that block in <code>pause()</code>: 3 entries before forking (init, sh, and the test program itself), 6 with three children alive, 3 after wait, exact match on all three. Raw run output committed in <code>PROOF.md</code>.',
+          specRows: [
+            ['SYSCALL', 'Number 24'],
+            ['RESULT', 'Live count of in-use process table entries'],
+            ['BEFORE', '3 entries: init, sh, test program'],
+            ['CHILDREN ALIVE', '6 entries with three children in pause()'],
+            ['AFTER WAIT', '3 entries']
+          ],
+          terminalOutput: `<span class="prompt">$</span> nprocs_test
+before fork .............. 3
+expected ................. 3
+three children in pause .. 6
+expected ................. 6
+after wait ............... 3
+expected ................. 3
+
+<span class="result">3 / 3 exact matches</span>
+<span class="comment">Raw run output: PROOF.md</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 0,
+          repoUrl: 'https://github.com/dillingerstaffing/xv6-getscount',
+          repoLabel: 'View the nprocs syscall proof',
+          terminalName: 'xv6 / user / nprocs_test',
+          terminalLabel: 'Verified xv6 nprocs syscall output',
+          showRepoLink: true
+        },
+        {
+          id: 'treiber-stack',
+          kicker: 'LOCK-FREE',
+          title: 'Treiber stack, zero elements lost',
+          summary: 'A lock-free Treiber stack in C11 using 16-byte compare-and-swap with a 64-bit ABA tag. Four threads churned 1.6M operations: 262,144 pushed, 262,144 popped, 0 lost, 0 duplicated, with 28,150 stale observations rejected by the tag check. Full build log and raw run output committed in <code>lab/07-lockfree-stack/PROOF.md</code>.',
+          specRows: [
+            ['DESIGN', 'C11 Treiber stack'],
+            ['ATOMIC', '16-byte compare-and-swap'],
+            ['ABA TAG', '64-bit'],
+            ['THREADS', '4'],
+            ['ELEMENTS', '262,144 pushed, 262,144 popped'],
+            ['RESULT', '0 lost, 0 duplicated']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ./test_lockfree_stack
+threads .................. 4
+operations ............... 1,600,000
+pushed ................... 262,144
+popped ................... 262,144
+lost ..................... 0
+duplicated ............... 0
+stale observations ....... 28,150 rejected
+
+<span class="result">zero elements lost or duplicated</span>
+<span class="comment">Build log and raw output: lab/07-lockfree-stack/PROOF.md</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2,
+          failures: 0,
+          stressItems: 1600000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'View the lock-free stack proof',
+          terminalName: 'systems-lab / lockfree-stack / PROOF.md',
+          terminalLabel: 'Verified Treiber stack stress output',
+          showRepoLink: true
         }
       ];
 
@@ -819,7 +885,12 @@ device capacity ........... 32768 sectors
         return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
       };
 
-      const environments = [...new Set(PROJECTS.map((project) => project.verificationEnvironment))];
+      const environments = PROJECTS.reduce((unique, project) => {
+        if (!unique.some((environment) => environment.toLowerCase() === project.verificationEnvironment.toLowerCase())) {
+          unique.push(project.verificationEnvironment);
+        }
+        return unique;
+      }, []);
       const environmentSummary = formatList(environments);
       const formatCompact = (value) => {
         const formatScaled = (scaled) => scaled.toFixed(1).replace(/\.0$/, '');
