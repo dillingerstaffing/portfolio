@@ -2442,6 +2442,84 @@ borrow .................... NONE
           terminalName: 'riscv-baremetal-demo / src/counter-alias',
           terminalLabel: 'Measured mcycle and rdcycle lockstep output',
           showRepoLink: true
+        },
+        {
+          id: 'sign-extend-arbitrary-width',
+          kicker: 'BIT REPRESENTATION',
+          title: 'Sign extension, 4,194,311 checks',
+          summary: 'Sign extension from an arbitrary width <code>w</code> (1 to 64) to 64 bits, built from the arithmetic-shift identity: shift left until bit <code>w-1</code> reaches bit 63, then shift right arithmetically to replicate it. Differential testing against an independent bit-test reference covered widths 1 through 63 across all 65,536 16-bit inputs, width 64 as an identity check, and directed edge cases including <code>w=64</code> with <code>INT64_MIN</code>: 4,194,311 checks, 0 mismatches. FNV-1a checksum <code>261071a94624789d</code> matched across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds. The <code>-O2</code> disassembly is <code>shl</code>/<code>sar</code> with the same count register. Measured at <code>-O2</code>: 1.08 ns/value.',
+          specRows: [
+            ['BUILD', 'Arbitrary-width sign extension to 64 bits'],
+            ['IDENTITY', 'Shift bit w-1 to bit 63, then arithmetic right shift'],
+            ['REFERENCE', 'Independent bit test'],
+            ['CHECKS', '4,194,311 including widths 1 to 64 and directed edges'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '261071a94624789d across every build'],
+            ['DISASSEMBLY', 'shl / sar with the same count register'],
+            ['-O2', '1.08 ns/value']
+          ],
+          terminalOutput: `<span class="prompt">$</span> sign extension verification
+widths .................... 1 to 64
+reference ................. independent bit test
+16-bit inputs ............. all 65,536 for widths 1 to 63
+width 64 .................. identity check
+directed edges ............ includes w=64 with INT64_MIN
+checks .................... 4,194,311
+mismatches ................ 0
+FNV-1a checksum ........... 261071a94624789d
+-O0 / -O2 / ASan+UBSan .... IDENTICAL
+-O2 disassembly ........... shl / sar, same count register
+-O2 measurement ........... 1.08 ns/value
+
+<span class="result">4,194,311 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 4194311,
+          failures: 0,
+          stressItems: 4194311,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/40-sign-extend',
+          repoLabel: 'View the sign extension proof',
+          terminalName: 'systems-lab / lab/40-sign-extend',
+          terminalLabel: 'Measured arbitrary-width sign extension verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'low-n-bit-mask',
+          kicker: 'BIT MASKS',
+          title: 'Low-bit mask, 65,000,000 cases',
+          summary: 'A low-<code>n</code>-bit mask built from the <code>2^n - 1</code> identity, <code>(1 &lt;&lt; n) - 1</code>, with the <code>n=64</code> shift-count edge handled without undefined behavior. Differential testing against a loop-built reference covered all 65 widths across 1,000,000 fixed-seed random 64-bit values: 65,000,000 cases, 0 mismatches. The <code>popcount(mask) == n</code> and <code>mask &amp; ~mask == 0</code> invariants held on every case. FNV-1a checksum: <code>9899f825c9bda325</code>. Measured at <code>-O2</code>: 1.58 ns/value.',
+          specRows: [
+            ['BUILD', 'Low-n-bit mask from (1 << n) - 1'],
+            ['EDGE CASE', 'n=64 handled without undefined behavior'],
+            ['REFERENCE', 'Loop-built mask'],
+            ['CASES', '65,000,000 across all 65 widths'],
+            ['INVARIANTS', 'popcount(mask) == n and mask & ~mask == 0'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '9899f825c9bda325'],
+            ['-O2', '1.58 ns/value']
+          ],
+          terminalOutput: `<span class="prompt">$</span> low-bit mask verification
+construction .............. (1 &lt;&lt; n) - 1
+n=64 edge ................. handled without undefined behavior
+reference ................. loop-built mask
+widths .................... 0 to 64
+fixed-seed values ......... 1,000,000 per width
+cases ..................... 65,000,000
+mismatches ................ 0
+popcount(mask) == n ....... HOLDS
+mask &amp; ~mask == 0 .......... HOLDS
+FNV-1a checksum ........... 9899f825c9bda325
+-O2 measurement ........... 1.58 ns/value
+
+<span class="result">65,000,000 cases, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 65000000,
+          failures: 0,
+          stressItems: 65000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/41-mask-below',
+          repoLabel: 'View the low-bit mask proof',
+          terminalName: 'systems-lab / lab/41-mask-below',
+          terminalLabel: 'Measured low-bit mask differential test output',
+          showRepoLink: true
         }
       ];
 
