@@ -516,6 +516,80 @@
     (() => {
       const PROJECTS = [
         {
+          id: 'ctz-debruijn-multiply',
+          kicker: 'BIT MANIPULATION',
+          title: 'Count-trailing-zeros via de Bruijn multiply',
+          summary: 'Count-trailing-zeros built from the de Bruijn multiply identity with a 32-entry table. Differential-checked against __builtin_ctz (all nonzero 16-bit values) and a naive bit-loop reference (includes 0): 2,065,536 checks, 0 mismatches. FNV-1a checksum 7337941371035615009 identical across -O0, -O2, and ASan+UBSan builds. Disassembly confirms the multiply-and-table construction is kept as written (no hardware tzcnt substituted). Measured 3.4-5.1 ns/value at -O2 over 100M timed values.',
+          specRows: [
+            ['MECHANISM', 'De Bruijn multiply identity with a 32-entry table'],
+            ['ZERO INPUT', 'ctz(0) = 32, checked against a naive bit-loop reference'],
+            ['DIFF TEST', '2,065,536 checks against __builtin_ctz and the naive reference'],
+            ['COVERAGE', 'All 65,536 16-bit values plus 2,000,000 fixed-seed random 32-bit values'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '7337941371035615009 across -O0, -O2, and ASan+UBSan'],
+            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
+          ],
+          terminalOutput: `<span class="prompt">$</span> CTZ verification
+exhaustive 16-bit ........ 65,536
+fixed-seed random 32-bit . 2,000,000
+total checks ............. 2,065,536
+references ............... __builtin_ctz, naive bit-loop
+mismatches ............... 0
+checksum -O0 ............. 7337941371035615009
+checksum -O2 ............. 7337941371035615009
+checksum ASan + UBSan .... 7337941371035615009
+-Wall -Wextra -Werror .... 0 warnings
+disassembly .............. multiply-and-table kept, no tzcnt
+
+<span class="result">2,065,536 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2065536,
+          failures: 0,
+          stressItems: 2000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/22-ctz',
+          repoLabel: 'View the CTZ repository',
+          terminalName: 'systems-lab / lab/22-ctz',
+          terminalLabel: 'Measured CTZ verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'memmove-overlap-direction',
+          kicker: 'MEMORY',
+          title: 'memmove with overlap-direction copy',
+          summary: 'Byte-level my_memmove built from the overlap copy-direction identity: copy forward when dest < src, backward when dest > src. Differential-tested against libc memmove: 8,385 cases (sizes 0..64 x dest offsets -64..+64), 0 mismatches. Checksum 13318231107937211255 identical across -O0, -O2, and ASan+UBSan builds. A directed case shows a naive always-forward copy corrupting backward overlaps while my_memmove stays byte-exact. Measured ~1.2 GiB/s vs libc ~43 GiB/s; the gap is honestly the cost of the byte-at-a-time design.',
+          specRows: [
+            ['MECHANISM', 'Overlap copy-direction identity (forward when dest < src, backward when dest > src)'],
+            ['DESIGN', 'Byte-at-a-time copy, no word-aligned fast path'],
+            ['DIFF TEST', '8,385 cases against libc memmove'],
+            ['COVERAGE', 'Sizes 0..64 x dest offsets -64..+64, exhaustive over the offset space'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', '13318231107937211255 across -O0, -O2, and ASan+UBSan'],
+            ['BUILD', 'Zero warnings under -Wall -Wextra -Werror']
+          ],
+          terminalOutput: `<span class="prompt">$</span> memmove overlap verification
+sizes .................... 0..64
+dest offsets ............. -64..+64
+total cases .............. 8,385
+reference ................ libc memmove
+mismatches ............... 0
+checksum -O0 ............. 13318231107937211255
+checksum -O2 ............. 13318231107937211255
+checksum ASan + UBSan .... 13318231107937211255
+naive forward on overlap . corrupts (ABCDABCD)
+my_memmove on overlap .... byte-exact
+
+<span class="result">8,385 cases, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 8385,
+          failures: 0,
+          stressItems: 8385,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/30-memmove-overlap',
+          repoLabel: 'View the memmove repository',
+          terminalName: 'systems-lab / lab/30-memmove-overlap',
+          terminalLabel: 'Measured memmove verification output',
+          showRepoLink: true
+        },
+        {
           id: 'binary-gcd-steins-algorithm',
           kicker: 'INTEGER ALGORITHM',
           title: "Binary GCD (Stein's algorithm)",
