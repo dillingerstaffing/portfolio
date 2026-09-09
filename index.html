@@ -2055,6 +2055,161 @@ platform .................. QEMU 8.2.2
           terminalName: 'riscv-baremetal-demo / src/sv39',
           terminalLabel: 'Measured Sv39 page-table verification output',
           showRepoLink: true
+        },
+        {
+          id: 'gray-code-16-bit',
+          kicker: 'BIT MANIPULATION',
+          title: '16-bit Gray code encode and decode',
+          summary: '16-bit Gray code encoding from <code>n ^ (n &gt;&gt; 1)</code> and decoding with an xor-fold, with the single-bit adjacency property checked directly. Differential-tested against a naive bit-loop reference over all 65,536 16-bit inputs: 262,143 total checks covering encode, decode, <code>decode(encode(x)) == x</code>, and all 65,535 adjacent pairs, with 0 mismatches. The FNV-1a checksum was identical across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Measured about 4.3 ns/value at <code>-O2</code>.',
+          specRows: [
+            ['ENCODE', 'n ^ (n >> 1)'],
+            ['DECODE', 'Xor-fold'],
+            ['REFERENCE', 'Naive bit loop'],
+            ['COVERAGE', 'All 65,536 16-bit inputs and 65,535 adjacent pairs'],
+            ['TOTAL', '262,143 checks'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'Identical FNV-1a across -O0, -O2, and ASan+UBSan'],
+            ['THROUGHPUT', '~4.3 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> 16-bit Gray code verification
+encode .................... n ^ (n >> 1)
+decode .................... xor-fold
+reference ................. naive bit loop
+16-bit inputs ............. 65,536
+adjacent pairs ............ 65,535
+encode / decode checks .... 131,072
+round-trip checks ......... 65,536
+total checks .............. 262,143
+mismatches ................ 0
+FNV-1a -O0 / -O2 ......... MATCH
+FNV-1a ASan + UBSan ....... MATCH
+
+<span class="result">~4.3 ns/value at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 262143,
+          failures: 0,
+          stressItems: 65536,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/33-gray-code',
+          repoLabel: 'View the Gray code proof',
+          terminalName: 'systems-lab / lab/33-gray-code',
+          terminalLabel: 'Measured 16-bit Gray code verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'branchless-minmax-32-bit',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'Branchless 32-bit min/max, 4.3B checks',
+          summary: 'Branchless 32-bit min and max select the operand from the sign bit of the exact 64-bit difference. A 32-bit <code>(a - b) &gt;&gt; 31</code> mask demonstrably selects the wrong operand near <code>INT32_MIN</code> and <code>INT32_MAX</code>; the wide difference needs no signed-overflow assumption. Differential testing against the ternary-operator reference covered 4,304,967,345 checks: every one of the 2<sup>32</sup> 16-bit input pairs, 49 directed edge pairs, and 10M fixed-seed random 32-bit pairs, with 0 mismatches across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds. The <code>-O2</code> disassembly is exactly <code>sub, sar, xor, and, xor</code>, with no branch and no <code>cmov</code>. Measured 3.650 ns/pair at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'Operand selected by sign of the exact 64-bit difference'],
+            ['COUNTEREXAMPLE', '32-bit subtraction mask fails near INT32_MIN / INT32_MAX'],
+            ['EXHAUSTIVE', 'All 2^32 pairs of 16-bit inputs'],
+            ['EDGE PAIRS', '49 directed INT32_MIN / INT32_MAX cases'],
+            ['RANDOM', '10M fixed-seed 32-bit pairs'],
+            ['TOTAL', '4,304,967,345 checks, 0 mismatches'],
+            ['BUILDS', '-O0, -O2, and ASan/UBSan'],
+            ['DISASSEMBLY', 'sub, sar, xor, and, xor; no branch or cmov'],
+            ['THROUGHPUT', '3.650 ns/pair at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> branchless min/max verification
+selection ................. sign of exact 64-bit difference
+32-bit mask counterexample  REPRODUCED
+exhaustive 16-bit pairs ... 4,294,967,296
+edge pairs ................ 49
+fixed-seed random pairs ... 10,000,000
+total checks .............. 4,304,967,345
+mismatches ................ 0
+-O0 / -O2 / ASan+UBSan .... PASS
+-O2 instructions .......... sub, sar, xor, and, xor
+branch / cmov ............. none
+
+<span class="result">3.650 ns/pair at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 4304967345,
+          failures: 0,
+          stressItems: 4294967296,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/34-branchless-minmax',
+          repoLabel: 'View the branchless min/max proof',
+          terminalName: 'systems-lab / lab/34-branchless-minmax',
+          terminalLabel: 'Measured branchless 32-bit min and max verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'q16-16-fixed-point',
+          kicker: 'FIXED-POINT ARITHMETIC',
+          title: 'Q16.16 add and multiply, differential-tested',
+          summary: 'Q16.16 fixed-point add and multiply use 64-bit intermediate identities with round-to-nearest. Differential testing against a double reference covered 10,001,352 cases: 1,352 directed cases plus 5M random multiply and 5M random add pairs, with 0 mismatches within 1 ulp and an identical checksum across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds. Measured 38.78 ns/op for multiply and 29.59 ns/op for add at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'Q16.16 add and multiply with 64-bit intermediates'],
+            ['ROUNDING', 'Round-to-nearest'],
+            ['REFERENCE', 'Double-precision implementation'],
+            ['DIRECTED', '1,352 cases'],
+            ['RANDOM', '5M multiply and 5M add pairs'],
+            ['TOTAL', '10,001,352 cases, 0 mismatches within 1 ulp'],
+            ['CHECKSUM', 'Identical across -O0, -O2, and ASan/UBSan'],
+            ['MULTIPLY', '38.78 ns/op at -O2'],
+            ['ADD', '29.59 ns/op at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> Q16.16 fixed-point verification
+intermediates ............. 64-bit
+rounding .................. nearest
+reference ................. double
+directed cases ............ 1,352
+random multiply pairs ..... 5,000,000
+random add pairs .......... 5,000,000
+total cases ............... 10,001,352
+mismatches within 1 ulp ... 0
+checksum across builds .... IDENTICAL
+
+<span class="result">multiply: 38.78 ns/op
+add:      29.59 ns/op at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 10001352,
+          failures: 0,
+          stressItems: 10000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/27-fixed-point',
+          repoLabel: 'View the Q16.16 fixed-point proof',
+          terminalName: 'systems-lab / lab/27-fixed-point',
+          terminalLabel: 'Measured Q16.16 fixed-point verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'djb2-vs-fnv1a',
+          kicker: 'HASH FUNCTIONS',
+          title: 'djb2 and FNV-1a, distribution measured',
+          summary: '<code>djb2</code> and FNV-1a are implemented directly from their recurrence identities and differential-tested against independently written specification implementations plus 10 pinned known-answer vectors. Across 2,000,010 checks there were 0 mismatches, with an identical checksum across <code>-O0</code>, <code>-O2</code>, and ASan/UBSan builds. Avalanche testing on 1M random strings measured chi-square on digest byte 0: 269.90 for <code>djb2</code> and 256.87 for FNV-1a, so FNV-1a spread better. At <code>-O2</code>, throughput measured 477.4 MB/s for <code>djb2</code> and 458.0 MB/s for FNV-1a.',
+          specRows: [
+            ['BUILD', 'djb2 and FNV-1a recurrence identities'],
+            ['REFERENCE', 'Independent specification implementations'],
+            ['KNOWN ANSWERS', '10 pinned vectors'],
+            ['TOTAL', '2,000,010 checks, 0 mismatches'],
+            ['CHECKSUM', 'Identical across -O0, -O2, and ASan/UBSan'],
+            ['AVALANCHE', '1M random strings; chi-square on digest byte 0'],
+            ['CHI-SQUARE', 'djb2 269.90; FNV-1a 256.87'],
+            ['THROUGHPUT', 'djb2 477.4 MB/s; FNV-1a 458.0 MB/s at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> djb2 / FNV-1a verification
+spec implementations ..... independent
+known-answer vectors ...... 10
+total checks .............. 2,000,010
+mismatches ................ 0
+checksum across builds .... IDENTICAL
+avalanche strings ......... 1,000,000
+byte-0 chi-square, djb2 ... 269.90
+byte-0 chi-square, FNV-1a . 256.87
+spread .................... FNV-1a better
+
+<span class="result">djb2:   477.4 MB/s
+FNV-1a: 458.0 MB/s at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2000010,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/29-djb2-vs-fnv',
+          repoLabel: 'View the djb2 and FNV-1a proof',
+          terminalName: 'systems-lab / lab/29-djb2-vs-fnv',
+          terminalLabel: 'Measured djb2 and FNV-1a verification output',
+          showRepoLink: true
         }
       ];
 
