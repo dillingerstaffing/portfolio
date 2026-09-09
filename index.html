@@ -1233,6 +1233,83 @@ switch cost ............... same band as M-mode baseline
           terminalName: 'qemu 8.2.2 / riscv64 / smode',
           terminalLabel: 'Measured S-mode trap delegation output',
           showRepoLink: true
+        },
+        {
+          id: 'mpmc-ticket-lock-ring',
+          kicker: 'CONCURRENCY',
+          title: 'MPMC ring under a ticket lock',
+          summary: 'A ticket lock on C11 atomics uses <code>fetch_add</code> tickets and a serving counter to admit holders in ticket order. The lock guards a bounded multi-producer multi-consumer ring buffer with <code>index = counter mod capacity</code>. Verified with 4 producers times 250,000 items: 1,000,000 items drained, 0 lost, 0 duplicates, per-producer FIFO order preserved, and checksum <code>499999500000</code> matched. Worst fairness gap was 4 against an ideal gap of 3. Clean under <code>-Wall -Wextra -Werror</code>, ASan, and UBSan.',
+          specRows: [
+            ['LOCK', 'C11 fetch_add tickets and serving counter'],
+            ['BUFFER', 'Bounded MPMC ring, index = counter mod capacity'],
+            ['LOAD', '4 producers x 250,000 items'],
+            ['DRAINED', '1,000,000 items'],
+            ['RESULT', '0 lost, 0 duplicates, per-producer FIFO preserved'],
+            ['CHECKSUM', '499999500000 matched'],
+            ['FAIRNESS', 'Worst gap 4 against ideal 3'],
+            ['BUILD', '-Wall -Wextra -Werror, ASan, and UBSan clean']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ticket-lock MPMC ring verification
+producers ................. 4
+items per producer ........ 250,000
+items drained ............. 1,000,000
+lost ...................... 0
+duplicates ................ 0
+per-producer FIFO ......... PRESERVED
+checksum .................. 499999500000 MATCH
+worst fairness gap ........ 4
+ideal fairness gap ........ 3
+-Wall -Wextra -Werror ..... CLEAN
+ASan / UBSan .............. CLEAN
+
+<span class="result">1,000,000 drained, 0 lost, 0 duplicates</span>`,
+          verificationEnvironment: 'Host',
+          checks: 5,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/15-ticket-ring',
+          repoLabel: 'View the ticket-lock ring proof',
+          terminalName: 'systems-lab / lab/15-ticket-ring',
+          terminalLabel: 'Measured ticket-lock MPMC ring output',
+          showRepoLink: true
+        },
+        {
+          id: 'crc32c-castagnoli',
+          kicker: 'ERROR DETECTION',
+          title: 'CRC-32C from its own polynomial',
+          summary: 'CRC-32C (Castagnoli) with a lookup table derived from generator polynomial <code>0x82F63B78</code>. All 256 table entries match a direct polynomial computation, and both the table and bitwise implementations match all 7 published known-answer vectors, including RFC 3720 vectors. Differential testing covered 100,321 comparisons: 256 exhaustive 1-byte inputs, 65 sizes from 0 to 64, and 100,000 random buffers up to 4 KiB, with 0 mismatches. Measured throughput was 35.5 MiB/s bitwise and 139.9 MiB/s table-driven.',
+          specRows: [
+            ['POLYNOMIAL', 'Castagnoli 0x82F63B78'],
+            ['TABLE', '256 entries matched direct polynomial computation'],
+            ['KNOWN ANSWERS', '7 vectors x 2 implementations, all matched'],
+            ['DIFF TEST', '100,321 comparisons, 0 mismatches'],
+            ['COVERAGE', '256 one-byte inputs, sizes 0-64, 100,000 random buffers'],
+            ['BUFFER SIZE', 'Random buffers up to 4 KiB'],
+            ['THROUGHPUT', '35.5 MiB/s bitwise, 139.9 MiB/s table-driven']
+          ],
+          terminalOutput: `<span class="prompt">$</span> CRC-32C verification
+polynomial ................ 0x82F63B78
+table entries ............. 256 / 256 MATCH
+known-answer vectors ...... 7
+implementations ........... 2
+published values .......... ALL MATCH
+exhaustive 1-byte inputs .. 256
+sizes 0 through 64 ........ 65
+random buffers ............ 100,000, up to 4 KiB
+comparisons ............... 100,321
+mismatches ................ 0
+
+<span class="result">bitwise: 35.5 MiB/s
+table:   139.9 MiB/s</span>`,
+          verificationEnvironment: 'Host',
+          checks: 100321,
+          failures: 0,
+          stressItems: 100321,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/16-crc32c',
+          repoLabel: 'View the CRC-32C proof',
+          terminalName: 'systems-lab / lab/16-crc32c',
+          terminalLabel: 'Measured CRC-32C verification output',
+          showRepoLink: true
         }
       ];
 
