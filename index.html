@@ -952,37 +952,142 @@ QEMU ..................... VERIFIED
         },
         {
           id: 'fault-injection',
-          kicker: 'TESTING',
-          title: 'Fault injection, 6,250 caught',
-          summary: 'Single-bit flips injected into ring-buffer frames mid-transfer, caught by the CRC32 check from the earlier checksum module. 200,000 frames (3.4M words), 6,250 injected corruptions: 6,250 detected, 0 missed, 0 false positives, and the test exits 1 by design on detection. Full build log and raw run output committed in <code>lab/06/PROOF.md</code>.',
+          kicker: 'SYSTEMS-LAB',
+          title: 'lab/06-fault-injection',
+          summary: 'Single-bit faults injected into ring-buffer frames mid-transfer, caught by a per-frame CRC32 check. 200,000 frames (3.4M words): 6,250 corruptions injected, 6,250 detected, 0 missed, 0 false positives; fault-off run verified all 200,000 frames clean.',
           specRows: [
-            ['TARGET', 'Ring-buffer frames mid-transfer'],
+            ['BUILD', 'Per-frame CRC32 check with mid-transfer bit injection'],
             ['INPUT', '200,000 frames, 3.4M words'],
-            ['INJECTION', '6,250 single-bit flips'],
+            ['INJECTED', '6,250 single-bit corruptions'],
             ['DETECTED', '6,250'],
             ['MISSED', '0'],
             ['FALSE POSITIVES', '0'],
-            ['EXIT', '1 by design on detection']
+            ['FAULT OFF', '200,000 frames clean']
           ],
           terminalOutput: `<span class="prompt">$</span> fault injection verification
 frames ................... 200,000
 words .................... 3,400,000
-single-bit flips ......... 6,250
+single-bit faults ........ 6,250
 detected ................. 6,250
 missed ................... 0
 false positives .......... 0
-exit status .............. 1 by design
+fault-off frames clean ... 200,000
 
-<span class="result">6,250 corruptions detected, zero missed</span>
-<span class="comment">Build log and raw output: lab/06/PROOF.md</span>`,
+<span class="result">6,250 injected, 6,250 detected</span>`,
           verificationEnvironment: 'Host',
           checks: 3,
           failures: 0,
           stressItems: 3400000,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
-          repoLabel: 'View the fault injection proof',
-          terminalName: 'systems-lab / fault-injection / PROOF.md',
-          terminalLabel: 'Verified fault injection output',
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/06-fault-injection',
+          repoLabel: 'View lab/06-fault-injection',
+          terminalName: 'systems-lab / lab/06-fault-injection',
+          terminalLabel: 'Measured fault injection output',
+          showRepoLink: true
+        },
+        {
+          id: 'cycle-accurate-uart-baud-check',
+          kicker: 'RISC-V',
+          title: 'UART baud check, cycle-accurate',
+          summary: 'Programs the ns16550a divisor latch for divisors 1, 12, and 96, then measures the actual bit time in internal loopback, stamped with rdcycle calibrated against the 10 MHz mtime. At divisor 96 the measured bit time lands within about 0.4% of nominal; shorter divisors show larger host-latency inflation, and PROOF.md states the limits of the verification plainly. Raw QEMU run',
+          specRows: [
+            ['BUILD', 'ns16550a divisor latch programming'],
+            ['DIVISORS', '1, 12, and 96'],
+            ['MEASUREMENT', 'Actual bit time in internal loopback'],
+            ['STAMP', 'rdcycle calibrated against 10 MHz mtime'],
+            ['DIVISOR 96', 'Within about 0.4% of nominal'],
+            ['LIMIT', 'Shorter divisors show host-latency inflation']
+          ],
+          terminalOutput: `<span class="prompt">$</span> UART baud timing check
+divisor latch ............ 1, 12, 96
+interface ................. ns16550a
+machine ................... QEMU virt
+measurement ............... actual bit time
+loopback .................. internal
+cycle stamp ............... rdcycle
+calibration ............... 10 MHz mtime
+divisor 96 ................ within about 0.4% of nominal
+shorter divisors .......... host-latency inflation
+
+<span class="result">3 divisors measured, 0 failures</span>
+<span class="comment">Raw logs: src/uart-baud/bench-logs/</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View the UART baud check',
+          terminalName: 'riscv-baremetal-demo / src/uart-baud',
+          terminalLabel: 'Measured UART baud timing output',
+          showRepoLink: true
+        },
+        {
+          id: 'branchless-binary-search',
+          kicker: 'BINARY SEARCH',
+          title: 'Branchless binary search',
+          summary: 'Binary search over sorted <code>uint32_t</code> arrays with no data-dependent branch in the loop. The comparison becomes a 0/1 integer and the search window narrows by arithmetic, running exactly <code>floor(log2(n))+1</code> iterations for every key. The loop\'s only conditional jump is the fixed trip count, confirmed in disassembly. Verified with 4,211,266 differential checks against libc <code>bsearch</code>, 0 mismatches; iteration counts exact for <code>n=1..70</code>, hits and misses. Measured with <code>rdtsc</code> on identical key sets: at <code>n=16384</code>, 214-300 cycles per lookup versus 227-324 for libc <code>bsearch</code>; at <code>n=1048576</code>, 585-692 versus 486-514, where libc <code>bsearch</code> wins once loads miss cache. Clean under <code>-O0</code>, ASan, and UBSan.',
+          specRows: [
+            ['LOOP', 'No data-dependent branch; fixed trip count'],
+            ['ITERATIONS', 'floor(log2(n))+1 for every key'],
+            ['DIFF TEST', '4,211,266 checks against libc bsearch'],
+            ['RESULT', '0 mismatches; n=1..70 exact, hits and misses'],
+            ['N=16384', '214-300 vs 227-324 cycles per lookup'],
+            ['N=1048576', '585-692 vs 486-514; libc bsearch wins']
+          ],
+          terminalOutput: `<span class="prompt">$</span> branchless binary search verification
+differential checks ...... 4,211,266
+reference ................. libc bsearch
+mismatches ................ 0
+iteration counts .......... exact for n=1..70
+keys ...................... hits and misses
+loop conditional jump ..... fixed trip count only
+-O0 ....................... CLEAN
+ASan / UBSan .............. CLEAN
+
+<span class="result">n=16384: 214-300 vs 227-324 cycles/lookup
+n=1048576: 585-692 vs 486-514 cycles/lookup</span>
+<span class="comment">At n=1048576, libc bsearch wins once loads miss cache.</span>`,
+          verificationEnvironment: 'Host',
+          checks: 4211266,
+          failures: 0,
+          stressItems: 4211266,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/09-branchless-bsearch',
+          repoLabel: 'View the branchless binary search proof',
+          terminalName: 'systems-lab / lab/09-branchless-bsearch',
+          terminalLabel: 'Measured branchless binary search verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'memcpy-alignment-fundamentals',
+          kicker: 'MEMORY COPY',
+          title: 'memcpy from alignment fundamentals',
+          summary: '<code>memcpy</code> rebuilt around destination-word alignment: a byte head loop, a word-sized body where each source word is assembled from single bytes so every access is aligned-safe at any source alignment, then a byte tail. The implementation does not call libc <code>memcpy</code>. Verified with 1,004,160 differential cases against libc <code>memcpy</code>: exhaustive sizes 0-64 at all 64 source and destination misalignment combinations, plus 1M random sizes up to 64 KiB, with 0 mismatches. Clean under ASan and UBSan. Measured on the same host at 1338.8-1398.8 MiB/s versus 20085.1-21635.4 MiB/s for libc <code>memcpy</code>.',
+          specRows: [
+            ['BUILD', 'Byte head, word-sized body, byte tail'],
+            ['SOURCE', 'Words assembled from bytes at any source alignment'],
+            ['LIBC CALLS', 'No libc memcpy in the implementation'],
+            ['DIFF TEST', '1,004,160 cases against libc memcpy'],
+            ['RESULT', '0 mismatches; ASan and UBSan clean'],
+            ['THROUGHPUT', '1338.8-1398.8 vs 20085.1-21635.4 MiB/s']
+          ],
+          terminalOutput: `<span class="prompt">$</span> memcpy verification
+differential cases ....... 1,004,160
+sizes 0-64 ............... exhaustive
+misalignments ............ all 64 source/destination pairs
+random cases ............. 1,000,000, up to 64 KiB
+mismatches ................ 0
+ASan / UBSan .............. CLEAN
+
+<span class="result">implementation: 1338.8-1398.8 MiB/s
+libc memcpy:   20085.1-21635.4 MiB/s</span>
+<span class="comment">Measured on the same host.</span>`,
+          verificationEnvironment: 'Host',
+          checks: 1004160,
+          failures: 0,
+          stressItems: 1004160,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/10-from-scratch-memcpy',
+          repoLabel: 'View the memcpy proof',
+          terminalName: 'systems-lab / lab/10-from-scratch-memcpy',
+          terminalLabel: 'Measured memcpy verification output',
           showRepoLink: true
         }
       ];
