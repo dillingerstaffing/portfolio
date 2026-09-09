@@ -1427,6 +1427,36 @@ timed values .............. 100,000,000
           terminalName: 'systems-lab / lab/18-endian',
           terminalLabel: 'Measured endian byte-swap verification output',
           showRepoLink: true
+        },
+        {
+          id: 'wfi-latency',
+          kicker: 'RISC-V MACHINE MODE',
+          title: 'WFI wakeup latency, measured honestly',
+          summary: 'Arms the CLINT timer 20000 mtime ticks (2 ms) ahead, then either executes wfi or spins on a flag, and measures the latency from the programmed wakeup to the first instruction after mret. 400 interleaved trials of each kind per run (first 8 discarded), with in-program PASS/FAIL checks on trap count, mcause, and stamp ordering. Waking a halted vcpu costs about 1.5 to 1.9x the timer-interrupt latency of a spinning hart: roughly 130 to 230 ticks (13 to 23 us) of extra vcpu-wakeup latency in the quieter runs; the trap path itself is identical either way. 3 QEMU runs, RESULT: PASS each. These are QEMU 8.2.2 virt measurements on a shared host, not silicon numbers; the guest cannot observe a power state, only timing.',
+          specRows: [
+            ['METHOD', 'CLINT mtimecmp armed 20000 ticks (2 ms), MIE set only inside the trial block'],
+            ['TRIALS', '400 wfi + 400 spin interleaved per run, first 8 discarded'],
+            ['HEADLINE', 'wake_to_resume p50: wfi 452 ticks vs spin 312 ticks (run2)'],
+            ['WAKEUP COST', '~130-230 ticks (13-23 us) in the quieter runs'],
+            ['TRAP PATH', 'entry_to_resume p50 identical for both kinds (20-55 ticks)'],
+            ['RUNS', '3 runs, 800+ timer traps each, RESULT: PASS']
+          ],
+          terminalOutput: `<span class="prompt">$</span> WFI wakeup latency
+trials .............. 400 wfi + 400 spin, interleaved
+wake_to_resume p50 .. wfi 452 ticks / spin 312 ticks
+vcpu wakeup cost .... ~140 ticks (14 us)
+trap path p50 ....... 23 ticks, identical both kinds
+mcause .............. 0x8000000000000007 on every trial
+<span class="result">RESULT: PASS on all 3 runs</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 2400,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/wfi-latency',
+          repoLabel: 'View the WFI latency proof',
+          terminalName: 'riscv-baremetal-demo / src/wfi-latency',
+          terminalLabel: 'Measured WFI wakeup latency output',
+          showRepoLink: true
         }
       ];
 
