@@ -1980,6 +1980,81 @@ disassembly ............... shift/and/or + bswap tail
           terminalName: 'systems-lab / lab/25-bit-reversal',
           terminalLabel: 'Measured bit reversal verification output',
           showRepoLink: true
+        },
+        {
+          id: 'ffs64-fls64-debruijn',
+          kicker: 'BIT MANIPULATION',
+          title: 'ffs64 and fls64 via de Bruijn multiply',
+          summary: '<code>ffs64</code> and <code>fls64</code> (find-first-set and find-last-set) built from the de Bruijn multiply identity. Differential-tested against <code>__builtin_ffsll</code> and <code>63 - __builtin_clzll</code>: 131,335 checks, 0 mismatches, with an identical FNV-1a checksum across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Disassembly confirms no bit-scan instructions in the object. Measured 3.74 ns/value for <code>ffs64</code> and 4.35 ns/value for <code>fls64</code> at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'ffs64 and fls64 from the de Bruijn multiply identity'],
+            ['REFERENCES', '__builtin_ffsll and 63 - __builtin_clzll'],
+            ['DIFF TEST', '131,335 checks'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'Identical FNV-1a across -O0, -O2, and ASan+UBSan'],
+            ['DISASSEMBLY', 'No bit-scan instructions in the object'],
+            ['FFS64', '3.74 ns/value at -O2'],
+            ['FLS64', '4.35 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ffs64 / fls64 verification
+construction .............. de Bruijn multiply identity
+references ................ __builtin_ffsll, 63 - __builtin_clzll
+checks .................... 131,335
+mismatches ................ 0
+FNV-1a checksum -O0 ....... MATCH
+FNV-1a checksum -O2 ....... MATCH
+FNV-1a checksum ASan+UBSan  MATCH
+bit-scan instructions ..... none
+
+<span class="result">ffs64: 3.74 ns/value
+fls64: 4.35 ns/value</span>`,
+          verificationEnvironment: 'Host',
+          checks: 131335,
+          failures: 0,
+          stressItems: 131335,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/26-msb-lsb',
+          repoLabel: 'View the ffs64 and fls64 proof',
+          terminalName: 'systems-lab / lab/26-msb-lsb',
+          terminalLabel: 'Measured ffs64 and fls64 verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-sv39-page-table-walk',
+          kicker: 'RISC-V VIRTUAL MEMORY',
+          title: 'Bare-metal Sv39 page-table walk',
+          summary: 'Managed three-level page tables map virtual address <code>0x40000000</code> in a bare-metal RISC-V module. The module sets <code>satp</code>, walks the tables by hand, and reads back the mapped page with no trap. Bad PTEs at each level produced the expected <code>mcause=13</code> load page fault. A <code>0xdeadbeefcafebabe</code> value completed an exact round-trip through the mapping on QEMU 8.2.2.',
+          specRows: [
+            ['BUILD', 'Managed three-level Sv39 page tables'],
+            ['MAPPING', 'Virtual address 0x40000000'],
+            ['CONTROL', 'satp set; page tables walked by hand'],
+            ['READBACK', 'Mapped page read with no trap'],
+            ['FAULT PATH', 'Bad PTE at each of 3 levels'],
+            ['MCAUSE', '13, load page fault, at every level'],
+            ['ROUND TRIP', '0xdeadbeefcafebabe verified exactly'],
+            ['PLATFORM', 'QEMU 8.2.2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> Sv39 page-table verification
+page-table levels ......... 3
+virtual address ........... 0x40000000
+satp ...................... SET
+manual page-table walk .... COMPLETE
+mapped-page read .......... NO TRAP
+bad level-2 PTE ........... mcause=13
+bad level-1 PTE ........... mcause=13
+bad level-0 PTE ........... mcause=13
+round-trip value .......... 0xdeadbeefcafebabe
+platform .................. QEMU 8.2.2
+
+<span class="result">mapping and all fault paths verified</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 4,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sv39',
+          repoLabel: 'View the Sv39 page-table proof',
+          terminalName: 'riscv-baremetal-demo / src/sv39',
+          terminalLabel: 'Measured Sv39 page-table verification output',
+          showRepoLink: true
         }
       ];
 
