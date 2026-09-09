@@ -1749,38 +1749,155 @@ about 4.9 ns per step</span>`,
           id: 'hamming-distance-64',
           kicker: 'BIT MANIPULATION',
           title: '64-bit Hamming distance',
-          summary: '64-bit Hamming distance built as <code>d(a, b) = popcount(a xor b)</code>, with popcount rebuilt by hand from the SWAR parallel-add bit identities. Differential-tested against a naive bit-loop reference: 10,000,073 checks, 0 mismatches, with an identical FNV-1a checksum across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Disassembly confirms zero <code>popcnt</code> instructions in the object. Measured at 5.69 ns per pair (175.6 Mpairs/s) under <code>-O2</code>.',
+          summary: 'Hamming distance built as <code>d(a, b) = popcount(a xor b)</code>, with popcount rebuilt from SWAR parallel-add bit identities. Differential-tested against a naive bit-loop reference: 10,000,073 checks (73 directed edge cases plus 10,000,000 fixed-seed random 64-bit pairs), 0 mismatches, with an identical checksum across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Measured at 5.69 ns per pair (175.6 Mpairs/s).',
           specRows: [
-            ['BUILD', '64-bit d(a, b) = popcount(a xor b)'],
+            ['BUILD', 'd(a, b) = popcount(a xor b)'],
             ['POPCOUNT', 'SWAR parallel-add bit identities'],
             ['REFERENCE', 'Naive bit-loop'],
-            ['DIFF TEST', '10,000,073 checks'],
-            ['RESULT', '0 mismatches'],
-            ['CHECKSUM', 'Identical FNV-1a across -O0, -O2, and ASan+UBSan'],
-            ['DISASSEMBLY', 'Zero popcnt instructions in the object'],
-            ['THROUGHPUT', '5.69 ns per pair, 175.6 Mpairs/s at -O2']
+            ['DIRECTED', '73 edge cases'],
+            ['RANDOM', '10,000,000 fixed-seed 64-bit pairs'],
+            ['RESULT', '10,000,073 checks, 0 mismatches'],
+            ['CHECKSUM', 'Identical across -O0, -O2, and ASan+UBSan'],
+            ['THROUGHPUT', '5.69 ns per pair, 175.6 Mpairs/s']
           ],
           terminalOutput: `<span class="prompt">$</span> hamming distance verification
 construction .............. popcount(a xor b)
 popcount .................. SWAR parallel-add
 reference ................. naive bit-loop
-checks .................... 10,000,073
+directed edge cases ....... 73
+fixed-seed random pairs ... 10,000,000
+total checks .............. 10,000,073
 mismatches ................ 0
 checksum -O0 .............. MATCH
 checksum -O2 .............. MATCH
 checksum ASan + UBSan ..... MATCH
-popcnt instructions ....... 0
 
 <span class="result">5.69 ns per pair
-175.6 Mpairs/s at -O2</span>`,
+175.6 Mpairs/s</span>`,
           verificationEnvironment: 'Host',
           checks: 10000073,
           failures: 0,
-          stressItems: 10000073,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/45-hamming-dist',
-          repoLabel: 'View the Hamming distance proof',
+          stressItems: 10000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'View lab/45-hamming-dist',
           terminalName: 'systems-lab / lab/45-hamming-dist',
           terminalLabel: 'Measured Hamming distance verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-plic-claim-complete',
+          kicker: 'RISC-V INTERRUPTS',
+          title: 'PLIC claim and complete',
+          summary: 'Bare-metal RISC-V module driving the PLIC directly. UART0 interrupt asserted; the PLIC claim register returned IRQ id 10, complete cleared the pending state, and the post-complete claim returned 0. Claim cycles were 32310 / 29655 / 30885; complete cycles were 34260 / 40230 / 29730. PASS on all 3 QEMU runs.',
+          specRows: [
+            ['BUILD', 'Bare-metal RISC-V PLIC claim/complete module'],
+            ['INTERRUPT', 'UART0 asserted'],
+            ['CLAIM', 'IRQ id 10'],
+            ['COMPLETE', 'Pending state cleared'],
+            ['POST-COMPLETE', 'Claim returned 0'],
+            ['CLAIM CYCLES', '32310 / 29655 / 30885'],
+            ['COMPLETE CYCLES', '34260 / 40230 / 29730'],
+            ['RESULT', 'PASS on all 3 QEMU runs']
+          ],
+          terminalOutput: `<span class="prompt">$</span> PLIC claim/complete verification
+UART0 interrupt ........... ASSERTED
+claim IRQ id .............. 10
+complete .................. pending cleared
+post-complete claim ....... 0
+claim cycles .............. 32310 / 29655 / 30885
+complete cycles ........... 34260 / 40230 / 29730
+
+<span class="result">PASS on all 3 QEMU runs</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'View src/plic/',
+          terminalName: 'riscv-baremetal-demo / src/plic/',
+          terminalLabel: 'Measured PLIC claim and complete output',
+          showRepoLink: true
+        },
+        {
+          id: 'floor-log2-bit-identities',
+          kicker: 'BIT MANIPULATION',
+          title: 'floor(log2) from bit identities',
+          summary: '<code>floor(log2)</code> of a 64-bit word built from the shift/OR bit-propagation identity (<code>x |= x &gt;&gt; 1/2/4/8/16/32</code>) plus a hand-written SWAR popcount, with no hardware <code>clz</code> anywhere in the implementation. Verified with 10,000,193 differential checks against the reference (193 boundary cases plus 10,000,000 fixed-seed random values): 0 mismatches, identical result checksum across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds, disassembly confirms no <code>clz</code>-class instruction is emitted, measured 7.7-7.9 ns/value at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'floor(log2) of a 64-bit word'],
+            ['METHOD', 'Shift/OR propagation plus hand-written SWAR popcount'],
+            ['IMPLEMENTATION', 'No hardware clz'],
+            ['DIFF TEST', '10,000,193 checks against the reference'],
+            ['COVERAGE', '193 boundary cases plus 10,000,000 fixed-seed random values'],
+            ['RESULT', '0 mismatches'],
+            ['CHECKSUM', 'Identical across -O0, -O2, and ASan+UBSan'],
+            ['DISASSEMBLY', 'No clz-class instruction emitted'],
+            ['THROUGHPUT', '7.7-7.9 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> floor(log2) verification
+construction .............. shift/OR propagation + SWAR popcount
+boundary cases ............ 193
+fixed-seed random values .. 10,000,000
+total checks .............. 10,000,193
+mismatches ................ 0
+checksum -O0 .............. MATCH
+checksum -O2 .............. MATCH
+checksum ASan + UBSan ..... MATCH
+clz-class instructions .... none
+
+<span class="result">7.7-7.9 ns/value at -O2</span>`,
+          verificationEnvironment: 'Host',
+          checks: 10000193,
+          failures: 0,
+          stressItems: 10000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/23-floor-log2',
+          repoLabel: 'lab/23-floor-log2',
+          terminalName: 'systems-lab / lab/23-floor-log2',
+          terminalLabel: 'Measured floor(log2) verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-timer-interrupt-delivery-offset',
+          kicker: 'RISC-V INTERRUPTS',
+          title: 'RISC-V timer interrupt delivery offset',
+          summary: 'Bare-metal M-mode experiment on QEMU 8.2.2: the CLINT <code>mtimecmp</code> register is programmed 5000 ticks ahead of <code>mtime</code>, and actual timer-trap delivery is measured over 1000 trials per run across 3 runs, with the first 8 trials of each run discarded (992 recorded trials per run, 2976 total). Measured delivery offset in <code>mtime</code> ticks: min 102-115, median 152-198, p99 814-881, max 992-998; <code>rdcycle</code>-to-<code>mtime</code> calibration measured at exactly 149 on every run. Every trial delivered exactly one timer interrupt, zero spurious traps, offset never negative across all 2976 recorded trials.',
+          specRows: [
+            ['BUILD', 'Bare-metal M-mode timer interrupt experiment'],
+            ['PLATFORM', 'QEMU 8.2.2'],
+            ['TIMER', 'mtimecmp programmed 5000 ticks ahead of mtime'],
+            ['TRIALS', '1000 per run across 3 runs; first 8 per run discarded; 992 recorded per run, 2976 total'],
+            ['MIN', '102-115 mtime ticks'],
+            ['MEDIAN', '152-198 mtime ticks'],
+            ['P99', '814-881 mtime ticks'],
+            ['MAX', '992-998 mtime ticks'],
+            ['CALIBRATION', 'rdcycle-to-mtime exactly 149 on every run'],
+            ['RESULT', 'One interrupt per trial, zero spurious traps, no negative offsets']
+          ],
+          terminalOutput: `<span class="prompt">$</span> timer interrupt delivery offset
+platform .................. QEMU 8.2.2
+mtimecmp lead ............. 5000 mtime ticks
+trials per run ............ 1000
+discarded per run ......... 8
+recorded per run .......... 992
+runs ...................... 3
+recorded trials ........... 2976
+minimum offset ............ 102-115 ticks
+median offset ............. 152-198 ticks
+p99 offset ................ 814-881 ticks
+maximum offset ............ 992-998 ticks
+rdcycle / mtime ........... 149 on every run
+spurious traps ............ 0
+negative offsets .......... 0
+
+<span class="result">exactly one timer interrupt per trial</span>`,
+          verificationEnvironment: 'QEMU 8.2.2 virt',
+          checks: 2976,
+          failures: 0,
+          stressItems: 2976,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtimecmp',
+          repoLabel: 'src/mtimecmp/',
+          terminalName: 'riscv-baremetal-demo / src/mtimecmp',
+          terminalLabel: 'Measured timer interrupt delivery offset output',
           showRepoLink: true
         }
       ];
