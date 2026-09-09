@@ -2520,6 +2520,89 @@ FNV-1a checksum ........... 9899f825c9bda325
           terminalName: 'systems-lab / lab/41-mask-below',
           terminalLabel: 'Measured low-bit mask differential test output',
           showRepoLink: true
+        },
+        {
+          id: 'xor-fold-parity',
+          kicker: 'BIT REDUCTION',
+          title: 'lab/35: xor-fold parity',
+          summary: '<code>parity64</code> reduces a 64-bit word with <code>x ^= x &gt;&gt; 32; 16; 8; 4; 2; 1</code>, then returns <code>x &amp; 1</code>, with no popcount builtin. Differential testing against a naive per-bit loop covered every 16-bit input and 1,000,000 fixed-seed random 64-bit values; <code>parity(a^b) == parity(a)^parity(b)</code> was verified on 1,000,000 pairs. Across 2,065,536 checks there were 0 mismatches. FNV-1a checksum <code>d42f33eaf01cd639</code> matched across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds, with zero sanitizer reports. Measured at <code>-O2</code>: 4.26 ns/value.',
+          specRows: [
+            ['BUILD', '64-bit parity from xor-fold reduction'],
+            ['REFERENCE', 'Naive per-bit loop'],
+            ['CHECKS', '2,065,536'],
+            ['INVARIANT', 'parity(a^b) == parity(a)^parity(b), 1M pairs'],
+            ['RESULT', '0 mismatches, zero sanitizer reports'],
+            ['CHECKSUM', 'd42f33eaf01cd639 across every build'],
+            ['-O2', '4.26 ns/value']
+          ],
+          terminalOutput: `<span class="prompt">$</span> xor-fold parity verification
+construction .............. x ^= x &gt;&gt; 32; 16; 8; 4; 2; 1
+result bit ................ x &amp; 1
+popcount builtin .......... NONE
+reference ................. naive per-bit loop
+exhaustive 16-bit inputs .. 65,536
+fixed-seed 64-bit values .. 1,000,000
+homomorphism pairs ........ 1,000,000
+checks .................... 2,065,536
+mismatches ................ 0
+FNV-1a checksum ........... d42f33eaf01cd639
+-O0 / -O2 / ASan+UBSan .... IDENTICAL
+sanitizer reports ......... 0
+-O2 measurement ........... 4.26 ns/value
+
+<span class="result">2,065,536 checks, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 2065536,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/35-parity-fold',
+          repoLabel: 'View the xor-fold parity proof',
+          terminalName: 'systems-lab / lab/35-parity-fold',
+          terminalLabel: 'Measured xor-fold parity verification output',
+          showRepoLink: true
+        },
+        {
+          id: 'fixed-byte-permutation',
+          kicker: 'BYTE PERMUTATION',
+          title: 'lab/43: fixed byte permutation',
+          summary: '<code>permute64</code> implements the fixed non-identity byte permutation <code>P = (2,5,0,7,1,6,3,4)</code>, and <code>inv_permute64</code> implements <code>INV = (2,4,0,6,7,1,5,3)</code>. Both use explicit shift/mask composition with hardcoded indices and no lookup tables. Differential testing against an independent table-driven byte loop covered 1,065,536 cases, with 0 mismatches; <code>inv(permute(x)) == x</code> and <code>permute(inv(x)) == x</code> held on every case. FNV-1a checksum <code>f75c74855e39dfd5</code> matched across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds, with zero sanitizer reports. Measured at <code>-O2</code>: 4.424 ns per call.',
+          specRows: [
+            ['BUILD', 'Fixed byte permutation and exact inverse'],
+            ['METHOD', 'Explicit shift/mask composition, no lookup tables'],
+            ['REFERENCE', 'Independent table-driven byte loop'],
+            ['CASES', '1,065,536'],
+            ['INVARIANTS', 'Both inverse round trips held on every case'],
+            ['RESULT', '0 mismatches, zero sanitizer reports'],
+            ['CHECKSUM', 'f75c74855e39dfd5 across every build'],
+            ['-O2', '4.424 ns per call']
+          ],
+          terminalOutput: `<span class="prompt">$</span> fixed byte permutation verification
+P ........................ (2,5,0,7,1,6,3,4)
+INV ...................... (2,4,0,6,7,1,5,3)
+construction .............. explicit shifts and masks
+lookup tables ............. NONE
+reference ................. table-driven byte loop
+exhaustive 16-bit inputs .. 65,536
+fixed-seed 64-bit values .. 1,000,000
+cases ..................... 1,065,536
+mismatches ................ 0
+inv(permute(x)) == x ...... HOLDS
+permute(inv(x)) == x ...... HOLDS
+FNV-1a checksum ........... f75c74855e39dfd5
+-O0 / -O2 / ASan+UBSan .... IDENTICAL
+sanitizer reports ......... 0
+-O2 measurement ........... 4.424 ns per call
+
+<span class="result">1,065,536 cases, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 1065536,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/43-byte-permute',
+          repoLabel: 'View the fixed byte permutation proof',
+          terminalName: 'systems-lab / lab/43-byte-permute',
+          terminalLabel: 'Measured fixed byte permutation verification output',
+          showRepoLink: true
         }
       ];
 
