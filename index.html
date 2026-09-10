@@ -470,22 +470,31 @@
       .section-head { grid-template-columns: 1fr; gap: 16px; }
       .project-browser { display: block; }
       .chapter-rail {
-        position: relative;
-        top: auto;
+        position: sticky;
+        top: 0;
+        margin-inline: calc(-1 * var(--pad));
+        padding-inline: var(--pad);
         border-block: 1px solid var(--line);
+        background: rgba(12, 15, 13, .97);
       }
       .chapter-list {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
       }
+      .chapter-list::-webkit-scrollbar { display: none; }
       .chapter-button {
-        width: 100%;
+        flex: 0 0 auto;
+        width: auto;
         min-height: 46px;
-        padding: 9px 10px;
+        padding: 9px 12px;
         border-right: 1px solid var(--line);
-        white-space: normal;
+        border-bottom: 0;
+        white-space: nowrap;
       }
-      .chapter-button:nth-child(even) { border-right: 0; }
       .project { contain-intrinsic-size: auto 1200px; scroll-margin-top: 64px; }
       html.density-compact .project { contain-intrinsic-size: auto 58px; }
       .compact-main { grid-template-columns: 46px minmax(118px, .6fr) minmax(170px, 1fr); }
@@ -686,7 +695,7 @@
     <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
   </div>
 
-  <button class="floating-contact cta-trigger is-visible" type="button" aria-label="Contact Chris" aria-hidden="false" tabindex="0">
+  <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <rect x="3" y="5" width="18" height="14" rx="1"></rect>
       <path d="m4 7 8 6 8-6"></path>
@@ -4657,6 +4666,16 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       window.addEventListener('scroll', scheduleScrollControlUpdate, { passive: true });
       window.addEventListener('resize', scheduleScrollControlUpdate);
       updateScrollControls();
+
+      const hero = document.querySelector('.hero');
+      const floatingContact = document.querySelector('.floating-contact');
+      const heroObserver = new IntersectionObserver(([entry]) => {
+        const visible = !entry.isIntersecting;
+        floatingContact.classList.toggle('is-visible', visible);
+        floatingContact.setAttribute('aria-hidden', String(!visible));
+        floatingContact.tabIndex = visible ? 0 : -1;
+      }, { threshold: 0.1 });
+      heroObserver.observe(hero);
 
       document.querySelectorAll('.cta-trigger').forEach((trigger) => {
         trigger.addEventListener('click', () => {
