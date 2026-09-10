@@ -49,6 +49,17 @@
       try { history.scrollRestoration = 'manual'; } catch (_) {}
       const view = new URLSearchParams(location.search).get('view');
       if (view === 'compact') document.documentElement.classList.add('density-compact');
+      // Deep-link veil: the browser's native fragment scroll measures the
+      // target through content-visibility placeholders, lands on the wrong
+      // card, and flashes it before our precise landing corrects it. Stash
+      // the hash so no native scroll happens, veil the page until we land,
+      // then restore the hash and reveal. Failsafe reveals regardless.
+      if (location.hash.startsWith('#project-')) {
+        window.__deepHash = location.hash;
+        try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+        document.documentElement.classList.add('deep-veil');
+        setTimeout(() => document.documentElement.classList.remove('deep-veil'), 2500);
+      }
     })();
   </script>
   <style>
@@ -75,6 +86,9 @@
     html { background: #0c0f0d; scroll-behavior: smooth; }
     html.view-switching { scroll-behavior: auto; }
     html.view-switching .project { content-visibility: visible; }
+    /* Deep-link veil: hidden until the permalink landing completes, so the
+       reader never sees a wrong card or the page top first. */
+    html.deep-veil body { opacity: 0; }
     body {
       margin: 0;
       min-width: 0;
@@ -1741,16 +1755,19 @@ assert(check == 0x2144DF1C);</code></pre>
       });
       setDensity(initialDensity);
 
-      if (location.hash.startsWith('#project-')) {
-        const deepTarget = document.getElementById(location.hash.slice(1));
+      // A permalink owns the initial viewport: the head script stashed the
+      // hash (so the browser never does its own wrong-card fragment scroll)
+      // and veiled the page; here we land instantly and exactly, restore the
+      // hash, and reveal. The jump neutralizes the page's smooth scrolling
+      // via inline style: an animated glide across 146 cards gets interrupted
+      // mid-card by any touch. Late shifts (fonts, images) get one correction,
+      // but only if the reader hasn't scrolled elsewhere since we landed; we
+      // never fight or interrupt their scroll, and never lock it.
+      const deepHash = window.__deepHash || (location.hash.startsWith('#project-') ? location.hash : '');
+      const revealDeepVeil = () => document.documentElement.classList.remove('deep-veil');
+      if (deepHash) {
+        const deepTarget = document.getElementById(deepHash.slice(1));
         if (deepTarget) {
-          // A permalink owns the initial viewport: land on the target card
-          // instantly and exactly, every time. behavior:'instant' matters:
-          // the page sets scroll-behavior:smooth, and 'auto' would inherit
-          // a long animated scroll that any touch or re-layout interrupts
-          // mid-card. Late shifts (fonts, images) get one correction, but
-          // only if the reader hasn't scrolled elsewhere since we landed;
-          // we never fight or interrupt their scroll, and never lock it.
           let landedAt = null;
           const land = () => {
             if (!document.contains(deepTarget)) return;
@@ -1770,12 +1787,22 @@ assert(check == 0x2144DF1C);</code></pre>
           const settle = () => {
             if (landedAt === null || Math.abs(window.scrollY - landedAt) <= 2) land();
           };
-          requestAnimationFrame(() => requestAnimationFrame(land));
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            land();
+            // Restore the permalink hash without scrolling or events, update
+            // the clear-link control, then reveal the page already on target.
+            try { history.replaceState(null, '', deepHash); } catch (_) {}
+            window.__deepHash = '';
+            updatePermalinkClear();
+            revealDeepVeil();
+          }));
           if (document.fonts && document.fonts.ready) {
             document.fonts.ready.then(() => requestAnimationFrame(settle));
           }
           if (document.readyState === 'complete') requestAnimationFrame(settle);
           else window.addEventListener('load', () => requestAnimationFrame(settle), { once: true });
+        } else {
+          revealDeepVeil();
         }
       }
 
