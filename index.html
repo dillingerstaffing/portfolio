@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260910-233752">
+  <meta name="build-version" content="v20260910-233830">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -11093,6 +11093,140 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/101-round-nearest-even",
     "repoLabel": "GitHub: systems-lab/lab/101-round-nearest-even",
     "terminalLabel": "Verified round-nearest-even test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-109-sat-neg",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the 10,065,537-check bench runs in a host user-space process against software, never a RISC-V instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the saturating-negation identity is verified as pure integer arithmetic, with no cache, pipeline, or predictor behavior in the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the bench runs in a host user-space process, with no M-mode boot code running."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the 10,065,537 checks prove the negation construction in isolation, with no scheduler, VM, driver, or syscall path running."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The branchless sign-mask identity (INT64_MIN folded into the mask, no branch, no comparison) is pure computational mechanism, portable to every ISA."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/109-sat-neg/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "Branchless Saturating Negation",
+    "summary": "Saturating negation of int64 from the sign-mask identity, INT64_MIN folded into the mask, no branch and no comparison anywhere. 10,065,537 differential checks, 0 mismatches, checksum identical across three builds, -O2 disassembly verified jump-free.",
+    "specRows": [
+      [
+        "CHECKS",
+        "10,065,537 differential"
+      ],
+      [
+        "MISMATCHES",
+        "0"
+      ],
+      [
+        "CHECKSUM",
+        "FNV-1a e52a81b464c7559c across -O0/-O2/ASan+UBSan"
+      ],
+      [
+        "THROUGHPUT",
+        "6.21 ns/value at -O2"
+      ],
+      [
+        "RESULT",
+        "PASS"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 109-sat-neg",
+    "terminalOutput": "$ make run\\ndifferential ............ 10065537 checks\\nmismatches .............. 0\\nchecksum ................ e52a81b464c7559c\\nbuilds .................. -O0, -O2, ASan+UBSan IDENTICAL\\nthroughput .............. 6.21 ns/value at -O2\\ndisassembly ............. zero conditional jumps\\nRESULT: PASS\\n\\nbranchless saturating negation, 0 mismatches",
+    "verificationEnvironment": "Host",
+    "checks": 10065537,
+    "failures": 0,
+    "stressItems": 10065537,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/109-sat-neg",
+    "repoLabel": "GitHub: systems-lab/lab/109-sat-neg",
+    "terminalLabel": "Verified saturating-negation test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mideleg-route",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The mideleg CSR and its readback behavior are executed under QEMU 8.2.2 on a real RISC-V hart, delegating supervisor external interrupts while supervisor timer interrupts stay in M-mode."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU emulates the trap routing functionally; no cache, pipeline, or predictor behavior is measured in the proof."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "The bare-metal M-mode trap entry installs direct-mode mtvec/mscratch and services an S-mode ecall for mideleg readback, since S-mode cannot read the CSR itself."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises trap routing only, with no OS kernel code."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "Selective interrupt routing through the mideleg bit mask (bit 9 delegated, all other bits preserved) is a pure bitmask mechanism, portable to every RISC-V hart with H or S mode."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-route/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "Selective Interrupt Routing via mideleg",
+    "summary": "M-mode module on QEMU 8.2.2 delegating only supervisor external interrupts (bit 9, readback-verified). Supervisor timer trap lands in M-mode with mcause machine timer; PLIC external lands in S-mode with sepc exactly the interrupted instruction, 0x800002e0.",
+    "specRows": [
+      [
+        "CHECKS",
+        "15"
+      ],
+      [
+        "MISMATCHES",
+        "0"
+      ],
+      [
+        "TIMER TRAP",
+        "mcause 0x8000000000000005 to M-mode"
+      ],
+      [
+        "EXTERNAL TRAP",
+        "scause 0x8000000000000009 to S-mode"
+      ],
+      [
+        "SEPC",
+        "exactly 0x800002e0"
+      ],
+      [
+        "RESULT",
+        "PASS x3 runs"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mideleg-route",
+    "terminalOutput": "$ make run-mideleg-route\\nchecks .................. 15\\nmismatches .............. 0\\nmcause .................. 0x8000000000000005 (M-mode)\\nscause .................. 0x8000000000000009 (S-mode)\\nsepc .................... 0x800002e0\\nPLIC claim ................ 10\\nRESULT: PASS x3 runs\\n\\nselective mideleg routing, 0 mismatches",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 15,
+    "failures": 0,
+    "stressItems": 15,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-route",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mideleg-route",
+    "terminalLabel": "Verified mideleg-route QEMU output",
     "showRepoLink": true
   }
 ];
