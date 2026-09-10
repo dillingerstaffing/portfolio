@@ -63,6 +63,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
@@ -109,7 +110,8 @@
     .identity span { color: var(--dim); font-size: 12px; }
     nav { display: flex; align-items: center; gap: clamp(16px, 3vw, 36px); }
     nav a { color: var(--muted); text-decoration: none; font-size: 12px; }
-    nav a:hover, nav a:focus-visible { color: var(--acid); }
+    nav a:hover, nav a:focus-visible, nav a.is-active { color: var(--acid); }
+    nav a.is-active { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
 
     .hero {
       padding-block: clamp(54px, 6vw, 82px) clamp(60px, 8vw, 96px);
@@ -348,6 +350,50 @@
     .contact-list li { padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--paper); font-size: 12px; }
     .contact-list li::before { content: ">"; color: var(--acid); margin-right: 10px; }
 
+    .research-page {
+      padding-block: clamp(64px, 9vw, 112px) clamp(88px, 12vw, 160px);
+    }
+    .research-page[hidden] { display: none; }
+    .research-header {
+      display: grid;
+      grid-template-columns: minmax(0, .42fr) minmax(0, 1fr);
+      gap: 36px;
+      padding-bottom: clamp(44px, 6vw, 72px);
+      border-bottom: 1px solid var(--acid);
+    }
+    .research-label { margin: 7px 0 0; color: var(--acid); font-size: 12px; }
+    .research-header h2 {
+      margin: 0;
+      font: 600 clamp(42px, 5vw, 68px)/.98 var(--display);
+      letter-spacing: -.035em;
+    }
+    .research-intro { max-width: 720px; margin: 20px 0 0; color: var(--muted); font-size: 16px; }
+    .research-note {
+      display: grid;
+      grid-template-columns: minmax(180px, .42fr) minmax(0, 1fr);
+      gap: 36px;
+      padding-block: clamp(48px, 7vw, 80px);
+      border-bottom: 1px solid var(--line);
+    }
+    .research-note h3 { margin: 0; max-width: 480px; font: 500 clamp(26px, 3vw, 39px)/1.08 var(--display); letter-spacing: -.02em; }
+    .research-date { margin: 16px 0 0; color: var(--acid); font-size: 11px; }
+    .research-body { max-width: 780px; }
+    .research-body p { margin: 0 0 20px; color: var(--paper); line-height: 1.85; }
+    .research-body pre {
+      margin: 28px 0;
+      padding: clamp(18px, 3vw, 28px);
+      overflow-x: auto;
+      border: 1px solid #30382f;
+      background: #090c09;
+      color: #cbd6c5;
+      font: 12px/1.75 var(--mono);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .research-code-link { color: var(--muted) !important; font-size: 12px; }
+    .research-code-link a { color: var(--acid); text-underline-offset: 4px; }
+    .research-code-link a:hover, .research-code-link a:focus-visible { color: var(--acid-soft); }
+
     .contact-chooser {
       width: min(440px, calc(100vw - 32px));
       padding: 0;
@@ -473,6 +519,9 @@
       .metric:nth-child(2) { border-right: 0; }
       .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
       .section-head { grid-template-columns: 1fr; gap: 16px; }
+      .research-header, .research-note { grid-template-columns: 1fr; gap: 18px; }
+      .research-note { gap: 28px; }
+      .research-date { margin-top: 10px; }
       .project-browser { display: block; }
       .chapter-rail {
         position: sticky;
@@ -565,6 +614,7 @@
     </div>
     <nav aria-label="Primary navigation">
       <a href="#work">Proof</a>
+      <a href="#research">Research</a>
       <a href="#services">Services</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -647,6 +697,83 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section id="research" class="frame research-page" aria-labelledby="research-title" hidden>
+      <header class="research-header">
+        <p class="research-label">RESEARCH / FIELD NOTES</p>
+        <div>
+          <h2 id="research-title">Research Notes</h2>
+          <p class="research-intro">Short technical notes on C, RISC-V, and systems internals. Each one earned its place by being verified first.</p>
+        </div>
+      </header>
+
+      <article class="research-note">
+        <div>
+          <h3>The Checksum That Always Lands on 0x2144DF1C</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
+        </div>
+        <div class="research-body">
+          <p>Everyone knows 0xCBF43926, the CRC-32 of “123456789”. But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending.</p>
+          <p>Lab/82 proved it: one million random buffers, checksum, append, re-checksum, every single one landed on the residue, zero mismatches. Append big-endian instead and there is no universal residue (for “123456789” it happens to be 0x3cc9742c, which is the trap the lab sets deliberately). The fingerprint was byte-identical across -O2, -O0, and sanitizer builds.</p>
+          <p>Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue. The check itself is three lines:</p>
+          <pre><code>crc = crc32(msg);
+append_le(msg, crc);
+assert(crc32(msg) == 0x2144DF1C);</code></pre>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
+          <h3>The Decrement That Leaves Room for the Ceiling</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
+        </div>
+        <div class="research-body">
+          <p>Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with <code>v |= v &gt;&gt; 1, 2, 4, 8, 16</code>, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones.</p>
+          <p>The decrement is the quiet genius: without it, a value already a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it.</p>
+          <p>Lab/84 verified it: 194 contract rows, exhaustive 16-bit, one million random 64-bit values, zero mismatches, 2.27 ns/value at -O2. The whole trick:</p>
+          <pre><code>v--;
+v |= v &gt;&gt; 1;
+v |= v &gt;&gt; 2;
+v |= v &gt;&gt; 4;
+v |= v &gt;&gt; 8;
+v |= v &gt;&gt; 16;
+v++;</code></pre>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
+          <h3>The Twist That Carries a Gigabit</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
+        </div>
+        <div class="research-body">
+          <p>In 1881 Alexander Graham Bell was granted US Patent 244,426 for twisting telephone wires together. His reasoning: if the direct and return wire are affected equally by a disturbance, the current generated in one will neutralize and destroy the current created in the other. That sentence is differential signaling, written before the light bulb was common.</p>
+          <p>The first implementation was literal wire transposition on pole lines, about four twists per kilometer. By 1900 the entire American telephone network was twisted. The mechanism: each half-twist reverses the induced current, two successive half-twists cancel, interference becomes common-mode and the differential receiver deletes it.</p>
+          <p>T568A and T568B differ only in the orange/green interchange, electrically identical. A SPLIT fault (pair 3-6 from different pairs) passes continuity but kills the twist protection, which is why the Crimp Bay tester checks pair integrity, not just continuity. 1000BASE-T runs all four pairs at 250 Mbps each, simultaneous bidirectional, PAM-5 at 125 Mbaud.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/proving-ground" target="_blank" rel="noopener">GitHub: proving-ground</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
+          <h3>The Multiply That Never Carries</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
+        </div>
+        <div class="research-body">
+          <p>Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x² + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation.</p>
+          <p>The honest signature is the square: over GF(2), (sum c_i x^i)² = sum c_i x^(2i), the freshman dream made true, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only.</p>
+          <p>This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2. The core loop has no carries, just shift and XOR:</p>
+          <pre><code>while (b) {
+  if (b &amp; 1) res ^= a;
+  a &lt;&lt;= 1;
+  b &gt;&gt;= 1;
+}</code></pre>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+        </div>
+      </article>
     </section>
 
     <section class="frame section" id="services" aria-labelledby="services-title">
@@ -4981,6 +5108,39 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         }
         copyStatus.textContent = 'Email address copied.';
       });
+
+      const researchPage = document.getElementById('research');
+      const normalPageSections = [...document.querySelectorAll('main > :not(#research)')];
+      const primaryNavLinks = [...document.querySelectorAll('nav[aria-label="Primary navigation"] a')];
+      const updatePageView = () => {
+        const hash = location.hash;
+        const researchIsActive = hash === '#research';
+        researchPage.hidden = !researchIsActive;
+        normalPageSections.forEach((section) => {
+          section.hidden = researchIsActive;
+        });
+
+        const activeHash = researchIsActive
+          ? '#research'
+          : ['#services', '#contact'].includes(hash) ? hash : '#work';
+        primaryNavLinks.forEach((link) => {
+          const active = link.getAttribute('href') === activeHash;
+          link.classList.toggle('is-active', active);
+          if (active) link.setAttribute('aria-current', 'page');
+          else link.removeAttribute('aria-current');
+        });
+
+        if (hash) {
+          window.requestAnimationFrame(() => {
+            const target = document.getElementById(hash.slice(1));
+            if (researchIsActive) window.scrollTo({ top: 0, behavior: 'auto' });
+            else if (target && !target.hidden) target.scrollIntoView({ behavior: 'auto', block: 'start' });
+            scheduleScrollControlUpdate();
+          });
+        }
+      };
+      window.addEventListener('hashchange', updatePageView);
+      updatePageView();
     })();
   </script>
 </body>
