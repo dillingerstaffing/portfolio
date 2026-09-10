@@ -223,11 +223,13 @@ def slugify(title):
 def article_strip_html(article):
     # Mirrors the layerStripHTML() renderer in index.src.html, but baked at
     # build time. because strings are validated plain text; escape anyway.
+    # One proof-log link per article, on the strip caption; per-slot evidence
+    # links were removed as redundant.
     ev = article.get("evidence") or {}
-    ev_html = ""
+    proof_html = ""
     if ev:
-        ev_html = (
-            f'<a class="layer-source" href="{html.escape(ev["url"], quote=True)}"'
+        proof_html = (
+            f'<a class="card-proof" href="{html.escape(ev["url"], quote=True)}"'
             f' target="_blank" rel="noopener">'
             f'{html.escape(ev["label"], quote=False)}'
             f' <span aria-hidden="true">\u2197</span></a>'
@@ -239,10 +241,11 @@ def article_strip_html(article):
         because = html.escape(slot["because"], quote=False)
         slots.append(
             f'<div class="{cls}"><div class="layer-name">{name}</div>'
-            f'<p class="layer-because">{because}</p>{ev_html}</div>'
+            f'<p class="layer-because">{because}</p></div>'
         )
     return ('<div class="layer-strip">'
-            '<div class="layer-strip-caption">Relevance by layer</div>'
+            '<div class="layer-strip-caption"><span>Relevance by layer</span>'
+            + proof_html + '</div>'
             + "".join(slots) + "</div>")
 
 

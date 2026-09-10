@@ -407,18 +407,24 @@
     .facts span:first-child { color: var(--dim); }
 
     .layer-strip { margin: 20px 0 0; padding-top: 14px; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
-    .layer-strip-caption { grid-column: 1 / -1; font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--dim); }
+    .layer-strip-caption { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--dim); }
+    .card-proof { font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .card-proof:hover, .card-proof:focus-visible { color: var(--acid); border-color: var(--acid); }
     .layer-slot .layer-name { font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--ink); padding-left: 8px; border-left: 2px solid var(--acid); }
     .layer-slot.dim .layer-name { color: var(--dim); padding-left: 0; border-left: 0; opacity: .6; }
     .layer-slot .layer-because { margin: 6px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
     .layer-slot.dim .layer-because { color: var(--muted); }
     .layer-source { display: inline-block; margin-top: 6px; font: 10px/1.5 var(--mono); color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
     .layer-source:hover, .layer-source:focus-visible { color: var(--acid); border-color: var(--acid); }
+    .slot-ext { display: inline-block; margin-top: 6px; font: 10px/1.5 var(--mono); color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
+    .slot-ext:hover, .slot-ext:focus-visible { color: var(--acid); border-color: var(--acid); }
     .portability { margin: 24px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
     .portability li { display: grid; grid-template-columns: minmax(112px, auto) 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .portability .port-label { font-family: var(--mono); color: var(--dim); }
     .portability .port-value .spec-ref { display: block; color: var(--dim); font-size: 11px; margin-top: 4px; text-decoration: none; }
     .portability .port-value a.spec-ref:hover, .portability .port-value a.spec-ref:focus-visible { color: var(--acid); }
+    .portability .port-value a.chip-link { color: inherit; text-decoration: none; border-bottom: 1px solid var(--line); }
+    .portability .port-value a.chip-link:hover, .portability .port-value a.chip-link:focus-visible { color: var(--acid); border-color: var(--acid); }
     @media (max-width: 700px) { .layer-strip { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 420px) { .layer-strip { grid-template-columns: 1fr; } }
     .quiet-link { display: inline-block; color: var(--dim); font-size: 11px; text-decoration: none; border-bottom: 1px solid #394138; }
@@ -1342,27 +1348,43 @@ assert(check == 0x2144DF1C);</code></pre>
 
       const esc = (s) => String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // One proof-log link per card, on the strip caption. Per-slot external
+      // dig-down appears only where the claim depends on an external fact:
+      // the ISA slot of an instruction-mapped card cites the ISA manual.
       const layerStripHTML = (project) => {
         if (!project.layers) return '';
         const order = ['ISA', 'FIRMWARE', 'KERNEL', 'PORTABLE'];
-        const ev = project.evidence
-          ? `<a class="layer-source" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(project.evidence.label)} <span aria-hidden="true">↗</span></a>`
+        const proofLink = project.evidence
+          ? `<a class="card-proof" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(project.evidence.label)} <span aria-hidden="true">↗</span></a>`
+          : '';
+        const specLink = project.portability
+          ? `<a class="slot-ext" href="${(project.portability.specUrl || '').replace(/"/g, '&quot;')}" target="_blank" rel="noopener">ISA manual: ${esc(project.portability.extension)} / ${esc(project.portability.instruction)} <span aria-hidden="true">↗</span></a>`
           : '';
         const slots = order
           .map((name) => {
             const slot = project.layers[name] || { applies: false, because: '' };
             const cls = slot.applies ? 'layer-slot lit' : 'layer-slot dim';
-            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}</p>${ev}</div>`;
+            const ext = (name === 'ISA' && slot.applies) ? specLink : '';
+            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}</p>${ext}</div>`;
           })
           .join('');
-        return `<div class="layer-strip"><div class="layer-strip-caption">Relevance by layer</div>${slots}</div>`;
+        return `<div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span>${proofLink}</div>${slots}</div>`;
       };
       const portabilityHTML = (project) => {
         if (!project.portability) return '';
         const p = project.portability;
         const specRef = p.specRef ? `<a class="spec-ref" href="${(p.specUrl || '').replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(p.specRef)} <span aria-hidden="true">↗</span></a>` : '';
         const chips = (p.whereNeeded || [])
-          .map((key) => (CHIPS_BY_KEY[key] && esc(CHIPS_BY_KEY[key].name)) || esc(key))
+          .map((key) => {
+            const chip = CHIPS_BY_KEY[key];
+            if (!chip) return esc(key);
+            const url = chip.source && chip.source.url;
+            const tip = chip.source && chip.source.doc
+              ? `${chip.name}: ${chip.source.doc}${chip.source.page ? ', p.' + chip.source.page : ''}`
+              : chip.name;
+            if (!url) return esc(chip.name);
+            return `<a class="chip-link" href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" title="${esc(tip).replace(/"/g, '&quot;')}">${esc(chip.name)} <span aria-hidden="true">↗</span></a>`;
+          })
           .join(', ');
         const rows = [
           ['HARDWARE', `${esc(p.instruction)} (${esc(p.extension)})${specRef}`],
