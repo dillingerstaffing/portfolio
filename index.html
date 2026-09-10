@@ -4279,6 +4279,147 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: riscv-baremetal-demo/src/mie-global',
           terminalLabel: 'Verified mstatus.MIE global interrupt gate output',
           showRepoLink: true
+        },
+        {
+          id: 'lab-96-isolate-lowest',
+          kicker: 'C / BIT MANIPULATION',
+          title: 'Isolate lowest set bit (lab/96)',
+          summary: 'iso(x) = x & -x via the two\'s-complement identity with the negation as unsigned (0 - x) mod 2^64, no builtins, no intrinsics, no tables. 1,065,536 differential checks (65,536 exhaustive 16-bit inputs plus 1,000,000 fixed-seed splitmix64 64-bit values, seed 0x243F6A8885A308D3) against a naive per-bit scanning reference: 0 mismatches. On all 1,065,535 nonzero cases the invariants popcount(x - iso) == popcount(x) - 1 and iso & (iso - 1) == 0 held with 0 failures (independent naive bit-loop popcount, no builtins in the test); x = 0 returns 0 per contract. FNV-1a checksum 6c73cad58aa2174f identical across -O0, -O2, and ASan+UBSan builds. gcc 13.3 at -O2 emits exactly mov/neg/and/ret. Measured at -O2: 2.169 ns/value.',
+          specRows: [
+            ['METHOD', 'x & -x, negation as unsigned (0 - x) mod 2^64, no builtins'],
+            ['COVERAGE', '65,536 exhaustive 16-bit + 1,000,000 fixed-seed 64-bit values'],
+            ['MISMATCHES', '0 vs naive per-bit scanning reference'],
+            ['INVARIANTS', 'popcount drop and power-of-two hold on all 1,065,535 nonzero cases, 0 failures'],
+            ['CHECKSUM', 'FNV-1a 6c73cad58aa2174f across -O0, -O2, ASan+UBSan'],
+            ['DISASSEMBLY', 'mov/neg/and/ret, no bit-scan instructions'],
+            ['MEASURED', '2.169 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 96-isolate-lowest',
+          terminalOutput: `$ make check (3 configs)\nexhaustive 16-bit ...... 65,536 inputs, 0 mismatches\nrandom 64-bit .......... 1,000,000 fixed-seed values, 0 mismatches\ninvariants ............. popcount(x-iso)=popcount(x)-1, iso&(iso-1)=0, 0 failures\nchecksum ............... 6c73cad58aa2174f (all configs)\ndisassembly ............ mov/neg/and/ret, no bit-scan\nmeasured ............... 2.169 ns/value at -O2\nRESULT: PASS\n\niso(x) = x & -x verified`,
+          verificationEnvironment: 'host',
+          checks: 1065536,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/96-isolate-lowest',
+          repoLabel: 'GitHub: systems-lab/lab/96-isolate-lowest',
+          terminalLabel: 'Verified lowest-set-bit isolation test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-sip-ssip',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'sip SSIP pending bit, delegation-gated (sip-ssip)',
+          summary: 'Bare-metal M-mode experiment on QEMU 8.2.2. With the supervisor software interrupt not delegated (boot mideleg 0x1444), csrs sip bit 1 is dropped: sip stays 0x0 and mip bit 1 stays clear. After delegating bit 1 in mideleg (readback 0x1446), csrs sets sip to 0x2 with all other sip bits unchanged and mip bit 1 follows (mip 0x82, the boot 0x80 MTIP conserved); csrc returns sip to 0x0 and clears mip bit 1; mideleg restored to 0x1444 with sip back at 0x0. Trap count 0 on all phases, mie.MSIE and mstatus.MIE read back clear throughout. 3 runs byte-identical, RESULT: PASS on all 3 runs.',
+          specRows: [
+            ['NOT DELEGATED', 'csrs sip bit 1 dropped, sip stays 0x0'],
+            ['DELEGATE', 'mideleg bit 1 set, readback 0x1446'],
+            ['SET', 'sip 0x2, other bits unchanged, mip 0x82 (MTIP 0x80 conserved)'],
+            ['CLEAR', 'sip back to 0x0, mip bit 1 cleared'],
+            ['TRAPS', '0, mie.MSIE and mstatus.MIE clear throughout'],
+            ['RESULT', 'PASS x3, byte-identical']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / sip-ssip',
+          terminalOutput: `$ make qemu (3 runs)\nboot .................. sip 0x0, mideleg 0x1444 (SSI not delegated)\nnot delegated ......... csrs sip,2 dropped, sip stays 0x0\ndelegate ................ mideleg 0x1446 read back\nset ................... sip 0x2, other bits 0, mip 0x82 (MTIP 0x80 conserved)\nclear ................. csrc sip,2, sip back to 0x0, mip 0x80\ntraps ................. 0, mie.MSIE and mstatus.MIE clear throughout\nRESULT: PASS x3, byte-identical\n\nsip SSIP delegation-gated writability verified`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sip-ssip',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/sip-ssip',
+          terminalLabel: 'Verified sip SSIP delegation-gated writability output',
+          showRepoLink: true
+        },
+        {
+          id: 'research-crc32-residue',
+          kicker: 'RESEARCH NOTE',
+          title: 'The Checksum That Always Lands on 0x2144DF1C',
+          summary: 'Everyone knows 0xCBF43926, the CRC-32 of "123456789". But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending. Lab/82 proved it: one million random buffers, checksum, append, re-checksum, every single one landed on the residue, zero mismatches. Append big-endian instead and you get 0x3cc9742c, which is the trap the lab sets deliberately. The fingerprint was byte-identical across -O2, -O0, and sanitizer builds. Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue.',
+          specRows: [
+            ['RESIDUE', '0x2144DF1C for every message, little-endian append'],
+            ['BE TRAP', '0x3cc9742c when appended big-endian'],
+            ['CASES', '1,000,000 random buffers, 0 mismatches'],
+            ['THROUGHPUT', '207.7 MiB/s at -O2'],
+            ['SOURCE', 'Wikipedia Mathematics of CRC, kernel Documentation/crc32.txt']
+          ],
+          terminalName: 'systems-lab / lab / 82-crc32-residue',
+          terminalOutput: `$ ./crc32_residue (1M buffers)\nresidue ............ 0x2144DF1C (all cases)\nbe-trap ............ 0x3cc9742c\nmismatches ......... 0\nthroughput ......... 207.7 MiB/s\n\nCRC-32 residue invariant verified`,
+          verificationEnvironment: 'Host',
+          checks: 1000000,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified CRC-32 residue test output',
+          showRepoLink: true
+        },
+        {
+          id: 'research-round-up-pow2',
+          kicker: 'RESEARCH NOTE',
+          title: 'The Decrement That Leaves Room for the Ceiling',
+          summary: 'Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with v |= v >> 1, 2, 4, 8, 16, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones. The decrement is the quiet genius: without it, a value already a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it. Lab/84 verified it: 194 contract rows, exhaustive 16-bit, one million random 64-bit values, zero mismatches, 2.27 ns/value at -O2.',
+          specRows: [
+            ['OPERATIONS', '12 ops for 32-bit (decrement + 5 smears + increment)'],
+            ['EDGE CASE', 'input 0 returns 0 (documented, not hidden)'],
+            ['CASES', '194 contract + 65,536 exhaustive + 1M random, 0 mismatches'],
+            ['SPEED', '2.27 ns/value at -O2'],
+            ['PROVENANCE', 'Anderson 2001-09-14, Hart traced to 1997 newsgroups']
+          ],
+          terminalName: 'systems-lab / lab / 84-round-up-pow2',
+          terminalOutput: `$ ./round_up_pow2\ncontract rows ....... 194 pass\nexhaustive 16-bit ... 65536 pass\nrandom 64-bit ...... 1000000 pass\nmismatches ......... 0\nspeed .............. 2.27 ns/value\n\nRound-up-to-pow2 verified`,
+          verificationEnvironment: 'Host',
+          checks: 1065730,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified round-up-pow2 test output',
+          showRepoLink: true
+        },
+        {
+          id: 'research-twisted-pair',
+          kicker: 'RESEARCH NOTE',
+          title: 'The Twist That Carries a Gigabit',
+          summary: 'In 1881 Alexander Graham Bell was granted US Patent 244,426 for twisting telephone wires together. His reasoning: if the direct and return wire are affected equally by a disturbance, the current generated in one will neutralize and destroy the current created in the other. That sentence is differential signaling, written before the light bulb was common. The first implementation was literal wire transposition on pole lines, about four twists per kilometer. By 1900 the entire American telephone network was twisted. The mechanism: each half-twist reverses the induced current, two successive half-twists cancel, interference becomes common-mode and the differential receiver deletes it. T568A and T568B differ only in the orange/green interchange, electrically identical. A SPLIT fault (pair 3-6 from different pairs) passes continuity but kills the twist protection, which is why the Crimp Bay tester checks pair integrity, not just continuity. 1000BASE-T runs all four pairs at 250 Mbps each, simultaneous bidirectional, PAM-5 at 125 Mbaud.',
+          specRows: [
+            ['PATENT', 'US 244,426 (1881), Bell: differential signaling'],
+            ['FIRST DEPLOY', 'wire transposition, ~4 twists/km, US network by 1900'],
+            ['T568A/B', 'differ only in orange/green interchange, electrically identical'],
+            ['SPLIT FAULT', 'passes continuity, kills twist protection'],
+            ['1000BASE-T', '4 pairs x 250 Mbps, PAM-5, 125 Mbaud']
+          ],
+          terminalName: 'proving-ground / bench / 21-the-crimp-bay',
+          terminalOutput: `$ cable-tester certify\ncable 1 ............ PASS (straight-through)\ncable 2 ............ SPLIT fault found\ncable 3 ............ PASS\ncertified .......... 3/3 at 1000BASE-T\n\nTwisted-pair physics verified in bench`,
+          verificationEnvironment: 'Host',
+          checks: 3,
+          failures: 0,
+          stressItems: 4,
+          repoUrl: 'https://github.com/dillingerstaffing/proving-ground',
+          repoLabel: 'GitHub: proving-ground',
+          terminalLabel: 'Verified Crimp Bay test output',
+          showRepoLink: true
+        },
+        {
+          id: 'research-carryless-multiply',
+          kicker: 'RESEARCH NOTE',
+          title: 'The Multiply That Never Carries',
+          summary: 'Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x^2 + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation. The honest signature is the square: over GF(2), (sum c_i x^i)^2 = sum c_i x^{2i}, the freshman dream made true, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only. This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2.',
+          specRows: [
+            ['FIELD', 'GF(2): addition is XOR, no carries exist'],
+            ['SIGNATURE', '0xff * 0xff = 0x5555 (bits land on even positions)'],
+            ['GHASH', 'GF(2^128) mult mod x^128+x^7+x^2+x+1'],
+            ['HARDWARE', 'PCLMULQDQ (2008), RISC-V Zbc clmul'],
+            ['CASES', '4.29B exhaustive + 1M random, 0 mismatches']
+          ],
+          terminalName: 'systems-lab / lab / 67-clmul',
+          terminalOutput: `$ ./clmul (exhaustive)\n2^32 x 2^32 ....... 4294967296 pass\nrandom ............. 1000000 pass\nmismatches ......... 0\nspeed .............. 102.53 ns/value\n\nCarryless multiply verified`,
+          verificationEnvironment: 'Host',
+          checks: 4295967296,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified carryless multiply test output',
+          showRepoLink: true
         }
 
       ];
