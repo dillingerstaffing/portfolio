@@ -376,6 +376,16 @@
       border-bottom: 1px solid var(--line);
     }
     .research-note h3 { margin: 0; max-width: 480px; font: 500 clamp(26px, 3vw, 39px)/1.08 var(--display); letter-spacing: -.02em; }
+    .research-latest {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 11px;
+      color: #899386;
+      font: 500 9px/1 var(--mono);
+      letter-spacing: .18em;
+    }
+    .research-latest::before { content: ""; width: 14px; border-top: 1px solid #465245; }
     .research-date { margin: 16px 0 0; color: var(--acid); font-size: 11px; }
     .research-body { max-width: 780px; }
     .research-body p { margin: 0 0 20px; color: var(--paper); line-height: 1.85; }
@@ -710,17 +720,49 @@
 
       <article class="research-note">
         <div>
-          <h3>The Checksum That Always Lands on 0x2144DF1C</h3>
+          <p class="research-latest">LATEST</p>
+          <h3>The Lookup Table That Fits in 16 Bits</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 11:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The parity of a 32-bit word is the XOR of all its bits. Fold the word down and the XOR survives every step: <code>x ^= x &gt;&gt; 16</code>, then 8, then 4, and the answer sits in the lowest nibble. The final step is where it turns beautiful: <code>(0x6996 &gt;&gt; v) &amp; 1</code>. The constant in binary is <code>0110 1001 1001 0110</code>, and bit <code>i</code> of it is exactly the parity of nibble <code>i</code>, so one shift reads out a 16-entry lookup table packed into a single immediate. No table, no branches, no popcount instruction.</p>
+          <pre><code>x ^= x &gt;&gt; 16;
+x ^= x &gt;&gt; 8;
+x ^= x &gt;&gt; 4;
+return (0x6996 &gt;&gt; (x &amp; 0xf)) &amp; 1;</code></pre>
+          <p>Writing the constant down is not the hard part; trusting it is. All sixteen rows were hand-derived against the naive per-bit definition rather than assumed. And the compiler takes the construction literally: the -O2 disassembly shows <code>movl $27030</code>, which is 0x6996 in decimal, with no popcount-class instruction emitted.</p>
+          <p>Lab/97 checked 1,065,536 differential cases and a million homomorphism pairs confirming that parity(a^b) equals parity(a) XOR parity(b). Zero mismatches. One FNV fingerprint identical across -O0, -O2, and the sanitizers. The shift-lookup idea is credited to Mathew Hendry in December 2002; lab/35 built the fold, lab/97 packed the table that fits in sixteen bits.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
+          <h3>The Multiply That Never Carries</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>Append a message's CRC-32 checksum to the message in little-endian byte order, then run CRC-32 over the combined bytes. The result is always 0x2144DF1C, no matter what the original message contained.</p>
-          <pre><code>crc = crc32(msg);
-append_le(msg, crc);
-assert(crc32(msg) == 0x2144DF1C);</code></pre>
-          <p>This CRC-32 algorithm flips every bit before it returns a checksum. The appended bytes are therefore not the raw remainder from the division inside CRC-32, so checking them again does not cancel to zero. Instead, the second pass always ends at the same fixed value, called the residue.</p>
-          <p>Ethernet hardware uses that shortcut: after reading a frame and its checksum, it only has to compare the result with 0x2144DF1C. Lab/82 tested one million random buffers at 207.7 MiB/s with zero mismatches, and the result stayed byte-identical at -O0, at -O2, and with sanitizers enabled.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+          <p>Here is the surprise: <code>0xff × 0xff</code> can equal <code>0x5555</code>, not the ordinary answer <code>0xfe01</code>. Write <code>0xff</code> as eight 1-bits: <code>11111111</code>. Ordinary multiplication adds the overlapping shifted rows and carries into the next column. This version combines the rows with XOR, so an odd number of 1s leaves a 1, an even number leaves a 0, and nothing carries. The alternating columns produce <code>0101010101010101</code>, or <code>0x5555</code>.</p>
+          <pre><code>while (b) {
+  if (b &amp; 1) res ^= a;
+  a &lt;&lt;= 1;
+  b &gt;&gt;= 1;
+}</code></pre>
+          <p>This is called carryless multiplication. AES-GCM uses it to authenticate encrypted data, and modern chips provide a dedicated instruction for it.</p>
+          <p>Lab/67 checked all 4,294,967,296 pairs of 16-bit inputs and one million random larger values. It found zero mismatches and measured 102.53 ns per value at -O2.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
+          <h3>The Twist That Carries a Gigabit</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Alexander Graham Bell’s 1881 idea was simple: if outside noise pushes both wires by the same amount, comparing one wire with the other removes that shared noise. The signal survives because it is carried by the difference between the two wires.</p>
+          <p>Each half-twist swaps which wire is closer to the source of the noise. Over a full twist, both wires spend the same amount of distance in each position, so they pick up nearly the same average noise and the receiver can subtract it away.</p>
+          <p>This is why Ethernet cables contain twisted pairs. It is also why a SPLIT fault, where the two wires come from different pairs, can pass a basic continuity test but still fail in use: the wires no longer trade places together, so their noise no longer cancels.</p>
         </div>
       </article>
 
@@ -746,48 +788,17 @@ v++;</code></pre>
 
       <article class="research-note">
         <div>
-          <h3>The Twist That Carries a Gigabit</h3>
+          <h3>The Checksum That Always Lands on 0x2144DF1C</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>Alexander Graham Bell’s 1881 idea was simple: if outside noise pushes both wires by the same amount, comparing one wire with the other removes that shared noise. The signal survives because it is carried by the difference between the two wires.</p>
-          <p>Each half-twist swaps which wire is closer to the source of the noise. Over a full twist, both wires spend the same amount of distance in each position, so they pick up nearly the same average noise and the receiver can subtract it away.</p>
-          <p>This is why Ethernet cables contain twisted pairs. It is also why a SPLIT fault, where the two wires come from different pairs, can pass a basic continuity test but still fail in use: the wires no longer trade places together, so their noise no longer cancels.</p>
-        </div>
-      </article>
-
-      <article class="research-note">
-        <div>
-          <h3>The Multiply That Never Carries</h3>
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Here is the surprise: <code>0xff × 0xff</code> can equal <code>0x5555</code>, not the ordinary answer <code>0xfe01</code>. Write <code>0xff</code> as eight 1-bits: <code>11111111</code>. Ordinary multiplication adds the overlapping shifted rows and carries into the next column. This version combines the rows with XOR, so an odd number of 1s leaves a 1, an even number leaves a 0, and nothing carries. The alternating columns produce <code>0101010101010101</code>, or <code>0x5555</code>.</p>
-          <pre><code>while (b) {
-  if (b &amp; 1) res ^= a;
-  a &lt;&lt;= 1;
-  b &gt;&gt;= 1;
-}</code></pre>
-          <p>This is called carryless multiplication. AES-GCM uses it to authenticate encrypted data, and modern chips provide a dedicated instruction for it.</p>
-          <p>Lab/67 checked all 4,294,967,296 pairs of 16-bit inputs and one million random larger values. It found zero mismatches and measured 102.53 ns per value at -O2.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
-        </div>
-      </article>
-
-      <article class="research-note">
-        <div>
-          <h3>The Lookup Table That Fits in 16 Bits</h3>
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 11:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>The parity of a 32-bit word is the XOR of all its bits. Fold the word down and the XOR survives every step: <code>x ^= x &gt;&gt; 16</code>, then 8, then 4, and the answer sits in the lowest nibble. The final step is where it turns beautiful: <code>(0x6996 &gt;&gt; v) &amp; 1</code>. The constant in binary is <code>0110 1001 1001 0110</code>, and bit <code>i</code> of it is exactly the parity of nibble <code>i</code>, so one shift reads out a 16-entry lookup table packed into a single immediate. No table, no branches, no popcount instruction.</p>
-          <pre><code>x ^= x &gt;&gt; 16;
-x ^= x &gt;&gt; 8;
-x ^= x &gt;&gt; 4;
-return (0x6996 &gt;&gt; (x &amp; 0xf)) &amp; 1;</code></pre>
-          <p>Writing the constant down is not the hard part; trusting it is. All sixteen rows were hand-derived against the naive per-bit definition rather than assumed. And the compiler takes the construction literally: the -O2 disassembly shows <code>movl $27030</code>, which is 0x6996 in decimal, with no popcount-class instruction emitted.</p>
-          <p>Lab/97 checked 1,065,536 differential cases and a million homomorphism pairs confirming that parity(a^b) equals parity(a) XOR parity(b). Zero mismatches. One FNV fingerprint identical across -O0, -O2, and the sanitizers. The shift-lookup idea is credited to Mathew Hendry in December 2002; lab/35 built the fold, lab/97 packed the table that fits in sixteen bits.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+          <p>Append a message's CRC-32 checksum to the message in little-endian byte order, then run CRC-32 over the combined bytes. The result is always 0x2144DF1C, no matter what the original message contained.</p>
+          <pre><code>crc = crc32(msg);
+append_le(msg, crc);
+assert(crc32(msg) == 0x2144DF1C);</code></pre>
+          <p>This CRC-32 algorithm flips every bit before it returns a checksum. The appended bytes are therefore not the raw remainder from the division inside CRC-32, so checking them again does not cancel to zero. Instead, the second pass always ends at the same fixed value, called the residue.</p>
+          <p>Ethernet hardware uses that shortcut: after reading a frame and its checksum, it only has to compare the result with 0x2144DF1C. Lab/82 tested one million random buffers at 207.7 MiB/s with zero mismatches, and the result stayed byte-identical at -O0, at -O2, and with sanitizers enabled.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
         </div>
       </article>
     </section>
@@ -4720,6 +4731,52 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: systems-lab/lab/88-inc128-carry',
           terminalLabel: 'Verified two-word 128-bit increment test output',
           showRepoLink: true
+        },
+        {
+          id: 'lab-89-swar-abs',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'Branchless Per-Lane Absolute Value',
+          summary: 'Absolute value of four packed signed 16-bit lanes in one 64-bit word from the sign-mask identity <code>(x ^ m) - m</code>, one guard bit per lane with lane-bound proofs that no borrow ever leaves a lane. 11,310,948 differential checks vs an independent scalar per-lane reference, 0 mismatches. <code>abs(-32768) = -32768</code> pinned by contract.',
+          specRows: [
+            ['CHECKS', '11,310,948'],
+            ['MISMATCHES', '0'],
+            ['DISASSEMBLY', 'no conditional jump at -O2, no cmov'],
+            ['MEASURED', '1.210 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 89-swar-abs',
+          terminalOutput: `$ make check\ndifferential checks .... 11,310,948\nmismatches ............. 0\n-O2 conditional jumps .. 0\nmeasured ................ 1.210 ns/value at -O2\n\nPer-lane absolute value verified`,
+          verificationEnvironment: 'Host',
+          checks: 11310948,
+          failures: 0,
+          stressItems: 11310948,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/89-swar-abs',
+          repoLabel: 'GitHub: systems-lab/lab/89-swar-abs',
+          terminalLabel: 'Verified per-lane absolute value test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mepc-resume-skip',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'Trap-Resume Skip via mepc+4',
+          summary: 'Bare-metal M-mode program where the trap handler adds 4 to <code>mepc</code> before <code>mret</code>, skipping a faulting 4-byte load at an unmapped address exactly once. <code>mcause=0x5</code>, mepc 0x80000312 at entry, 0x80000316 after the skip; the instruction at faulting+4 ran and the faulting load never committed.',
+          specRows: [
+            ['TRAP', '1 load access fault, mcause=0x5'],
+            ['MTVAL', '0xffffffffc0000000 (unmapped address)'],
+            ['MEPC', '0x80000312 entry, 0x80000316 after +4'],
+            ['RESUME', 'marker 0xdeadbeefdeadbeef ran at faulting+4'],
+            ['RUNS', '3 byte-identical'],
+            ['RESULT', 'PASS x3']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mepc-resume-skip',
+          terminalOutput: `$ make qemu (3 runs)\ntraps .............. 1\nmcause ............. 0x5 (load access fault)\nmepc entry ......... 0x80000312\nmepc after +4 ...... 0x80000316\nresume marker ...... 0xdeadbeefdeadbeef\nRESULT: PASS x3, byte-identical\n\nTrap-resume skip verified`,
+          verificationEnvironment: 'QEMU 8.2.2',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mepc-resume-skip',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/mepc-resume-skip',
+          terminalLabel: 'Verified trap-resume skip test output',
+          showRepoLink: true
         }
 
       ];
@@ -5283,6 +5340,24 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       });
 
       const blogPage = document.getElementById('blog');
+      const blogNotes = [...blogPage.querySelectorAll('.research-note')];
+      const releaseKey = (note) => {
+        const timestamp = note.querySelector('time')?.textContent.trim() || '';
+        const parts = timestamp.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?/);
+        if (!parts) return Number.NEGATIVE_INFINITY;
+        return Date.UTC(
+          Number(parts[1]),
+          Number(parts[2]) - 1,
+          Number(parts[3]),
+          Number(parts[4] || 0),
+          Number(parts[5] || 0)
+        );
+      };
+      blogNotes
+        .map((note, index) => ({ note, index, released: releaseKey(note) }))
+        .sort((a, b) => b.released - a.released || a.index - b.index)
+        .forEach(({ note }) => blogPage.appendChild(note));
+
       const normalPageSections = [...document.querySelectorAll('main > :not(#blog)')];
       const primaryNavLinks = [...document.querySelectorAll('nav[aria-label="Primary navigation"] a')];
       const updatePageView = () => {
