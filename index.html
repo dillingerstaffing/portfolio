@@ -3940,28 +3940,33 @@ done
       let activeFilter = null;
       const visibleProjectCards = () => projectCards.filter((card) => !card.hidden);
       const nearestProject = () => visibleProjectCards().reduce((nearest, card) => {
-        const distance = Math.abs(card.getBoundingClientRect().top - topOffset());
+        const rect = card.getBoundingClientRect();
+        if (rect.bottom <= 0 || rect.top >= window.innerHeight) return nearest;
+        const distance = Math.abs(rect.top - topOffset());
         return !nearest || distance < nearest.distance ? { card, distance } : nearest;
-      }, null)?.card;
+      }, null)?.card || null;
 
-      const setActiveChapter = (chapter, ensureVisible = true) => {
+      const setActiveChapter = (chapter) => {
         chapterButtons.forEach((button) => {
           const active = button.dataset.chapter === chapter;
-          const changed = active && !button.classList.contains('is-active');
           button.classList.toggle('is-active', active);
           button.setAttribute('aria-pressed', String(active));
           if (active) {
             button.setAttribute('aria-current', 'true');
-            if (ensureVisible && changed && window.innerWidth <= 900) {
-              button.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
-            }
           } else {
             button.removeAttribute('aria-current');
           }
         });
       };
 
-      const setChapterFilter = (chapter, ensureVisible = true) => {
+      const scrollChipIntoRailView = (button) => {
+        const list = button.closest('.chapter-list');
+        if (!list) return;
+        const target = button.offsetLeft - (list.clientWidth - button.offsetWidth) / 2;
+        list.scrollTo({ left: target, behavior: motionReduced ? 'auto' : 'smooth' });
+      };
+
+      const setChapterFilter = (chapter) => {
         activeFilter = chapter && chapter !== 'ALL' ? chapter : null;
         projectCards.forEach((card) => {
           card.hidden = Boolean(activeFilter && card.dataset.chapter !== activeFilter);
@@ -3971,12 +3976,12 @@ done
           recordClose.setAttribute('aria-label', `${activeFilter} chapter record`);
           recordKicker.textContent = 'CHAPTER RECORD';
           recordTotal.textContent = `${activeFilter}: ${visibleCount} OF ${PROJECTS.length}`;
-          setActiveChapter(activeFilter, ensureVisible);
+          setActiveChapter(activeFilter);
         } else {
           recordClose.setAttribute('aria-label', 'Complete proof record');
           recordKicker.textContent = 'COMPLETE RECORD';
           recordTotal.textContent = `${PROJECTS.length} projects. ${totalChecks} verification checks. ${totalFailures} failures.`;
-          setActiveChapter('ALL', ensureVisible);
+          setActiveChapter('ALL');
         }
         applySearch();
       };
@@ -3995,8 +4000,8 @@ done
         if (event.key === 'ArrowRight') nextIndex = Math.min(chapterButtons.length - 1, currentIndex + 1);
         if (event.key === 'Home') nextIndex = 0;
         if (event.key === 'End') nextIndex = chapterButtons.length - 1;
-        chapterButtons[nextIndex].focus();
-        chapterButtons[nextIndex].scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
+        chapterButtons[nextIndex].focus({ preventScroll: true });
+        scrollChipIntoRailView(chapterButtons[nextIndex]);
       });
       const searchInput = document.getElementById('proof-search');
       const searchClear = document.querySelector('.search-clear');
@@ -4071,7 +4076,7 @@ done
         applySearch();
         searchInput.focus();
       });
-      setChapterFilter(null, false);
+      setChapterFilter(null);
 
       const densityButtons = [...document.querySelectorAll('.density-button')];
       const initialDensity = new URLSearchParams(location.search).get('view') === 'compact' ? 'compact' : 'detailed';
