@@ -3616,6 +3616,103 @@ done
           terminalName: 'riscv-baremetal-demo / src / lrsc-histogram',
           terminalLabel: 'Verified LR/SC attempt-histogram test output',
           showRepoLink: true
+        },
+        {
+          id: 'clmul-carryless-64',
+          kicker: 'BIT MANIPULATION',
+          title: 'clmul-carryless-64 (systems-lab/lab/67)',
+          summary: 'Carryless (GF(2)) 64x64 to 128-bit multiply from the shift-xor identity, branch-free, no tables, no intrinsics. Verified: 8/8 hand-derived known-answer vectors pass, 4,295,967,296 differential checks (all 2^32 16-bit pairs plus 1,000,000 fixed-seed 64-bit pairs) against an independent per-bit recurrence and a per-output-bit convolution reference, 0 mismatches; distributivity, commutativity, clmul(a,1)==a and clmul(a,0)==0 held on all 1,000,000 random triples; FNV-1a checksum be0ed5a4db5813fc identical across -O0, -O2, and ASan+UBSan builds; measured 102.53 ns/value at -O2.',
+          specRows: [
+            ['OPERATION', 'GF(2) 64x64 -> 128 carryless multiply, shift-xor'],
+            ['TABLES', 'None, no intrinsics'],
+            ['KNOWN-ANSWER', '8/8 hand-derived vectors pass'],
+            ['CHECKS', '4,295,967,296 differential vs two independent references, 0 mismatches'],
+            ['INVARIANTS', 'Distributivity, commutativity on 1M triples'],
+            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '102.53 ns/value at -O2']
+          ],
+          terminalOutput: `$ ./test_clmul\nknown_answer_vectors ....... 8/8 passed\ndifferential_checks ......... 4295967296\nmismatches .................. 0\nfnv1a_checksum ............. be0ed5a4db5813fc\nthroughput (-O2) ............ 102.53 ns/value\n\n102.53 ns/value at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 4295967296,
+          failures: 0,
+          stressItems: 4295967296,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul',
+          repoLabel: 'GitHub: systems-lab/lab/67-clmul',
+          terminalName: 'systems-lab / lab / 67-clmul',
+          terminalLabel: 'Verified carryless multiply test output',
+          showRepoLink: true
+        },
+        {
+          id: 'swar-saturating-add-lanes',
+          kicker: 'BIT MANIPULATION',
+          title: 'swar-saturating-add (systems-lab/lab/68)',
+          summary: 'Saturating add of four packed 16-bit lanes in one 64-bit word via the SWAR mask/subtract lane-guard identity (even/odd lane pairs spaced 32 bits apart with guard bits, branchless clamp to 0xFFFF). Verified: 4,296,646,922 differential checks (2^32 exhaustive lane pairs plus 1,679,616 directed crosstalk vectors plus 10 hand-derived vectors) against an independent per-lane scalar reference, 0 mismatches, clamping at 0xFFFF proven on overflow; FNV-1a 0x8de5b49f4d62f90d on the exhaustive -O2 run and 0xa2f2b90587bcb5b1 identical across -O0, -O2, ASan+UBSan quick runs; measured 4.589 ns/op (217.9 Mops/s) at -O2.',
+          specRows: [
+            ['OPERATION', 'Saturating add of four packed 16-bit lanes, one 64-bit word'],
+            ['METHOD', 'SWAR mask/subtract lane-guard identity, branchless 0xFFFF clamp'],
+            ['CHECKS', '4,296,646,922 differential vs per-lane scalar reference, 0 mismatches'],
+            ['CROSSTALK', '1,679,616 directed lane-crosstalk vectors, 0 mismatches'],
+            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '4.589 ns/op (217.9 Mops/s) at -O2']
+          ],
+          terminalOutput: `$ ./test_swar_sat_add\ndifferential_checks ......... 4296646922\nmismatches .................. 0\nclamp_at_0xFFFF ............. proven\nfnv1a_checksum ............. 0x8de5b49f4d62f90d\nthroughput (-O2) ............ 4.589 ns/op\n\n4.589 ns/op at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 4296646922,
+          failures: 0,
+          stressItems: 4296646922,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/68-swar-sat-add',
+          repoLabel: 'GitHub: systems-lab/lab/68-swar-sat-add',
+          terminalName: 'systems-lab / lab / 68-swar-sat-add',
+          terminalLabel: 'Verified SWAR saturating add test output',
+          showRepoLink: true
+        },
+        {
+          id: 'popcount-byte-table',
+          kicker: 'BIT MANIPULATION',
+          title: 'popcount-byte-table (systems-lab/lab/65)',
+          summary: 'Population count of a 64-bit word via a 256-entry byte lookup table built at startup from the one-bit identity (table[i] = (i & 1) + table[i >> 1], no hard-coded popcounts), with the word result from the byte-decomposition sum identity. Verified: 1,065,792 differential checks (256 table entries plus 65,536 exhaustive 16-bit inputs plus 1,000,000 fixed-seed 64-bit values) against __builtin_popcountll, 0 mismatches; FNV-1a checksum 0xe1fc995406ad5592 identical across -O0, -O2, and ASan+UBSan builds; measured 7.405 ns/value at -O2.',
+          specRows: [
+            ['OPERATION', 'popcount64 via 256-entry byte table'],
+            ['TABLE', 'Built from the one-bit identity, table[0] = 0'],
+            ['REFERENCE', '__builtin_popcountll'],
+            ['CHECKS', '1,065,792 differential (256 table + 65,536 exhaustive + 1,000,000 random), 0 mismatches'],
+            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '7.405 ns/value at -O2']
+          ],
+          terminalOutput: `$ ./test_popcount\ntable_entries ................ 256/256 re-derived\nexhaustive_16bit ............ 65536/65536\nrandom_64bit ................ 1000000/1000000\nmismatches .................. 0\nfnv1a_checksum ............. 0xe1fc995406ad5592\nthroughput (-O2) ............ 7.405 ns/value\n\n7.405 ns/value at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 1065792,
+          failures: 0,
+          stressItems: 1065792,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/65-popcount-byte',
+          repoLabel: 'GitHub: systems-lab/lab/65-popcount-byte',
+          terminalName: 'systems-lab / lab / 65-popcount-byte',
+          terminalLabel: 'Verified popcount table test output',
+          showRepoLink: true
+        },
+        {
+          id: 'clz-byte-table',
+          kicker: 'BIT MANIPULATION',
+          title: 'clz-byte-table (systems-lab/lab/66)',
+          summary: 'Count leading zeros of a 64-bit word from a 256-entry 8-bit table plus the byte-scan identity: the most significant nonzero byte sets the lane, result = 8 * (zero bytes above it) + table[byte]; the table is built from the shift-until-bit-7 identity (zero byte counts 8), zero input defined as 64. Verified: 1,065,866 checks (256 table re-derivations plus 74 directed vectors plus 65,536 exhaustive 16-bit inputs plus 1,000,000 fixed-seed 64-bit values) against __builtin_clzll, 0 mismatches; FNV-1a checksum 0x45c10f152e119ecb identical across -O0, -O2, and ASan+UBSan builds; measured 1.767 ns/value at -O2.',
+          specRows: [
+            ['OPERATION', 'clz64 via 256-entry 8-bit table plus byte-scan'],
+            ['TABLE', 'Built from the shift-until-bit-7 identity'],
+            ['ZERO CONTRACT', 'clz(0) defined as 64'],
+            ['CHECKS', '1,065,866 differential vs __builtin_clzll, 0 mismatches'],
+            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '1.767 ns/value at -O2']
+          ],
+          terminalOutput: `$ ./test_clz_byte\ntable_rederivations .......... 256/256\ndirected_vectors ............ 74/74\nexhaustive_16bit ............ 65536/65536\nrandom_64bit ................ 1000000/1000000\nmismatches .................. 0\nfnv1a_checksum ............. 0x45c10f152e119ecb\nthroughput (-O2) ............ 1.767 ns/value\n\n1.767 ns/value at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 1065866,
+          failures: 0,
+          stressItems: 1065866,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/66-clz-byte',
+          repoLabel: 'GitHub: systems-lab/lab/66-clz-byte',
+          terminalName: 'systems-lab / lab / 66-clz-byte',
+          terminalLabel: 'Verified byte-scan clz test output',
+          showRepoLink: true
         }
 
       ];
