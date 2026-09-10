@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260910-234259">
+  <meta name="build-version" content="v20260910-234508">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -417,8 +417,8 @@
 
     .layer-strip { margin: 20px 0 0; padding-top: 14px; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
     .layer-strip-caption { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--dim); }
-    .card-proof { font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); white-space: nowrap; }
-    .card-proof:hover, .card-proof:focus-visible { color: var(--acid); border-color: var(--acid); }
+    .verify-link { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+    .verify-link:hover, .verify-link:focus-visible { color: var(--acid); }
     .layer-slot .layer-name { font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--ink); padding-left: 8px; border-left: 2px solid var(--acid); }
     .layer-slot.dim .layer-name { color: var(--dim); padding-left: 0; border-left: 0; opacity: .6; }
     .layer-slot .layer-because { margin: 6px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
@@ -11988,15 +11988,12 @@ assert(check == 0x2144DF1C);</code></pre>
 
       const esc = (s) => String(s == null ? '' : s)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      // One proof-log link per card, on the strip caption. Per-slot external
-      // dig-down appears only where the claim depends on an external fact:
-      // the ISA slot of an instruction-mapped card cites the ISA manual.
+      // Verification is never a vague "proof log" link: the facts list ends
+      // with a VERIFICATION row whose text IS the receipt (exact check and
+      // failure counts from the gated data), linking to the full log.
       const layerStripHTML = (project) => {
         if (!project.layers) return '';
         const order = ['ISA', 'MICROARCH', 'FIRMWARE', 'KERNEL', 'ALGORITHM'];
-        const proofLink = project.evidence
-          ? `<a class="card-proof" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(project.evidence.label)} <span aria-hidden="true">↗</span></a>`
-          : '';
         const slots = order
           .filter((name) => project.layers[name])
           .map((name) => {
@@ -12012,7 +12009,7 @@ assert(check == 0x2144DF1C);</code></pre>
             return `<div class="${cls}"><div class="layer-name">${name}${why}</div><p class="layer-because">${esc(slot.because)}</p></div>`;
           })
           .join('');
-        return `<div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span>${proofLink}</div>${slots}</div>`;
+        return `<div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span></div>${slots}</div>`;
       };
       const portabilityHTML = (project) => {
         if (!project.portability) return '';
@@ -12056,9 +12053,13 @@ assert(check == 0x2144DF1C);</code></pre>
           stripHTML(project.terminalOutput)
         ].join(' ').toLowerCase();
 
+        const fmtInt = (n) => Number(n).toLocaleString('en-US');
         const facts = project.specRows
           .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
-          .join('');
+          .join('')
+          + (project.evidence && project.evidence.url && Number.isInteger(project.checks) && Number.isInteger(project.failures)
+            ? `<li><span>Verification</span><span><a class="verify-link" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${fmtInt(project.checks)} checks · ${fmtInt(project.failures)} failures — full log <span aria-hidden="true">↗</span></a></span></li>`
+            : '');
         const repoAction = project.showRepoLink
           ? `<div class="actions"><a class="btn secondary" href="${project.repoUrl}" target="_blank" rel="noopener">${project.repoLabel} <span class="arrow" aria-hidden="true">↗</span></a></div>`
           : '';
