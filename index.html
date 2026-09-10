@@ -285,9 +285,10 @@
       transition: opacity 140ms ease, background-color 520ms ease;
     }
     .project:last-child { border-bottom: 1px solid var(--line); }
+    .project[hidden] { display: none !important; }
     .project:focus-visible { outline: 2px solid var(--acid); outline-offset: 6px; }
     .project.is-search-dimmed { opacity: .22; }
-    .project.is-flashing { background: rgba(184, 243, 75, .1); }
+    .project:target { background: rgba(184, 243, 75, .1); }
     .project-grid { display: grid; grid-template-columns: minmax(0, .83fr) minmax(0, 1.17fr); gap: clamp(34px, 7vw, 90px); align-items: start; }
     .project:nth-child(even) .project-copy { order: 2; }
     .project-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; }
@@ -3540,6 +3541,55 @@ done
           terminalName: 'systems-lab / lab / 57-saturating-sub-borrow',
           terminalLabel: 'Verified saturating-sub-borrow test output',
           showRepoLink: true
+        },
+        {
+          id: 'crc16-ccitt',
+          kicker: 'CHECKSUMS',
+          title: 'crc16-ccitt (systems-lab/lab/61)',
+          summary: 'CRC-16 with the 0x1021 polynomial reflected (0x8408), computed one bit at a time with a shift/xor recurrence, no lookup tables and no library calls. Verified: 5 known-answer vectors including the catalogue CRC-16/KERMIT check 0x2189 for "123456789", 1,000,000 differential cases against an independent MSB-first reference, 0 mismatches, FNV-1a checksum 8c5660cc04fdd62d identical across -O0, -O2, and ASan+UBSan builds; measured 53.9 MiB/s at -O2.',
+          specRows: [
+            ['OPERATION', 'CRC-16, reflected poly 0x8408, bit-at-a-time shift/xor'],
+            ['TABLES', 'None, no library calls'],
+            ['KNOWN-ANSWER', '5 catalogue vectors, "123456789" = 0x2189'],
+            ['CHECKS', '1,000,000 differential vs MSB-first reference, 0 mismatches'],
+            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '53.9 MiB/s at -O2']
+          ],
+          terminalOutput: `$ ./test_crc16\nknown_answer_vectors ....... 5/5 passed\n  "123456789" .............. 0x2189 (CRC-16/KERMIT)\ndifferential_cases .......... 1000000\nmismatches .................. 0\nfnv1a_checksum ............. 8c5660cc04fdd62d\nthroughput (-O2) ............ 53.9 MiB/s\n\n53.9 MiB/s at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 1000000,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/61-crc16-ccitt',
+          repoLabel: 'GitHub: systems-lab/lab/61-crc16-ccitt',
+          terminalName: 'systems-lab / lab / 61-crc16-ccitt',
+          terminalLabel: 'Verified CRC-16/CCITT test output',
+          showRepoLink: true
+        },
+        {
+          id: 'wfi-resume-pc',
+          kicker: 'RISC-V TRAPS',
+          title: 'wfi-resume-pc (riscv-baremetal-demo/src/wfi-resume-pc)',
+          summary: 'Bare-metal M-mode probe on QEMU virt checking the trap-return contract at a wfi instruction. A machine software interrupt is taken with mepc at the wfi (link address 0x80000406); the handler clears the CLINT msip bit, advances the saved mepc by 4, and mret resumes at 0x8000040a = wfi+4. Verified: 3 runs x 3 traps, all 31 registers bit-identical pre/post on every trap, mcause 0x8000000000000003 each time, RESULT: PASS x3.',
+          specRows: [
+            ['PLATFORM', 'QEMU virt 8.2.2, M-mode, single hart'],
+            ['TRIGGER', 'Machine software interrupt (msip), mtvec direct mode'],
+            ['TRAP ADDRESS', 'mepc = 0x80000406 (the wfi)'],
+            ['RESUME ADDRESS', '0x8000040a = wfi+4'],
+            ['REGISTERS', '31/31 bit-identical pre/post, 9/9 traps'],
+            ['MCAUSE', '0x8000000000000003 on all 9 traps'],
+            ['RESULT', 'PASS x3 runs']
+          ],
+          terminalOutput: `$ make run-wfi-resume-pc (3 runs)\nrun | wfi_addr     | trap_mepc    | resume_pc    | register diffs\n0-2 | 0x80000406   | 0x80000406   | 0x8000040a   | 0/31\nmcause ............ 0x8000000000000003 (9/9)\nRESULT: PASS (3/3 runs)\n\nwfi+4 resume, 0 register diffs`,
+          verificationEnvironment: 'qemu',
+          checks: 9,
+          failures: 0,
+          stressItems: 9,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/wfi-resume-pc',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/wfi-resume-pc',
+          terminalName: 'riscv-baremetal-demo / src / wfi-resume-pc',
+          terminalLabel: 'Verified WFI resume-PC trap test output',
+          showRepoLink: true
         }
 
       ];
@@ -3683,13 +3733,18 @@ done
       });
 
       const chapterList = document.querySelector('.chapter-list');
+      const allChapterButton = document.createElement('button');
+      allChapterButton.className = 'chapter-button';
+      allChapterButton.type = 'button';
+      allChapterButton.dataset.chapter = 'ALL';
+      allChapterButton.setAttribute('aria-label', `All chapters, ${PROJECTS.length} projects`);
+      allChapterButton.innerHTML = `<span>ALL</span><span class="chapter-count">${PROJECTS.length}</span>`;
+      chapterList.appendChild(allChapterButton);
       chapters.forEach((chapter) => {
-        const targetId = `project-${chapter.firstId}`;
         const button = document.createElement('button');
         button.className = 'chapter-button';
         button.type = 'button';
         button.dataset.chapter = chapter.name;
-        button.dataset.target = targetId;
         button.setAttribute('aria-label', `${chapter.name}, ${chapter.count} ${chapter.count === 1 ? 'project' : 'projects'}`);
         button.innerHTML = `<span>${chapter.name}</span><span class="chapter-count">${chapter.count}</span>`;
         chapterList.appendChild(button);
@@ -3754,21 +3809,27 @@ done
       const projectCards = [...document.querySelectorAll('.project')];
       const chapterRail = document.querySelector('.chapter-rail');
       const chapterButtons = [...document.querySelectorAll('.chapter-button')];
+      const recordClose = document.querySelector('.record-close');
+      const recordKicker = recordClose.querySelector('.record-kicker');
+      const recordTotal = recordClose.querySelector('.record-total');
       const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const topOffset = () => window.innerWidth <= 900 ? 64 : 24;
-      const nearestProject = () => projectCards.reduce((nearest, card) => {
+      let activeFilter = null;
+      const visibleProjectCards = () => projectCards.filter((card) => !card.hidden);
+      const nearestProject = () => visibleProjectCards().reduce((nearest, card) => {
         const distance = Math.abs(card.getBoundingClientRect().top - topOffset());
         return !nearest || distance < nearest.distance ? { card, distance } : nearest;
       }, null)?.card;
 
-      const setActiveChapter = (chapter) => {
+      const setActiveChapter = (chapter, ensureVisible = true) => {
         chapterButtons.forEach((button) => {
           const active = button.dataset.chapter === chapter;
           const changed = active && !button.classList.contains('is-active');
           button.classList.toggle('is-active', active);
+          button.setAttribute('aria-pressed', String(active));
           if (active) {
             button.setAttribute('aria-current', 'true');
-            if (changed && window.innerWidth <= 900) {
+            if (ensureVisible && changed && window.innerWidth <= 900) {
               button.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
             }
           } else {
@@ -3777,18 +3838,30 @@ done
         });
       };
 
-      const replaceHash = (targetId) => {
-        const hash = `#${encodeURIComponent(targetId)}`;
-        history.replaceState(history.state, '', `${location.pathname}${location.search}${hash}`);
+      const setChapterFilter = (chapter, ensureVisible = true) => {
+        activeFilter = chapter && chapter !== 'ALL' ? chapter : null;
+        projectCards.forEach((card) => {
+          card.hidden = Boolean(activeFilter && card.dataset.chapter !== activeFilter);
+        });
+        if (activeFilter) {
+          const visibleCount = visibleProjectCards().length;
+          recordClose.setAttribute('aria-label', `${activeFilter} chapter record`);
+          recordKicker.textContent = 'CHAPTER RECORD';
+          recordTotal.textContent = `${activeFilter}: ${visibleCount} OF ${PROJECTS.length}`;
+          setActiveChapter(activeFilter, ensureVisible);
+        } else {
+          recordClose.setAttribute('aria-label', 'Complete proof record');
+          recordKicker.textContent = 'COMPLETE RECORD';
+          recordTotal.textContent = `${PROJECTS.length} projects. ${totalChecks} verification checks. ${totalFailures} failures.`;
+          setActiveChapter('ALL', ensureVisible);
+        }
+        applySearch();
       };
-      const goToChapter = (targetId) => {
-        const target = document.getElementById(targetId);
-        if (!target) return;
-        target.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'start' });
-        replaceHash(target.id);
-        setActiveChapter(target.dataset.chapter);
-      };
-      chapterButtons.forEach((button) => button.addEventListener('click', () => goToChapter(button.dataset.target)));
+
+      chapterButtons.forEach((button) => button.addEventListener('click', () => {
+        const chapter = button.dataset.chapter;
+        setChapterFilter(chapter === 'ALL' || chapter === activeFilter ? null : chapter);
+      }));
       chapterList.addEventListener('keydown', (event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         const currentIndex = chapterButtons.indexOf(document.activeElement);
@@ -3846,9 +3919,14 @@ done
       };
       const applySearch = () => {
         const terms = [...new Set(searchInput.value.trim().toLowerCase().split(/\s+/).filter(Boolean))];
+        const visibleCards = visibleProjectCards();
         let matches = 0;
         projectCards.forEach((card) => {
           clearHighlights(card);
+          if (card.hidden) {
+            card.classList.remove('is-search-dimmed');
+            return;
+          }
           const match = terms.length === 0 || terms.every((term) => card.dataset.search.includes(term));
           card.classList.toggle('is-search-dimmed', !match);
           if (match) {
@@ -3856,7 +3934,13 @@ done
             if (terms.length) highlightTerms(card, terms);
           }
         });
-        searchStatus.textContent = `${matches} of ${PROJECTS.length} match`;
+        if (terms.length) {
+          searchStatus.textContent = `${matches} of ${visibleCards.length} match`;
+        } else if (activeFilter) {
+          searchStatus.textContent = `${visibleCards.length} of ${PROJECTS.length} projects`;
+        } else {
+          searchStatus.textContent = `${PROJECTS.length} of ${PROJECTS.length} projects`;
+        }
       };
       searchInput.addEventListener('input', applySearch);
       searchClear.addEventListener('click', () => {
@@ -3864,7 +3948,7 @@ done
         applySearch();
         searchInput.focus();
       });
-      applySearch();
+      setChapterFilter(null, false);
 
       const densityButtons = [...document.querySelectorAll('.density-button')];
       const initialDensity = new URLSearchParams(location.search).get('view') === 'compact' ? 'compact' : 'detailed';
@@ -3889,10 +3973,12 @@ done
       setDensity(initialDensity);
 
       const focusProject = (direction) => {
+        const cards = visibleProjectCards();
+        if (!cards.length) return;
         const focusedCard = document.activeElement.closest?.('.project');
-        const start = focusedCard ? projectCards.indexOf(focusedCard) : projectCards.indexOf(nearestProject());
-        const index = Math.max(0, Math.min(projectCards.length - 1, start + direction));
-        const target = projectCards[index];
+        const start = focusedCard && !focusedCard.hidden ? cards.indexOf(focusedCard) : cards.indexOf(nearestProject());
+        const index = Math.max(0, Math.min(cards.length - 1, start + direction));
+        const target = cards[index];
         target.focus({ preventScroll: true });
         target.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'start' });
       };
@@ -3923,47 +4009,15 @@ done
         }
       });
 
-      const flashProject = (card) => {
-        card.classList.remove('is-flashing');
-        requestAnimationFrame(() => card.classList.add('is-flashing'));
-        window.setTimeout(() => card.classList.remove('is-flashing'), motionReduced ? 0 : 900);
-      };
-      const activateHashProject = () => {
-        if (!location.hash.startsWith('#project-')) return;
-        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-        if (!target) return;
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          target.scrollIntoView({ behavior: 'auto', block: 'start' });
-          flashProject(target);
-          setActiveChapter(target.dataset.chapter);
-        }));
-      };
-      window.addEventListener('hashchange', activateHashProject);
-      activateHashProject();
-
-      let scrollTimer = 0;
       let railFrame = 0;
-      const updateProofPosition = () => {
-        const current = nearestProject();
-        if (!current) return;
-        setActiveChapter(current.dataset.chapter);
-        const workRect = document.getElementById('work').getBoundingClientRect();
-        if (workRect.bottom > 0 && workRect.top < window.innerHeight) {
-          replaceHash(current.id);
-        }
-      };
       window.addEventListener('scroll', () => {
-        if (!railFrame) {
-          railFrame = requestAnimationFrame(() => {
-            railFrame = 0;
-            const current = nearestProject();
-            if (current) setActiveChapter(current.dataset.chapter);
-          });
-        }
-        window.clearTimeout(scrollTimer);
-        scrollTimer = window.setTimeout(updateProofPosition, 140);
+        if (activeFilter || railFrame) return;
+        railFrame = requestAnimationFrame(() => {
+          railFrame = 0;
+          const current = nearestProject();
+          if (current) setActiveChapter(current.dataset.chapter);
+        });
       }, { passive: true });
-      if (projectCards[0]) setActiveChapter(projectCards[0].dataset.chapter);
 
       document.getElementById('services-title').textContent = `${numberWord(SERVICES.length)} simple ways to get unstuck.`;
       document.querySelector('.services').innerHTML = SERVICES
