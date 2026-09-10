@@ -50,8 +50,11 @@ strips, no unresolved placeholders), commits, and pushes.
   lets a reader verify it, and make sure the dig-down path to that source
   exists on the card. A because whose evidence you cannot name does not ship.
 - Every card and article carries an `evidence` {label, url} object (usually
-  the proof-log blob URL of its PROOF.md); the build renders it as a
-  dig-down link under each layer slot and fails the build if it is missing.
+  the proof-log blob URL of its PROOF.md); the build renders it once, on
+  the layer-strip caption, and fails the build if it is missing. Per-slot
+  dig-down links appear only where a claim depends on an external fact:
+  the ISA slot of an instruction-mapped card cites the ISA manual section,
+  and portability WHERE NEEDED chips link their vendor datasheets.
 - `data/isa-decisions.json` records every ISA-mapping decision, accepted or
   rejected, with claim, rationale, and external primary sources (the pinned
   ISA manual release PDF). Accepted decisions must exactly match the cards
