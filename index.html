@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260910-232450">
+  <meta name="build-version" content="v20260910-233017">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -12152,22 +12152,28 @@ assert(check == 0x2144DF1C);</code></pre>
       if (location.hash.startsWith('#project-')) {
         const deepTarget = document.getElementById(location.hash.slice(1));
         if (deepTarget) {
-          // Land exactly, every time: never fight the user's own scrolling,
-          // let first layout settle (content-visibility renders the target),
-          // then re-land once fonts arrive so a late font swap can't shift
-          // the card out from under the viewport.
-          let userScrolled = false;
-          const abort = () => { userScrolled = true; };
-          window.addEventListener('wheel', abort, { once: true, passive: true });
-          window.addEventListener('touchmove', abort, { once: true, passive: true });
+          // A permalink owns the initial viewport: land on the target card
+          // instantly and exactly, every time. behavior:'instant' matters:
+          // the page sets scroll-behavior:smooth, and 'auto' would inherit
+          // a long animated scroll that any touch or re-layout interrupts
+          // mid-card. Late shifts (fonts, images) get one correction, but
+          // only if the reader hasn't scrolled elsewhere since we landed;
+          // we never fight or interrupt their scroll, and never lock it.
+          let landedAt = null;
           const land = () => {
-            if (userScrolled || !document.contains(deepTarget)) return;
-            deepTarget.scrollIntoView({ behavior: 'auto', block: 'start' });
+            if (!document.contains(deepTarget)) return;
+            deepTarget.scrollIntoView({ behavior: 'instant', block: 'start' });
+            landedAt = window.scrollY;
+          };
+          const settle = () => {
+            if (landedAt === null || Math.abs(window.scrollY - landedAt) <= 2) land();
           };
           requestAnimationFrame(() => requestAnimationFrame(land));
           if (document.fonts && document.fonts.ready) {
-            document.fonts.ready.then(() => requestAnimationFrame(land));
+            document.fonts.ready.then(() => requestAnimationFrame(settle));
           }
+          if (document.readyState === 'complete') requestAnimationFrame(settle);
+          else window.addEventListener('load', () => requestAnimationFrame(settle), { once: true });
         }
       }
 
