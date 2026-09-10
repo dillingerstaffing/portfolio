@@ -43,6 +43,10 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
     (() => {
+      // We own scroll on load (deep links, continue-where-you-left-off):
+      // the browser's own restoration fights anchor landings, so disable it
+      // as early as possible.
+      try { history.scrollRestoration = 'manual'; } catch (_) {}
       const view = new URLSearchParams(location.search).get('view');
       if (view === 'compact') document.documentElement.classList.add('density-compact');
     })();
@@ -1739,12 +1743,24 @@ assert(check == 0x2144DF1C);</code></pre>
 
       if (location.hash.startsWith('#project-')) {
         const deepTarget = document.getElementById(location.hash.slice(1));
-        // Native scrollIntoView, not manual rect math: cards use
-        // content-visibility: auto, so rects above the fold are estimated
-        // until the target renders. The browser lays the target out first,
-        // then lands it exactly; scroll-margin-top keeps it clear of the
-        // sticky header.
-        if (deepTarget) deepTarget.scrollIntoView({ behavior: 'auto', block: 'start' });
+        if (deepTarget) {
+          // Land exactly, every time: never fight the user's own scrolling,
+          // let first layout settle (content-visibility renders the target),
+          // then re-land once fonts arrive so a late font swap can't shift
+          // the card out from under the viewport.
+          let userScrolled = false;
+          const abort = () => { userScrolled = true; };
+          window.addEventListener('wheel', abort, { once: true, passive: true });
+          window.addEventListener('touchmove', abort, { once: true, passive: true });
+          const land = () => {
+            if (userScrolled || !document.contains(deepTarget)) return;
+            deepTarget.scrollIntoView({ behavior: 'auto', block: 'start' });
+          };
+          requestAnimationFrame(() => requestAnimationFrame(land));
+          if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => requestAnimationFrame(land));
+          }
+        }
       }
 
       const focusProject = (direction) => {
