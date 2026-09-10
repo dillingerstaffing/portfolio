@@ -69,6 +69,7 @@
     [hidden] { display: none !important; }
     html { scroll-behavior: smooth; }
     html.view-switching { scroll-behavior: auto; }
+    html.view-switching .project { content-visibility: visible; }
     body {
       margin: 0;
       min-width: 0;
@@ -85,7 +86,10 @@
     }
 
     a { color: inherit; }
-    button, a { -webkit-tap-highlight-color: transparent; }
+    button, a {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
     ::selection { background: var(--acid); color: var(--black); }
 
     .visually-hidden {
@@ -111,8 +115,11 @@
     header.frame.topline {
       position: sticky;
       top: 0;
+      inset-block-start: 0;
       z-index: 50;
+      width: 100%;
       background: var(--bg);
+      isolation: isolate;
     }
     .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .signal { width: 8px; height: 8px; background: var(--acid); box-shadow: 0 0 0 4px rgba(184,243,75,.1); }
@@ -533,6 +540,18 @@
       text-transform: uppercase;
       text-decoration: none;
     }
+    .scroll-control > svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+      overflow: visible;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
     .scroll-control:hover { color: var(--acid); border-color: var(--acid); }
     .scroll-control:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
 
@@ -628,7 +647,7 @@
 
   </style>
 </head>
-<body>
+<body id="top">
   <button id="permalink-clear" class="permalink-clear" type="button" hidden>× clear link</button>
 
   <header class="frame topline">
@@ -638,7 +657,7 @@
       <span>Low-level systems developer</span>
     </div>
     <nav aria-label="Primary navigation">
-      <a href="#work">Proof</a>
+      <a href="#top">Home</a>
       <a href="#blog">Blog</a>
       <a href="#services">Services</a>
       <a href="#contact">Contact</a>
@@ -903,9 +922,9 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
   </footer>
 
   <div class="floating-actions" aria-label="Page navigation">
-    <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1">↑</button>
+    <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/></svg></button>
     <a class="scroll-control scroll-to-services is-visible" href="#services" aria-label="Scroll to services" aria-hidden="false" tabindex="0">services</a>
-    <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
+    <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14m5.5-5.5L12 19l-5.5-5.5"/></svg></button>
     <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <rect x="3" y="5" width="18" height="14" rx="1"></rect>
@@ -5089,6 +5108,49 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: riscv-baremetal-demo',
           terminalLabel: 'Verified mtval fault-address test output',
           showRepoLink: true
+        },
+        {
+          id: 'lab-80-bcd-digit-valid',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'Packed BCD Digit Validity',
+          summary: 'Packed BCD digit-validity bitmask from the add-6-per-nibble guard identity with even/odd separation to avoid carry aliasing. 65,536 exhaustive inputs, 0 mismatches vs reference; naive w+0x6666 misclassifies 4,572 inputs. 4.27 ns/value at -O2.',
+          specRows: [
+            ['CHECKS', '65,536 exhaustive'],
+            ['MISMATCHES', '0 vs reference'],
+            ['NAIVE FAILS', '4,572 misclassified by w+0x6666'],
+            ['MEASURED', '4.27 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 80-bcd-digit-valid',
+          terminalOutput: `$ make test\nexhaustive inputs ...... 65,536\nmismatches ............. 0 vs reference\nnaive w+0x6666 fails ... 4,572\nmeasured ............... 4.27 ns/value at -O2\n\nPacked BCD digit validity verified`,
+          verificationEnvironment: 'Host',
+          checks: 65536,
+          failures: 0,
+          stressItems: 65536,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/80-bcd-digit-valid',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified packed BCD digit-validity test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-misa-readonly',
+          kicker: 'RISC-V / PRIVILEGED',
+          title: 'misa Read-Only Verification',
+          summary: 'M-mode write-all-ones to misa, verify readback equals boot value 0x80000000001411ad. Zero traps across 3 QEMU 8.2.2 runs, normal execution continues (sum 1..100 = 5050).',
+          specRows: [
+            ['READBACK', '0x80000000001411ad'],
+            ['TRAPS', '0 across 3 runs'],
+            ['QEMU', '8.2.2']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / misa-readonly',
+          terminalOutput: `$ qemu-system-riscv64 ...\nboot misa .............. 0x80000000001411ad\nwrite-all-ones readback  0x80000000001411ad\ntraps .................. 0 across 3 runs\nsum 1..100 ............. 5050\n\nmisa read-only behavior verified`,
+          verificationEnvironment: 'QEMU 8.2.2',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misa-readonly',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified misa read-only test output',
+          showRepoLink: true
         }
 
       ];
@@ -5669,100 +5731,148 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         .sort((a, b) => b.released - a.released || a.index - b.index)
         .forEach(({ note }) => blogPage.appendChild(note));
 
-      const trackedSectionIds = ['work', 'services', 'contact', 'blog'];
       const primaryNav = document.querySelector('nav[aria-label="Primary navigation"]');
       const primaryNavLinks = [...primaryNav.querySelectorAll('a:not(.continue-position)')];
       const continuePosition = primaryNav.querySelector('.continue-position');
-      const scrollPositionFallback = new Map();
-      let pendingTopNavSection = null;
+      const stickyHeader = document.querySelector('header.topline');
+      const savedPositions = new Map();
 
-      const readSavedPosition = (sectionId) => {
-        const key = `scroll-pos-${sectionId}`;
-        try {
-          const value = sessionStorage.getItem(key);
-          if (value !== null) return Number(value);
-        } catch {}
-        return scrollPositionFallback.get(key);
+      const readSavedPosition = (sectionId) => savedPositions.get(sectionId);
+      const writeSavedPosition = (sectionId, position) => savedPositions.set(sectionId, position);
+      const headerHeight = () => stickyHeader.getBoundingClientRect().height;
+
+      const prepareViewForSection = (sectionId) => {
+        document.body.classList.toggle('view-blog', sectionId === 'blog');
       };
 
-      const writeSavedPosition = (sectionId, position) => {
-        const key = `scroll-pos-${sectionId}`;
-        scrollPositionFallback.set(key, position);
-        try {
-          sessionStorage.setItem(key, String(position));
-        } catch {}
+      const sectionTop = (sectionId) => {
+        if (sectionId === 'home' || sectionId === 'blog') return 0;
+        const target = document.getElementById(sectionId === 'services' ? 'services-title' : sectionId);
+        if (!target) return 0;
+        return Math.max(0, window.scrollY + target.getBoundingClientRect().top - headerHeight());
       };
 
       const currentSectionId = () => {
         if (document.body.classList.contains('view-blog')) return 'blog';
-        const marker = window.scrollY + 92;
+        const marker = window.scrollY + headerHeight() + 2;
         return ['work', 'services', 'contact'].reduce((current, sectionId) => {
           const section = document.getElementById(sectionId);
           return section && section.offsetTop <= marker ? sectionId : current;
-        }, null);
+        }, 'home');
       };
 
       const saveCurrentSectionPosition = () => {
-        if (window.scrollY <= 100) return null;
         const sectionId = currentSectionId();
-        if (!sectionId) return null;
+        if (window.scrollY <= sectionTop(sectionId) + 100) return null;
         writeSavedPosition(sectionId, window.scrollY);
         return sectionId;
-      };
-
-      const prepareViewForSection = (sectionId) => {
-        document.body.classList.toggle('view-blog', sectionId === 'blog');
       };
 
       const hideContinuePosition = () => {
         continuePosition.classList.remove('is-visible');
         continuePosition.setAttribute('aria-hidden', 'true');
         continuePosition.tabIndex = -1;
+        continuePosition.textContent = '↳ Continue where you left off';
         delete continuePosition.dataset.section;
       };
 
-      const showContinuePosition = (sectionId) => {
+      const showContinuePosition = (sectionId, resumeReading = false) => {
         const savedPosition = readSavedPosition(sectionId);
-        if (!Number.isFinite(savedPosition) || savedPosition <= 100) {
+        if (!Number.isFinite(savedPosition) || savedPosition <= sectionTop(sectionId) + 100) {
           hideContinuePosition();
           return;
         }
-        continuePosition.href = `#${sectionId}`;
+        continuePosition.href = sectionId === 'home' ? '#top' : `#${sectionId}`;
         continuePosition.dataset.section = sectionId;
+        continuePosition.textContent = resumeReading ? '↳ Resume reading' : '↳ Continue where you left off';
         continuePosition.classList.add('is-visible');
         continuePosition.setAttribute('aria-hidden', 'false');
         continuePosition.tabIndex = 0;
       };
 
-      const updateActiveNavigation = () => {
-        const hash = location.hash;
-        const activeHash = hash === '#blog'
-          ? '#blog'
-          : ['#services', '#contact'].includes(hash) ? hash : '#work';
+      const updateActiveNavigation = (sectionId = null) => {
+        const activeSection = sectionId || (location.hash === '#blog'
+          ? 'blog'
+          : location.hash === '#services'
+            ? 'services'
+            : location.hash === '#contact'
+              ? 'contact'
+              : 'home');
         primaryNavLinks.forEach((link) => {
-          const active = link.getAttribute('href') === activeHash;
+          const linkSection = link.hash === '#top' ? 'home' : link.hash.slice(1);
+          const active = linkSection === activeSection;
           link.classList.toggle('is-active', active);
           if (active) link.setAttribute('aria-current', 'page');
           else link.removeAttribute('aria-current');
         });
       };
 
-      const completePendingNavigation = (sectionId) => {
-        if (pendingTopNavSection !== sectionId) return;
-        pendingTopNavSection = null;
-        showContinuePosition(sectionId);
-        scheduleScrollControlUpdate();
+      const setLocationForSection = (sectionId) => {
+        const next = sectionId === 'home'
+          ? `${location.pathname}${location.search}`
+          : `${location.pathname}${location.search}#${sectionId}`;
+        history.pushState({ sectionId }, '', next);
+      };
+
+      const scrollServicesPrecisely = (behavior = 'auto') => {
+        const title = document.getElementById('services-title');
+        document.documentElement.classList.add('view-switching');
+        let frame = 0;
+        let stableFrames = 0;
+        const align = () => {
+          const delta = title.getBoundingClientRect().top - headerHeight();
+          if (Math.abs(delta) <= 1) {
+            stableFrames += 1;
+          } else {
+            stableFrames = 0;
+            window.scrollTo({ top: Math.max(0, window.scrollY + delta), behavior: frame === 0 ? behavior : 'auto' });
+          }
+          frame += 1;
+          if (stableFrames < 2 && frame < 120) {
+            window.requestAnimationFrame(align);
+          } else {
+            document.documentElement.classList.remove('view-switching');
+            scheduleScrollControlUpdate();
+          }
+        };
+        window.requestAnimationFrame(() => {
+          document.getElementById('services').scrollIntoView({ block: 'start', behavior: 'auto' });
+          window.requestAnimationFrame(align);
+        });
+        document.fonts?.ready.then(() => window.requestAnimationFrame(align));
+      };
+
+      const scrollToSectionTop = (sectionId, behavior = 'auto') => {
+        if (sectionId === 'services') {
+          scrollServicesPrecisely(behavior);
+          return;
+        }
+        window.requestAnimationFrame(() => {
+          if (sectionId === 'home' || sectionId === 'blog') {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+          } else {
+            document.getElementById(sectionId)?.scrollIntoView({ behavior, block: 'start' });
+          }
+          scheduleScrollControlUpdate();
+        });
+      };
+
+      const navigateFromTopNav = (sectionId) => {
+        saveCurrentSectionPosition();
+        hideContinuePosition();
+        prepareViewForSection(sectionId);
+        setLocationForSection(sectionId);
+        updateActiveNavigation(sectionId);
+        scrollToSectionTop(sectionId);
+        window.requestAnimationFrame(() => showContinuePosition(sectionId));
       };
 
       primaryNavLinks.forEach((link) => {
-        const sectionId = link.hash.slice(1);
+        const sectionId = link.hash === '#top' ? 'home' : link.hash.slice(1);
         link.addEventListener('click', (event) => {
           if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-          saveCurrentSectionPosition();
-          hideContinuePosition();
-          pendingTopNavSection = sectionId;
-          prepareViewForSection(sectionId);
-          window.setTimeout(() => completePendingNavigation(sectionId), 50);
+          event.preventDefault();
+          navigateFromTopNav(sectionId);
         });
       });
 
@@ -5772,35 +5882,48 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         const savedPosition = sectionId ? readSavedPosition(sectionId) : null;
         hideContinuePosition();
         if (!sectionId || !Number.isFinite(savedPosition)) return;
+        saveCurrentSectionPosition();
         prepareViewForSection(sectionId);
-        if (location.hash !== `#${sectionId}`) location.hash = sectionId;
+        setLocationForSection(sectionId);
+        updateActiveNavigation(sectionId);
         window.requestAnimationFrame(() => {
           window.scrollTo({ top: savedPosition, behavior: motionReduced ? 'auto' : 'smooth' });
           scheduleScrollControlUpdate();
         });
       });
 
-      scrollToServices.addEventListener('click', () => {
+      scrollToServices.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         const leavingSection = saveCurrentSectionPosition();
         hideContinuePosition();
-        pendingTopNavSection = leavingSection === 'blog' ? 'blog' : null;
         prepareViewForSection('services');
-        if (pendingTopNavSection) {
-          window.setTimeout(() => completePendingNavigation('blog'), 50);
+        setLocationForSection('services');
+        updateActiveNavigation('services');
+        scrollServicesPrecisely();
+        if (leavingSection === 'blog') {
+          window.requestAnimationFrame(() => showContinuePosition('blog', true));
         }
       });
 
-      const updatePageView = () => {
-        const sectionId = location.hash === '#blog' ? 'blog' : location.hash.slice(1);
+      const updatePageView = ({ alignServices = false } = {}) => {
+        const sectionId = location.hash === '#blog'
+          ? 'blog'
+          : location.hash === '#services'
+            ? 'services'
+            : location.hash === '#contact'
+              ? 'contact'
+              : 'home';
         prepareViewForSection(sectionId);
-        updateActiveNavigation();
-        if (pendingTopNavSection) completePendingNavigation(pendingTopNavSection);
-        else hideContinuePosition();
+        updateActiveNavigation(sectionId);
+        hideContinuePosition();
+        if (alignServices && sectionId === 'services') scrollServicesPrecisely();
         scheduleScrollControlUpdate();
       };
-      window.addEventListener('hashchange', updatePageView);
+      window.addEventListener('hashchange', () => updatePageView());
+      window.addEventListener('popstate', () => updatePageView());
       hideContinuePosition();
-      updatePageView();
+      updatePageView({ alignServices: true });
     })();
   </script>
   <script>
