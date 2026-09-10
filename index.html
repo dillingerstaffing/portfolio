@@ -4547,6 +4547,74 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: systems-lab',
           terminalLabel: 'Verified carryless multiply test output',
           showRepoLink: true
+        },
+        {
+          id: 'lab-103-divmod-pow2-neg',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'Signed Divmod by Power of Two',
+          summary: 'Single-pass quotient and remainder of a signed 64-bit value divided by 2^k using the sign-bias identity plus a mask for the remainder. 4,129,461 differential checks against C / and %, 0 mismatches. No div/idiv in the -O2 disassembly.',
+          specRows: [
+            ['CHECKS', '4,129,461 differential vs C / and %'],
+            ['MISMATCHES', '0'],
+            ['DIV INSTRUCTION', 'none in -O2 objdump'],
+            ['CHECKSUM', 'b9bffe669bde5c90 across -O0/-O2/ASan+UBSan'],
+            ['RESULT', 'PASS']
+          ],
+          terminalName: 'systems-lab / lab / 103-divmod-pow2-neg',
+          terminalOutput: `$ ./divmod_pow2_neg\nchecks ............. 4129461\nmismatches ......... 0\ndiv/idiv in objdump . none\nchecksum ........... b9bffe669bde5c90\n\nSigned divmod by power of two verified`,
+          verificationEnvironment: 'Host',
+          checks: 4129461,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified divmod-pow2-neg test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-sc-fail',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'LR/SC Failure Path',
+          summary: 'Bare-metal M-mode program verifying the RISC-V LR/SC failure path on QEMU: sc.w with no prior reservation returns 1, sc.w with mismatched address returns 1, memory unchanged, zero traps across 3 runs.',
+          specRows: [
+            ['SC NO LR', 'returns 1 (no reservation)'],
+            ['SC MISMATCH', 'returns 1 (wrong address)'],
+            ['MEMORY', 'unchanged in both cases'],
+            ['TRAPS', '0 across 3 runs'],
+            ['RESULT', 'PASS x3']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / sc-fail',
+          terminalOutput: `$ make qemu (3 runs)\nsc.w no lr ........ 1\nsc.w mismatch ..... 1\nmemory ............. unchanged\ntraps .............. 0\nRESULT: PASS x3\n\nLR/SC failure path verified`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified sc-fail test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mret-no-restore',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'No Restore on mret',
+          summary: 'Bare-metal M-mode program proving the caller-saved register convention is a software contract, not hardware: a trap handler writes its own sentinel set into a0..a7 and returns with mret without restoring. One ecall traps exactly once; the 8 registers read back the handler values after mret.',
+          specRows: [
+            ['TRAP', '1 ecall, mcause=0xb, mepc=0x80000556'],
+            ['REGISTERS', '8/8 match handler sentinels post-mret'],
+            ['RUNS', '3 byte-identical'],
+            ['RESULT', 'PASS x3']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mret-no-restore',
+          terminalOutput: `$ make qemu (3 runs)\ntraps .............. 1\nmcause ............. 0xb\nmepc .............. 0x80000556\nregisters .......... 8/8 handler sentinels\nRESULT: PASS x3\n\nmret no-restore verified`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified mret-no-restore test output',
+          showRepoLink: true
         }
 
       ];
