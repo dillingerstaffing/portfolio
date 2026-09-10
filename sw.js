@@ -1,5 +1,5 @@
 // Auto-generated: updates on every deploy to force SW refresh
-const VERSION = 'v20260910-233017';
+const VERSION = 'v20260910-233752';
 const CACHE = 'portfolio-' + VERSION;
 const OFFLINE_URL = 'index.html';
 
@@ -29,7 +29,10 @@ self.addEventListener('fetch', (event) => {
   
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      // cache:'reload' bypasses the browser HTTP cache (Pages sends
+      // max-age=600). A plain fetch() would serve stale HTML for 10 minutes
+      // after every deploy, so first loads would run old code.
+      fetch(request.url, { cache: 'reload' })
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(request, copy));

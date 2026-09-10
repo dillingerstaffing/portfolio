@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260910-233017">
+  <meta name="build-version" content="v20260910-233752">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -377,7 +377,7 @@
     .tag { border: 1px solid #364036; color: #bdc5ba; padding: 4px 8px; font-size: 10px; }
 
     .project {
-      padding-block: clamp(54px, 7vw, 92px); border-top: 1px solid var(--line);
+      padding-block: clamp(30px, 5vw, 64px); border-top: 1px solid var(--line);
       content-visibility: auto; contain-intrinsic-size: auto 760px; scroll-margin-top: 24px;
       transition: opacity 140ms ease, background-color 520ms ease;
     }
@@ -427,9 +427,10 @@
     .layer-source:hover, .layer-source:focus-visible { color: var(--acid); border-color: var(--acid); }
     .slot-ext { display: inline-block; margin-top: 6px; font: 10px/1.5 var(--mono); color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
     .slot-ext:hover, .slot-ext:focus-visible { color: var(--acid); border-color: var(--acid); }
-    /* Wigmore argument affordance: a CK3-style underlined "why" marker, inline
-       in the because sentence. It changes nothing about layout or order; it
-       only opens the argument panels. */
+    /* Wigmore argument affordance: a CK3-style underlined "why" marker in the
+       slot header, next to the layer name. One consistent spot per slot; it
+       never interrupts the because sentence. It changes nothing about layout
+       or order; it only opens the argument panels. */
     .why-marker { display: inline; padding: 0; margin: 0 0 0 6px; border: 0; background: none;
       font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
       color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
@@ -748,7 +749,7 @@
         border-bottom: 1px solid var(--line);
         white-space: nowrap;
       }
-      .project { contain-intrinsic-size: auto 1200px; scroll-margin-top: 64px; }
+      .project { contain-intrinsic-size: auto 1200px; scroll-margin-top: calc(var(--header-height, 68px) + 8px); }
       html.density-compact .project { contain-intrinsic-size: auto 58px; }
       .compact-main { grid-template-columns: 46px minmax(118px, .6fr) minmax(170px, 1fr); }
       .compact-result { display: none; }
@@ -11862,21 +11863,19 @@ assert(check == 0x2144DF1C);</code></pre>
         const proofLink = project.evidence
           ? `<a class="card-proof" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(project.evidence.label)} <span aria-hidden="true">↗</span></a>`
           : '';
-        const specLink = project.portability
-          ? `<a class="slot-ext" href="${(project.portability.specUrl || '').replace(/"/g, '&quot;')}" target="_blank" rel="noopener">ISA manual: ${esc(project.portability.extension)} / ${esc(project.portability.instruction)} <span aria-hidden="true">↗</span></a>`
-          : '';
         const slots = order
           .filter((name) => project.layers[name])
           .map((name) => {
             const slot = project.layers[name];
             const cls = slot.applies ? 'layer-slot lit' : 'layer-slot dim';
-            const ext = (name === 'ISA' && slot.applies) ? specLink : '';
-            // Argument affordance: only where a formal Wigmore analysis exists.
+            // Argument affordance lives in the slot header, next to the layer
+            // name: one consistent, scannable spot per slot, never breaking
+            // the reading flow of the because sentence.
             const wigKey = `${project.id}|${name}`;
             const why = WIGMORE[wigKey]
-              ? ` <button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
+              ? `<button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
               : '';
-            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}${why}</p>${ext}</div>`;
+            return `<div class="${cls}"><div class="layer-name">${name}${why}</div><p class="layer-because">${esc(slot.because)}</p></div>`;
           })
           .join('');
         return `<div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span>${proofLink}</div>${slots}</div>`;
@@ -12617,7 +12616,7 @@ assert(check == 0x2144DF1C);</code></pre>
       function termButton(a, n) {
         const node = a.keyList.find((e) => e.n === n);
         if (!node) return esc(`(${n})`);
-        return `<button class="wig-term" type="button" data-node="${n}">(${n}) ${esc(short(node.text, 64))}</button>`;
+        return `<button class="wig-term" type="button" data-node="${n}">(${n}) ${esc(node.text)}</button>`;
       }
 
       function nodePanel(a, n, opts) {
