@@ -913,7 +913,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
           <pre><code>    la      t0, 1f          # capture the address before the faulting load
     lw      a0, 0(a1)       # the fault: 4 bytes, guaranteed by .option norvc
 1:                          # mepc advances here; the test asserts the gap is 4</code></pre>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">riscv-baremetal-demo</a></p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mepc-resume-skip" target="_blank" rel="noopener">src/mepc-resume-skip</a></p>
         </div>
       </article>
 
@@ -4688,75 +4688,6 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           showRepoLink: true
         },
         {
-          id: 'research-crc32-residue',
-          kicker: 'BLOG',
-          title: 'The Checksum That Always Lands on 0x2144DF1C',
-          summary: 'Everyone knows 0xCBF43926, the CRC-32 of "123456789". But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending. Lab/82 ran one million random buffers through checksum, append, and re-checksum; every buffer landed on the residue, with zero mismatches. Append big-endian instead and there is no universal residue (for "123456789" it happens to be 0x3cc9742c, which is the trap the lab sets deliberately). The fingerprint was byte-identical across -O2, -O0, and sanitizer builds. Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue. The check itself is three lines: crc = crc32(msg); append_le(msg, crc); assert(crc32(msg) == 0x2144DF1C).',
-          specRows: [
-            ['RESIDUE', '0x2144DF1C for every message, little-endian append'],
-            ['BE TRAP', '0x3cc9742c for "123456789"; no universal BE residue'],
-            ['CASES', '1,000,000 random buffers, 0 mismatches'],
-            ['THROUGHPUT', '207.7 MiB/s at -O2'],
-            ['SOURCE', 'Wikipedia Mathematics of CRC, kernel Documentation/crc32.txt']
-          ],
-          terminalName: 'systems-lab / lab / 82-crc32-residue',
-          terminalOutput: `$ ./crc32_residue (1M buffers)\nresidue ............ 0x2144DF1C (all cases)\nbe-trap ............ 0x3cc9742c\nmismatches ......... 0\nthroughput ......... 207.7 MiB/s\n\nCRC-32 residue invariant verified`,
-          verificationEnvironment: 'Host',
-          checks: 1000000,
-          failures: 0,
-          stressItems: 3,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
-          repoLabel: 'GitHub: systems-lab',
-          terminalLabel: 'Verified CRC-32 residue test output',
-          showRepoLink: true
-        },
-        {
-          id: 'research-round-up-pow2',
-          kicker: 'BLOG',
-          title: 'The Decrement That Leaves Room for the Ceiling',
-          summary: 'Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with v |= v >> 1, 2, 4, 8, 16, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones. The decrement handles exact powers of two: without it, a value already at a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it. Lab/84 ran 194 contract rows, the full 16-bit input range, and one million random 64-bit values: zero mismatches, 2.27 ns/value at -O2. The sequence: v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++.',
-          specRows: [
-            ['OPERATIONS', '12 ops for 32-bit (decrement + 5 smears + increment)'],
-            ['EDGE CASE', 'input 0 returns 0 (documented, not hidden)'],
-            ['CASES', '194 contract + 65,536 exhaustive + 1M random, 0 mismatches'],
-            ['SPEED', '2.27 ns/value at -O2'],
-            ['PROVENANCE', 'Anderson 2001-09-14, Hart traced to 1997 newsgroups']
-          ],
-          terminalName: 'systems-lab / lab / 84-round-up-pow2',
-          terminalOutput: `$ ./round_up_pow2\ncontract rows ....... 194 pass\nexhaustive 16-bit ... 65536 pass\nrandom 64-bit ...... 1000000 pass\nmismatches ......... 0\nspeed .............. 2.27 ns/value\n\nRound-up-to-pow2 verified`,
-          verificationEnvironment: 'Host',
-          checks: 1065730,
-          failures: 0,
-          stressItems: 3,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
-          repoLabel: 'GitHub: systems-lab',
-          terminalLabel: 'Verified round-up-pow2 test output',
-          showRepoLink: true
-        },
-        {
-          id: 'research-carryless-multiply',
-          kicker: 'BLOG',
-          title: 'The Multiply That Never Carries',
-          summary: 'Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x^2 + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation. The distinguishing signature is the square: over GF(2), (sum c_i x^i)^2 = sum c_i x^{2i}, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only. This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2. The core loop: while (b) { if (b & 1) res ^= a; a <<= 1; b >>= 1; } No carries, just shift and XOR.',
-          specRows: [
-            ['FIELD', 'GF(2): addition is XOR, no carries exist'],
-            ['SIGNATURE', '0xff * 0xff = 0x5555 (bits land on even positions)'],
-            ['GHASH', 'GF(2^128) mult mod x^128+x^7+x^2+x+1'],
-            ['HARDWARE', 'PCLMULQDQ (2008), RISC-V Zbc clmul'],
-            ['CASES', '4.29B exhaustive + 1M random, 0 mismatches']
-          ],
-          terminalName: 'systems-lab / lab / 67-clmul',
-          terminalOutput: `$ ./clmul (exhaustive)\n2^32 x 2^32 ....... 4294967296 pass\nrandom ............. 1000000 pass\nmismatches ......... 0\nspeed .............. 102.53 ns/value\n\nCarryless multiply verified`,
-          verificationEnvironment: 'Host',
-          checks: 4295967296,
-          failures: 0,
-          stressItems: 3,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
-          repoLabel: 'GitHub: systems-lab',
-          terminalLabel: 'Verified carryless multiply test output',
-          showRepoLink: true
-        },
-        {
           id: 'lab-103-divmod-pow2-neg',
           kicker: 'INTEGER ARITHMETIC',
           title: 'Signed Divmod by Power of Two',
@@ -5127,7 +5058,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           showRepoLink: true
         },
         {
-          id: 'lab-94-saturate-to-u16',
+          id: 'lab-107-saturate-to-u16',
           kicker: 'INTEGER ARITHMETIC',
           title: 'Branchless int32 to uint16 Saturation',
           summary: 'Clamp every signed 32-bit input into [0, 65535] using two sign masks and bitwise selection, with no branching construct in the implementation. All 4,294,967,296 int32 values plus 12 directed anchors were checked against an independent if/else reference: 4,294,967,308 cases, 0 mismatches. The output checksum matched across -O0, -O2, and ASan+UBSan, with no sanitizer reports; gcc 13.3 emitted no conditional jump or cmov at -O2.',
@@ -5138,7 +5069,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
             ['DISASSEMBLY', '0 conditional jumps, 0 cmov at -O2'],
             ['MEASURED', '0.694 ns/value at -O2, best of 5']
           ],
-          terminalName: 'systems-lab / lab / 94-saturate-to-u16',
+          terminalName: 'systems-lab / lab / 107-saturate-to-u16',
           terminalOutput: `$ make all && ./test_saturate_u16_o2\nexhaustive int32 ...... 4,294,967,296 inputs\ndirected anchors ...... 12\ntotal checks .......... 4,294,967,308\nmismatches ............ 0\nchecksum .............. 0x31f7e4badfa3e62a\ndisassembly ........... 0 conditional jumps, 0 cmov\nmeasured .............. 0.694 ns/value at -O2\nRESULT: PASS\n\nBranchless int32-to-uint16 saturation verified`,
           verificationEnvironment: 'Host',
           checks: 4294967308,
