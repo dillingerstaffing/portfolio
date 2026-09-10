@@ -721,6 +721,24 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Four Bytes the Trap Handler Skips</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 12:01 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>When a RISC-V trap fires, the hardware writes mepc with the address of the faulting instruction, and never advances it. Resume the hart without touching mepc and the faulting instruction runs again. So the handler is responsible for skipping past it. The subtle part is the skip length: RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits. Anything but 11 there is a 16-bit instruction; 11 starts the longer forms. A blind mepc plus 4 after a 2-byte compressed load lands the hart in the middle of an instruction.</p>
+          <pre><code>la      t0, 1f          # assembler resolves the target, not the C label
+lw      a0, 0(a1)       # faults here; pinned to 4 bytes by .option norvc
+1:
+# resume mepc + 4, asserted from the two captured addresses</code></pre>
+          <p>The module pins the fault site with <code>.option norvc</code> so the assembler cannot silently choose the 2-byte c.lw form, then refuses to trust the pin alone. It asserts the 4-byte delta at runtime from two independent address captures using in-asm numeric local labels, the <code>la t0, 1f</code> construction. That construction came out of the &amp;&amp;label correction: with no computed goto in reach, -O2 may move a labels-as-values label and the address follows it, so the assembler must resolve the address exactly.</p>
+          <p>The proof reads like an exhaustion of the alternatives. Trap count is exactly 1: a plus 0 would have re-trapped and counted 2. The marker 0xdeadbeefdeadbeef sits in its slot: a plus 8 would have sailed over it. mcause is 5 with the sign-extended unmapped address in mtval, the instruction word at the fault address reads 0x0005a503, the intended lw and nothing else, and a0 still holds its sentinel afterward, direct evidence the faulting load never committed its destination. Three QEMU runs, byte-identical, all PASS.</p>
+          <p>This rhymes with xv6's usertrap, which advances epc by 4 past the ecall before dispatching the syscall. That is safe only because ecall has no compressed form. This module is the general case of that line: prove the length, then skip. The honest limit, stated in the PROOF, is that this verifies QEMU's M-mode model, not silicon.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mepc-resume-skip" target="_blank" rel="noopener">GitHub: riscv-baremetal-demo</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Lookup Table That Fits in 16 Bits</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 11:05 EDT</time></p>
         </div>
@@ -851,7 +869,7 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
 
   <div class="floating-actions" aria-label="Page navigation">
     <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1">↑</button>
-    <button class="scroll-control scroll-to-services" type="button" aria-label="Scroll to services" aria-hidden="true" tabindex="-1">services</button>
+    <button class="scroll-control scroll-to-services is-visible" type="button" aria-label="Scroll to services" aria-hidden="false" tabindex="0">services</button>
     <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
     <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -4822,6 +4840,55 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-size',
           repoLabel: 'GitHub: riscv-baremetal-demo/src/pmp-napot-size',
           terminalLabel: 'Verified PMP NAPOT size decoding output',
+          showRepoLink: true
+        },
+        {
+          id: 'lab-90-bitrev-perm',
+          kicker: 'BIT MANIPULATION',
+          title: 'Bit-Reversed 8-Element Index Permutation',
+          summary: 'Bit-reversed index permutation of an 8-element array (<code>out[bitrev(i)] = in[i]</code>), the 3-bit reversal built only from the swap identities, no lookup table, no library call. 1,000,000 randomized arrays, 0 mismatches vs an independent per-bit-loop reference; the bijection and the twice-applied involution hold on every case.',
+          specRows: [
+            ['CHECKS', '1,000,000'],
+            ['MISMATCHES', '0'],
+            ['CHECKSUM', '0x43d798a1ea296710 across -O2/-O0/ASan+UBSan'],
+            ['DISASSEMBLY', 'shift/mask/or/compare only, no table load'],
+            ['MEASURED', '1.35 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 90-bitrev-perm',
+          link: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/90-bitrev-perm',
+          terminalOutput: `$ make check\ndifferential checks .... 1,000,000\nmismatches ............. 0\nbijection .............. every value exactly once\ninvolution ............. perm twice restores order\nmeasured ................ 1.35 ns/value at -O2\n\nBit-reversed index permutation verified`,
+          verificationEnvironment: 'Host',
+          checks: 1000000,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/90-bitrev-perm',
+          repoLabel: 'GitHub: systems-lab/lab/90-bitrev-perm',
+          terminalLabel: 'Verified bit-reversed permutation test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mtime-write',
+          kicker: 'RISC-V MACHINE COUNTERS',
+          title: 'CLINT mtime Write/Readback Coherence',
+          summary: 'Bare-metal M-mode program writing <code>0x100000000</code> to the CLINT <code>mtime</code> register as two 32-bit stores, read back with a stable-pair 32-bit read. Readback matched the written value on all 3 QEMU runs (deltas 690/541/505 ticks) and the counter kept advancing; the written value is unreachable by natural advancement, so the match discriminates a stuck write.',
+          specRows: [
+            ['WRITTEN', '0x100000000'],
+            ['READBACKS', '0x1000002b2 / 0x10000021d / 0x1000001f9'],
+            ['ADVANCE', 'strictly increasing above written base'],
+            ['CALIBRATION', '149 rdcycle units per mtime tick'],
+            ['RUNS', '3'],
+            ['RESULT', 'PASS x3']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mtime-write',
+          link: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtime-write',
+          terminalOutput: `$ make qemu (3 runs)\nwritten .............. 0x100000000\nreadback ............. 0x1000002b2 / 0x10000021d / 0x1000001f9\ndelta ................ 690 / 541 / 505 ticks\npost-write advance .. strictly increasing\nRESULT: PASS x3\n\nCLINT mtime write coherence verified`,
+          verificationEnvironment: 'QEMU 8.2.2',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtime-write',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/mtime-write',
+          terminalLabel: 'Verified mtime write coherence test output',
           showRepoLink: true
         }
 
