@@ -26,7 +26,7 @@
   "portability": null,
   "kicker": "BARE-METAL KERNEL",
   "title": "RISC-V bare-metal scheduler",
-  "summary": "A freestanding 64-bit RISC-V kernel for QEMU\u2019s <code>virt</code> machine. It boots directly into M-mode, drives an ns16550a UART over MMIO, and interleaves three tasks with real assembly context switches.",
+  "summary": "A freestanding 64-bit RISC-V kernel for QEMU’s <code>virt</code> machine. It boots directly into M-mode, drives an ns16550a UART over MMIO, and interleaves three tasks with real assembly context switches.",
   "specRows": [
    [
     "BOOT",
@@ -83,7 +83,7 @@
   "portability": null,
   "kicker": "KERNEL EXTENSION",
   "title": "xv6 syscall accounting",
-  "summary": "A focused extension to MIT\u2019s xv6 RISC-V kernel. <code>getscount(n)</code> reports how many times the calling process invoked syscall <code>n</code>, wired from user-space stub through dispatcher to per-process kernel state.",
+  "summary": "A focused extension to MIT’s xv6 RISC-V kernel. <code>getscount(n)</code> reports how many times the calling process invoked syscall <code>n</code>, wired from user-space stub through dispatcher to per-process kernel state.",
   "specRows": [
    [
     "HOOK",
@@ -1420,7 +1420,7 @@
   "portability": null,
   "kicker": "RISC-V PRIVILEGE MODES",
   "title": "S-mode trap delegation",
-  "summary": "The preemptive scheduler\u2019s trap handling moved from M-mode to S-mode on RISC-V bare metal. The M-mode boot stub delegates supervisor interrupts and S-mode exceptions through <code>medeleg</code> and <code>mideleg</code>, installs <code>stvec</code>, opens S-mode memory with a PMP NAPOT entry, enables counters through <code>mcounteren</code>, probes <code>menvcfg.STCE</code> for Sstc, then drops to S-mode with <code>sret</code>. The scheduler then runs entirely in S-mode on the delegated supervisor timer interrupt through <code>stimecmp</code>, with no M-mode involvement after boot.",
+  "summary": "The preemptive scheduler’s trap handling moved from M-mode to S-mode on RISC-V bare metal. The M-mode boot stub delegates supervisor interrupts and S-mode exceptions through <code>medeleg</code> and <code>mideleg</code>, installs <code>stvec</code>, opens S-mode memory with a PMP NAPOT entry, enables counters through <code>mcounteren</code>, probes <code>menvcfg.STCE</code> for Sstc, then drops to S-mode with <code>sret</code>. The scheduler then runs entirely in S-mode on the delegated supervisor timer interrupt through <code>stimecmp</code>, with no M-mode involvement after boot.",
   "specRows": [
    [
     "BOOT",
@@ -2144,7 +2144,7 @@
    },
    "PORTABLE": {
     "applies": true,
-    "because": "proves the generator\u2019s full period by walking every one of the 65,535 nonzero states for two seeds, so a builder can trust the cycle length instead of assuming it"
+    "because": "proves the generator’s full period by walking every one of the 65,535 nonzero states for two seeds, so a builder can trust the cycle length instead of assuming it"
    }
   },
   "evidence": {
@@ -3584,7 +3584,7 @@
   "portability": null,
   "kicker": "RISC-V PRIVILEGE TRANSITIONS",
   "title": "Bare-metal ecall ABI round trip",
-  "summary": "A bare-metal RISC-V program on QEMU 8.2.2 drops from M-mode to S-mode and issues environment calls. The M-mode trap handler saves and restores every register <code>x1-x31</code> around the C dispatcher. Ground truth is checked on every call: <code>mcause</code> reads 9, environment call from S-mode, and the instruction word at <code>mepc</code> reads <code>0x00000073</code>, the <code>ecall</code> encoding. The handler\u2019s received <code>a0-a5</code> are compared word for word against the payload\u2019s loaded constants, and returned <code>a0</code> is checked against an independently computed XOR. Program output is byte-identical across 3 QEMU runs, and every run prints <code>RESULT: PASS</code>.",
+  "summary": "A bare-metal RISC-V program on QEMU 8.2.2 drops from M-mode to S-mode and issues environment calls. The M-mode trap handler saves and restores every register <code>x1-x31</code> around the C dispatcher. Ground truth is checked on every call: <code>mcause</code> reads 9, environment call from S-mode, and the instruction word at <code>mepc</code> reads <code>0x00000073</code>, the <code>ecall</code> encoding. The handler’s received <code>a0-a5</code> are compared word for word against the payload’s loaded constants, and returned <code>a0</code> is checked against an independently computed XOR. Program output is byte-identical across 3 QEMU runs, and every run prints <code>RESULT: PASS</code>.",
   "specRows": [
    [
     "BUILD",
@@ -9606,6 +9606,128 @@
   "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcause-warl",
   "repoLabel": "GitHub: riscv-baremetal-demo/src/mcause-warl",
   "terminalLabel": "Verified mcause-warl run output",
+  "showRepoLink": true
+ },
+ {
+  "id": "lab-115-clz-fp",
+  "layers": {
+   "ISA": {
+    "applies": false,
+    "because": "not here because the 10,065,537-check bench runs in a host user-space process against software, never a RISC-V instruction."
+   },
+   "FIRMWARE": {
+    "applies": false,
+    "because": "not here because the bench runs in a host user-space process, with no M-mode boot code running."
+   },
+   "KERNEL": {
+    "applies": false,
+    "because": "not here because the 10,065,537 checks prove the exponent-read construction in isolation, with no scheduler, VM, driver, or syscall path running."
+   },
+   "PORTABLE": {
+    "applies": true,
+    "because": "The binary64 exponent-read identity gives floor(log2) from the IEEE-754 layout on every ISA."
+   }
+  },
+  "evidence": {
+   "label": "proof log",
+   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/115-clz-fp/PROOF.md"
+  },
+  "portability": null,
+  "kicker": "INTEGER ARITHMETIC",
+  "title": "Leading Zeros from the Double Exponent",
+  "summary": "Count-leading-zeros of a 64-bit word read from the IEEE-754 binary64 exponent field: fill x upward to 2^(n+1)-1, the unbiased exponent minus 1023 is floor(log2(x)), clz = 63 - that, x = 0 pinned to 64. The rounding hazard (filled values at or above 2^53 round up one exponent step) was caught by the differential test as 5010 mismatches and corrected. 10,065,537 checks, 0 mismatches, checksum identical across three builds.",
+  "specRows": [
+   [
+    "CHECKS",
+    "10,065,537 differential vs __builtin_clzll"
+   ],
+   [
+    "MISMATCHES",
+    "0"
+   ],
+   [
+    "CHECKSUM",
+    "FNV-1a bb15711279c99def across -O0/-O2/ASan+UBSan"
+   ],
+   [
+    "THROUGHPUT",
+    "14.29 ns/value at -O2"
+   ],
+   [
+    "RESULT",
+    "PASS"
+   ]
+  ],
+  "terminalName": "systems-lab / lab / 115-clz-fp",
+  "terminalOutput": "$ ./test_clz_fp\nx=0 contract: clz64_fp(0) = 64 OK\nchecks: 10065537\nmismatches: 0\nchecksum: bb15711279c99def\nbuilds .................. -O0, -O2, ASan+UBSan IDENTICAL\nthroughput .............. 14.29 ns/value at -O2\nRESULT: PASS\n\nleading zeros from the double exponent, 0 mismatches",
+  "verificationEnvironment": "Host",
+  "checks": 10065537,
+  "failures": 0,
+  "stressItems": 10065537,
+  "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/115-clz-fp",
+  "repoLabel": "GitHub: systems-lab/lab/115-clz-fp",
+  "terminalLabel": "Verified clz-fp test output",
+  "showRepoLink": true
+ },
+ {
+  "id": "lab-116-pdep-emul",
+  "layers": {
+   "ISA": {
+    "applies": false,
+    "because": "not here because the 1,002,060-check bench runs in a host user-space process against software, never a RISC-V instruction."
+   },
+   "FIRMWARE": {
+    "applies": false,
+    "because": "not here because the bench runs in a host user-space process, with no M-mode boot code running."
+   },
+   "KERNEL": {
+    "applies": false,
+    "because": "not here because the 1,002,060 checks prove the loop-scatter construction in isolation, with no scheduler, VM, driver, or syscall path running."
+   },
+   "PORTABLE": {
+    "applies": true,
+    "because": "The loop-scatter deposit identity scatters bits by mask on every ISA."
+   }
+  },
+  "evidence": {
+   "label": "proof log",
+   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/116-pdep-emul/PROOF.md"
+  },
+  "portability": null,
+  "kicker": "INTEGER ARITHMETIC",
+  "title": "Parallel Bit Deposit, No BMI2",
+  "summary": "Software parallel-bit-deposit scattering the low popcount(mask) bits of src into the set mask positions via the loop-scatter identity, lowest-bit isolation m & (~m + 1), no intrinsics or builtins. 1,002,060 differential checks vs a naive per-bit loop, 0 mismatches, popcount conservation on every case, checksum identical across three builds.",
+  "specRows": [
+   [
+    "CHECKS",
+    "1,002,060 differential vs per-bit loop"
+   ],
+   [
+    "MISMATCHES",
+    "0"
+   ],
+   [
+    "CHECKSUM",
+    "FNV-1a 5780cdf6a1013eb2 across -O0/-O2/ASan+UBSan"
+   ],
+   [
+    "THROUGHPUT",
+    "76.59 ns/value at -O2"
+   ],
+   [
+    "RESULT",
+    "PASS"
+   ]
+  ],
+  "terminalName": "systems-lab / lab / 116-pdep-emul",
+  "terminalOutput": "$ ./test_pdep\nphase1 random: pairs=1000000, mismatches=0\nphase2 exhaustive-8bit: pairs=2048, mismatches=0\ntotal pairs: 1002060\nmismatches: 0\nchecksum: 5780cdf6a1013eb2\nPASS\nbuilds .................. -O0, -O2, ASan+UBSan IDENTICAL\nthroughput .............. 76.59 ns/value at -O2\nRESULT: PASS\n\nparallel bit deposit, 0 mismatches",
+  "verificationEnvironment": "Host",
+  "checks": 1002060,
+  "failures": 0,
+  "stressItems": 1002060,
+  "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/116-pdep-emul",
+  "repoLabel": "GitHub: systems-lab/lab/116-pdep-emul",
+  "terminalLabel": "Verified pdep-emul test output",
   "showRepoLink": true
  }
 ]
