@@ -412,6 +412,8 @@
     .layer-slot.dim .layer-name { color: var(--dim); padding-left: 0; border-left: 0; opacity: .6; }
     .layer-slot .layer-because { margin: 6px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
     .layer-slot.dim .layer-because { color: var(--muted); }
+    .layer-source { display: inline-block; margin-top: 6px; font: 10px/1.5 var(--mono); color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
+    .layer-source:hover, .layer-source:focus-visible { color: var(--acid); border-color: var(--acid); }
     .portability { margin: 24px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
     .portability li { display: grid; grid-template-columns: minmax(112px, auto) 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .portability .port-label { font-family: var(--mono); color: var(--dim); }
@@ -842,6 +844,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Comparison That Never Compares</h3>
+          <!-- LAYER-STRIP:the-comparison-that-never-compares -->
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 18:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take 3 and 5 and ask which is smaller. The code below does not compare them. It subtracts: d = 3 - 5. In unsigned 64-bit arithmetic there is no negative 2, so the subtraction wraps and d becomes 2^64 - 2, a number enormously larger than 3, nearly the largest the machine knows. Then it asks one question: is d greater than 3? Yes. That single test is the whole verdict: 3 is smaller than 5.</p>
+          <p>The identity is called borrow-out: d &gt; a exactly when a &lt; b. When a is the smaller one, the subtraction cannot be represented, so it borrows, and the wrapped difference overshoots a. When a is larger, a - b is small and honest and never exceeds a. Equality needs no wrapping argument at all, just a == b. The three cases partition the world, so the greater-than flag is whatever is left over: gt = 1 - lt - eq. Check 3 and 5 by hand: lt = 1, eq = 0, gt = 0, answer -1.</p>
+          <p>The whole implementation is five lines, and the code is the insight here:</p>
+          <pre><code>uint64_t d = a - b;        /* wraps modulo 2^64, total */
+uint64_t lt = d &gt; a;       /* borrow-out: 1 exactly when a &lt; b */
+uint64_t eq = a == b;      /* 1 exactly when a == b */
+uint64_t gt = 1 - lt - eq; /* the remaining case, so 1 exactly when a &gt; b */
+return (int64_t)gt - (int64_t)lt;  /* confined to -1, 0, +1 */</code></pre>
+          <p>The first line computes the wrapped difference. The second reads the borrow straight out of it: 1 exactly when a is smaller. The third is plain equality. The fourth is the partition of the world, 1 exactly when a is larger. The last confines the answer to -1, 0, +1, where no signed overflow is possible.</p>
+          <p>The -O2 build is eleven instructions with zero jumps, and the first line is gone. The compiler deleted d = a - b, because the hardware already has that subtraction: cmp performs it, keeps the flags, and discards the number, and setb reads the borrow out of the carry flag. Five lines of C collapsed into the machine's own comparison, the silicon and the source agreeing on what comparison is.</p>
+          <p>This is not a new idea wearing C clothes. The x86 manuals describe CMP exactly as a subtraction without storage of the result that affects flags only. RISC-V threw the flags register away and kept the shape anyway: a BLTU branch is taken exactly when a - b wraps past a, which is the lt bit above, the flags just never escaping into the architecture. The lab held for every 16-bit pair that exists, all 4,294,967,296 of them, about 4.3 billion, plus ten million random 64-bit pairs and fourteen hand-built edge rows: zero mismatches, and one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds. In one sentence: the wrap-around is not the error in the subtraction, it is the verdict, and comparison is subtraction that threw away the answer and kept the truth.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/100-branchless-cmp" target="_blank" rel="noopener">lab/100-branchless-cmp</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Adder With No Plus Sign</h3>
           <!-- LAYER-STRIP:the-adder-with-no-plus-sign -->
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 17:04 EDT</time></p>
@@ -1320,11 +1344,14 @@ assert(check == 0x2144DF1C);</code></pre>
       const layerStripHTML = (project) => {
         if (!project.layers) return '';
         const order = ['ISA', 'FIRMWARE', 'KERNEL', 'PORTABLE'];
+        const ev = project.evidence
+          ? `<a class="layer-source" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(project.evidence.label)} <span aria-hidden="true">↗</span></a>`
+          : '';
         const slots = order
           .map((name) => {
             const slot = project.layers[name] || { applies: false, because: '' };
             const cls = slot.applies ? 'layer-slot lit' : 'layer-slot dim';
-            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}</p></div>`;
+            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}</p>${ev}</div>`;
           })
           .join('');
         return `<div class="layer-strip"><div class="layer-strip-caption">Relevance by layer</div>${slots}</div>`;

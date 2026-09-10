@@ -45,5 +45,12 @@ strips, no unresolved placeholders), commits, and pushes.
 - Card numbers must match what the source PROOF.md asserts. If the gate
   fails, fix the card or the PROOF.md header, never weaken the gate.
 - `because` strings are plain text: no `<`, `>`, `&`, no em dashes.
+- Every `because` is claim plus primary evidence: name the single source
+  (the card's PROOF.md log, the ISA manual section, the vendor doc) that
+  lets a reader verify it, and make sure the dig-down path to that source
+  exists on the card. A because whose evidence you cannot name does not ship.
+- Every card and article carries an `evidence` {label, url} object (usually
+  the proof-log blob URL of its PROOF.md); the build renders it as a
+  dig-down link under each layer slot and fails the build if it is missing.
 - Portability panels only where a verified ISA mapping exists; never
   stretch an algorithm card into a hardware claim.

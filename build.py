@@ -43,6 +43,23 @@ def fail(msg):
     raise BuildError(msg)
 
 
+def check_evidence(ev, where):
+    # Every layer strip's becauses must name primary evidence a reader can
+    # follow: the card's PROOF.md proof log (or the repo itself when no
+    # proof log exists). Claim discipline from Chris 2026-09-10.
+    if not isinstance(ev, dict) or set(ev.keys()) != {"label", "url"}:
+        fail(f"{where}: evidence must be {{label, url}}")
+    if (not isinstance(ev["label"], str) or not ev["label"].strip()
+            or any(ch in ev["label"] for ch in "<>&")):
+        fail(f"{where}: evidence.label must be plain non-empty text")
+    u = ev["url"]
+    if (not isinstance(u, str)
+            or not u.startswith("https://github.com/dillingerstaffing/")):
+        fail(f"{where}: evidence.url must be an https://github.com/dillingerstaffing/ URL")
+    if any(ch in u for ch in " '\"<>"):
+        fail(f"{where}: evidence.url contains unsafe characters")
+
+
 def check_layers(layers, where):
     if not isinstance(layers, dict) or set(layers.keys()) != set(LAYERS):
         fail(f"{where}: layers must have exactly {LAYERS}")
@@ -103,6 +120,7 @@ def load_data():
                 isinstance(r, list) and len(r) == 2 for r in c["specRows"]):
             fail(f"card {c['id']}: specRows must be [label, value] pairs")
         check_layers(c["layers"], f"card {c['id']}")
+        check_evidence(c.get("evidence"), f"card {c['id']}")
 
     if not isinstance(chips, list) or not chips:
         fail("chips.json must be a non-empty list")
@@ -133,6 +151,7 @@ def load_data():
         if not isinstance(a["paragraphs"], list) or not a["paragraphs"]:
             fail(f"article {a['title']}: paragraphs must be a non-empty list")
         check_layers(a["layers"], f"article {a['title']}")
+        check_evidence(a.get("evidence"), f"article {a['title']}")
 
     return cards, articles, chips_by_key
 
@@ -158,6 +177,15 @@ def slugify(title):
 def article_strip_html(article):
     # Mirrors the layerStripHTML() renderer in index.src.html, but baked at
     # build time. because strings are validated plain text; escape anyway.
+    ev = article.get("evidence") or {}
+    ev_html = ""
+    if ev:
+        ev_html = (
+            f'<a class="layer-source" href="{html.escape(ev["url"], quote=True)}"'
+            f' target="_blank" rel="noopener">'
+            f'{html.escape(ev["label"], quote=False)}'
+            f' <span aria-hidden="true">\u2197</span></a>'
+        )
     slots = []
     for name in LAYERS:
         slot = article["layers"][name]
@@ -165,7 +193,7 @@ def article_strip_html(article):
         because = html.escape(slot["because"], quote=False)
         slots.append(
             f'<div class="{cls}"><div class="layer-name">{name}</div>'
-            f'<p class="layer-because">{because}</p></div>'
+            f'<p class="layer-because">{because}</p>{ev_html}</div>'
         )
     return ('<div class="layer-strip">'
             '<div class="layer-strip-caption">Relevance by layer</div>'
