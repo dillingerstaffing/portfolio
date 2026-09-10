@@ -5476,9 +5476,16 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
 
       const normalPageSections = [...document.querySelectorAll('main > :not(#blog)')];
       const primaryNavLinks = [...document.querySelectorAll('nav[aria-label="Primary navigation"] a')];
+      let previousHash = location.hash;
       const updatePageView = () => {
         const hash = location.hash;
         const blogIsActive = hash === '#blog';
+        if (previousHash === '#blog' && hash !== '#blog') {
+          sessionStorage.setItem('blog-scroll-pos', String(window.scrollY));
+        }
+        const savedBlogScrollPosition = blogIsActive
+          ? sessionStorage.getItem('blog-scroll-pos')
+          : null;
         blogPage.hidden = !blogIsActive;
         normalPageSections.forEach((section) => {
           section.hidden = blogIsActive;
@@ -5497,11 +5504,18 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         if (hash) {
           window.requestAnimationFrame(() => {
             const target = document.getElementById(hash.slice(1));
-            if (blogIsActive) window.scrollTo({ top: 0, behavior: 'auto' });
+            if (blogIsActive) {
+              const scrollPosition = Number(savedBlogScrollPosition);
+              window.scrollTo({
+                top: savedBlogScrollPosition !== null && Number.isFinite(scrollPosition) ? scrollPosition : 0,
+                behavior: 'auto'
+              });
+            }
             else if (target && !target.hidden) target.scrollIntoView({ behavior: 'auto', block: 'start' });
             scheduleScrollControlUpdate();
           });
         }
+        previousHash = hash;
       };
       window.addEventListener('hashchange', updatePageView);
       updatePageView();
