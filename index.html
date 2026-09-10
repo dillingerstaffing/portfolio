@@ -4333,10 +4333,10 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           id: 'research-crc32-residue',
           kicker: 'RESEARCH NOTE',
           title: 'The Checksum That Always Lands on 0x2144DF1C',
-          summary: 'Everyone knows 0xCBF43926, the CRC-32 of "123456789". But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending. Lab/82 proved it: one million random buffers, checksum, append, re-checksum, every single one landed on the residue, zero mismatches. Append big-endian instead and you get 0x3cc9742c, which is the trap the lab sets deliberately. The fingerprint was byte-identical across -O2, -O0, and sanitizer builds. Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue.',
+          summary: 'Everyone knows 0xCBF43926, the CRC-32 of "123456789". But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending. Lab/82 proved it: one million random buffers, checksum, append, re-checksum, every single one landed on the residue, zero mismatches. Append big-endian instead and there is no universal residue (for "123456789" it happens to be 0x3cc9742c, which is the trap the lab sets deliberately). The fingerprint was byte-identical across -O2, -O0, and sanitizer builds. Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue. The check itself is three lines: crc = crc32(msg); append_le(msg, crc); assert(crc32(msg) == 0x2144DF1C).',
           specRows: [
             ['RESIDUE', '0x2144DF1C for every message, little-endian append'],
-            ['BE TRAP', '0x3cc9742c when appended big-endian'],
+            ['BE TRAP', '0x3cc9742c for "123456789"; no universal BE residue'],
             ['CASES', '1,000,000 random buffers, 0 mismatches'],
             ['THROUGHPUT', '207.7 MiB/s at -O2'],
             ['SOURCE', 'Wikipedia Mathematics of CRC, kernel Documentation/crc32.txt']
@@ -4356,7 +4356,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           id: 'research-round-up-pow2',
           kicker: 'RESEARCH NOTE',
           title: 'The Decrement That Leaves Room for the Ceiling',
-          summary: 'Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with v |= v >> 1, 2, 4, 8, 16, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones. The decrement is the quiet genius: without it, a value already a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it. Lab/84 verified it: 194 contract rows, exhaustive 16-bit, one million random 64-bit values, zero mismatches, 2.27 ns/value at -O2.',
+          summary: 'Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with v |= v >> 1, 2, 4, 8, 16, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones. The decrement is the quiet genius: without it, a value already a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it. Lab/84 verified it: 194 contract rows, exhaustive 16-bit, one million random 64-bit values, zero mismatches, 2.27 ns/value at -O2. The whole trick: v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++.',
           specRows: [
             ['OPERATIONS', '12 ops for 32-bit (decrement + 5 smears + increment)'],
             ['EDGE CASE', 'input 0 returns 0 (documented, not hidden)'],
@@ -4388,7 +4388,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
             ['1000BASE-T', '4 pairs x 250 Mbps, PAM-5, 125 Mbaud']
           ],
           terminalName: 'proving-ground / bench / 21-the-crimp-bay',
-          terminalOutput: `$ cable-tester certify\ncable 1 ............ PASS (straight-through)\ncable 2 ............ SPLIT fault found\ncable 3 ............ PASS\ncertified .......... 3/3 at 1000BASE-T\n\nTwisted-pair physics verified in bench`,
+          terminalOutput: `$ cable-tester certify\ncable 1 ............ PASS (straight-through)\ncable 2 ............ SPLIT fault found, re-crimped\ncable 2 (retry) .... PASS\ncable 3 ............ PASS\ncertified .......... 3/3 at 1000BASE-T\n\nTwisted-pair physics verified in bench`,
           verificationEnvironment: 'Host',
           checks: 3,
           failures: 0,
@@ -4402,7 +4402,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           id: 'research-carryless-multiply',
           kicker: 'RESEARCH NOTE',
           title: 'The Multiply That Never Carries',
-          summary: 'Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x^2 + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation. The honest signature is the square: over GF(2), (sum c_i x^i)^2 = sum c_i x^{2i}, the freshman dream made true, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only. This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2.',
+          summary: 'Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x^2 + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation. The honest signature is the square: over GF(2), (sum c_i x^i)^2 = sum c_i x^{2i}, the freshman dream made true, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only. This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2. The core loop: while (b) { if (b & 1) res ^= a; a <<= 1; b >>= 1; } No carries, just shift and XOR.',
           specRows: [
             ['FIELD', 'GF(2): addition is XOR, no carries exist'],
             ['SIGNATURE', '0xff * 0xff = 0x5555 (bits land on even positions)'],
