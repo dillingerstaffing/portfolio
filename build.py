@@ -32,7 +32,7 @@ OUT = HERE / "index.html"
 GATE = HERE / "drift-gate.py"
 
 LAYERS = ("ISA", "FIRMWARE", "KERNEL", "PORTABLE")
-PORTABILITY_FIELDS = ("instruction", "extension", "specRef", "whereNeeded", "costNote")
+PORTABILITY_FIELDS = ("instruction", "extension", "specRef", "specUrl", "whereNeeded", "costNote")
 
 
 class BuildError(Exception):
@@ -93,6 +93,43 @@ def check_portability(p, where, chip_keys):
     for key in p["whereNeeded"]:
         if key not in chip_keys:
             fail(f"{where}: portability.whereNeeded references unknown chip {key!r}")
+    u = p["specUrl"]
+    if not u.startswith("https://"):
+        fail(f"{where}: portability.specUrl must be an https URL")
+    if any(ch in u for ch in " '\"<>"):
+        fail(f"{where}: portability.specUrl contains unsafe characters")
+
+
+def check_decisions(decisions, card_ids):
+    # The structured argument store for ISA-mapping decisions: every accepted
+    # hardware treatment and every deliberately rejected near-mapping, each
+    # with its rationale and external primary sources. Claim discipline from
+    # Chris 2026-09-10: argument data kept structured, evidence linked.
+    if not isinstance(decisions, list) or not decisions:
+        fail("isa-decisions.json must be a non-empty list")
+    seen = set()
+    for d in decisions:
+        for f in ("id", "cardId", "decision", "claim", "rationale", "sources"):
+            if f not in d:
+                fail(f"decision missing field {f}: {d.get('id')}")
+        if d["id"] in seen:
+            fail(f"duplicate decision id {d['id']}")
+        seen.add(d["id"])
+        if d["decision"] not in ("accepted", "rejected"):
+            fail(f"decision {d['id']}: must be accepted or rejected")
+        if d["cardId"] not in card_ids:
+            fail(f"decision {d['id']}: unknown card {d['cardId']}")
+        if d["decision"] == "accepted" and not d.get("instruction"):
+            fail(f"decision {d['id']}: accepted needs an instruction")
+        if not isinstance(d["sources"], list) or not d["sources"]:
+            fail(f"decision {d['id']}: needs at least one source")
+        for s in d["sources"]:
+            if set(s.keys()) != {"kind", "label", "url"}:
+                fail(f"decision {d['id']}: source must be {{kind, label, url}}")
+            if s["kind"] not in ("spec", "vendor-doc", "paper", "proof-log"):
+                fail(f"decision {d['id']}: unknown source kind {s['kind']}")
+            if not s["url"].startswith("https://"):
+                fail(f"decision {d['id']}: source url must be https")
 
 
 def load_data():
@@ -100,6 +137,7 @@ def load_data():
         cards = json.loads((DATA / "cards.json").read_text(encoding="utf-8"))
         articles = json.loads((DATA / "articles.json").read_text(encoding="utf-8"))
         chips = json.loads((DATA / "chips.json").read_text(encoding="utf-8"))
+        decisions = json.loads((DATA / "isa-decisions.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         fail(f"could not parse data files: {e}")
 
@@ -137,6 +175,14 @@ def load_data():
 
     for c in cards:
         check_portability(c.get("portability"), f"card {c['id']}", chip_keys)
+
+    check_decisions(decisions, set(seen))
+    # The argument store and the panels must agree: every accepted decision
+    # has a portability block and vice versa.
+    accepted = {d["cardId"] for d in decisions if d["decision"] == "accepted"}
+    panelled = {c["id"] for c in cards if c.get("portability")}
+    if accepted != panelled:
+        fail(f"isa-decisions accepted {sorted(accepted ^ panelled)} != portability cards")
 
     if not isinstance(articles, list) or len(articles) != 10:
         fail(f"articles.json must hold exactly 10 articles, found {len(articles) if isinstance(articles, list) else type(articles)}")

@@ -52,5 +52,9 @@ strips, no unresolved placeholders), commits, and pushes.
 - Every card and article carries an `evidence` {label, url} object (usually
   the proof-log blob URL of its PROOF.md); the build renders it as a
   dig-down link under each layer slot and fails the build if it is missing.
+- `data/isa-decisions.json` records every ISA-mapping decision, accepted or
+  rejected, with claim, rationale, and external primary sources (the pinned
+  ISA manual release PDF). Accepted decisions must exactly match the cards
+  carrying portability blocks. New portability blocks require `specUrl`.
 - Portability panels only where a verified ISA mapping exists; never
   stretch an algorithm card into a hardware claim.
