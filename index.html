@@ -242,20 +242,17 @@
     .project-browser {
       display: grid;
       grid-template-columns: 176px minmax(0, 1fr);
-      gap: clamp(28px, 4vw, 58px);
+      gap: clamp(28px, 5vw, 64px);
       align-items: start;
     }
-    .chapter-rail {
-      position: sticky; top: 16px; z-index: 4;
-      max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain;
-      border-top: 1px solid var(--line); background: var(--bg); scrollbar-width: thin;
-    }
+    .chapter-rail { position: sticky; top: 16px; z-index: 24; }
+    .chapter-list { display: grid; }
     .chapter-button {
-      position: relative; width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 8px;
-      border: 0; border-bottom: 1px solid var(--line); padding: 10px 8px 10px 15px;
-      background: transparent; color: var(--dim); text-align: left; font: 10px/1.35 var(--mono); cursor: pointer;
+      position: relative; width: 100%; min-height: 44px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px;
+      border: 0; border-bottom: 1px solid var(--line); padding: 9px 0;
+      background: transparent; color: var(--dim); text-align: left; font: 10px/1.3 var(--mono); cursor: pointer;
     }
-    .chapter-button::before { content: ""; position: absolute; left: 0; top: 50%; width: 5px; height: 1px; background: transparent; }
+    .chapter-button::before { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: transparent; }
     .chapter-button:hover, .chapter-button:focus-visible, .chapter-button.is-active { color: var(--acid); }
     .chapter-button.is-active::before { background: var(--acid); }
     .chapter-count { color: inherit; }
@@ -451,19 +448,31 @@
       .section-head { grid-template-columns: 1fr; gap: 16px; }
       .project-browser { display: block; }
       .chapter-rail {
-        position: static; z-index: 24; max-height: none; overflow: visible; padding: 0;
-        border-top: 0; border-bottom: 1px solid var(--line); background: var(--bg);
+        position: sticky;
+        top: 0;
+        margin-inline: calc(-1 * var(--pad));
+        padding-inline: var(--pad);
+        border-block: 1px solid var(--line);
+        background: rgba(12, 15, 13, .97);
       }
       .chapter-list {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); overflow: visible;
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
       }
+      .chapter-list::-webkit-scrollbar { display: none; }
       .chapter-button {
-        width: 100%; white-space: normal; min-height: 52px;
-        display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
-        gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 46px;
+        padding: 9px 12px;
+        border-right: 1px solid var(--line);
+        border-bottom: 0;
+        white-space: nowrap;
       }
-      .chapter-button::before { display: none; }
-      .chapter-button.is-active { background: var(--acid); color: var(--black); }
       .project { contain-intrinsic-size: auto 1200px; scroll-margin-top: 64px; }
       html.density-compact .project { contain-intrinsic-size: auto 58px; }
       .compact-main { grid-template-columns: 46px minmax(118px, .6fr) minmax(170px, 1fr); }
@@ -600,8 +609,8 @@
       </div>
 
       <div class="project-browser">
-        <nav class="chapter-rail" aria-label="Proof chapters">
-          <div class="chapter-list"></div>
+        <nav class="chapter-rail" aria-label="Proof filters">
+          <div class="chapter-list" id="proof-filter-list"></div>
         </nav>
         <div class="project-record">
           <div id="projects-list"></div>
@@ -4037,28 +4046,51 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           showRepoLink: true
         },
         {
-          id: 'riscv-mstatus-mpp-hardware-behavior',
-          kicker: 'RISC-V / BARE METAL',
-          title: 'mstatus.MPP encoding, verified on hardware behavior',
-          summary: 'A bare-metal M-mode program that writes the <code>mstatus.MPP</code> field through all four encodings, reads back the CSR, then uses <code>mret</code> to enter a one-instruction <code>ecall</code> payload. The trap handler records <code>mcause</code>, <code>mepc</code>, <code>mtval</code>, and the trap-entry MPP bits.',
+          id: 'crc16-table-derived',
+          kicker: 'C / CHECKSUMS',
+          title: 'CRC-16 from a derived table',
+          summary: 'CRC-16/CCITT-FALSE (poly 0x1021, MSB-first, init 0xFFFF) written twice from scratch: a one-bit-at-a-time shift-register recurrence and a table-driven implementation over a 256-entry table derived at startup from the polynomial. The table derivation is proven by an independent re-derivation, 256/256 entries match.',
           specRows: [
-            ['MPP 00', 'mcause 0x8, trap-entry MPP 0'],
-            ['MPP 01', 'mcause 0x9, trap-entry MPP 1'],
-            ['MPP 11', 'mcause 0xb, trap-entry MPP 3'],
-            ['RESERVED 10', 'coerced to 00 at write time'],
-            ['MEPC', '0x800002d2, exactly the payload ecall address every phase'],
-            ['RUNS', 'QEMU 8.2.2, 3 byte-identical runs'],
-            ['RESULT', 'PASS x3']
+            ['PARAMETERS', 'poly 0x1021 MSB-first, init 0xFFFF, xorout 0x0000'],
+            ['DIFFERENTIAL', '1,000,256 messages (128,062,115 bytes), 0 mismatches'],
+            ['KNOWN ANSWERS', '"123456789" -> 0x29B1 (CRC catalogue check value), empty -> 0xFFFF'],
+            ['TABLE', '256/256 entries match an independent re-derivation'],
+            ['CHECKSUM', 'FNV-1a a2efc13368379e59, identical across -O0, -O2, ASan+UBSan'],
+            ['MEASURED', 'bitwise 70.8 MiB/s, table-driven 197.9 MiB/s at -O2']
           ],
-          terminalName: 'riscv-baremetal-demo / src / mpp-encoding',
-          terminalOutput: '$ make qemu (QEMU 8.2.2, 3 runs)\nMPP 00 ........ mcause 0x8, entry MPP 0\nMPP 01 ........ mcause 0x9, entry MPP 1\nMPP 11 ........ mcause 0xb, entry MPP 3\nreserved 10 ... coerced to 00 at write time\nmepc .......... 0x800002d2, payload ecall every phase\nmtval ........ recorded every phase\noutput ........ byte-identical across all 3 runs\nRESULT: PASS x3\n\nall four mstatus.MPP encodings verified by trap behavior',
-          verificationEnvironment: 'QEMU',
-          checks: 4,
+          terminalName: 'systems-lab / lab / 79-crc16-table',
+          terminalOutput: `$ make run (4 builds)\ntable derivation ...... 256/256 match\nknown answers ....... "123456789" -> 0x29B1, empty -> 0xFFFF\ndifferential .......... 1,000,256 messages, 128,062,115 bytes\nmismatches ............ 0\nchecksum .............. a2efc13368379e59\nbuilds ................ -O0, -O2, ASan+UBSan IDENTICAL\nthroughput ............ 197.9 MiB/s table, 70.8 MiB/s bitwise at -O2\nRESULT: PASS\n\nCRC-16/CCITT-FALSE, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 1000256,
           failures: 0,
-          stressItems: 3,
-          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mpp-encoding',
-          repoLabel: 'GitHub: riscv-baremetal-demo/src/mpp-encoding',
-          terminalLabel: 'Verified mstatus.MPP hardware-behavior output',
+          stressItems: 1000256,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/79-crc16-table',
+          repoLabel: 'GitHub: systems-lab/lab/79-crc16-table',
+          terminalLabel: 'Verified CRC-16/CCITT-FALSE differential test output',
+          showRepoLink: true
+        },
+        {
+          id: 'wrapping-negation',
+          kicker: 'C / ARITHMETIC',
+          title: 'Negation from the complement-plus-one identity',
+          summary: '64-bit negation built only from the ~x + 1 identity, with no unary minus in the implementation. Verified against unary minus and against the two defining invariants of negation: x + neg(x) == 0 and neg(neg(x)) == x, checked on every case.',
+          specRows: [
+            ['METHOD', '~x + 1 identity only, all arithmetic unsigned'],
+            ['DIFFERENTIAL', '1,065,537 checks, 0 mismatches vs unary minus'],
+            ['INVARIANTS', '(x + neg(x)) == 0 and neg(neg(x)) == x on every case, 0 violations'],
+            ['EDGE', 'INT64_MIN wraps to itself, pinned by contract'],
+            ['CHECKSUM', 'FNV-1a 0x6f25fc9c8181575a, identical across -O0, -O2, ASan, UBSan'],
+            ['MEASURED', '0.594 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 81-wrapping-neg',
+          terminalOutput: `$ make run (4 builds)\ndifferential ............ 1,065,537 checks\nmismatches .............. 0\ninvariant violations .... 0\nINT64_MIN ............... wraps to itself (contract)\nchecksum ................ 0x6f25fc9c8181575a\nbuilds .................. -O0, -O2, ASan, UBSan IDENTICAL\nthroughput .............. 0.594 ns/value at -O2\nRESULT: PASS\n\ntwo's-complement negation, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 1065537,
+          failures: 0,
+          stressItems: 1065537,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/81-wrapping-neg',
+          repoLabel: 'GitHub: systems-lab/lab/81-wrapping-neg',
+          terminalLabel: 'Verified negation differential test output',
           showRepoLink: true
         }
 
@@ -4301,7 +4333,6 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       });
 
       const projectCards = [...document.querySelectorAll('.project')];
-      const chapterRail = document.querySelector('.chapter-rail');
       const chapterButtons = [...document.querySelectorAll('.chapter-button')];
       const recordClose = document.querySelector('.record-close');
       const recordKicker = recordClose.querySelector('.record-kicker');
