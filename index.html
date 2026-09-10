@@ -273,8 +273,8 @@
     .metric span { margin-top: 10px; color: var(--dim); font-size: 11px; }
 
     section { scroll-margin-top: 24px; }
-    section#work, section#contact, section#blog { scroll-margin-top: 92px; }
-    section#services { scroll-margin-top: 110px; }
+    section#work, section#contact, section#blog { scroll-margin-top: 80px; }
+    section#services { scroll-margin-top: 128px; }
     .section { padding-block: clamp(80px, 10vw, 136px); }
     .section-head { display: grid; grid-template-columns: .4fr 1fr; gap: 36px; margin-bottom: clamp(48px, 7vw, 84px); }
     .section-index { color: var(--acid); font-size: 12px; }
@@ -587,13 +587,12 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
-      transition: color 120ms ease, border-color 120ms ease, opacity 120ms ease, visibility 0s linear 120ms;
     }
     .scroll-control.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
-      transition-delay: 0s;
+      transition: opacity 150ms ease;
     }
     .scroll-to-services {
       width: auto;
@@ -5972,11 +5971,14 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
 
       const scrollServicesPrecisely = (behavior = 'auto') => {
         const title = document.getElementById('services-title');
+        const rail = document.querySelector('.chapter-rail');
         document.documentElement.classList.add('view-switching');
         let frame = 0;
         let stableFrames = 0;
         const align = () => {
-          const delta = title.getBoundingClientRect().top - headerHeight();
+          const railHeight = rail && rail.classList.contains('is-stuck') ? rail.getBoundingClientRect().height : 0;
+          const targetTop = headerHeight() + railHeight;
+          const delta = title.getBoundingClientRect().top - targetTop;
           if (Math.abs(delta) <= 1) {
             stableFrames += 1;
           } else {
