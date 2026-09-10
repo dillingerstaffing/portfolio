@@ -1,5 +1,5 @@
 // Auto-generated: updates on every deploy to force SW refresh
-const VERSION = 'v20260910-1315';
+const VERSION = 'v20260910-232025';
 const CACHE = 'portfolio-' + VERSION;
 const OFFLINE_URL = 'index.html';
 
@@ -19,6 +19,13 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== location.origin) return;
+
+  // Version probes must always reach the network and must never be cached:
+  // they are how open pages learn a new deploy exists.
+  if (url.searchParams.has('vcheck')) {
+    event.respondWith(fetch(request));
+    return;
+  }
   
   if (request.mode === 'navigate') {
     event.respondWith(

@@ -1739,9 +1739,12 @@ assert(check == 0x2144DF1C);</code></pre>
 
       if (location.hash.startsWith('#project-')) {
         const deepTarget = document.getElementById(location.hash.slice(1));
-        if (deepTarget) {
-          window.scrollTo({ top: deepTarget.getBoundingClientRect().top + window.scrollY - topOffset(), behavior: 'auto' });
-        }
+        // Native scrollIntoView, not manual rect math: cards use
+        // content-visibility: auto, so rects above the fold are estimated
+        // until the target renders. The browser lays the target out first,
+        // then lands it exactly; scroll-margin-top keeps it clear of the
+        // sticky header.
+        if (deepTarget) deepTarget.scrollIntoView({ behavior: 'auto', block: 'start' });
       }
 
       const focusProject = (direction) => {
@@ -2390,7 +2393,9 @@ if ('serviceWorker' in navigator) {
         checking = true;
 
         try {
-          const response = await fetch('', { cache: 'no-store' });
+          // The vcheck query defeats the service worker's cache-first path for
+          // this probe: a unique URL can never match a stale cache entry.
+          const response = await fetch('?vcheck=' + Date.now(), { cache: 'no-store' });
           if (!response.ok) return;
 
           const html = await response.text();

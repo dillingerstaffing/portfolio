@@ -19,6 +19,7 @@ data loading. Edit data/*.json, then run build-portfolio.sh "message".
 """
 
 import argparse
+import datetime
 import html
 import json
 import re
@@ -487,6 +488,20 @@ def build(systems_lab, baremetal, xv6):
     for leftover in ("__PROJECTS_JSON__", "__CHIPS_JSON__", "__WIGMORE_JSON__", "LAYER-STRIP:"):
         if leftover in page:
             fail(f"unresolved placeholder remains: {leftover}")
+
+    # Stamp a unique build version so the foreground update check and the
+    # service worker both notice every deploy. Without this, phones keep
+    # serving the previous cached page forever.
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("v%Y%m%d-%H%M%S")
+    page, n = re.subn(r'(<meta name="build-version" content=")[^"]*(">)', r"\g<1>" + stamp + r"\g<2>", page)
+    if n != 1:
+        fail("expected exactly one build-version meta tag")
+    sw_path = HERE / "sw.js"
+    sw_text = sw_path.read_text(encoding="utf-8")
+    sw_text, m = re.subn(r"(const VERSION = ')[^']*(')", r"\g<1>" + stamp + r"\g<2>", sw_text)
+    if m != 1:
+        fail("expected exactly one VERSION in sw.js")
+    sw_path.write_text(sw_text, encoding="utf-8")
 
     node_check_scripts(page)
 
