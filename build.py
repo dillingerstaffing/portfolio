@@ -33,7 +33,11 @@ SRC = HERE / "index.src.html"
 OUT = HERE / "index.html"
 GATE = HERE / "drift-gate.py"
 
-LAYERS = ("ISA", "FIRMWARE", "KERNEL", "PORTABLE")
+LAYERS = ("ISA", "MICROARCH", "FIRMWARE", "KERNEL", "ALGORITHM")
+# Layers every item must carry a verdict for. MICROARCH joins this set once
+# the pilot extension is approved; until then it is optional and its absence
+# only warns (warn() never fails the build, fail() does).
+LAYERS_REQUIRED = ("ISA", "FIRMWARE", "KERNEL", "ALGORITHM")
 PORTABILITY_FIELDS = ("instruction", "extension", "specRef", "specUrl", "whereNeeded", "costNote")
 WIGMORE_KINDS = ("probandum", "penultimate", "evidence", "generalization",
                  "explanation", "refutation")
@@ -45,8 +49,51 @@ class BuildError(Exception):
     pass
 
 
+# Items still missing a MICROARCH verdict during the pilot phase. Summarized
+# once after validation instead of warning per item.
+_pilot_missing_microarch = []
+
+
 def fail(msg):
     raise BuildError(msg)
+
+
+def warn(msg):
+    # Warnings never fail the build; they are the second pair of eyes for
+    # the partial-correctness error mode (a layer that should be lit but
+    # is dim or missing). A human reads them before shipping.
+    print(f"WARNING: {msg}")
+
+
+# Keyword lint against the partial-correctness error mode: when an item's
+# prose leans on a layer's subject matter while that slot is dim or absent,
+# flag it for human review. Warning only; the checklist in the slot
+# authoring pass is the primary defense, this is the backstop.
+LAYER_TRIGGERS = {
+    "MICROARCH": (r"cache", r"pipeline", r"hazard", r"prefetch",
+                  r"branch predict", r"superscalar", r"out-of-order",
+                  r"store buffer"),
+    "FIRMWARE": (r"\bSBI\b", r"\bPMP\b", r"\bmisa\b", r"M-mode",
+                 r"machine mode", r"bootloader", r"boot ROM"),
+    "KERNEL": (r"syscall", r"schedul", r"page table", r"virtual memory",
+               r"context switch", r"\bdriver\b"),
+    "ISA": (r"instruction", r"\bCSR\b", r"opcode", r"illegal instruction",
+            r"extension", r"memory model", r"\bfence\b"),
+}
+
+
+def lint_layer_triggers(text, layers, where):
+    import re
+    for layer, patterns in LAYER_TRIGGERS.items():
+        slot = layers.get(layer)
+        if slot and slot.get("applies"):
+            continue
+        for pat in patterns:
+            if re.search(pat, text, re.IGNORECASE):
+                state = "dim" if slot else "missing"
+                warn(f"{where}: prose mentions {pat!r} but {layer} is {state}; "
+                     f"check for under-highlighting")
+                break
 
 
 def check_evidence(ev, where):
@@ -67,9 +114,22 @@ def check_evidence(ev, where):
 
 
 def check_layers(layers, where):
-    if not isinstance(layers, dict) or set(layers.keys()) != set(LAYERS):
-        fail(f"{where}: layers must have exactly {LAYERS}")
-    for name in LAYERS:
+    if not isinstance(layers, dict):
+        fail(f"{where}: layers must be a dict")
+    keys = set(layers.keys())
+    if not set(LAYERS_REQUIRED) <= keys <= set(LAYERS):
+        fail(f"{where}: layers must include {LAYERS_REQUIRED} and only {LAYERS}")
+    if "MICROARCH" not in keys:
+        _pilot_missing_microarch.append(where)
+    for name in keys:
+        slot = layers[name]
+        if not isinstance(slot, dict) or set(slot.keys()) != {"applies", "because"}:
+            fail(f"{where}: layer {name} must be {{applies, because}}")
+        if not isinstance(slot["applies"], bool):
+            fail(f"{where}: layer {name} applies must be boolean")
+        b = slot["because"]
+        if not isinstance(b, str) or not b.strip():
+            fail(f"{where}: layer {name} because must be a non-empty string")
         slot = layers[name]
         if not isinstance(slot, dict) or set(slot.keys()) != {"applies", "because"}:
             fail(f"{where}: layer {name} must be {{applies, because}}")
@@ -258,6 +318,9 @@ def load_data():
             fail(f"card {c['id']}: specRows must be [label, value] pairs")
         check_layers(c["layers"], f"card {c['id']}")
         check_evidence(c.get("evidence"), f"card {c['id']}")
+        lint_layer_triggers(
+            " ".join(str(c.get(f, "")) for f in ("title", "summary", "kicker")),
+            c["layers"], f"card {c['id']}")
 
     if not isinstance(chips, list) or not chips:
         fail("chips.json must be a non-empty list")
@@ -297,10 +360,16 @@ def load_data():
             fail(f"article {a['title']}: paragraphs must be a non-empty list")
         check_layers(a["layers"], f"article {a['title']}")
         check_evidence(a.get("evidence"), f"article {a['title']}")
+        lint_layer_triggers(
+            a["title"] + " " + " ".join(a["paragraphs"]),
+            a["layers"], f"article {a['title']}")
 
     article_slugs = {slugify(a["title"]) for a in articles}
     wigmore_by_slot = check_wigmore(wigmore, set(seen), article_slugs)
     print(f"wigmore: {len(wigmore_by_slot)} slot analyses validated")
+    if _pilot_missing_microarch:
+        print(f"pilot: {len(_pilot_missing_microarch)} items without a MICROARCH "
+              f"verdict (expected until the pilot extension is approved)")
 
     return cards, articles, chips_by_key, wigmore_by_slot
 
@@ -339,6 +408,8 @@ def article_strip_html(article):
         )
     slots = []
     for name in LAYERS:
+        if name not in article["layers"]:
+            continue  # pilot: only the pilot card carries MICROARCH so far
         slot = article["layers"][name]
         cls = "layer-slot lit" if slot["applies"] else "layer-slot dim"
         because = html.escape(slot["because"], quote=False)

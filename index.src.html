@@ -893,6 +893,30 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Mask That Finds Every Match</h3>
+          <!-- LAYER-STRIP:the-mask-that-finds-every-match -->
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 19:04 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take x = 0x19eb and y = 0x18eb, two 16-bit words. Byte 0 is 0xeb in both, so it agrees. Byte 1 is 0x19 against 0x18, so it disagrees. Bytes 2 through 7 are all zero in both, so they agree. The answer is one byte, one bit per byte: bit i set exactly when byte i matched. Bits 0, 2, 3, 4, 5, 6, and 7 are set, bit 1 is clear, and the mask is 0xfd. The lab's whole job is to compute that byte with no branch anywhere.</p>
+          <p>XOR the two words first: d = x ^ y. Every byte that agreed becomes 0x00, every byte that disagreed becomes nonzero. The problem is now a zero-byte mask. The bit-twiddling canon has an old identity for this: subtract 0x0101010101010101, then AND with the complement of d and with 0x8080808080808080. For a zero byte it works beautifully. 0x00 minus 1 is 0xFF, the high bit set, and the complement of 0x00 is 0xFF, its high bit set too. Both tests pass, so the byte is flagged. For a nonzero byte the two high bits can never agree: at 128 or below the subtraction leaves the high bit clear, at 129 or above the complement has it clear. So the identity answers one question: does a zero byte exist somewhere in this word?</p>
+          <p>Run the identity straight on d = 0x0100 and watch it lie. Byte 1 of d is 0x01, a byte that disagrees, but byte 0 borrows during the subtraction, so byte 1 is computed as 0x01 minus 1 minus the borrow: 0xFF. Its high bit is set, and the complement of 0x01 is 0xFE, its high bit set too. Both tests pass on a byte that should fail. The identity reports 0xff, every byte equal, and the honest answer is 0xfd. The hand analysis says exactly when this happens: with no borrow coming in, the naive form has no false positives; with a borrow coming in, 0x01 is the one value that lies. A standalone Python model of both forms confirmed it: 272 mismatches in 1,048,576 values, about one in 3,855, every single one the 0x01-with-borrow shape.</p>
+          <p>The fix is borrow suppression, and the code is the insight here:</p>
+          <pre><code>uint64_t d = x ^ y;
+uint64_t de = (d &amp; 0x00FF00FF00FF00FFULL) | 0xFF00FF00FF00FF00ULL;
+uint64_t te = ((de - 0x0101010101010101ULL) &amp; ~de) &amp; 0x8080808080808080ULL;
+uint64_t do_ = (d &amp; 0xFF00FF00FF00FF00ULL) | 0x00FF00FF00FF00FFULL;
+uint64_t to = ((do_ - 0x0101010101010101ULL) &amp; ~do_) &amp; 0x8080808080808080ULL;
+uint64_t t = te | to;</code></pre>
+          <p>The first line reduces equality to zero bytes. The second parks every odd byte at 0xFF: 0xFF minus 1 minus a borrow never borrows, so every even byte sees a borrow-in of zero and the exact no-false-positive analysis holds for the even half. The third runs the identity on the even half. The fourth and fifth are the mirror image for the odd half. The sixth ORs the two together, leaving a 0x80 marker in exactly the bytes where d is zero, which is exactly the bytes where x and y agreed.</p>
+          <p>A final gather shifts the markers down and compresses the eight 0x80 flags into one byte, bit i set exactly when byte i matched. Then the checking, because that is the whole point: 4,304,967,312 differential checks, about 4.3 billion, sixteen hand-directed rows plus every one of the 4,294,967,296 sixteen-bit pairs plus ten million random 64-bit pairs, zero mismatches. One FNV-1a fingerprint of the whole result stream, identical across the -O0, -O2, and sanitizer builds. Not one conditional jump in the -O2 disassembly. It runs at 4.31 nanoseconds a value, about 232 million values a second.</p>
+          <p>The identity is old. It comes from the Bit Twiddling Hacks page, first posted to a newsgroup by Alan Mycroft in April 1987, with a faster four-operation form suggested by Juha Jarvi in 2005. And the false positive is not just a lab curiosity: a reporter on the hashbrown tracker once traced a heisenbug in their byte-matching routine to exactly this shape of lie. We found ours before it shipped, because the differential test is the point. One sentence to carry away: the zero-byte test says a zero exists somewhere; two passes with the untested half parked at 0xFF say exactly where.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/114-swar-eq-mask" target="_blank" rel="noopener">lab/114-swar-eq-mask</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Comparison That Never Compares</h3>
           <!-- LAYER-STRIP:the-comparison-that-never-compares -->
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 18:05 EDT</time></p>
@@ -1190,6 +1214,9 @@ assert(check == 0x2144DF1C);</code></pre>
       // an approved analysis carry the argument affordance; the tooltip
       // renderer below activates on this map.
       const WIGMORE = /*__WIGMORE_JSON__*/;
+      // Exposed for the tooltip renderer, which lives in its own script
+      // block below (block-scoped consts are invisible across blocks).
+      window.__WIGMORE__ = WIGMORE;
 
 
       const AUDIENCES = [
@@ -1399,7 +1426,7 @@ assert(check == 0x2144DF1C);</code></pre>
       // the ISA slot of an instruction-mapped card cites the ISA manual.
       const layerStripHTML = (project) => {
         if (!project.layers) return '';
-        const order = ['ISA', 'FIRMWARE', 'KERNEL', 'PORTABLE'];
+        const order = ['ISA', 'MICROARCH', 'FIRMWARE', 'KERNEL', 'ALGORITHM'];
         const proofLink = project.evidence
           ? `<a class="card-proof" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(project.evidence.label)} <span aria-hidden="true">↗</span></a>`
           : '';
@@ -1407,14 +1434,15 @@ assert(check == 0x2144DF1C);</code></pre>
           ? `<a class="slot-ext" href="${(project.portability.specUrl || '').replace(/"/g, '&quot;')}" target="_blank" rel="noopener">ISA manual: ${esc(project.portability.extension)} / ${esc(project.portability.instruction)} <span aria-hidden="true">↗</span></a>`
           : '';
         const slots = order
+          .filter((name) => project.layers[name])
           .map((name) => {
-            const slot = project.layers[name] || { applies: false, because: '' };
+            const slot = project.layers[name];
             const cls = slot.applies ? 'layer-slot lit' : 'layer-slot dim';
             const ext = (name === 'ISA' && slot.applies) ? specLink : '';
             // Argument affordance: only where a formal Wigmore analysis exists.
             const wigKey = `${project.id}|${name}`;
             const why = WIGMORE[wigKey]
-              ? `<button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
+              ? ` <button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
               : '';
             return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}${why}</p>${ext}</div>`;
           })
@@ -2081,6 +2109,7 @@ assert(check == 0x2144DF1C);</code></pre>
        panel below the marker on touch. */
     (() => {
       const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      const WIGMORE = window.__WIGMORE__ || {};
       const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
       const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
       let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
@@ -2275,7 +2304,9 @@ assert(check == 0x2144DF1C);</code></pre>
           }
         });
         document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape' && (l1 || l2)) closeAll();
+          if (event.key !== 'Escape') return;
+          if (l2) { l2.remove(); l2 = null; return; }
+          if (l1) closeAll();
         });
         document.addEventListener('focusin', (event) => {
           const marker = event.target.closest('.why-marker');

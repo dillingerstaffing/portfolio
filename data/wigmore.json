@@ -1,1 +1,397 @@
-{"analyses":[{"inferences":[{"from":[2,4],"note":"The check in (4) is what keeps the 10M comparisons in (2) honest.","strength":"strong","to":[5],"via":[6]},{"from":[4],"note":"The disassembly check is the boundary toolkit in action: it enforces (5).","strength":"normal","to":[5],"via":[8]},{"from":[3],"note":"Extension membership is load-bearing: get it wrong and the instruction traps.","strength":"normal","to":[1],"via":[7]},{"from":[5,3],"note":"The method depends on the ISA-defined boundary, and the failure modes live at the ISA level.","strength":"strong","to":[1],"via":[9]}],"item":"swar-popcount-64","keyList":[{"kind":"probandum","n":1,"text":"The ISA layer matters for this lab because the lab works the boundary the ISA draws between the cpop instruction and its software emulation: what the instruction guarantees, which extension carries it, and whether the code stayed on the intended side."},{"kind":"evidence","n":2,"source":{"cite":"lab/17-bitcount/PROOF.md, differential-test section","tier":"lab","url":"https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"},"text":"lab/17-bitcount/PROOF.md records 10,000,133 differential comparisons of the SWAR popcount against cpop under QEMU, with 0 mismatches."},{"kind":"evidence","n":3,"source":{"cite":"riscv-isa-manual, Bit Manipulation Extensions chapter, Zbb / cpop","tier":"spec","url":"https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"},"text":"The ISA manual defines cpop in the Zbb extension: population count of the source register. Zbb is an extension, not base ISA, so its presence varies by chip."},{"kind":"evidence","n":4,"source":{"cite":"lab/17-bitcount/PROOF.md, disassembly-check section","tier":"lab","url":"https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"},"text":"The lab's disassembly check verifies the compiler did not replace the SWAR mask sequence with a cpop instruction (the POPCNT shortcut), so the two sides of the comparison are genuinely independent."},{"kind":"penultimate","n":5,"text":"The lab's method depends on the two sides of the comparison staying on opposite sides of the instruction/emulation boundary."},{"kind":"generalization","n":6,"text":"If the compiler silently emits cpop for the SWAR code, the differential test becomes circular, cpop tested against cpop, and proves nothing. Crossing the boundary unknowingly is the failure mode."},{"kind":"generalization","n":7,"text":"The complementary failure mode is assuming cpop where Zbb is absent: the instruction raises an illegal-instruction trap on chips without the extension."},{"kind":"generalization","n":8,"text":"The working tools for this boundary are the ISA manual (which extension owns the instruction), the disassembler (what the compiler actually emitted), and QEMU with extensions toggled (does it trap without Zbb)."},{"kind":"generalization","n":9,"text":"A layer matters to a lab when the lab's method depends on a boundary that layer defines and the characteristic failure modes live at that boundary."},{"kind":"explanation","n":10,"text":"The lab never executes cpop on real hardware, only under QEMU, so one could argue no real ISA is involved."},{"kind":"refutation","n":11,"refutes":10,"text":"The boundary exercised is between the specified instruction and the emulation; QEMU implements the specified semantics, so the comparison is against the ISA's definition either way. Real-hardware execution would add timing, which is a microarchitecture question, not an ISA one."}],"kind":"card","probandum":"The ISA layer matters for this lab because the lab works the boundary the ISA draws between the cpop instruction and its software emulation: what the instruction guarantees, which extension carries it, and whether the code stayed on the intended side.","slot":"ISA"},{"inferences":[{"from":[2],"note":"Absence is directly observable in the log: no privileged operations recorded.","strength":"strong","to":[1],"via":[3]}],"item":"swar-popcount-64","keyList":[{"kind":"probandum","n":1,"text":"The firmware layer does not matter for this lab because the lab's result cannot depend on privileged state: no boot code runs, no CSR is touched, no trap handler exists, so nothing about the machine's pre-main configuration can change the outcome."},{"kind":"evidence","n":2,"source":{"cite":"lab/17-bitcount/PROOF.md","tier":"lab","url":"https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"},"text":"lab/17-bitcount/PROOF.md shows the 10,000,133 comparisons and the disassembly check for the POPCNT shortcut running on the host over the 0x5555/0x3333/0x0F0F mask identities; the log records no CSR access, no trap handler, and no machine-mode entry."},{"kind":"generalization","n":3,"text":"Firmware matters when code depends on what the machine looked like before it ran: boot state, PMP configuration, SBI behavior. A computation whose inputs are fully determined in unprivileged code has no such dependence."},{"kind":"explanation","n":4,"text":"QEMU emulates machine mode underneath the lab, so firmware is arguably involved through the harness."},{"kind":"refutation","n":5,"refutes":4,"text":"The harness is not the subject: the claim under test is evaluated identically regardless of the harness's privilege model."}],"kind":"card","probandum":"The firmware layer does not matter for this lab because the lab's result cannot depend on privileged state: no boot code runs, no CSR is touched, no trap handler exists, so nothing about the machine's pre-main configuration can change the outcome.","slot":"FIRMWARE"},{"inferences":[{"from":[2],"note":"Straight-line integer arithmetic with no syscalls and no shared kernel state.","strength":"strong","to":[1],"via":[3]}],"item":"swar-popcount-64","keyList":[{"kind":"probandum","n":1,"text":"The kernel layer does not matter for this lab because the routine is a pure function of its input word: no syscalls, no shared state, nothing a scheduler, VM subsystem, or driver could perturb."},{"kind":"evidence","n":2,"source":{"cite":"lab/17-bitcount/PROOF.md and lab source","tier":"lab","url":"https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"},"text":"The routine is straight-line integer arithmetic over the 0x5555/0x3333/0x0F0F mask identities; the differential test invokes it as a pure function of its input word with no syscalls and no shared kernel state."},{"kind":"generalization","n":3,"text":"The kernel matters when code crosses into it (syscalls), shares state with it (mapped memory, file descriptors), or depends on its timing (preemption). A pure function with no such contact has no kernel premises."}],"kind":"card","probandum":"The kernel layer does not matter for this lab because the routine is a pure function of its input word: no syscalls, no shared state, nothing a scheduler, VM subsystem, or driver could perturb.","slot":"KERNEL"},{"inferences":[{"from":[2],"note":"Plain C unsigned arithmetic; no inline asm, no intrinsics.","strength":"strong","to":[4],"via":[3]},{"from":[4],"note":"Portability with stated assumptions, not assumed portability.","strength":"strong","to":[1],"via":[5]}],"item":"swar-popcount-64","keyList":[{"kind":"probandum","n":1,"text":"The portability layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound."},{"kind":"evidence","n":2,"source":{"cite":"lab/17-bitcount source, via PROOF.md","tier":"lab","url":"https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"},"text":"The SWAR routine is plain C over uint64_t built only from the 0x5555/0x3333/0x0F0F mask identities: no inline assembly, no compiler intrinsics, no ISA-specific operations."},{"kind":"generalization","n":3,"text":"C unsigned integer arithmetic wraps modulo 2^N on every conforming implementation, so identities built only on unsigned arithmetic and shifts hold identically on every ISA at the same word width."},{"kind":"penultimate","n":4,"text":"The routine's behavior is fixed by C unsigned arithmetic, not by any ISA feature."},{"kind":"generalization","n":5,"text":"The failure mode of a portability claim is hidden ISA dependence: an assumption the proof needed but never stated. Stating word width and wraparound up front is the defense."},{"kind":"explanation","n":6,"note":"Scope note: it bounds the portable claim rather than weakening it.","text":"Measured timing (3.98 ns/value at -O2 on the test host) does not port; only the correctness argument does."}],"kind":"card","probandum":"The portability layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound.","slot":"PORTABLE"}],"version":1}
+{
+  "analyses": [
+    {
+      "inferences": [
+        {
+          "from": [
+            2,
+            4
+          ],
+          "note": "The check in (4) is what keeps the 10M comparisons in (2) honest.",
+          "strength": "strong",
+          "to": [
+            5
+          ],
+          "via": [
+            6
+          ]
+        },
+        {
+          "from": [
+            4
+          ],
+          "note": "The disassembly check is the boundary toolkit in action: it enforces (5).",
+          "strength": "normal",
+          "to": [
+            5
+          ],
+          "via": [
+            8
+          ]
+        },
+        {
+          "from": [
+            3
+          ],
+          "note": "Extension membership is load-bearing: get it wrong and the instruction traps.",
+          "strength": "normal",
+          "to": [
+            1
+          ],
+          "via": [
+            7
+          ]
+        },
+        {
+          "from": [
+            5,
+            3
+          ],
+          "note": "The method depends on the ISA-defined boundary, and the failure modes live at the ISA level.",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            9
+          ]
+        }
+      ],
+      "item": "swar-popcount-64",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The ISA layer matters for this lab because the lab works the boundary the ISA draws between the cpop instruction and its software emulation: what the instruction guarantees, which extension carries it, and whether the code stayed on the intended side."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "lab/17-bitcount/PROOF.md, run-output section",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+          },
+          "text": "lab/17-bitcount/PROOF.md records 10,000,133 differential comparisons of the SWAR popcount against __builtin_popcountll on the x86_64 host, with 0 mismatches."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "riscv-isa-manual, Bit Manipulation Extensions chapter, Zbb / cpop",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "The ISA manual defines cpop in the Zbb extension: population count of the source register. Zbb is an extension, not base ISA, so its presence varies by chip."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "source": {
+            "cite": "lab/17-bitcount/PROOF.md, disassembly-check section",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+          },
+          "text": "The lab's disassembly check verifies the compiler did not replace the SWAR mask sequence with a cpop instruction (the POPCNT shortcut), so the two sides of the comparison are genuinely independent."
+        },
+        {
+          "kind": "penultimate",
+          "n": 5,
+          "text": "The lab's method depends on the two sides of the comparison staying on opposite sides of the instruction/emulation boundary."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "If the compiler silently emits cpop for the SWAR code, the differential test becomes circular, cpop tested against cpop, and proves nothing. Crossing the boundary unknowingly is the failure mode."
+        },
+        {
+          "kind": "generalization",
+          "n": 7,
+          "text": "The complementary failure mode is assuming cpop where Zbb is absent: the instruction raises an illegal-instruction trap on chips without the extension."
+        },
+        {
+          "kind": "generalization",
+          "n": 8,
+          "text": "The working tools for this boundary are the ISA manual (which extension owns the instruction), the disassembler (what the compiler actually emitted), and QEMU with extensions toggled (does it trap without Zbb)."
+        },
+        {
+          "kind": "generalization",
+          "n": 9,
+          "text": "A layer matters to a lab when the lab's method depends on a boundary that layer defines and the characteristic failure modes live at that boundary."
+        },
+        {
+          "kind": "explanation",
+          "n": 10,
+          "text": "The lab ran on an x86_64 host and never executed a RISC-V instruction, so one could argue no RISC-V ISA is involved."
+        },
+        {
+          "kind": "refutation",
+          "n": 11,
+          "refutes": 10,
+          "text": "The lab's method is about the boundary, not about where each side ran: the differential test needs the two sides to stay independent, and the disassembly check enforces that. The ISA manual defines which instructions exist and which extension carries them, so asking whether the compiler crossed the boundary is an ISA question even though the run happened on a host. Real-hardware execution would add timing, which is a microarchitecture question, not an ISA one."
+        }
+      ],
+      "kind": "card",
+      "probandum": "The ISA layer matters for this lab because the lab works the boundary the ISA draws between the cpop instruction and its software emulation: what the instruction guarantees, which extension carries it, and whether the code stayed on the intended side.",
+      "slot": "ISA"
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "note": "Absence is directly observable in the log: no privileged operations recorded.",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            3
+          ]
+        }
+      ],
+      "item": "swar-popcount-64",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The firmware layer does not matter for this lab because the lab's result cannot depend on privileged state: no boot code runs, no CSR is touched, no trap handler exists, so nothing about the machine's pre-main configuration can change the outcome."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "lab/17-bitcount/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+          },
+          "text": "lab/17-bitcount/PROOF.md shows the 10,000,133 comparisons and the disassembly check for the POPCNT shortcut running on the host over the 0x5555/0x3333/0x0F0F mask identities; the log records no CSR access, no trap handler, and no machine-mode entry."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "Firmware matters when code depends on what the machine looked like before it ran: boot state, PMP configuration, SBI behavior. A computation whose inputs are fully determined in unprivileged code has no such dependence."
+        },
+        {
+          "kind": "explanation",
+          "n": 4,
+          "text": "QEMU emulates machine mode underneath the lab, so firmware is arguably involved through the harness."
+        },
+        {
+          "kind": "refutation",
+          "n": 5,
+          "refutes": 4,
+          "text": "The harness is not the subject: the claim under test is evaluated identically regardless of the harness's privilege model."
+        }
+      ],
+      "kind": "card",
+      "probandum": "The firmware layer does not matter for this lab because the lab's result cannot depend on privileged state: no boot code runs, no CSR is touched, no trap handler exists, so nothing about the machine's pre-main configuration can change the outcome.",
+      "slot": "FIRMWARE"
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "note": "Straight-line integer arithmetic with no syscalls and no shared kernel state.",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            3
+          ]
+        }
+      ],
+      "item": "swar-popcount-64",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The kernel layer does not matter for this lab because the routine is a pure function of its input word: no syscalls, no shared state, nothing a scheduler, VM subsystem, or driver could perturb."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "lab/17-bitcount/PROOF.md and lab source",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+          },
+          "text": "The routine is straight-line integer arithmetic over the 0x5555/0x3333/0x0F0F mask identities; the differential test invokes it as a pure function of its input word with no syscalls and no shared kernel state."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "The kernel matters when code crosses into it (syscalls), shares state with it (mapped memory, file descriptors), or depends on its timing (preemption). A pure function with no such contact has no kernel premises."
+        }
+      ],
+      "kind": "card",
+      "probandum": "The kernel layer does not matter for this lab because the routine is a pure function of its input word: no syscalls, no shared state, nothing a scheduler, VM subsystem, or driver could perturb.",
+      "slot": "KERNEL"
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "note": "Plain C unsigned arithmetic; no inline asm, no intrinsics.",
+          "strength": "strong",
+          "to": [
+            4
+          ],
+          "via": [
+            3
+          ]
+        },
+        {
+          "from": [
+            4
+          ],
+          "note": "Portability with stated assumptions, not assumed portability.",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            5
+          ]
+        }
+      ],
+      "item": "swar-popcount-64",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The algorithm layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "lab/17-bitcount source, via PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+          },
+          "text": "The SWAR routine is plain C over uint64_t built only from the 0x5555/0x3333/0x0F0F mask identities: no inline assembly, no compiler intrinsics, no ISA-specific operations."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "C unsigned integer arithmetic wraps modulo 2^N on every conforming implementation, so identities built only on unsigned arithmetic and shifts hold identically on every ISA at the same word width."
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The routine's behavior is fixed by C unsigned arithmetic, not by any ISA feature."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The failure mode of a portability claim is hidden ISA dependence: an assumption the proof needed but never stated. Stating word width and wraparound up front is the defense."
+        },
+        {
+          "kind": "explanation",
+          "n": 6,
+          "note": "Scope note: it bounds the portable claim rather than weakening it.",
+          "text": "Measured timing (3.98 ns/value at -O2 on the test host) does not port; only the correctness argument does."
+        }
+      ],
+      "kind": "card",
+      "probandum": "The portability layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound.",
+      "slot": "ALGORITHM"
+    },
+    {
+      "item": "swar-popcount-64",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "The microarchitecture layer does not apply to this lab's correctness claim, because the claim is pure integer math over the input word: no pipeline, cache, or predictor behavior appears in it. The timing figures in the proof log are observations on one host core, not part of what is proved.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The microarchitecture layer does not apply to this lab's correctness claim, because the claim is pure integer math over the input word: no pipeline, cache, or predictor behavior appears in it. The timing figures in the proof log are observations on one host core, not part of what is proved."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The routine is a pure function of its 64-bit input: the SWAR identities fix the output for each input word, and PROOF.md records checksum 319992825 identical across the -O0, -O2, and ASan+UBSan builds.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md",
+            "cite": "lab/17-bitcount/PROOF.md, run-output section"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "PROOF.md's throughput figure, 3.98 ns/value at -O2, is explicitly a ceiling for the timed loop including the splitmix64 PRNG step, measured on the x86_64 host; it characterizes one core, not the algorithm.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md",
+            "cite": "lab/17-bitcount/PROOF.md, what-the-numbers-mean section"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "Nothing in the correctness argument varies with pipeline depth, cache size, or branch prediction; the 10,000,133 comparisons agree or disagree the same way on any core that implements the semantics."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The characteristic microarchitecture question is why code runs this fast on this chip; its tools are performance counters and controlled benchmarking. They answer a different question than the proof log does."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "A dim slot still teaches: it tells the reader the reported timing is not load-bearing for the correctness claim, so a different number on another core changes nothing proved."
+        },
+        {
+          "n": 7,
+          "kind": "explanation",
+          "text": "The card reports 3.98 ns/value, so one could argue microarchitecture is relevant after all."
+        },
+        {
+          "n": 8,
+          "kind": "refutation",
+          "refutes": 7,
+          "text": "The figure is a measurement reported with its caveats in the proof log, not a claim the argument depends on. If it changed on another core, nothing proved would change; the layer that would matter for that new question is microarchitecture, and this lab does not ask it."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "Same input gives same output on any core; timing characterizes the core, not the claim."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "No implementation behavior appears in the argument, so the slot stays dim, honestly."
+        }
+      ]
+    }
+  ],
+  "version": 1
+}

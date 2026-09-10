@@ -1,5 +1,41 @@
 [
   {
+    "title": "The Mask That Finds Every Match",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Take x = 0x19eb and y = 0x18eb, two 16-bit words. Byte 0 is 0xeb in both, so it agrees. Byte 1 is 0x19 against 0x18, so it disagrees. Bytes 2 through 7 are all zero in both, so they agree. The answer is one byte, one bit per byte: bit i set exactly when byte i matched. Bits 0, 2, 3, 4, 5, 6, and 7 are set, bit 1 is clear, and the mask is 0xfd. The lab's whole job is to compute that byte with no branch anywhere.",
+      "XOR the two words first: d = x ^ y. Every byte that agreed becomes 0x00, every byte that disagreed becomes nonzero. The problem is now a zero-byte mask. The bit-twiddling canon has an old identity for this: subtract 0x0101010101010101, then AND with the complement of d and with 0x8080808080808080. For a zero byte it works beautifully. 0x00 minus 1 is 0xFF, the high bit set, and the complement of 0x00 is 0xFF, its high bit set too. Both tests pass, so the byte is flagged. For a nonzero byte the two high bits can never agree: at 128 or below the subtraction leaves the high bit clear, at 129 or above the complement has it clear. So the identity answers one question: does a zero byte exist somewhere in this word?",
+      "Run the identity straight on d = 0x0100 and watch it lie. Byte 1 of d is 0x01, a byte that disagrees, but byte 0 borrows during the subtraction, so byte 1 is computed as 0x01 minus 1 minus the borrow: 0xFF. Its high bit is set, and the complement of 0x01 is 0xFE, its high bit set too. Both tests pass on a byte that should fail. The identity reports 0xff, every byte equal, and the honest answer is 0xfd. The hand analysis says exactly when this happens: with no borrow coming in, the naive form has no false positives; with a borrow coming in, 0x01 is the one value that lies. A standalone Python model of both forms confirmed it: 272 mismatches in 1,048,576 values, about one in 3,855, every single one the 0x01-with-borrow shape.",
+      "The fix is borrow suppression, and the code is the insight here:",
+      "The first line reduces equality to zero bytes. The second parks every odd byte at 0xFF: 0xFF minus 1 minus a borrow never borrows, so every even byte sees a borrow-in of zero and the exact no-false-positive analysis holds for the even half. The third runs the identity on the even half. The fourth and fifth are the mirror image for the odd half. The sixth ORs the two together, leaving a 0x80 marker in exactly the bytes where d is zero, which is exactly the bytes where x and y agreed.",
+      "A final gather shifts the markers down and compresses the eight 0x80 flags into one byte, bit i set exactly when byte i matched. Then the checking, because that is the whole point: 4,304,967,312 differential checks, about 4.3 billion, sixteen hand-directed rows plus every one of the 4,294,967,296 sixteen-bit pairs plus ten million random 64-bit pairs, zero mismatches. One FNV-1a fingerprint of the whole result stream, identical across the -O0, -O2, and sanitizer builds. Not one conditional jump in the -O2 disassembly. It runs at 4.31 nanoseconds a value, about 232 million values a second.",
+      "The identity is old. It comes from the Bit Twiddling Hacks page, first posted to a newsgroup by Alan Mycroft in April 1987, with a faster four-operation form suggested by Juha Jarvi in 2005. And the false positive is not just a lab curiosity: a reporter on the hashbrown tracker once traced a heisenbug in their byte-matching routine to exactly this shape of lie. We found ours before it shipped, because the differential test is the point. One sentence to carry away: the zero-byte test says a zero exists somewhere; two passes with the untested half parked at 0xFF say exactly where."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/114-swar-eq-mask",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/114-swar-eq-mask/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the lab runs as compiled host C on x86-64; no RISC-V instruction is executed or measured."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the mask runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: a zero-byte test proves existence, two borrow-suppressed passes prove position, checked over 4.3 billion differential cases"
+      }
+    }
+  },
+  {
     "title": "The Comparison That Never Compares",
     "date": "2026-09-10",
     "paragraphs": [
@@ -28,7 +64,7 @@
         "applies": false,
         "because": "not here because the comparison runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "teaches the one atomic idea a builder needs: comparison is subtraction that kept only the borrow, proved correct over 4.3 billion differential cases"
       }
@@ -58,7 +94,7 @@
         "applies": false,
         "because": "not here because the article is a circuits-first derivation; no scheduler, driver, or syscall path appears."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "teaches the one atomic idea a builder needs: a 64-bit adder is 64 three-bit majority votes chained by their own overflow, proved against the native plus operator over 8.6 billion cases"
       }
@@ -91,7 +127,7 @@
         "applies": false,
         "because": "not here because the bursts run in a bare harness; no scheduler or timer subsystem is measured."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because cycle-counter reads and their costs are machine-specific; other ISAs have different counters and semantics."
       }
@@ -126,7 +162,7 @@
         "applies": false,
         "because": "not here because the article is a digit-validity derivation; no kernel path appears."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "teaches the lane-isolation trick in full: add 6 to every nibble at once, leave gap bits so intruding carries die, and read four verdict bits to find every counterfeit digit with no loop and no branch"
       }
@@ -160,7 +196,7 @@
         "applies": false,
         "because": "not here because the article derives the quotient bound; no kernel path appears."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because compilers replace division by a constant with this multiply-and-shift, and the article proves the rounding error never reaches the kept bits"
       }
@@ -195,7 +231,7 @@
         "applies": false,
         "because": "not here because the article derives the skip rule for a bare handler; no kernel trap path runs."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mepc and variable-length instruction encoding are RISC-V machine specifics, not portable logic."
       }
@@ -230,7 +266,7 @@
         "applies": false,
         "because": "not here because the article is a parity derivation; no kernel path appears."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because it computes 32-bit parity with no popcount instruction and no memory table, the whole lookup folded into the immediate 0x6996"
       }
@@ -262,7 +298,7 @@
         "applies": true,
         "because": "matters because the article names AES-GCM authentication, the machinery that keeps TLS sessions honest, as built on exactly this carryless product."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because the branch-free shift-XOR loop is pure C with no tables, so the carryless product runs identically anywhere, which is exactly what crypto needs wherever the clmul-class instruction is absent."
       }
@@ -295,7 +331,7 @@
         "applies": true,
         "because": "matters because buddy-style page allocators round every request size up to a power of two with exactly this smear."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because the decrement-then-smear identity is pure bit arithmetic, identical on every ISA."
       }
@@ -329,7 +365,7 @@
         "applies": true,
         "because": "matters because Ethernet hardware and the drivers that validate frame check sequences rely on exactly this residue."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because the 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA."
       }

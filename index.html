@@ -893,8 +893,32 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Mask That Finds Every Match</h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/114-swar-eq-mask/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the lab runs as compiled host C on x86-64; no RISC-V instruction is executed or measured.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the mask runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the one atomic idea a builder needs: a zero-byte test proves existence, two borrow-suppressed passes prove position, checked over 4.3 billion differential cases</p></div></div>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 19:04 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take x = 0x19eb and y = 0x18eb, two 16-bit words. Byte 0 is 0xeb in both, so it agrees. Byte 1 is 0x19 against 0x18, so it disagrees. Bytes 2 through 7 are all zero in both, so they agree. The answer is one byte, one bit per byte: bit i set exactly when byte i matched. Bits 0, 2, 3, 4, 5, 6, and 7 are set, bit 1 is clear, and the mask is 0xfd. The lab's whole job is to compute that byte with no branch anywhere.</p>
+          <p>XOR the two words first: d = x ^ y. Every byte that agreed becomes 0x00, every byte that disagreed becomes nonzero. The problem is now a zero-byte mask. The bit-twiddling canon has an old identity for this: subtract 0x0101010101010101, then AND with the complement of d and with 0x8080808080808080. For a zero byte it works beautifully. 0x00 minus 1 is 0xFF, the high bit set, and the complement of 0x00 is 0xFF, its high bit set too. Both tests pass, so the byte is flagged. For a nonzero byte the two high bits can never agree: at 128 or below the subtraction leaves the high bit clear, at 129 or above the complement has it clear. So the identity answers one question: does a zero byte exist somewhere in this word?</p>
+          <p>Run the identity straight on d = 0x0100 and watch it lie. Byte 1 of d is 0x01, a byte that disagrees, but byte 0 borrows during the subtraction, so byte 1 is computed as 0x01 minus 1 minus the borrow: 0xFF. Its high bit is set, and the complement of 0x01 is 0xFE, its high bit set too. Both tests pass on a byte that should fail. The identity reports 0xff, every byte equal, and the honest answer is 0xfd. The hand analysis says exactly when this happens: with no borrow coming in, the naive form has no false positives; with a borrow coming in, 0x01 is the one value that lies. A standalone Python model of both forms confirmed it: 272 mismatches in 1,048,576 values, about one in 3,855, every single one the 0x01-with-borrow shape.</p>
+          <p>The fix is borrow suppression, and the code is the insight here:</p>
+          <pre><code>uint64_t d = x ^ y;
+uint64_t de = (d &amp; 0x00FF00FF00FF00FFULL) | 0xFF00FF00FF00FF00ULL;
+uint64_t te = ((de - 0x0101010101010101ULL) &amp; ~de) &amp; 0x8080808080808080ULL;
+uint64_t do_ = (d &amp; 0xFF00FF00FF00FF00ULL) | 0x00FF00FF00FF00FFULL;
+uint64_t to = ((do_ - 0x0101010101010101ULL) &amp; ~do_) &amp; 0x8080808080808080ULL;
+uint64_t t = te | to;</code></pre>
+          <p>The first line reduces equality to zero bytes. The second parks every odd byte at 0xFF: 0xFF minus 1 minus a borrow never borrows, so every even byte sees a borrow-in of zero and the exact no-false-positive analysis holds for the even half. The third runs the identity on the even half. The fourth and fifth are the mirror image for the odd half. The sixth ORs the two together, leaving a 0x80 marker in exactly the bytes where d is zero, which is exactly the bytes where x and y agreed.</p>
+          <p>A final gather shifts the markers down and compresses the eight 0x80 flags into one byte, bit i set exactly when byte i matched. Then the checking, because that is the whole point: 4,304,967,312 differential checks, about 4.3 billion, sixteen hand-directed rows plus every one of the 4,294,967,296 sixteen-bit pairs plus ten million random 64-bit pairs, zero mismatches. One FNV-1a fingerprint of the whole result stream, identical across the -O0, -O2, and sanitizer builds. Not one conditional jump in the -O2 disassembly. It runs at 4.31 nanoseconds a value, about 232 million values a second.</p>
+          <p>The identity is old. It comes from the Bit Twiddling Hacks page, first posted to a newsgroup by Alan Mycroft in April 1987, with a faster four-operation form suggested by Juha Jarvi in 2005. And the false positive is not just a lab curiosity: a reporter on the hashbrown tracker once traced a heisenbug in their byte-matching routine to exactly this shape of lie. We found ours before it shipped, because the differential test is the point. One sentence to carry away: the zero-byte test says a zero exists somewhere; two passes with the untested half parked at 0xFF say exactly where.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/114-swar-eq-mask" target="_blank" rel="noopener">lab/114-swar-eq-mask</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Comparison That Never Compares</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/100-branchless-cmp/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the lab compares unsigned integers in compiled host C; BLTU appears as architectural context, not as an executed or measured instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the comparison runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">teaches the one atomic idea a builder needs: comparison is subtraction that kept only the borrow, proved correct over 4.3 billion differential cases</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/100-branchless-cmp/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the lab compares unsigned integers in compiled host C; BLTU appears as architectural context, not as an executed or measured instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the comparison runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the one atomic idea a builder needs: comparison is subtraction that kept only the borrow, proved correct over 4.3 billion differential cases</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 18:05 EDT</time></p>
         </div>
         <div class="research-body">
@@ -916,7 +940,7 @@ return (int64_t)gt - (int64_t)lt;  /* confined to -1, 0, +1 */</code></pre>
       <article class="research-note">
         <div>
           <h3>The Adder With No Plus Sign</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/98-half-adder-chain/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the article builds adders from XOR and AND gates, not from any RISC-V instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because gate-level adder construction involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article is a circuits-first derivation; no scheduler, driver, or syscall path appears.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">teaches the one atomic idea a builder needs: a 64-bit adder is 64 three-bit majority votes chained by their own overflow, proved against the native plus operator over 8.6 billion cases</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/98-half-adder-chain/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the article builds adders from XOR and AND gates, not from any RISC-V instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because gate-level adder construction involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article is a circuits-first derivation; no scheduler, driver, or syscall path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the one atomic idea a builder needs: a 64-bit adder is 64 three-bit majority votes chained by their own overflow, proved against the native plus operator over 8.6 billion cases</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 17:04 EDT</time></p>
         </div>
         <div class="research-body">
@@ -936,7 +960,7 @@ s |= si &lt;&lt; i;</code></pre>
       <article class="research-note">
         <div>
           <h3>The Stopwatch That Measures Itself</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cycle-read-latency/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">measures the true floor of rdcycle at 135 cycles on QEMU, so a benchmark author knows how much of a timing number is the stopwatch itself and how much is the code under test</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because the measurement is a bare probe of the counter read cost, not boot-time firmware.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the bursts run in a bare harness; no scheduler or timer subsystem is measured.</p></div><div class="layer-slot dim"><div class="layer-name">PORTABLE</div><p class="layer-because">not here because cycle-counter reads and their costs are machine-specific; other ISAs have different counters and semantics.</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cycle-read-latency/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">measures the true floor of rdcycle at 135 cycles on QEMU, so a benchmark author knows how much of a timing number is the stopwatch itself and how much is the code under test</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because the measurement is a bare probe of the counter read cost, not boot-time firmware.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the bursts run in a bare harness; no scheduler or timer subsystem is measured.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM</div><p class="layer-because">not here because cycle-counter reads and their costs are machine-specific; other ISAs have different counters and semantics.</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 16:10 EDT</time></p>
         </div>
         <div class="research-body">
@@ -951,7 +975,7 @@ s |= si &lt;&lt; i;</code></pre>
       <article class="research-note">
         <div>
           <h3>The Six That Catches the Counterfeit Digit</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/80-bcd-digit-valid/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the add-6-per-nibble guard uses plain adds and carries, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nibble validation involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article is a digit-validity derivation; no kernel path appears.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">teaches the lane-isolation trick in full: add 6 to every nibble at once, leave gap bits so intruding carries die, and read four verdict bits to find every counterfeit digit with no loop and no branch</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/80-bcd-digit-valid/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the add-6-per-nibble guard uses plain adds and carries, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nibble validation involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article is a digit-validity derivation; no kernel path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the lane-isolation trick in full: add 6 to every nibble at once, leave gap bits so intruding carries die, and read four verdict bits to find every counterfeit digit with no loop and no branch</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 15:05 EDT</time></p>
         </div>
         <div class="research-body">
@@ -971,7 +995,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
             <article class="research-note">
         <div>
           <h3>The Division That Never Divides</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/91-div3-magic/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the magic-multiply identity uses only a base multiply and shift, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because constant division involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article derives the quotient bound; no kernel path appears.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">matters because compilers replace division by a constant with this multiply-and-shift, and the article proves the rounding error never reaches the kept bits</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/91-div3-magic/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the magic-multiply identity uses only a base multiply and shift, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because constant division involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article derives the quotient bound; no kernel path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">matters because compilers replace division by a constant with this multiply-and-shift, and the article proves the rounding error never reaches the kept bits</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 13:05 EDT</time></p>
         </div>
         <div class="research-body">
@@ -991,7 +1015,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
             <article class="research-note">
         <div>
           <h3>The Four Bytes the Trap Handler Skips</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mepc-resume-skip/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">matters because it pins the mepc-advance rule for skipping exactly one faulting instruction, including the compressed-instruction length check and why assembler labels beat C labels-as-values</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because the article isolates the mepc-advance contract itself; no boot-time firmware code is written.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article derives the skip rule for a bare handler; no kernel trap path runs.</p></div><div class="layer-slot dim"><div class="layer-name">PORTABLE</div><p class="layer-because">not here because mepc and variable-length instruction encoding are RISC-V machine specifics, not portable logic.</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mepc-resume-skip/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">matters because it pins the mepc-advance rule for skipping exactly one faulting instruction, including the compressed-instruction length check and why assembler labels beat C labels-as-values</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because the article isolates the mepc-advance contract itself; no boot-time firmware code is written.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article derives the skip rule for a bare handler; no kernel trap path runs.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM</div><p class="layer-because">not here because mepc and variable-length instruction encoding are RISC-V machine specifics, not portable logic.</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 12:01 EDT</time></p>
         </div>
         <div class="research-body">
@@ -1011,7 +1035,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
             <article class="research-note">
         <div>
           <h3>The Lookup Table That Fits in 16 Bits</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/97-parity-6996/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the XOR-fold parity derivation uses plain XORs and shifts, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because parity folding involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article is a parity derivation; no kernel path appears.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">matters because it computes 32-bit parity with no popcount instruction and no memory table, the whole lookup folded into the immediate 0x6996</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/97-parity-6996/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the XOR-fold parity derivation uses plain XORs and shifts, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because parity folding involves no boot-time M-mode software.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the article is a parity derivation; no kernel path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">matters because it computes 32-bit parity with no popcount instruction and no memory table, the whole lookup folded into the immediate 0x6996</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 11:05 EDT</time></p>
         </div>
         <div class="research-body">
@@ -1035,7 +1059,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
             <article class="research-note">
         <div>
           <h3>The Multiply That Never Carries</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/67-clmul/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">matters because the article's shift-XOR construction is exactly what the clmul instruction in Zbc does in hardware.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because polynomial multiplication involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters because the article names AES-GCM authentication, the machinery that keeps TLS sessions honest, as built on exactly this carryless product.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">matters because the branch-free shift-XOR loop is pure C with no tables, so the carryless product runs identically anywhere, which is exactly what crypto needs wherever the clmul-class instruction is absent.</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/67-clmul/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">matters because the article's shift-XOR construction is exactly what the clmul instruction in Zbc does in hardware.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because polynomial multiplication involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters because the article names AES-GCM authentication, the machinery that keeps TLS sessions honest, as built on exactly this carryless product.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">matters because the branch-free shift-XOR loop is pure C with no tables, so the carryless product runs identically anywhere, which is exactly what crypto needs wherever the clmul-class instruction is absent.</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
         </div>
         <div class="research-body">
@@ -1059,7 +1083,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
             <article class="research-note">
         <div>
           <h3>The Decrement That Leaves Room for the Ceiling</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/84-round-up-pow2/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the decrement-then-smear construction uses plain shifts, ORs, and one increment, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because rounding up involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters because buddy-style page allocators round every request size up to a power of two with exactly this smear.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">matters because the decrement-then-smear identity is pure bit arithmetic, identical on every ISA.</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/84-round-up-pow2/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the decrement-then-smear construction uses plain shifts, ORs, and one increment, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because rounding up involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters because buddy-style page allocators round every request size up to a power of two with exactly this smear.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">matters because the decrement-then-smear identity is pure bit arithmetic, identical on every ISA.</p></div></div>
           <p class="research-date"><time datetime="2026-09-08">2026-09-08 09:15 EDT</time></p>
         </div>
         <div class="research-body">
@@ -1084,7 +1108,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
             <article class="research-note">
         <div>
           <h3>The Checksum That Always Lands on 0x2144DF1C</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/82-crc32-residue/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the residue identity uses plain CRC arithmetic, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because checksum validation involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters because Ethernet hardware and the drivers that validate frame check sequences rely on exactly this residue.</p></div><div class="layer-slot lit"><div class="layer-name">PORTABLE</div><p class="layer-because">matters because the 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA.</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/82-crc32-residue/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the residue identity uses plain CRC arithmetic, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because checksum validation involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters because Ethernet hardware and the drivers that validate frame check sequences rely on exactly this residue.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">matters because the 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA.</p></div></div>
           <p class="research-date"><time datetime="2026-09-07">2026-09-07 09:15 EDT</time></p>
         </div>
         <div class="research-body">
@@ -1200,7 +1224,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "provides the minimal working scheduler a kernel builder can study: private 4 KiB per-task stacks, round-robin dispatch, and real assembly context switches"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the whole program is tied to the RV64 virt machine, there is no ISA-independent algorithm inside"
       }
@@ -1257,7 +1281,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "shows how to thread new per-process state through the whole syscall path, from user-space stub through the single dispatch funnel to the process table, with fork lifecycle isolation verified"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the mechanism depends on xv6's process table and syscall numbering, it is not ISA-independent"
       }
@@ -1314,7 +1338,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a userspace data structure, no scheduling, VM, driver, or syscall is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "gives a systems builder a proven lock-free producer-consumer channel: release/acquire atomics, head and tail on separate cache lines to kill false sharing, verified at 190 Mops/s over 10M items"
       }
@@ -1375,7 +1399,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "a kernel's physical memory management starts with allocator primitives like this free-list bump allocator"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the allocation, splitting, and reuse logic is identical on every ISA, and the fragmentation ratio is the verification"
       }
@@ -1440,7 +1464,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it implements a user-level libc routine, not a kernel subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the formatting engine is pure portable C, identical on every ISA, and the 609-case differential test is the value"
       }
@@ -1505,7 +1529,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the CRC32 recurrence over its generator polynomial in isolation and names no driver, filesystem, or network path that consumes the checksum."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the bitwise and table-driven implementations are pure portable C, identical on every ISA, and the check-value verification is the value"
       }
@@ -1570,7 +1594,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "turns a cooperative demo into a real preemptive scheduler: a 1 ms CLINT quantum, assembly trap save and restore of x1-x31 plus mepc, and a measured 17.3 us switch cost a builder can budget against"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the module is written for the RV64 virt machine's CLINT and trap layout"
       }
@@ -1635,7 +1659,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the card stops at getting both harts printing, before any scheduling or memory management begins"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the bring-up sequence is specific to the QEMU virt machine's SMP layout"
       }
@@ -1696,7 +1720,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "gives a kernel builder a working split-virtqueue block driver, verified end to end by a 512-of-512-byte sector round-trip, across both the legacy and the 1.x interface paths"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the sector protocol is virtio-specific, not ISA-independent"
       }
@@ -1761,7 +1785,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "shows the full syscall-building loop in miniature: wire a new call number, walk the process table, and verify the count against fork and wait"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because it depends on xv6's process table layout, it is not ISA-independent"
       }
@@ -1822,7 +1846,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a standalone concurrent structure, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "gives a builder a proven ABA-safe lock-free stack: 16-byte compare-and-swap with a 64-bit tag, zero elements lost or duplicated over 1.6M operations across 4 threads"
       }
@@ -1887,7 +1911,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it tests allocator and queue code, it is not itself a kernel subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "deterministic seeded fuzzing over portable data structures is ISA-independent, and the 6M-op clean run is the value"
       }
@@ -1948,7 +1972,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a standalone synchronization primitive, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "gives a builder a reader-cheap shared-state primitive: one writer, many readers, no locks on the read path, verified at 10M untorn reads with zero monotonicity violations"
       }
@@ -2009,7 +2033,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "gives a kernel builder the real cost numbers to budget a scheduler against: 4761 vs 3831 bytes of .text and best-case 9360-24255 cycles per switch, with the honest caveat that 200-switch samples cannot rank -O0 vs -O2"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the numbers are for RV64 code on QEMU, not an ISA-independent result"
       }
@@ -2074,7 +2098,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "a bare-metal UART console is the driver's interactive face, the same console a kernel debugger or init shell needs"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because it drives the virt machine's ns16550a and trap layout, it is not ISA-independent"
       }
@@ -2135,7 +2159,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a lab experiment on frame integrity, not a kernel subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the inject-and-detect method over portable frame buffers is ISA-independent, and the 6,250-of-6,250 detection is the value"
       }
@@ -2204,7 +2228,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "teaches the discipline a serial-driver author needs: program the divisor latch, measure actual bit time in loopback, and land divisor 96 within about 0.4% of nominal"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the divisor latch and clocking are specific to the virt machine's UART"
       }
@@ -2269,7 +2293,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure search routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "shows where branchless search wins and where it loses: 214-300 cycles per lookup beating libc bsearch at n=16384, then losing once loads miss cache at n=1048576, all proved over 4.2M differential checks"
       }
@@ -2334,7 +2358,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a libc-style routine, not a kernel subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the head/body/tail construction is portable C, identical on every ISA, and the 1M-case differential test is the value"
       }
@@ -2399,7 +2423,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a numeric routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the bit-layout add and multiply are pure integer code, identical on every ISA, and the 4M-case differential test is the value"
       }
@@ -2464,7 +2488,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "is the classic kernel physical-page allocator design, and the measured 0.789 vs 0.357 fragmentation trade-off against a bump allocator tells a kernel builder exactly what coalescing costs"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the algorithm is identical on every ISA, and the 0.789 vs 0.357 fragmentation measurement is the value"
       }
@@ -2525,7 +2549,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the card checks arithmetic identities, not a kernel subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "gives a builder the align_up, align_down, is_pow2, and round_up_pow2 primitives that allocator and MMU code depends on, proved correct over 4.2M differential checks"
       }
@@ -2594,7 +2618,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "S-mode trap handling is where an OS kernel's scheduler and page-fault handler live, so the delegation serves the kernel"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because every step is RISC-V privilege machinery, nothing in the card is ISA-independent"
       }
@@ -2667,7 +2691,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a standalone concurrent structure, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "gives a builder a fairness-provable producer-consumer: fetch_add tickets admit holders in order, verified with 1M items drained, zero lost, and a worst fairness gap of 4 against an ideal 3"
       }
@@ -2740,7 +2764,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the CRC32C recurrence over its generator polynomial in isolation and names no driver, filesystem, or network path that consumes the checksum."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the polynomial-division implementation is pure portable C, identical on every ISA, and the RFC 3720 vectors are the value"
       }
@@ -2809,9 +2833,13 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "the routine is a pure function of its input word, so no scheduler, VM, or driver behavior can perturb it"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the SWAR identities are exact integer math, so the correctness argument ports with the code; its assumptions are stated: word width, unsigned wraparound"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "the correctness claim is pure integer math over the input word: pipeline depth, caches, and branch prediction appear nowhere in it. The timing figures are observations on one host core, not part of what is proved"
       }
     },
     "evidence": {
@@ -2898,7 +2926,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the test pins down the PMP hardware behavior itself, before any kernel policy runs on top"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because PMP CSRs and RISC-V trap codes are not ISA-independent"
       }
@@ -2967,7 +2995,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure byte-order routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the shift/OR/mask swaps are identical on every ISA, and the 12M-case differential check is the value"
       }
@@ -3056,7 +3084,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it measures the halted-vCPU wakeup path, not a scheduler's idle policy"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because wfi, CLINT, and mret are RISC-V machine specifics, not ISA-independent"
       }
@@ -3121,7 +3149,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks 2,048,576 GCD pairs against a naive Euclid reference and names no scheduler, page table, driver, or syscall that consumes the result."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the algorithm is identical on every ISA, and the 2M-case differential check against Euclid is the value"
       }
@@ -3190,7 +3218,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it characterizes hardware access behavior, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because misaligned-access handling is a machine-specific behavior, not ISA-independent"
       }
@@ -3263,7 +3291,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 10,000,338 checks compare the sign-bit overflow identity against a 64-bit reference in a standalone bench, and no scheduler, VM, driver, or syscall runs in that path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "gives a builder sign-bit overflow identities for branchless saturating add and subtract, proved against a 64-bit oracle over 10,000,338 checks"
       }
@@ -3328,7 +3356,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure random-number routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "proves the generator’s full period by walking every one of the 65,535 nonzero states for two seeds, so a builder can trust the cycle length instead of assuming it"
       }
@@ -3393,7 +3421,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure bit-counting routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the multiply-and-table identity is identical on every ISA, and the 2M-case differential check is the value"
       }
@@ -3478,7 +3506,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a libc-style routine, not a kernel subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "gives a builder the overlap-direction rule that keeps an in-place copy correct: forward when the destination sits below the source, backward when it sits above, proved byte-exact over 8,385 cases against libc memmove"
       }
@@ -3547,7 +3575,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure bit metric, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the SWAR popcount is identical on every ISA, and the 10M-case differential check is the value"
       }
@@ -3636,7 +3664,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "PLIC claim/complete is the kernel interrupt driver's core loop"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the PLIC register layout is RISC-V platform specific, not ISA-independent"
       }
@@ -3709,7 +3737,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 10,000,193 differential checks verify the shift/OR propagation identity against the reference, and the only hardware artifact is the disassembly confirming no clz-class instruction is emitted, with no driver, filesystem, network, or syscall path in the lab."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the shift/OR propagation identity is identical on every ISA, and the 10M-case differential check is the value"
       }
@@ -3802,7 +3830,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it measures the timer hardware path, not a kernel timer subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because CLINT ticking and mtime are RISC-V machine specifics, not ISA-independent"
       }
@@ -3883,7 +3911,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab proves the shift/mask extract-insert identities against a naive per-bit loop reference, never invoking a scheduler, a virtual-memory path, a driver, or a syscall."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the identities are identical on every ISA, and the 79.7M differential checks are the value"
       }
@@ -3960,7 +3988,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab measures the reversal against a naive bit-loop reference and the reverse(reverse(x))==x involution, and no kernel subsystem allocates, pages, or schedules around it."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the SWAR swaps are identical on every ISA, and the 10.2M differential checks are the value"
       }
@@ -4061,7 +4089,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 131,335 checks measure ffs64 and fls64 against compiler builtins in a standalone bench, and no kernel subsystem consumes the results or invokes the routines."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the de Bruijn multiply identity is identical on every ISA, and the 131K differential checks are the value"
       }
@@ -4150,7 +4178,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "page tables and the satp walk are the kernel's virtual memory machinery"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the Sv39 PTE format and satp are RISC-V specific, not ISA-independent"
       }
@@ -4223,7 +4251,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure encoding routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the identities are identical on every ISA, and the exhaustive 65,536-input check is the value"
       }
@@ -4296,7 +4324,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure selection routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the sign-of-difference identity is identical on every ISA, and the 4.3B differential checks are the value"
       }
@@ -4389,7 +4417,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure numeric routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the identities are identical on every ISA, and the 10M-case differential check within 1 ulp is the value"
       }
@@ -4466,7 +4494,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure hashing study, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the recurrences are identical on every ISA, and the 2M-case check plus avalanche measurement are the value"
       }
@@ -4539,7 +4567,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 256,000,000 differential checks compare the shift-add sum over the set bits of k against native multiply, with no driver, filesystem, network, or syscall consumer named in the lab."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the distributive-law identities are identical on every ISA, and the 256M differential checks are the value"
       }
@@ -4608,7 +4636,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it probes what the hardware reports, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the CSR space and misa encoding are RISC-V specific, not ISA-independent"
       }
@@ -4685,7 +4713,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the A and B running sums against a naive per-byte-modulo reference and 6 RFC 1950 known-answer vectors, naming no scheduler, driver, filesystem, or network path that consumes the checksum."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the recurrence is identical on every ISA, and the RFC 1950 vectors plus 1M differential checks are the value"
       }
@@ -4758,7 +4786,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it verifies the trap ABI itself, before any syscall policy runs on top"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because ecall semantics and mcause codes are RISC-V specific, not ISA-independent"
       }
@@ -4831,7 +4859,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies rotate identities against a bit-loop reference and a round-trip invariant, and no kernel path consumes a rotation."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the identity is identical on every ISA, and the 4.19M checks with the round-trip invariant are the value"
       }
@@ -4920,7 +4948,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it characterizes counters, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the counter CSRs and their aliasing are RISC-V specific, not ISA-independent"
       }
@@ -4993,7 +5021,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure representation routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the arithmetic-shift identity is identical on every ISA, and the 4.19M differential checks are the value"
       }
@@ -5066,7 +5094,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 65,000,000 differential checks and the popcount-equals-n and mask-AND-complement-is-zero invariants involve no scheduler, virtual memory, driver, network, or syscall path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the 2-to-the-n minus 1 mask identity is identical on every ISA, and the 65M differential checks are the value"
       }
@@ -5139,7 +5167,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab proves the xor-fold reduction identity against a naive per-bit loop over 2,065,536 checks, never touching a scheduler, a driver, or a syscall."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the fold identity is identical on every ISA, and the 2M checks plus the linearity proof are the value"
       }
@@ -5208,7 +5236,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure byte routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the composition is identical on every ISA, and the 1M differential checks with the inverse round-trip are the value"
       }
@@ -5281,7 +5309,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 20,000 checks compare the nibble-correction add/sub against a decimal-digit reference in isolation, and no filesystem, driver, or network path consumes the packed BCD values."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the correction identities are identical on every ISA, and the 20K differential checks against decimal digits are the value"
       }
@@ -5350,7 +5378,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it characterizes hardware trap behavior, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because misaligned-AMO trapping is RISC-V specific, not ISA-independent"
       }
@@ -5419,7 +5447,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the dual running-sum recurrence over its 8 known-answer vectors and the 1,000,000-buffer differential test in isolation, and names no driver, filesystem, or network path that consumes the checksum."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the recurrence is identical on every ISA, and the 8 known-answer vectors plus 1M differential checks are the value"
       }
@@ -5484,7 +5512,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure checksum routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the end-around carry folding is identical on every ISA, and the 9 hand-computed vectors plus 1M differential checks are the value"
       }
@@ -5553,7 +5581,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure bit-packing routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the shift/OR nibble packing is identical on every ISA, and the 1.5M differential checks are the value"
       }
@@ -5622,7 +5650,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a libc-style routine, not a kernel subsystem"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the bounded word-scan is portable C, identical on every ISA, and the 20K differential checks plus guard-page cases are the value"
       }
@@ -5691,7 +5719,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it verifies dispatch landing points, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mtvec and mcause codes are RISC-V specific, not ISA-independent"
       }
@@ -5760,7 +5788,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 17 hand-checked vectors and 1,983,040 differential checks verify the 64-bit-intermediate round-to-nearest identity in isolation, with no scheduler, driver, filesystem, network, or syscall consumer."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the round-to-nearest division by a power of two is identical on every ISA, and the 1.98M differential checks are the value"
       }
@@ -5825,7 +5853,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it characterizes the CLINT path, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because msip and machine software interrupts are RISC-V specific, not ISA-independent"
       }
@@ -5890,7 +5918,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the dual running sums against an independent reference over 1,388,938,179 bytes, naming no driver, filesystem, or network path that consumes the checksum."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the recurrence is identical on every ISA, and the 8 vectors plus 1M differential checks over 1.39 GB are the value"
       }
@@ -5963,7 +5991,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it verifies the transition mechanics, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because MPP, mret, and mcause=0x8 are RISC-V specific, not ISA-independent"
       }
@@ -6036,7 +6064,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab compares the sign-mask absolute difference against llabs in isolation and no scheduler, driver, or syscall path feeds it."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "the sign-mask absolute-difference identity is identical on every ISA, and the 4.29B differential checks are the value"
       }
@@ -6109,7 +6137,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it characterizes counters, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because rdcycle is RISC-V specific, not ISA-independent"
       }
@@ -6182,7 +6210,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it is a pure encoding routine, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because the four-stage shift/mask identities encode two 16-bit halves into one 32-bit Morton code and invert it exactly, with no tables and no builtins, so any C target gets a table-free interleave backed by 20.2M two-direction checks."
       }
@@ -6251,7 +6279,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because it characterizes a status register, no kernel subsystem is involved"
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mstatus and its FS field are RISC-V specific, not ISA-independent"
       }
@@ -6320,7 +6348,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 983,040 exhaustive plus 1,000,000 fixed-seed checks verify the sign-mask bias identity in isolation, exercising no scheduler, virtual-memory, driver, or syscall path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "Signed division by 2^k is fixed by adding a sign-mask bias before the shift; that bias identity is pure integer arithmetic, identical on every ISA."
       }
@@ -6389,7 +6417,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because no scheduler, virtual-memory, driver, or syscall path is exercised; the lab checks the no-wrap averaging identity against the __int128 reference in isolation."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The averaging identity computes the midpoint without ever forming the sum a plus b, so the full uint64 range cannot wrap, and it holds bitwise on any ISA with plain AND, XOR, and shift."
       }
@@ -6462,7 +6490,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the add-3 digit-carry identity in isolation and no scheduler, driver, or syscall path consumes the packed BCD digits."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The shift-and-add-3 identity converts 8-bit values to packed BCD with plain shifts and adds, identical on every ISA."
       }
@@ -6527,7 +6555,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,065,669 checks exercise only the shift/AND cascade identity against a naive scan, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The shift/AND cascade identities find the longest zero run with plain shifts and ANDs, identical on every ISA."
       }
@@ -6596,7 +6624,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 65,000,000 checks verify the mask identity plus the popcount and contiguity invariants in isolation, with no scheduler, driver, filesystem, network, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The mask identity builds the high bits with one shift and one complement of an all-ones word, identical on every ISA."
       }
@@ -6669,7 +6697,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the three QEMU runs execute the all-ones writes and ecall traps in bare M-mode with no kernel loaded, so no trap is ever delegated to or handled by a supervisor kernel."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the writable masks 0xf0bfff and 0x3666 are measured properties of this QEMU build's trap-delegation CSRs, not the output of any ISA-independent algorithm."
       }
@@ -6738,7 +6766,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab compares rotl64/rot_add64 against an independent per-bit reference and no kernel subsystem consumes the rotation."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because The shift/OR rotate identity is pure C, so the verification stands on any ISA and rol is the hardware upgrade path."
       }
@@ -6819,7 +6847,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,304,967,524 checks compare sat_sub64 against a reference in isolation, and no scheduler allocates, no VM maps, and no syscall fires in the bench."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The borrow-out identity saturates with unsigned subtraction and a compare, identical on every ISA."
       }
@@ -6888,7 +6916,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "matters because serial drivers, network stacks, and filesystems validate CRC checksums on incoming frames and blocks with exactly this math."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The shift/xor recurrence over the 0x8408 polynomial is pure bit arithmetic, identical on every ISA."
       }
@@ -6953,7 +6981,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 9 machine software interrupt traps over 3 runs execute in bare M-mode with no kernel present, isolating the resume contract kernels rely on instead of any scheduling or driver path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the wfi resume contract (mcause 0x8000000000000003, mepc advanced to 0x8000040a) is RISC-V machine behavior, not an ISA-independent algorithm."
       }
@@ -7022,7 +7050,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the run is single-hart with no contention; it measures reservation success, not a kernel synchronization path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the attempts-to-success histogram is a property of the RISC-V reservation mechanism, and re-running the same loop on another ISA would not reproduce the attempt counts."
       }
@@ -7095,7 +7123,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab proves the shift-xor GF(2) product against a per-bit recurrence and a per-output-bit convolution reference, and no driver, filesystem, or network path consumes the 128-bit result."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because The branch-free shift-xor construction is pure GF(2) arithmetic, so the verification stands on any ISA and clmul is the hardware upgrade path."
       }
@@ -7180,7 +7208,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,296,646,922 differential checks and 1,679,616 directed crosstalk vectors verify the lane-guard identity in isolation, with no scheduler, driver, filesystem, network, or syscall consumer."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The SWAR mask/subtract lane-guard identity saturates four packed 16-bit lanes with plain masks and subtracts, identical on every ISA."
       }
@@ -7245,7 +7273,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,065,792 differential checks exercise only the byte-decomposition sum identity, with no scheduler, driver, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because The byte-decomposition sum identity is pure C with a startup-built table, so the verification stands on any ISA and cpop is the hardware upgrade path."
       }
@@ -7326,7 +7354,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the clz64 identity against the compiler builtin in isolation and no kernel subsystem consumes the leading-zero count."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because The byte-scan identity is pure C with a startup-built table, so the verification stands on any ISA and clz is the hardware upgrade path."
       }
@@ -7407,7 +7435,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 2^32-value bench proves the restoring square-root identity in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The bit-by-bit restoring square-root identity uses only shifts, subtracts, and compares, identical on every ISA."
       }
@@ -7464,7 +7492,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,304,971,681 differential checks verify the 32-bit splitting identity against the 128-bit oracle in isolation, with no scheduler, virtual-memory, driver, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The 32-bit splitting identity for the high word of a 128-bit product is pure integer arithmetic, identical on every ISA."
       }
@@ -7521,7 +7549,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the shift-xor-multiply avalanche identities against references in isolation, with no scheduler, virtual-memory, driver, or syscall path exercised."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The MurmurHash3 finalizer and its step-by-step inverse are built from shifts, xors, and odd-constant multiplies, identical on every ISA."
       }
@@ -7582,7 +7610,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the delta-swap identity in isolation and no scheduler, driver, or syscall path consumes the transposed matrix."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The three SWAR delta-swap stages transpose an 8x8 bit matrix with plain masks, shifts, and ORs, identical on every ISA."
       }
@@ -7643,7 +7671,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,304,971,681 checks prove the partial-product identity in isolation, and no kernel subsystem consumes the low word of the product."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "Three exact 64-bit partial products plus a wrapping cross term give the low word of a 64x64 product, identical on every ISA."
       }
@@ -7700,7 +7728,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 34,369,738,593 differential checks verify (a*b+c) mod 2^64 in isolation, with no scheduler, virtual-memory, driver, filesystem, or syscall consumer."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "Four 32x32 partial products with explicit wrap detection give (a*b+c) mod 2^64, identical on every ISA."
       }
@@ -7757,7 +7785,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 10,065,619 differential checks exercise only the invert-then-scan identity against a naive bit-scan reference, with no kernel subsystem involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because The invert-then-scan identity is pure C, so the verification stands on any ISA and clz is the hardware upgrade path."
       }
@@ -7846,7 +7874,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe runs standalone in M-mode with no kernel present; it isolates the TOR boundary guarantee (0x80001fff reads clean, 0x80002000 faults mcause=5) that kernels rely on."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because PMP TOR matching and the lock bit are programmed through RISC-V pmpcfg CSRs, so the exact boundary behavior does not transfer to another ISA."
       }
@@ -7915,7 +7943,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the bench proves the fill-cascade log2 identity against a reference in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The fill-cascade and power-of-two identities compute ceiling log2 with shifts and ORs, identical on every ISA."
       }
@@ -7972,7 +8000,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 10,065,685 differential checks verify the high-minus-low bit span in isolation, with no scheduler, virtual-memory, driver, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The fill-cascade floor and de Bruijn trailing-zero identities give the bit span with plain operations, identical on every ISA."
       }
@@ -8029,7 +8057,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the MPP probes and their mcause 0x8/0x9/0xb records run in bare M-mode with no kernel present, isolating the privilege-transition guarantee kernels rely on."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the four MPP encodings and the reserved-10-to-00 coercion are RISC-V privilege architecture, not an ISA-independent algorithm."
       }
@@ -8086,7 +8114,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the per-lane unsigned max against a scalar reference in isolation and no kernel subsystem consumes the packed result."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The guarded-subtraction comparison identity gives a per-lane unsigned max with plain masks and subtracts, identical on every ISA."
       }
@@ -8147,7 +8175,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "matters because serial drivers, network stacks, and filesystems validate CRC checksums on incoming frames and blocks with exactly this math."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The table-driven CRC-16/CCITT-FALSE recurrence is pure bit arithmetic with a startup-derived table, identical on every ISA."
       }
@@ -8212,7 +8240,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,065,537 checks verify x + neg(x) == 0 and neg(neg(x)) == x in isolation, with no scheduler, virtual-memory, driver, or syscall consumer."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The ~x + 1 negation identity is pure two's-complement arithmetic, identical on every ISA."
       }
@@ -8277,7 +8305,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "matters because serial drivers, network stacks, and filesystems validate CRC checksums on incoming frames and blocks with exactly this math."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The crc32(M || crc32(M)) = 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA."
       }
@@ -8342,7 +8370,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe writes and reads the counter directly; no scheduler or timer subsystem consumes the values."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because writing mcycle with csrw and reading back the advancing counter depends on the RISC-V counter CSR, which no other ISA reproduces."
       }
@@ -8403,7 +8431,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the bare-metal probe runs with interrupts disabled and no trap taken, so it isolates the CLINT msip to mip bit-3 guarantee rather than exercising any kernel interrupt path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because bit 3 of mip and the CLINT msip register exist only as RISC-V machine state, so the probe cannot run on any other ISA."
       }
@@ -8464,7 +8492,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the MSIE gate probe runs as a standalone M-mode program with no kernel present: the single trap it measures (mcause 0x8000000000000003 from the CLINT msip bit) documents the hardware guarantee that kernels rely on, not any kernel subsystem."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the mie MSIE bit and the CLINT msip trigger are RISC-V CSR machine specifics, not an ISA-independent algorithm: the 3 byte-identical QEMU runs could not reproduce on a non-RISC-V machine."
       }
@@ -8521,7 +8549,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the popcount-based CTZ identity over 65,535 exhaustive and 1M random inputs, with no scheduler, driver, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "matters because the SWAR popcount construction is pure C with no builtin, so the verification stands on any ISA and ctz is the hardware upgrade path."
       }
@@ -8598,7 +8626,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "matters because buddy-style page allocators round every request size up to a power of two with exactly this smear."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The decrement-then-smear identity rounds up with a shift-and-OR cascade applied after decrementing, identical on every ISA."
       }
@@ -8663,7 +8691,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the experiment drives the mstatus.MIE gate and observes trap entry mstatus 0xa00001880 in M-mode with no kernel present, measuring the hardware gate kernels rely on rather than a kernel scheduler path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mstatus.MIE, mie MSIE, and mcause 0x8000000000000003 are RISC-V machine specifics, and no other ISA implements this CSR contract."
       }
@@ -8728,7 +8756,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,065,536 differential checks plus the popcount-drop and power-of-two invariants on all 1,065,535 nonzero cases verify the identity in isolation, with no scheduler, driver, filesystem, network, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The two's-complement identity of x AND its negation isolates the lowest set bit, identical on every ISA."
       }
@@ -8797,7 +8825,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe runs standalone in M-mode with no kernel present; the sip 0x0-to-0x2 transition gated by mideleg bit 1 is measured as a hardware guarantee, not exercised through any kernel interrupt path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the sip/mip aliasing and the 0x1444 to 0x1446 mideleg gating are RISC-V machine specifics, not an ISA-independent algorithm."
       }
@@ -8862,7 +8890,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the single-pass divmod identity against C operators in isolation and no kernel subsystem consumes the quotient or remainder."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The sign-bias identity plus a mask gives quotient and remainder of signed division by 2^k in one pass, identical on every ISA."
       }
@@ -8923,7 +8951,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the run is single-hart with no contention; it checks the failure return value, not a kernel synchronization path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because lr/sc reservations and the nonzero sc.w failure return are RISC-V A-extension specifics, so the probe cannot run on another ISA."
       }
@@ -8984,7 +9012,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 8-register sentinel probe runs standalone in M-mode with no kernel present, isolating the hardware guarantee that kernels rely on rather than any kernel subsystem."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mret's no-restore behavior is a RISC-V machine-contract fact, not an ISA-independent algorithm: the ecall trap with mepc=0x80000556 has no meaning off RISC-V."
       }
@@ -9041,7 +9069,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab isolates the two-word borrow-propagation identity, with no scheduler, virtual-memory, driver, or syscall path exercised."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The borrow-out identity chains two 64-bit stages into exact 128-bit subtraction, identical on every ISA."
       }
@@ -9098,7 +9126,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "matters because the S-mode trap vector is the kernel's trap entry point, and this probe programs exactly that entry."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because stvec, medeleg, and the scause 0x9 ecall record are RISC-V trap CSRs, so the measurement has no equivalent on another ISA."
       }
@@ -9159,7 +9187,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,065,541 checks compare the sign-shift identity against a comparison reference in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The sign-shift identities give -1, 0, or +1 from shifts and ORs with no branch, identical on every ISA."
       }
@@ -9216,7 +9244,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,295,967,301 differential checks verify the carry identity against the unsigned __int128 oracle in isolation, with no scheduler, virtual-memory, driver, or syscall consumer."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The carry identity (lo + 1 == 0) cascades a 128-bit increment from two 64-bit stages, identical on every ISA."
       }
@@ -9273,7 +9301,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the per-lane absolute-value identity, pinning abs(-32768) = -32768 by contract, with no kernel subsystem involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The (x ^ m) - m sign-mask identity gives per-lane absolute value with one guard bit per lane, identical on every ISA."
       }
@@ -9330,7 +9358,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe runs standalone in M-mode with no kernel present; it isolates the mepc+4 skip guarantee that kernels rely on."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mepc, mret, and the mcause=0x5 fault record are RISC-V trap mechanics, so the skip behavior does not transfer to another ISA."
       }
@@ -9395,7 +9423,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,065,555 checks compare the magic multiply against native / 3 in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The modular-inverse identity divides by 3 with one multiply by 0xAAAAAAAB and a right shift by 33, identical on every ISA."
       }
@@ -9453,7 +9481,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe runs standalone in M-mode with no kernel present: the 4 KiB and 64 KiB deny regions trap with mcause=0x5 before any scheduler, driver, or syscall path could run."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because PMP NAPOT size decoding and the mcause/mtval/mepc trap record are RISC-V machine specifics, not an ISA-independent algorithm: the 0x5 access-fault encoding has no meaning off RISC-V."
       }
@@ -9511,7 +9539,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the bitrev(i) permutation and its twice-applied involution against an independent reference, with no scheduler, driver, or syscall path exercised."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The 3-bit index reversal is built from swap identities with no table, identical on every ISA."
       }
@@ -9573,7 +9601,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe writes and reads the counter directly; no scheduler or timer subsystem consumes the values."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the two-store mtime write and stable-pair readback target the CLINT memory map, which no other ISA shares."
       }
@@ -9639,7 +9667,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the checks compare the mask select identity against the ternary operator in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The mask identity selects between the two inputs with bitwise AND, OR, and NOT of a select mask, with no branch, identical on every ISA."
       }
@@ -9701,7 +9729,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 10,065,536 differential checks verify the borrow-guarded lane identity in isolation, with no scheduler, virtual-memory, driver, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The zero-byte detection identity counts zero bytes with borrow arithmetic in 16-bit lanes, identical on every ISA."
       }
@@ -9763,7 +9791,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the sign-corrected splitting identity in isolation, with no scheduler, virtual-memory, driver, or syscall path exercised."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The sign-corrected 32-bit splitting identity gives the high word of a signed 128-bit product, identical on every ISA."
       }
@@ -9825,7 +9853,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the saturation against an if/else reference in isolation and no scheduler, driver, or syscall path consumes the clamped value."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "Two sign masks and bitwise selection clamp int32 into [0, 65535] with no branch, identical on every ISA."
       }
@@ -9886,7 +9914,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "matters because ASID-tagged TLB management is the kernel's virtual-memory concern, and this probe runs the satp contract from S-mode."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because satp, ASIDs, and the WARL 16-bit mask on QEMU 8.2.2 virt are RISC-V supervisor-mode specifics, and no other ISA implements this register contract."
       }
@@ -9947,7 +9975,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,304,967,310 differential checks and the 262,140 maximum-result bound verify the cascade in isolation, with no scheduler, driver, filesystem, network, or syscall consumer."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The two-stage pairwise-add cascade sums four 16-bit lanes with plain adds, identical on every ISA."
       }
@@ -10008,7 +10036,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": true,
         "because": "matters because kernel page-fault and fault handlers read mtval to find the faulting address, and this probe documents the exact record."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the mcause 0x5/0x7 and mtval 0xffffffffc0000000 fault records are RISC-V trap behavior, not an ISA-independent algorithm."
       }
@@ -10069,7 +10097,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the even/odd-separated guard identity in isolation and no kernel subsystem consumes the validity bitmask."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The add-6-per-nibble guard identity with even/odd separation flags invalid BCD digits, identical on every ISA."
       }
@@ -10126,7 +10154,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the write-all-ones readback of misa 0x80000000001411ad runs bare-metal in M-mode with no kernel present, isolating the extension-reporting guarantee kernels read."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because misa and its read-only 0x80000000001411ad readback are RISC-V machine specifics, and no other ISA has this CSR."
       }
@@ -10179,7 +10207,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 21,777,945 differential checks verify the compare-swap sorting network in isolation, with no scheduler, virtual-memory, driver, or syscall path involved."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The 3-element sorting network builds median from compare-swaps with no branch, identical on every ISA."
       }
@@ -10244,7 +10272,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab checks the xor-swap identity in isolation, including the stated a==b-zeroing contract, with no scheduler, driver, or syscall path exercised."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "Three xor-assignments swap two words with no temporary, identical on every ISA."
       }
@@ -10305,7 +10333,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the 128-bit addition against __int128 in isolation and no kernel subsystem consumes the carry chain."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The carry-out identity chains two 64-bit stages into exact 128-bit addition, identical on every ISA."
       }
@@ -10370,7 +10398,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the one-shot disarm by the all-ones mtimecmp write and the 1,000,000-read quiet window run bare-metal with no kernel present, isolating the timer guarantee kernels rely on."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mtimecmp, MTIP, and mcause machine-timer traps are RISC-V platform specifics, and no other ISA implements the CLINT contract."
       }
@@ -10435,7 +10463,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,065,547 differential checks verify the overflow-flag identity against the int64 oracle in isolation, with no scheduler, virtual-memory, driver, or syscall consumer."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The overflow-flag identity clamps 32-bit addition to INT32_MAX/MIN with plain operations, identical on every ISA."
       }
@@ -10496,7 +10524,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe runs standalone in M-mode with no kernel present; the STIE-only zero-trap and MTIE|STIE single-trap measurements isolate the mie enable behavior kernels rely on, not any kernel timer path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because the STIE/MTIE enable separation in mie is RISC-V machine behavior, not an ISA-independent algorithm."
       }
@@ -10557,7 +10585,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the lab verifies the -1/0/+1 compare against an oracle in isolation and no kernel subsystem consumes the result."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The borrow-out identity gives a three-way unsigned compare with no branch, identical on every ISA."
       }
@@ -10622,7 +10650,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,294,967,673 checks prove the shift-and-add construction in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "Shifts and adds alone give the high 16 bits of a 16x16 multiply, identical on every ISA."
       }
@@ -10687,7 +10715,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 4,304,967,312 checks prove the lane-guarded SWAR construction in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The 16-bit-lane borrow-suppressed zero-byte identity gives an exact bytewise equality mask on every ISA."
       }
@@ -10748,7 +10776,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the probe runs standalone in M-mode with no kernel present; the write/readback/trap-overwrite triples isolate the CSR behavior kernels rely on, not any kernel trap path."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": false,
         "because": "not here because mcause writability is implementation-defined per hart, not an ISA-independent algorithm."
       }
@@ -10809,7 +10837,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 10,065,537 checks prove the exponent-read construction in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The binary64 exponent-read identity gives floor(log2) from the IEEE-754 layout on every ISA."
       }
@@ -10870,7 +10898,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 1,002,060 checks prove the loop-scatter construction in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The loop-scatter deposit identity scatters bits by mask on every ISA."
       }
@@ -10931,7 +10959,7 @@ assert(check == 0x2144DF1C);</code></pre>
         "applies": false,
         "because": "not here because the 10,065,537 checks prove the halving construction in isolation, with no scheduler, VM, driver, or syscall path running."
       },
-      "PORTABLE": {
+      "ALGORITHM": {
         "applies": true,
         "because": "The binary-search halving identity counts leading zeros from shifts and compares on every ISA."
       }
@@ -11204,11 +11232,11 @@ assert(check == 0x2144DF1C);</code></pre>
         "kind": "evidence",
         "n": 2,
         "source": {
-          "cite": "lab/17-bitcount/PROOF.md, differential-test section",
+          "cite": "lab/17-bitcount/PROOF.md, run-output section",
           "tier": "lab",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
         },
-        "text": "lab/17-bitcount/PROOF.md records 10,000,133 differential comparisons of the SWAR popcount against cpop under QEMU, with 0 mismatches."
+        "text": "lab/17-bitcount/PROOF.md records 10,000,133 differential comparisons of the SWAR popcount against __builtin_popcountll on the x86_64 host, with 0 mismatches."
       },
       {
         "kind": "evidence",
@@ -11258,13 +11286,13 @@ assert(check == 0x2144DF1C);</code></pre>
       {
         "kind": "explanation",
         "n": 10,
-        "text": "The lab never executes cpop on real hardware, only under QEMU, so one could argue no real ISA is involved."
+        "text": "The lab ran on an x86_64 host and never executed a RISC-V instruction, so one could argue no RISC-V ISA is involved."
       },
       {
         "kind": "refutation",
         "n": 11,
         "refutes": 10,
-        "text": "The boundary exercised is between the specified instruction and the emulation; QEMU implements the specified semantics, so the comparison is against the ISA's definition either way. Real-hardware execution would add timing, which is a microarchitecture question, not an ISA one."
+        "text": "The lab's method is about the boundary, not about where each side ran: the differential test needs the two sides to stay independent, and the disassembly check enforces that. The ISA manual defines which instructions exist and which extension carries them, so asking whether the compiler crossed the boundary is an ISA question even though the run happened on a host. Real-hardware execution would add timing, which is a microarchitecture question, not an ISA one."
       }
     ],
     "kind": "card",
@@ -11368,7 +11396,7 @@ assert(check == 0x2144DF1C);</code></pre>
     "probandum": "The kernel layer does not matter for this lab because the routine is a pure function of its input word: no syscalls, no shared state, nothing a scheduler, VM subsystem, or driver could perturb.",
     "slot": "KERNEL"
   },
-  "swar-popcount-64|PORTABLE": {
+  "swar-popcount-64|ALGORITHM": {
     "inferences": [
       {
         "from": [
@@ -11402,7 +11430,7 @@ assert(check == 0x2144DF1C);</code></pre>
       {
         "kind": "probandum",
         "n": 1,
-        "text": "The portability layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound."
+        "text": "The algorithm layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound."
       },
       {
         "kind": "evidence",
@@ -11438,9 +11466,100 @@ assert(check == 0x2144DF1C);</code></pre>
     ],
     "kind": "card",
     "probandum": "The portability layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound.",
-    "slot": "PORTABLE"
+    "slot": "ALGORITHM"
+  },
+  "swar-popcount-64|MICROARCH": {
+    "item": "swar-popcount-64",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The microarchitecture layer does not apply to this lab's correctness claim, because the claim is pure integer math over the input word: no pipeline, cache, or predictor behavior appears in it. The timing figures in the proof log are observations on one host core, not part of what is proved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The microarchitecture layer does not apply to this lab's correctness claim, because the claim is pure integer math over the input word: no pipeline, cache, or predictor behavior appears in it. The timing figures in the proof log are observations on one host core, not part of what is proved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The routine is a pure function of its 64-bit input: the SWAR identities fix the output for each input word, and PROOF.md records checksum 319992825 identical across the -O0, -O2, and ASan+UBSan builds.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md",
+          "cite": "lab/17-bitcount/PROOF.md, run-output section"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "PROOF.md's throughput figure, 3.98 ns/value at -O2, is explicitly a ceiling for the timed loop including the splitmix64 PRNG step, measured on the x86_64 host; it characterizes one core, not the algorithm.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md",
+          "cite": "lab/17-bitcount/PROOF.md, what-the-numbers-mean section"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Nothing in the correctness argument varies with pipeline depth, cache size, or branch prediction; the 10,000,133 comparisons agree or disagree the same way on any core that implements the semantics."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The characteristic microarchitecture question is why code runs this fast on this chip; its tools are performance counters and controlled benchmarking. They answer a different question than the proof log does."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A dim slot still teaches: it tells the reader the reported timing is not load-bearing for the correctness claim, so a different number on another core changes nothing proved."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "The card reports 3.98 ns/value, so one could argue microarchitecture is relevant after all."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "refutes": 7,
+        "text": "The figure is a measurement reported with its caveats in the proof log, not a claim the argument depends on. If it changed on another core, nothing proved would change; the layer that would matter for that new question is microarchitecture, and this lab does not ask it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "Same input gives same output on any core; timing characterizes the core, not the claim."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "No implementation behavior appears in the argument, so the slot stays dim, honestly."
+      }
+    ]
   }
 };
+      // Exposed for the tooltip renderer, which lives in its own script
+      // block below (block-scoped consts are invisible across blocks).
+      window.__WIGMORE__ = WIGMORE;
 
 
       const AUDIENCES = [
@@ -11650,7 +11769,7 @@ assert(check == 0x2144DF1C);</code></pre>
       // the ISA slot of an instruction-mapped card cites the ISA manual.
       const layerStripHTML = (project) => {
         if (!project.layers) return '';
-        const order = ['ISA', 'FIRMWARE', 'KERNEL', 'PORTABLE'];
+        const order = ['ISA', 'MICROARCH', 'FIRMWARE', 'KERNEL', 'ALGORITHM'];
         const proofLink = project.evidence
           ? `<a class="card-proof" href="${project.evidence.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(project.evidence.label)} <span aria-hidden="true">↗</span></a>`
           : '';
@@ -11658,14 +11777,15 @@ assert(check == 0x2144DF1C);</code></pre>
           ? `<a class="slot-ext" href="${(project.portability.specUrl || '').replace(/"/g, '&quot;')}" target="_blank" rel="noopener">ISA manual: ${esc(project.portability.extension)} / ${esc(project.portability.instruction)} <span aria-hidden="true">↗</span></a>`
           : '';
         const slots = order
+          .filter((name) => project.layers[name])
           .map((name) => {
-            const slot = project.layers[name] || { applies: false, because: '' };
+            const slot = project.layers[name];
             const cls = slot.applies ? 'layer-slot lit' : 'layer-slot dim';
             const ext = (name === 'ISA' && slot.applies) ? specLink : '';
             // Argument affordance: only where a formal Wigmore analysis exists.
             const wigKey = `${project.id}|${name}`;
             const why = WIGMORE[wigKey]
-              ? `<button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
+              ? ` <button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
               : '';
             return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}${why}</p>${ext}</div>`;
           })
@@ -12332,6 +12452,7 @@ assert(check == 0x2144DF1C);</code></pre>
        panel below the marker on touch. */
     (() => {
       const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      const WIGMORE = window.__WIGMORE__ || {};
       const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
       const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
       let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
@@ -12526,7 +12647,9 @@ assert(check == 0x2144DF1C);</code></pre>
           }
         });
         document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape' && (l1 || l2)) closeAll();
+          if (event.key !== 'Escape') return;
+          if (l2) { l2.remove(); l2 = null; return; }
+          if (l1) closeAll();
         });
         document.addEventListener('focusin', (event) => {
           const marker = event.target.closest('.why-marker');
