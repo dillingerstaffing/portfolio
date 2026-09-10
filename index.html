@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="build-version" content="v20260910-bbaff4c">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -5942,6 +5943,36 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+  <script>
+    (() => {
+      const currentVersion = document.querySelector('meta[name="build-version"]')?.content;
+      let checking = false;
+      let reloadRequested = false;
+
+      document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState !== 'visible' || checking || reloadRequested || !currentVersion) return;
+        checking = true;
+
+        try {
+          const response = await fetch('', { cache: 'no-store' });
+          if (!response.ok) return;
+
+          const html = await response.text();
+          const fetchedDocument = new DOMParser().parseFromString(html, 'text/html');
+          const fetchedVersion = fetchedDocument.querySelector('meta[name="build-version"]')?.content;
+
+          if (fetchedVersion && fetchedVersion !== currentVersion) {
+            reloadRequested = true;
+            window.location.reload();
+          }
+        } catch (_) {
+          // A failed background check leaves the current page untouched.
+        } finally {
+          checking = false;
+        }
+      });
+    })();
+  </script>
   <script>
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
   </script>
