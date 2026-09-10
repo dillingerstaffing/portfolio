@@ -288,7 +288,6 @@
     .project[hidden] { display: none !important; }
     .project:focus-visible { outline: 2px solid var(--acid); outline-offset: 6px; }
     .project.is-search-dimmed { opacity: .22; }
-    .project:target { background: rgba(184, 243, 75, .1); }
     .project-grid { display: grid; grid-template-columns: minmax(0, .83fr) minmax(0, 1.17fr); gap: clamp(34px, 7vw, 90px); align-items: start; }
     .project:nth-child(even) .project-copy { order: 2; }
     .project-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; }
@@ -441,12 +440,15 @@
         border-top: 0; border-bottom: 1px solid var(--line); background: var(--bg);
       }
       .chapter-list {
-        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; overflow: visible;
+        display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none; overscroll-behavior-x: contain;
+        scroll-snap-type: x proximity;
       }
+      .chapter-list::-webkit-scrollbar { display: none; }
       .chapter-button {
-        width: 100%; min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+        flex: 0 0 auto; width: auto; white-space: nowrap; min-height: 52px;
+        display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
         gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
-        white-space: normal;
       }
       .chapter-button::before { display: none; }
       .chapter-button.is-active { background: var(--acid); color: var(--black); }
@@ -3927,6 +3929,17 @@ done
             </div>
           </div>`;
         projectsContainer.appendChild(article);
+      });
+
+      projectsContainer.addEventListener('click', (event) => {
+        const link = event.target.closest('a.project-deep-link');
+        if (!link || !projectsContainer.contains(link)) return;
+        event.preventDefault();
+        history.replaceState(null, '', link.getAttribute('href'));
+        link.textContent = 'Linked';
+        window.setTimeout(() => {
+          link.textContent = 'Link';
+        }, 1200);
       });
 
       const projectCards = [...document.querySelectorAll('.project')];
