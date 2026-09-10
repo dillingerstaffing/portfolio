@@ -527,149 +527,6 @@
     (() => {
       const PROJECTS = [
         {
-          id: 'strnlen-wordscan',
-          kicker: 'BOUNDED STRING SCAN',
-          title: 'lab/50-strnlen-wordscan',
-          summary: 'Bounded <code>my_strnlen(s, max)</code> built on the word-at-a-time zero-byte detection identity, loading only words fully inside the <code>max</code> bound so it never reads past <code>max</code>. Verified: 20,480 differential checks against libc <code>strnlen</code> over lengths 0..256 at every misalignment 0..7, 0 mismatches; 33 guard-page cases with mmaped pages followed by a guard page, 0 faults; clean under ASan/UBSan; identical fingerprint across <code>-O0</code>, <code>-O2</code>, ASan, and UBSan builds; measured 31.6 ns/value at <code>-O2</code>.',
-          specRows: [
-            ['BUILD', 'Bounded my_strnlen(s, max), word-at-a-time zero-byte detection'],
-            ['BOUND', 'Only words fully inside max are loaded'],
-            ['DIFFERENTIAL', '20,480 checks, lengths 0..256, misalignments 0..7'],
-            ['RESULT', '0 mismatches'],
-            ['GUARD PAGES', '33 cases, 0 faults'],
-            ['BUILDS', 'Identical fingerprint across -O0, -O2, ASan, and UBSan'],
-            ['MEASURED', '31.6 ns/value at -O2']
-          ],
-          terminalOutput: `<span class="prompt">$</span> ./test_strnlen_wordscan
-libc differential checks . 20,480
-lengths ................... 0..256
-misalignments ............. 0..7
-mismatches ................ 0
-guard-page cases .......... 33
-guard-page faults ......... 0
--O0 / -O2 fingerprints .... IDENTICAL
-ASan / UBSan .............. CLEAN
-
-<span class="result">31.6 ns/value at -O2</span>`,
-          verificationEnvironment: 'host',
-          checks: 20513,
-          failures: 0,
-          stressItems: 20480,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/50-strnlen-wordscan',
-          repoLabel: 'GitHub: systems-lab/lab/50-strnlen-wordscan',
-          terminalName: 'systems-lab / lab / 50-strnlen-wordscan',
-          terminalLabel: 'Verified bounded strnlen test and benchmark output',
-          showRepoLink: true
-        },
-        {
-          id: 'riscv-mtvec-vectored-dispatch',
-          kicker: 'RISC-V TRAP DISPATCH',
-          title: 'riscv mtvec vectored dispatch',
-          summary: 'Bare-metal RV64 M-mode program setting <code>mtvec</code> to <code>0x80000201</code> (BASE <code>0x80000200</code>, MODE=1) over a 16-entry vector table. Two U-mode <code>ecall</code>s trap with <code>mcause=0x8</code> and land at BASE; one machine timer interrupt traps with <code>mcause=0x8000000000000007</code> and lands at BASE+28. <code>mtimecmp</code> is disarmed after the handler, with no refire. RESULT: PASS, program output byte-identical across 3 QEMU 8.2.2 runs.',
-          specRows: [
-            ['MODE', 'Bare-metal RV64 M-mode'],
-            ['MTVEC', '0x80000201, BASE 0x80000200, MODE=1'],
-            ['TABLE', '16 entries'],
-            ['U-MODE ECALLS', '2, mcause=0x8, both land at BASE'],
-            ['MACHINE TIMER', 'mcause=0x8000000000000007, lands at BASE+28'],
-            ['DISARM', 'mtimecmp disarmed after handler, 0 refires'],
-            ['RUNS', '3 QEMU 8.2.2 runs, byte-identical, PASS']
-          ],
-          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt \\
-  -nographic -bios none -kernel mtvec-vectored.elf
-
-mtvec ..................... 0x80000201
-BASE / MODE ............... 0x80000200 / 1
-vector entries ............ 16
-U-mode ecalls ............. 2
-U-mode ecall mcause ....... 0x8
-ecall target .............. BASE
-machine timer mcause ...... 0x8000000000000007
-timer target .............. BASE+28
-mtimecmp refires .......... 0
-QEMU 8.2.2 runs ........... 3, byte-identical
-
-<span class="result">RESULT: PASS</span>`,
-          verificationEnvironment: 'QEMU',
-          checks: 3,
-          failures: 0,
-          stressItems: 3,
-          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-vectored/',
-          repoLabel: 'GitHub: riscv-baremetal-demo/src/mtvec-vectored',
-          terminalName: 'qemu / riscv64 / mtvec-vectored.elf',
-          terminalLabel: 'Verified mtvec vectored dispatch output',
-          showRepoLink: true
-        },
-        {
-          id: 'div-round-pow2',
-          kicker: 'INTEGER ARITHMETIC',
-          title: 'div-round-pow2 (systems-lab/lab/49)',
-          summary: 'Round-to-nearest division of a u32 by 2^k, computed in a 64-bit intermediate so the identity stays exact over the whole u32 domain. Verified: 17/17 hand-checked vectors pass; 1,983,040 differential checks against an independent rational reference, 0 mismatches; FNV-1a checksum 0xee4a225fd47d1345 identical across -O0, -O2, ASan+UBSan, and UBSan builds; measured at -O2: 4.9 ns/value.',
-          specRows: [
-            ['OPERATION', 'Round-to-nearest u32 division by 2^k'],
-            ['INTERMEDIATE', '64-bit'],
-            ['VECTORS', '17/17 pass'],
-            ['DIFFERENTIAL', '1,983,040 checks, 0 mismatches'],
-            ['CHECKSUM', '0xee4a225fd47d1345 across 4 builds'],
-            ['MEASURED', '4.9 ns/value at -O2']
-          ],
-          terminalOutput: `<span class="prompt">$</span> ./test_div_round_pow2
-hand-checked vectors ...... 17/17 PASS
-differential checks ...... 1,983,040
-mismatches ................ 0
-FNV-1a checksum ........... 0xee4a225fd47d1345
--O0 ....................... IDENTICAL
--O2 ....................... IDENTICAL
-ASan+UBSan ................ IDENTICAL
-UBSan ..................... IDENTICAL
-
-<span class="result">4.9 ns/value at -O2</span>`,
-          verificationEnvironment: 'host',
-          checks: 1983057,
-          failures: 0,
-          stressItems: 1983040,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/49-div-round-pow2',
-          repoLabel: 'GitHub: systems-lab/lab/49-div-round-pow2',
-          terminalName: 'systems-lab / lab / 49-div-round-pow2',
-          terminalLabel: 'Verified div-round-pow2 test and benchmark output',
-          showRepoLink: true
-        },
-        {
-          id: 'riscv-msip-software-interrupt-delivery',
-          kicker: 'RISC-V INTERRUPTS',
-          title: 'msip software-interrupt delivery (riscv-baremetal-demo/src/msip)',
-          summary: 'Bare-metal M-mode on QEMU: CLINT msip set for hart 0 fires exactly one machine software interrupt (mcause=0x8000000000000003) over two set/clear cycles, with zero re-delivery traps in the quiet windows after each clear. Measured: delivery latency 27,240 to 82,155 rdcycle units across 3 QEMU 8.2.2 runs, RESULT: PASS on all 3.',
-          specRows: [
-            ['MODE', 'Bare-metal M-mode on QEMU'],
-            ['SOURCE', 'CLINT msip for hart 0'],
-            ['CAUSE', 'mcause=0x8000000000000003'],
-            ['CYCLES', '2 set/clear cycles, 0 re-delivery traps'],
-            ['LATENCY', '27,240 to 82,155 rdcycle units'],
-            ['RUNS', '3 QEMU 8.2.2 runs, all PASS']
-          ],
-          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt \\
-  -nographic -bios none -kernel msip.elf
-
-hart ...................... 0
-set/clear cycles .......... 2
-machine software IRQs ..... exactly 1 per set
-mcause .................... 0x8000000000000003
-quiet-window re-delivery .. 0 traps
-latency range ............. 27,240 to 82,155 rdcycle units
-QEMU 8.2.2 runs ........... 3
-
-<span class="result">RESULT: PASS on all 3</span>`,
-          verificationEnvironment: 'QEMU',
-          checks: 3,
-          failures: 0,
-          stressItems: 0,
-          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/msip',
-          repoLabel: 'GitHub: riscv-baremetal-demo/src/msip',
-          terminalName: 'qemu / riscv64 / msip.elf',
-          terminalLabel: 'Measured machine software interrupt delivery output',
-          showRepoLink: true
-        },
-        {
           id: 'riscv-bare-metal-scheduler',
           kicker: 'BARE-METAL KERNEL',
           title: 'RISC-V bare-metal scheduler',
@@ -2211,6 +2068,42 @@ platform .................. QEMU 8.2.2
           showRepoLink: true
         },
         {
+          id: 'gray-code-16-bit',
+          kicker: 'BIT IDENTITIES',
+          title: 'Gray code encode and decode, exhaustively checked',
+          summary: '16-bit Gray code: <code>gray16_encode(n)</code> returns <code>n ^ (n &gt;&gt; 1)</code>, and decode inverts it by xor-folding (<code>g ^= g&gt;&gt;8; g ^= g&gt;&gt;4; g ^= g&gt;&gt;2; g ^= g&gt;&gt;1</code>). Shifts and XORs on <code>uint16_t</code> only, no tables, no library calls. Differential-tested against an independent naive bit-loop reference over all 65,536 16-bit inputs: 65,536 encode checks and 65,536 decode checks, 0 mismatches. The involution <code>decode(encode(x)) == x</code> checked on every input (65,536 checks, 0 mismatches), and single-bit adjacency <code>popcount(encode(x) ^ encode(x + 1)) == 1</code> checked on all 65,535 adjacent pairs, 0 mismatches. 262,143 total checks, identical FNV-1a checksum 9751602672369123877 across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Clean under <code>-Wall -Wextra -Werror</code>, zero sanitizer reports. Measured at <code>-O2</code>: encode 4.32-4.46 ns/value, decode 4.31-4.35 ns/value over 100M timed values. Full build log and run output committed in <code>PROOF.md</code>.',
+          specRows: [
+            ['ENCODE', 'n ^ (n >> 1)'],
+            ['DECODE', 'xor-fold, four steps, all 16 positions'],
+            ['EXHAUSTIVE', 'All 65536 16-bit inputs, encode and decode'],
+            ['INVOLUTION', 'decode(encode(x)) == x on every input'],
+            ['ADJACENCY', 'Single-bit change on all 65535 pairs'],
+            ['TOTAL', '262143 checks, 0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 9751602672369123877 identical on all builds'],
+            ['RESULT', 'Encode 4.32-4.46 ns/value, decode 4.31-4.35 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> gray code verification
+encode differential (impl vs bit-loop ref): 65536 checks, 0 mismatches
+decode differential (impl vs bit-loop ref): 65536 checks, 0 mismatches
+involution decode(encode(x)) == x: 65536 checks, 0 mismatches
+adjacent single-bit change: 65535 checks, 0 mismatches
+FNV-1a checksum: 9751602672369123877
+encode throughput: 4.46 ns/value (100M values)
+decode throughput: 4.35 ns/value (100M values)
+
+<span class="result">262143 total checks, 0 mismatches</span>
+<span class="comment">Full build log and run output: PROOF.md</span>`,
+          verificationEnvironment: 'host',
+          checks: 262143,
+          failures: 0,
+          stressItems: 262143,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/33-gray-code',
+          repoLabel: 'View the Gray code proof',
+          terminalName: 'systems-lab / gray-code / PROOF.md',
+          terminalLabel: 'Verified Gray code test output',
+          showRepoLink: true
+        },
+        {
           id: 'branchless-minmax-32-bit',
           kicker: 'INTEGER ARITHMETIC',
           title: 'Branchless 32-bit min/max, 4.3B checks',
@@ -2794,42 +2687,6 @@ output .................... BYTE-IDENTICAL
           showRepoLink: true
         },
         {
-          id: 'gray-code-16-bit',
-          kicker: 'BIT IDENTITIES',
-          title: 'Gray code encode and decode, exhaustively checked',
-          summary: '16-bit Gray code: <code>gray16_encode(n)</code> returns <code>n ^ (n &gt;&gt; 1)</code>, and decode inverts it by xor-folding (<code>g ^= g&gt;&gt;8; g ^= g&gt;&gt;4; g ^= g&gt;&gt;2; g ^= g&gt;&gt;1</code>). Shifts and XORs on <code>uint16_t</code> only, no tables, no library calls. Differential-tested against an independent naive bit-loop reference over all 65,536 16-bit inputs: 65,536 encode checks and 65,536 decode checks, 0 mismatches. The involution <code>decode(encode(x)) == x</code> checked on every input (65,536 checks, 0 mismatches), and single-bit adjacency <code>popcount(encode(x) ^ encode(x + 1)) == 1</code> checked on all 65,535 adjacent pairs, 0 mismatches. 262,143 total checks, identical FNV-1a checksum 9751602672369123877 across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds. Clean under <code>-Wall -Wextra -Werror</code>, zero sanitizer reports. Measured at <code>-O2</code>: encode 4.32-4.46 ns/value, decode 4.31-4.35 ns/value over 100M timed values. Full build log and run output committed in <code>PROOF.md</code>.',
-          specRows: [
-            ['ENCODE', 'n ^ (n >> 1)'],
-            ['DECODE', 'xor-fold, four steps, all 16 positions'],
-            ['EXHAUSTIVE', 'All 65536 16-bit inputs, encode and decode'],
-            ['INVOLUTION', 'decode(encode(x)) == x on every input'],
-            ['ADJACENCY', 'Single-bit change on all 65535 pairs'],
-            ['TOTAL', '262143 checks, 0 mismatches'],
-            ['CHECKSUM', 'FNV-1a 9751602672369123877 identical on all builds'],
-            ['RESULT', 'Encode 4.32-4.46 ns/value, decode 4.31-4.35 ns/value at -O2']
-          ],
-          terminalOutput: `<span class="prompt">$</span> gray code verification
-encode differential (impl vs bit-loop ref): 65536 checks, 0 mismatches
-decode differential (impl vs bit-loop ref): 65536 checks, 0 mismatches
-involution decode(encode(x)) == x: 65536 checks, 0 mismatches
-adjacent single-bit change: 65535 checks, 0 mismatches
-FNV-1a checksum: 9751602672369123877
-encode throughput: 4.46 ns/value (100M values)
-decode throughput: 4.35 ns/value (100M values)
-
-<span class="result">262143 total checks, 0 mismatches</span>
-<span class="comment">Full build log and run output: PROOF.md</span>`,
-          verificationEnvironment: 'host',
-          checks: 262143,
-          failures: 0,
-          stressItems: 262143,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/33-gray-code',
-          repoLabel: 'View the Gray code proof',
-          terminalName: 'systems-lab / gray-code / PROOF.md',
-          terminalLabel: 'Verified Gray code test output',
-          showRepoLink: true
-        },
-        {
           id: 'fletcher16-dual-recurrence',
           kicker: 'CHECKSUMS',
           title: 'Fletcher-16 from the dual running-sum recurrence',
@@ -2929,6 +2786,149 @@ UBSan ..................... CLEAN
           repoLabel: 'View the nibble-pack proof',
           terminalName: 'systems-lab / nibble-pack / PROOF.md',
           terminalLabel: 'Verified nibble-pack test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'strnlen-wordscan',
+          kicker: 'BOUNDED STRING SCAN',
+          title: 'lab/50-strnlen-wordscan',
+          summary: 'Bounded <code>my_strnlen(s, max)</code> built on the word-at-a-time zero-byte detection identity, loading only words fully inside the <code>max</code> bound so it never reads past <code>max</code>. Verified: 20,480 differential checks against libc <code>strnlen</code> over lengths 0..256 at every misalignment 0..7, 0 mismatches; 33 guard-page cases with mmaped pages followed by a guard page, 0 faults; clean under ASan/UBSan; identical fingerprint across <code>-O0</code>, <code>-O2</code>, ASan, and UBSan builds; measured 31.6 ns/value at <code>-O2</code>.',
+          specRows: [
+            ['BUILD', 'Bounded my_strnlen(s, max), word-at-a-time zero-byte detection'],
+            ['BOUND', 'Only words fully inside max are loaded'],
+            ['DIFFERENTIAL', '20,480 checks, lengths 0..256, misalignments 0..7'],
+            ['RESULT', '0 mismatches'],
+            ['GUARD PAGES', '33 cases, 0 faults'],
+            ['BUILDS', 'Identical fingerprint across -O0, -O2, ASan, and UBSan'],
+            ['MEASURED', '31.6 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ./test_strnlen_wordscan
+libc differential checks . 20,480
+lengths ................... 0..256
+misalignments ............. 0..7
+mismatches ................ 0
+guard-page cases .......... 33
+guard-page faults ......... 0
+-O0 / -O2 fingerprints .... IDENTICAL
+ASan / UBSan .............. CLEAN
+
+<span class="result">31.6 ns/value at -O2</span>`,
+          verificationEnvironment: 'host',
+          checks: 20513,
+          failures: 0,
+          stressItems: 20480,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/50-strnlen-wordscan',
+          repoLabel: 'GitHub: systems-lab/lab/50-strnlen-wordscan',
+          terminalName: 'systems-lab / lab / 50-strnlen-wordscan',
+          terminalLabel: 'Verified bounded strnlen test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mtvec-vectored-dispatch',
+          kicker: 'RISC-V TRAP DISPATCH',
+          title: 'riscv mtvec vectored dispatch',
+          summary: 'Bare-metal RV64 M-mode program setting <code>mtvec</code> to <code>0x80000201</code> (BASE <code>0x80000200</code>, MODE=1) over a 16-entry vector table. Two U-mode <code>ecall</code>s trap with <code>mcause=0x8</code> and land at BASE; one machine timer interrupt traps with <code>mcause=0x8000000000000007</code> and lands at BASE+28. <code>mtimecmp</code> is disarmed after the handler, with no refire. RESULT: PASS, program output byte-identical across 3 QEMU 8.2.2 runs.',
+          specRows: [
+            ['MODE', 'Bare-metal RV64 M-mode'],
+            ['MTVEC', '0x80000201, BASE 0x80000200, MODE=1'],
+            ['TABLE', '16 entries'],
+            ['U-MODE ECALLS', '2, mcause=0x8, both land at BASE'],
+            ['MACHINE TIMER', 'mcause=0x8000000000000007, lands at BASE+28'],
+            ['DISARM', 'mtimecmp disarmed after handler, 0 refires'],
+            ['RUNS', '3 QEMU 8.2.2 runs, byte-identical, PASS']
+          ],
+          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt \\
+  -nographic -bios none -kernel mtvec-vectored.elf
+
+mtvec ..................... 0x80000201
+BASE / MODE ............... 0x80000200 / 1
+vector entries ............ 16
+U-mode ecalls ............. 2
+U-mode ecall mcause ....... 0x8
+ecall target .............. BASE
+machine timer mcause ...... 0x8000000000000007
+timer target .............. BASE+28
+mtimecmp refires .......... 0
+QEMU 8.2.2 runs ........... 3, byte-identical
+
+<span class="result">RESULT: PASS</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-vectored/',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/mtvec-vectored',
+          terminalName: 'qemu / riscv64 / mtvec-vectored.elf',
+          terminalLabel: 'Verified mtvec vectored dispatch output',
+          showRepoLink: true
+        },
+        {
+          id: 'div-round-pow2',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'div-round-pow2 (systems-lab/lab/49)',
+          summary: 'Round-to-nearest division of a u32 by 2^k, computed in a 64-bit intermediate so the identity stays exact over the whole u32 domain. Verified: 17/17 hand-checked vectors pass; 1,983,040 differential checks against an independent rational reference, 0 mismatches; FNV-1a checksum 0xee4a225fd47d1345 identical across -O0, -O2, ASan+UBSan, and UBSan builds; measured at -O2: 4.9 ns/value.',
+          specRows: [
+            ['OPERATION', 'Round-to-nearest u32 division by 2^k'],
+            ['INTERMEDIATE', '64-bit'],
+            ['VECTORS', '17/17 pass'],
+            ['DIFFERENTIAL', '1,983,040 checks, 0 mismatches'],
+            ['CHECKSUM', '0xee4a225fd47d1345 across 4 builds'],
+            ['MEASURED', '4.9 ns/value at -O2']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ./test_div_round_pow2
+hand-checked vectors ...... 17/17 PASS
+differential checks ...... 1,983,040
+mismatches ................ 0
+FNV-1a checksum ........... 0xee4a225fd47d1345
+-O0 ....................... IDENTICAL
+-O2 ....................... IDENTICAL
+ASan+UBSan ................ IDENTICAL
+UBSan ..................... IDENTICAL
+
+<span class="result">4.9 ns/value at -O2</span>`,
+          verificationEnvironment: 'host',
+          checks: 1983057,
+          failures: 0,
+          stressItems: 1983040,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/49-div-round-pow2',
+          repoLabel: 'GitHub: systems-lab/lab/49-div-round-pow2',
+          terminalName: 'systems-lab / lab / 49-div-round-pow2',
+          terminalLabel: 'Verified div-round-pow2 test and benchmark output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-msip-software-interrupt-delivery',
+          kicker: 'RISC-V INTERRUPTS',
+          title: 'msip software-interrupt delivery (riscv-baremetal-demo/src/msip)',
+          summary: 'Bare-metal M-mode on QEMU: CLINT msip set for hart 0 fires exactly one machine software interrupt (mcause=0x8000000000000003) over two set/clear cycles, with zero re-delivery traps in the quiet windows after each clear. Measured: delivery latency 27,240 to 82,155 rdcycle units across 3 QEMU 8.2.2 runs, RESULT: PASS on all 3.',
+          specRows: [
+            ['MODE', 'Bare-metal M-mode on QEMU'],
+            ['SOURCE', 'CLINT msip for hart 0'],
+            ['CAUSE', 'mcause=0x8000000000000003'],
+            ['CYCLES', '2 set/clear cycles, 0 re-delivery traps'],
+            ['LATENCY', '27,240 to 82,155 rdcycle units'],
+            ['RUNS', '3 QEMU 8.2.2 runs, all PASS']
+          ],
+          terminalOutput: `<span class="prompt">$</span> qemu-system-riscv64 -machine virt \\
+  -nographic -bios none -kernel msip.elf
+
+hart ...................... 0
+set/clear cycles .......... 2
+machine software IRQs ..... exactly 1 per set
+mcause .................... 0x8000000000000003
+quiet-window re-delivery .. 0 traps
+latency range ............. 27,240 to 82,155 rdcycle units
+QEMU 8.2.2 runs ........... 3
+
+<span class="result">RESULT: PASS on all 3</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 0,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/msip',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/msip',
+          terminalName: 'qemu / riscv64 / msip.elf',
+          terminalLabel: 'Measured machine software interrupt delivery output',
           showRepoLink: true
         },
         {
