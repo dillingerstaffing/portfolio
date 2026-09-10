@@ -829,6 +829,20 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Stopwatch That Measures Itself</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 16:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Every timing measurement pays a price: reading the clock itself takes cycles. If the thing you are measuring costs 200 cycles but the clock read costs 150 of them, your number is more clock than code. So the first benchmark worth writing is one that measures the stopwatch itself. On RISC-V the cycle counter is read with a single instruction, rdcycle, which copies the cycle CSR into a register. The question is simple: how many ticks does that one instruction cost?</p>
+          <p>To find out, run the instruction against itself. The module executes 38 bursts of 27 back-to-back rdcycle reads, each burst a single volatile asm block writing into 27 distinct registers (t0 through t6, a0 through a7, s0 through s11, ra deliberately left out), so the compiler has to emit the 27 reads verbatim with nothing between them. That is not a hope: the shipped binary was disassembled and shows 27 consecutive rdcycle instructions with nothing between the first and the last. Only the 26 consecutive-pair deltas inside each burst count. The intervals between bursts hold stores and loop bookkeeping, so they are excluded by construction, stated up front, not hidden.</p>
+          <p>Three runs, 988 deltas each, every delta strictly positive, zero traps. The minimum is 135 in all three runs, rock stable; medians 165, 180, 165. The maximums are another world: 222,525, 1,530,195, and 9,810. One run's histogram puts 987 of 988 deltas in the first bin and a single outlier in the last. That split is the whole story. On QEMU the "cycle" counter is host ticks: CSR_CYCLE resolves through QEMU 8.2.2's target/riscv/csr.c to get_ticks(), which on x86_64 is the host's rdtsc, so when the host deschedules between two adjacent reads it shows up as a million-tick delta. The minimum is the true floor of the instruction. The maximum is the host being elsewhere.</p>
+          <p>This is an old idea done honestly. The lmbench timing harness measures its own overhead by benchmarking gettimeofday() itself, and its most-used statistical policy is the minimum of a few repetitions, discarding runs contaminated by system noise. This module follows that policy, min equals 135 three times in a row, and then goes one better: it publishes min, median, max, and the full histogram together, so the contamination is shown, not silently thrown away. Even the verdict refuses to be eyeballed: PASS writes 0x5555 to the virt finisher and QEMU exits 0; FAIL parks the hart in wfi until the harness times out. In one sentence: before you trust a clock to measure your code, measure the clock.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/cycle-read-latency" target="_blank" rel="noopener">src/cycle-read-latency</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Six That Catches the Counterfeit Digit</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 15:05 EDT</time></p>
         </div>
