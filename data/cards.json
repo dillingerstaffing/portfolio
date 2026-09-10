@@ -26,7 +26,7 @@
   "portability": null,
   "kicker": "BARE-METAL KERNEL",
   "title": "RISC-V bare-metal scheduler",
-  "summary": "A freestanding 64-bit RISC-V kernel for QEMU’s <code>virt</code> machine. It boots directly into M-mode, drives an ns16550a UART over MMIO, and interleaves three tasks with real assembly context switches.",
+  "summary": "A freestanding 64-bit RISC-V kernel for QEMU\u2019s <code>virt</code> machine. It boots directly into M-mode, drives an ns16550a UART over MMIO, and interleaves three tasks with real assembly context switches.",
   "specRows": [
    [
     "BOOT",
@@ -83,7 +83,7 @@
   "portability": null,
   "kicker": "KERNEL EXTENSION",
   "title": "xv6 syscall accounting",
-  "summary": "A focused extension to MIT’s xv6 RISC-V kernel. <code>getscount(n)</code> reports how many times the calling process invoked syscall <code>n</code>, wired from user-space stub through dispatcher to per-process kernel state.",
+  "summary": "A focused extension to MIT\u2019s xv6 RISC-V kernel. <code>getscount(n)</code> reports how many times the calling process invoked syscall <code>n</code>, wired from user-space stub through dispatcher to per-process kernel state.",
   "specRows": [
    [
     "HOOK",
@@ -1420,7 +1420,7 @@
   "portability": null,
   "kicker": "RISC-V PRIVILEGE MODES",
   "title": "S-mode trap delegation",
-  "summary": "The preemptive scheduler’s trap handling moved from M-mode to S-mode on RISC-V bare metal. The M-mode boot stub delegates supervisor interrupts and S-mode exceptions through <code>medeleg</code> and <code>mideleg</code>, installs <code>stvec</code>, opens S-mode memory with a PMP NAPOT entry, enables counters through <code>mcounteren</code>, probes <code>menvcfg.STCE</code> for Sstc, then drops to S-mode with <code>sret</code>. The scheduler then runs entirely in S-mode on the delegated supervisor timer interrupt through <code>stimecmp</code>, with no M-mode involvement after boot.",
+  "summary": "The preemptive scheduler\u2019s trap handling moved from M-mode to S-mode on RISC-V bare metal. The M-mode boot stub delegates supervisor interrupts and S-mode exceptions through <code>medeleg</code> and <code>mideleg</code>, installs <code>stvec</code>, opens S-mode memory with a PMP NAPOT entry, enables counters through <code>mcounteren</code>, probes <code>menvcfg.STCE</code> for Sstc, then drops to S-mode with <code>sret</code>. The scheduler then runs entirely in S-mode on the delegated supervisor timer interrupt through <code>stimecmp</code>, with no M-mode involvement after boot.",
   "specRows": [
    [
     "BOOT",
@@ -2144,7 +2144,7 @@
    },
    "PORTABLE": {
     "applies": true,
-    "because": "proves the generator’s full period by walking every one of the 65,535 nonzero states for two seeds, so a builder can trust the cycle length instead of assuming it"
+    "because": "proves the generator\u2019s full period by walking every one of the 65,535 nonzero states for two seeds, so a builder can trust the cycle length instead of assuming it"
    }
   },
   "evidence": {
@@ -3584,7 +3584,7 @@
   "portability": null,
   "kicker": "RISC-V PRIVILEGE TRANSITIONS",
   "title": "Bare-metal ecall ABI round trip",
-  "summary": "A bare-metal RISC-V program on QEMU 8.2.2 drops from M-mode to S-mode and issues environment calls. The M-mode trap handler saves and restores every register <code>x1-x31</code> around the C dispatcher. Ground truth is checked on every call: <code>mcause</code> reads 9, environment call from S-mode, and the instruction word at <code>mepc</code> reads <code>0x00000073</code>, the <code>ecall</code> encoding. The handler’s received <code>a0-a5</code> are compared word for word against the payload’s loaded constants, and returned <code>a0</code> is checked against an independently computed XOR. Program output is byte-identical across 3 QEMU runs, and every run prints <code>RESULT: PASS</code>.",
+  "summary": "A bare-metal RISC-V program on QEMU 8.2.2 drops from M-mode to S-mode and issues environment calls. The M-mode trap handler saves and restores every register <code>x1-x31</code> around the C dispatcher. Ground truth is checked on every call: <code>mcause</code> reads 9, environment call from S-mode, and the instruction word at <code>mepc</code> reads <code>0x00000073</code>, the <code>ecall</code> encoding. The handler\u2019s received <code>a0-a5</code> are compared word for word against the payload\u2019s loaded constants, and returned <code>a0</code> is checked against an independently computed XOR. Program output is byte-identical across 3 QEMU runs, and every run prints <code>RESULT: PASS</code>.",
   "specRows": [
    [
     "BUILD",
@@ -9728,6 +9728,67 @@
   "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/116-pdep-emul",
   "repoLabel": "GitHub: systems-lab/lab/116-pdep-emul",
   "terminalLabel": "Verified pdep-emul test output",
+  "showRepoLink": true
+ },
+ {
+  "id": "lab-108-clz-by-halving",
+  "layers": {
+   "ISA": {
+    "applies": false,
+    "because": "not here because the 10,065,537-check bench and its disassembly run in a host user-space process against software, never a RISC-V instruction."
+   },
+   "FIRMWARE": {
+    "applies": false,
+    "because": "not here because the bench runs in a host user-space process, with no M-mode boot code running."
+   },
+   "KERNEL": {
+    "applies": false,
+    "because": "not here because the 10,065,537 checks prove the halving construction in isolation, with no scheduler, VM, driver, or syscall path running."
+   },
+   "PORTABLE": {
+    "applies": true,
+    "because": "The binary-search halving identity counts leading zeros from shifts and compares on every ISA."
+   }
+  },
+  "evidence": {
+   "label": "proof log",
+   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/108-clz-by-halving/PROOF.md"
+  },
+  "portability": null,
+  "kicker": "INTEGER ARITHMETIC",
+  "title": "Count Leading Zeros by Halving",
+  "summary": "clz64_halving(x) counts the leading zeros of a uint64_t from the binary-search halving identity, with no intrinsics, no builtins, and no clz-class instruction in the -O2 object. 10,065,537 differential checks vs __builtin_clzll, 0 mismatches, checksum identical across three builds.",
+  "specRows": [
+   [
+    "CHECKS",
+    "10,065,537 differential vs __builtin_clzll"
+   ],
+   [
+    "MISMATCHES",
+    "0"
+   ],
+   [
+    "CHECKSUM",
+    "FNV-1a bb15711279c99def across -O0/-O2/ASan+UBSan"
+   ],
+   [
+    "THROUGHPUT",
+    "7.56 ns/value at -O2"
+   ],
+   [
+    "RESULT",
+    "PASS"
+   ]
+  ],
+  "terminalName": "systems-lab / lab / 108-clz-by-halving",
+  "terminalOutput": "$ make run\\ndifferential ............ 10065537 checks\\nmismatches .............. 0\\nchecksum ................ bb15711279c99def\\nbuilds .................. -O0, -O2, ASan+UBSan IDENTICAL\\nthroughput .............. 7.56 ns/value at -O2\\nRESULT: PASS\\n\\nclz by halving, 0 mismatches",
+  "verificationEnvironment": "Host",
+  "checks": 10065537,
+  "failures": 0,
+  "stressItems": 10065537,
+  "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/108-clz-by-halving",
+  "repoLabel": "GitHub: systems-lab/lab/108-clz-by-halving",
+  "terminalLabel": "Verified clz-by-halving test output",
   "showRepoLink": true
  }
 ]
