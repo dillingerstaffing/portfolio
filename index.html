@@ -3145,6 +3145,57 @@ RESULT: PASS
           terminalName: 'qemu / riscv64 / fs-check.elf',
           terminalLabel: 'Measured mstatus FS field write/readback output',
           showRepoLink: true
+        },
+        {
+          id: 'signed-div-pow2',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'signed-div-pow2 (systems-lab/lab/58)',
+          summary: 'Signed division of an <code>int64_t</code> by 2^k with truncation toward zero, fixing the classic flaw of the bare arithmetic shift (which floors: <code>-7 &gt;&gt; 1</code> gives -4, not -3) by adding the sign-mask bias before shifting. Verified: 1,983,057 differential checks against exact reference quotients (983,040 exhaustive plus 1,000,000 fixed-seed random), 0 mismatches across <code>-O0</code>, <code>-O2</code>, ASan+UBSan builds; measured 2.9 ns/value at <code>-O2</code>; <code>INT64_MIN / 2^63 = -1</code> exact.',
+          specRows: [
+            ['OPERATION', 'int64_t / 2^k, truncation toward zero'],
+            ['FIX', 'Sign-mask bias added before arithmetic shift'],
+            ['EXHAUSTIVE', '983,040 checks vs exact reference'],
+            ['RANDOM', '1,000,000 fixed-seed checks'],
+            ['CHECKS', '1,983,057 differential, 0 mismatches'],
+            ['BUILDS', '-O0, -O2, ASan+UBSan, identical sink 7297694502670326398'],
+            ['MEASURED', '2.9 ns/value at -O2']
+          ],
+          terminalOutput: `<span class=\"prompt\">$</span> ./test_sdivpow2\nvector negative odd ........ -7 k=1 -> -3: pass\nvector negative trunc ...... -7 k=2 -> -1: pass\nvector INT64_MIN / 2 ..... -4611686018427387904: pass\nvector INT64_MIN / 2^63 .. -1: pass\nexhaustive ................. 983040 checks\nrandom ..................... 1000000 checks\ntotal ...................... 1983057 checks, 0 mismatches\nsink ....................... 7297694502670326398 (all builds)\n\n<span class=\"result\">2.9 ns/value at -O2</span>`,
+          verificationEnvironment: 'host',
+          checks: 1983057,
+          failures: 0,
+          stressItems: 1983040,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/58-signed-div-pow2',
+          repoLabel: 'GitHub: systems-lab/lab/58-signed-div-pow2',
+          terminalName: 'systems-lab / lab / 58-signed-div-pow2',
+          terminalLabel: 'Verified signed division by power of two test output',
+          showRepoLink: true
+        },
+        {
+          id: 'avg-no-overflow',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'avg-no-overflow (systems-lab/lab/59)',
+          summary: '<code>avg_u64(a, b)</code>: floor of <code>(a + b) / 2</code> computed as <code>(a &amp; b) + ((a ^ b) &gt;&gt; 1)</code>, never forming <code>a + b</code>, so no wrap on the full <code>uint64_t</code> domain. The identity <code>a + b = ((a &amp; b) &lt;&lt; 1) + (a ^ b)</code> holds bit-wise; halving gives the exact average. Verified: 4,294,967,296 exhaustive 16-bit pairs, 144 directed 64-bit edge pairs, and 10,000,000 fixed-seed random pairs, 4,304,967,440 differential checks against an <code>unsigned __int128</code> reference, 0 mismatches, clean under ASan/UBSan; measured 2.059 ns/pair over the full 2^32 sweep.',
+          specRows: [
+            ['OPERATION', 'floor((a + b) / 2), never forms a + b'],
+            ['IDENTITY', 'a + b = ((a & b) << 1) + (a ^ b)'],
+            ['EXHAUSTIVE', '4,294,967,296 16-bit pairs'],
+            ['EDGES', '144 directed 64-bit pairs'],
+            ['RANDOM', '10,000,000 fixed-seed pairs'],
+            ['CHECKS', '4,304,967,440 differential, 0 mismatches'],
+            ['SANITIZERS', 'ASan+UBSan clean'],
+            ['MEASURED', '2.059 ns/pair over full 2^32 sweep']
+          ],
+          terminalOutput: `<span class=\"prompt\">$</span> ./test_avg\nexhaustive 16-bit pairs .... 4294967296\ndirected 64-bit edges ..... 144\nrandom pairs .............. 10000000\ncorrectness ............... 4304967440 differential checks\nmismatches ................ 0\nsanitizers ................ ASan+UBSan clean\n\n<span class=\"result\">2.059 ns/pair over the 2^32 sweep</span>`,
+          verificationEnvironment: 'host',
+          checks: 4304967440,
+          failures: 0,
+          stressItems: 4304967296,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/59-avg-no-overflow',
+          repoLabel: 'GitHub: systems-lab/lab/59-avg-no-overflow',
+          terminalName: 'systems-lab / lab / 59-avg-no-overflow',
+          terminalLabel: 'Verified overflow-free average test output',
+          showRepoLink: true
         }
       ];
 
