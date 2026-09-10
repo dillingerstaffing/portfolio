@@ -326,11 +326,16 @@
       gap: clamp(28px, 5vw, 64px);
       align-items: start;
       scroll-margin-top: 120px;
+      position: relative;
     }
     .chapter-rail { position: sticky; top: 68px; z-index: 24; background: var(--bg); border-top: 1px solid var(--line); }
     .chapter-list { display: grid; }
     .rail-compact { display: none; }
-    .rail-sentinel { height: 0; }
+    /* Out of grid flow: as an in-flow first child it consumed the 176px
+       column and pushed the chapter rail wide and the project record into
+       the narrow column, squeezing every card on desktop. Absolute keeps it
+       at the rail top for the stuck observer without disturbing placement. */
+    .rail-sentinel { position: absolute; top: 0; left: 0; width: 0; height: 0; }
     @media (min-width: 901px) {
       .chapter-rail { position: sticky; }
       .chapter-rail.is-stuck .chapter-list { opacity: 0; transform: translateY(-10px); pointer-events: none; transition: none; }
@@ -424,17 +429,17 @@
     .why-marker { display: inline; padding: 0; margin: 0 0 0 6px; border: 0; background: none;
       font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
       color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-    .why-marker:hover, .why-marker:focus-visible { color: var(--acid); outline: none; }
     .why-marker[aria-expanded="true"] { color: var(--acid); }
     /* Argument panels: anchored to the marker, never cursor-following, never
        reflowing text (Factorio/FFXIV lesson). Flat blueprint treatment. */
     .wig-tip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 32px));
       background: var(--panel); border: 1px solid var(--line); color: var(--ink);
-      font: 11px/1.55 var(--mono); padding: 0; margin: 0; text-align: left; }
+      font: 11px/1.55 var(--mono); padding: 0; margin: 0; text-align: left;
+      box-shadow: 0 1px 2px rgba(0,0,0,.45), 0 12px 32px rgba(0,0,0,.5); }
     .wig-tip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
       padding: 8px 12px; border-bottom: 1px solid var(--line);
       font-size: 9px; text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
-    .wig-tip-verdict { padding: 10px 12px 4px; color: var(--ink); }
+    .wig-tip-verdict { padding: 10px 12px 4px; color: var(--ink); font-size: 12px; line-height: 1.5; }
     .wig-tip-rows { padding: 6px 12px 4px; }
     .wig-tip-row { display: grid; grid-template-columns: 86px 1fr; gap: 10px; padding: 5px 0;
       border-top: 1px dotted var(--line); }
@@ -445,7 +450,7 @@
     .wig-term { padding: 0; border: 0; background: none; font: inherit; color: inherit;
       text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
     button.wig-term { color: var(--acid-soft); }
-    .wig-term:hover, .wig-term:focus-visible { color: var(--acid); outline: none; }
+    .wig-term:hover { color: var(--acid); }
     .wig-tip-obj { margin: 6px 12px 0; padding: 8px 0 2px; border-top: 1px solid var(--line); }
     .wig-tip-obj .wig-tip-k { display: block; margin-bottom: 4px; }
     .wig-tip-answered { color: var(--dim); font-size: 10px; }
@@ -455,8 +460,21 @@
     .wig-tip-back { display: inline-block; margin: 8px 12px 10px; padding: 0; border: 0; background: none;
       font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
       color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-    .wig-tip-back:hover, .wig-tip-back:focus-visible { color: var(--acid); outline: none; }
+    .wig-tip-back:hover { color: var(--acid); }
     .wig-tip-foot { padding: 8px 12px 10px; color: var(--dim); font-size: 10px; }
+    /* Panels arrive; they never pop. One calm entrance for both levels. */
+    @keyframes wig-rise { from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); } }
+    .wig-tip.wig-in { animation: wig-rise 160ms cubic-bezier(.2,0,0,1); }
+    .wig-tip .num { font-variant-numeric: tabular-nums; }
+    .why-marker { transition: color 120ms ease; }
+    .why-marker:hover { color: var(--acid); text-decoration-thickness: 2px; }
+    .why-marker:focus-visible, .wig-term:focus-visible, .wig-tip-back:focus-visible {
+      color: var(--acid); outline: 1px solid var(--acid); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+      .wig-tip.wig-in { animation: none; }
+      .why-marker { transition: none; }
+    }
     @media (max-width: 700px) {
       .wig-tip { width: min(340px, calc(100vw - 32px)); font-size: 12px; }
     }
@@ -2116,6 +2134,10 @@ assert(check == 0x2144DF1C);</code></pre>
       let intentT = 0, graceT = 0;
       const clearTimers = () => { clearTimeout(intentT); clearTimeout(graceT); };
       const short = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+      // Local HTML escaper: this IIFE cannot see the app IIFE's block-scoped
+      // helpers, so everything it needs is defined here or on window.
+      const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
       function closeAll() {
         clearTimers();
@@ -2147,6 +2169,7 @@ assert(check == 0x2144DF1C);</code></pre>
         panel.style.left = `${x}px`;
         panel.style.top = `${y}px`;
         panel.style.visibility = '';
+        panel.classList.add('wig-in');
       }
 
       function termButton(a, n) {
@@ -2161,6 +2184,7 @@ assert(check == 0x2144DF1C);</code></pre>
         const el = document.createElement('div');
         el.className = 'wig-tip';
         el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', node.text);
         let body = `<div class="wig-tip-head"><span>${KIND_LABEL[node.kind] || node.kind} (${node.n})</span></div>`
           + `<div class="wig-tip-verdict">${esc(node.text)}</div>`;
         if (node.kind === 'evidence' && node.source) {
@@ -2211,6 +2235,7 @@ assert(check == 0x2144DF1C);</code></pre>
         const el = document.createElement('div');
         el.className = 'wig-tip';
         el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', title);
         el.innerHTML = html;
         return el;
       }
