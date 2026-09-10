@@ -387,11 +387,16 @@
     }
     .permalink-clear[hidden] { display: none !important; }
 
-    .floating-contact {
+    .floating-actions {
       position: fixed;
-      z-index: 20;
+      z-index: 21;
       right: max(calc(18px + env(safe-area-inset-right)), calc((100vw - var(--max)) / 2 + 18px));
-      bottom: max(140px, calc(134px + env(safe-area-inset-bottom)));
+      bottom: max(24px, calc(18px + env(safe-area-inset-bottom)));
+      display: grid;
+      gap: 6px;
+      justify-items: end;
+    }
+    .floating-contact {
       width: 52px;
       height: 52px;
       display: grid;
@@ -420,14 +425,6 @@
     .floating-contact:focus-visible { outline: 3px solid var(--acid-soft); outline-offset: 4px; }
     .floating-contact svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-    .scroll-controls {
-      position: fixed;
-      z-index: 21;
-      right: max(calc(18px + env(safe-area-inset-right)), calc((100vw - var(--max)) / 2 + 18px));
-      bottom: max(24px, calc(18px + env(safe-area-inset-bottom)));
-      display: grid;
-      gap: 6px;
-    }
     .scroll-control {
       width: 48px;
       height: 48px;
@@ -450,6 +447,14 @@
       visibility: visible;
       pointer-events: auto;
       transition-delay: 0s;
+    }
+    .scroll-to-services {
+      width: auto;
+      height: 48px;
+      padding: 0 12px;
+      font: 500 12px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
     }
     .scroll-control:hover { color: var(--acid); border-color: var(--acid); }
     .scroll-control:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
@@ -690,17 +695,17 @@
     <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">↗</span></a></span>
   </footer>
 
-  <div class="scroll-controls" aria-label="Page navigation">
+  <div class="floating-actions" aria-label="Page navigation">
     <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1">↑</button>
+    <button class="scroll-control scroll-to-services" type="button" aria-label="Scroll to services" aria-hidden="true" tabindex="-1">services</button>
     <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
+    <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="3" y="5" width="18" height="14" rx="1"></rect>
+        <path d="m4 7 8 6 8-6"></path>
+      </svg>
+    </button>
   </div>
-
-  <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <rect x="3" y="5" width="18" height="14" rx="1"></rect>
-      <path d="m4 7 8 6 8-6"></path>
-    </svg>
-  </button>
 
   <dialog class="contact-chooser" id="contact-chooser" aria-labelledby="chooser-title" aria-describedby="chooser-description">
     <div class="chooser-head">
@@ -4635,6 +4640,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       const copyStatus = chooser.querySelector('.copy-status');
       const email = 'shipthisgroup@gmail.com';
       const scrollToTop = document.querySelector('.scroll-to-top');
+      const scrollToServices = document.querySelector('.scroll-to-services');
       const scrollToBottom = document.querySelector('.scroll-to-bottom');
       let lastTrigger = null;
       let scrollUpdatePending = false;
@@ -4660,6 +4666,9 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       scrollToTop.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'auto' });
       });
+      scrollToServices.addEventListener('click', () => {
+        document.getElementById('services').scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth' });
+      });
       scrollToBottom.addEventListener('click', () => {
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
       });
@@ -4671,6 +4680,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       const floatingContact = document.querySelector('.floating-contact');
       const heroObserver = new IntersectionObserver(([entry]) => {
         const visible = !entry.isIntersecting;
+        setScrollControlVisible(scrollToServices, visible);
         floatingContact.classList.toggle('is-visible', visible);
         floatingContact.setAttribute('aria-hidden', String(!visible));
         floatingContact.tabIndex = visible ? 0 : -1;
