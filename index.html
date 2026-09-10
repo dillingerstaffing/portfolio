@@ -829,6 +829,25 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Adder With No Plus Sign</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 17:04 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Add 11 and 7 the way you learned in school, one column at a time. In binary, 11 is 1011 and 7 is 0111. Rightmost column: 1 plus 1 is 10 in binary, so write 0 and carry 1. Next column: 1 plus 1 plus the carried 1 is 3, write 1, carry 1. Next: 0 plus 1 plus 1 is 2, write 0, carry 1. Leftmost: 1 plus 0 plus 1 is 2, write 0, carry 1. The written bits are 0010 with a final carry of 1, which reads as 10010, or 18. Notice that every column took three inputs: two operand bits and the carry from its neighbor.</p>
+          <p>The simplest circuit for this is the half adder. It adds two bits and nothing else: the sum bit is XOR, 1 when the inputs differ, and the carry bit is AND, 1 only when both inputs are 1. One column with no incoming carry is exactly a half adder. But the moment a carry arrives from the column below, the half adder is out of inputs. It adds two bits, and a column needs three.</p>
+          <p>So chain two half adders. The first adds the two operand bits: p is a XOR b, g is a AND b. The second adds p and the incoming carry, giving the column sum p XOR carry and a second carry p AND carry. The column's carry out is g OR that second carry, which expands to (a AND b) OR (a AND carry) OR (b AND carry). Check it by cases. If a and b are both 1, the first term fires and the second half adder contributes nothing, since p is 0. If they differ, p is 1, so the second carry is exactly the incoming carry. If both are 0, nothing fires. The carry out is 1 exactly when at least two of the three inputs are 1, which is exactly when the column's bits add to 2 or 3: the overflow. Each column is a three-bit majority vote.</p>
+          <p>The lab writes this per-bit stage directly in C, and these three lines are the whole datapath. The first computes the column's sum bit. The second computes the carry out as the majority vote. The third plants the sum bit in its column. Nothing else in the function touches the operands with anything but bitwise operations and shifts.</p>
+          <pre><code>uint64_t si = ai ^ bi ^ carry;
+
+carry = (ai &amp; bi) | (ai &amp; carry) | (bi &amp; carry);
+s |= si &lt;&lt; i;</code></pre>
+          <p>Then the question is whether this construction really is addition. The lab ran 8,590,934,630 cases against the native + operator, about 8.6 billion checks, roughly one for every person on the planet: 38 hand-built edge rows, every 16-bit pair times both carry values exhaustively, 2^33 cases in about six and a half minutes, plus a million fixed-seed random 64-bit pairs. Zero mismatches. The carry out of bit 63 was checked against the native overflow identity on every 64-bit case, and one FNV fingerprint came out identical across the -O0, -O2, and sanitizer builds. The disassembly was read too: only xor, and, or, shifts, moves, and compares, with the two add instructions being the loop counter, not the operands. Throughput is a few hundred nanoseconds per value, and the lab is honest that the number moves with CPU frequency, so treat it as order of magnitude only. In one sentence: a 64-bit adder is 64 three-bit majority votes chained by their own overflow.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/98-half-adder-chain" target="_blank" rel="noopener">lab/98-half-adder-chain</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Stopwatch That Measures Itself</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 16:10 EDT</time></p>
         </div>
