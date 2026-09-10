@@ -37,6 +37,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <script>
+    (() => {
+      const view = new URLSearchParams(location.search).get('view');
+      if (view === 'compact') document.documentElement.classList.add('density-compact');
+    })();
+  </script>
   <style>
     :root {
       --ink: #f0f2eb;
@@ -194,6 +200,78 @@
     .section-title h2 { margin: 0; max-width: 760px; font: 600 clamp(38px, 5vw, 68px)/.98 var(--display); letter-spacing: -.035em; }
     .section-title p { margin: 20px 0 0; max-width: 670px; color: var(--muted); }
 
+    .proof-toolbar {
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) auto;
+      gap: 22px 34px;
+      align-items: end;
+      padding: 20px 0 28px;
+      border-top: 1px solid var(--line);
+    }
+    .search-control { min-width: 0; }
+    .control-label { display: block; margin-bottom: 8px; color: var(--paper); font-size: 11px; }
+    .search-line { display: flex; align-items: stretch; min-width: 0; border-bottom: 1px solid #485348; }
+    .search-line:focus-within { border-color: var(--acid); }
+    .search-line input {
+      width: 100%; min-width: 0; border: 0; padding: 10px 0; outline: 0;
+      background: transparent; color: var(--ink); font: 13px var(--mono);
+    }
+    .search-line input::placeholder { color: var(--dim); }
+    .search-clear {
+      border: 0; padding: 10px 0 10px 18px; background: transparent; color: var(--dim);
+      font: 11px var(--mono); cursor: pointer;
+    }
+    .search-clear:hover, .search-clear:focus-visible { color: var(--acid); }
+    .proof-toolbar button:focus-visible, .proof-toolbar input:focus-visible,
+    .chapter-button:focus-visible, .compact-main:focus-visible {
+      outline: 2px solid var(--acid); outline-offset: 3px;
+    }
+    .search-status { min-height: 18px; margin: 7px 0 0; color: var(--dim); font-size: 10px; }
+    .proof-toolbar-side { display: grid; justify-items: end; gap: 10px; }
+    .density-control { margin: 0; padding: 0; border: 0; }
+    .density-control legend { margin-bottom: 8px; color: var(--paper); font-size: 11px; text-align: right; }
+    .density-buttons { display: inline-flex; border: 1px solid #485348; }
+    .density-button {
+      min-height: 36px; border: 0; padding: 8px 12px; background: transparent; color: var(--muted);
+      font: 11px var(--mono); cursor: pointer;
+    }
+    .density-button + .density-button { border-left: 1px solid #485348; }
+    .density-button[aria-pressed="true"] { background: var(--acid); color: var(--black); }
+    .proof-key-hint { margin: 0; color: var(--dim); font-size: 10px; }
+
+    .project-browser {
+      display: grid;
+      grid-template-columns: 176px minmax(0, 1fr);
+      gap: clamp(28px, 4vw, 58px);
+      align-items: start;
+    }
+    .chapter-rail {
+      position: sticky; top: 16px; z-index: 4;
+      max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain;
+      border-top: 1px solid var(--line); background: var(--bg); scrollbar-width: thin;
+    }
+    .chapter-select-wrap { display: none; }
+    .chapter-select-label { display: block; margin-bottom: 7px; color: var(--dim); font-size: 10px; }
+    .chapter-select {
+      display: block; width: 100%; max-width: 100%; min-width: 0;
+      border: 1px solid #485348; padding: 10px 34px 10px 10px;
+      border-radius: 0; background: var(--bg); color: var(--acid); font: 11px var(--mono);
+    }
+    .chapter-select:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
+    .chapter-button {
+      position: relative; width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 8px;
+      border: 0; border-bottom: 1px solid var(--line); padding: 10px 8px 10px 15px;
+      background: transparent; color: var(--dim); text-align: left; font: 10px/1.35 var(--mono); cursor: pointer;
+    }
+    .chapter-button::before { content: ""; position: absolute; left: 0; top: 50%; width: 5px; height: 1px; background: transparent; }
+    .chapter-button:hover, .chapter-button:focus-visible, .chapter-button.is-active { color: var(--acid); }
+    .chapter-button.is-active::before { background: var(--acid); }
+    .chapter-count { color: inherit; }
+
+    .record-close { padding: 42px 0 8px; border-top: 1px solid var(--line); }
+    .record-kicker { margin: 0 0 12px; color: var(--acid); font-size: 11px; }
+    .record-total { margin: 0; font: 500 clamp(28px, 3.2vw, 42px)/1.08 var(--display); letter-spacing: -.02em; }
+
     .services { border-top: 1px solid var(--line); }
     .service {
       display: grid;
@@ -209,13 +287,41 @@
     .service-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
     .tag { border: 1px solid #364036; color: #bdc5ba; padding: 4px 8px; font-size: 10px; }
 
-    .project { padding-block: clamp(54px, 7vw, 92px); border-top: 1px solid var(--line); }
+    .project {
+      padding-block: clamp(54px, 7vw, 92px); border-top: 1px solid var(--line);
+      content-visibility: auto; contain-intrinsic-size: auto 760px; scroll-margin-top: 24px;
+      transition: opacity 140ms ease, background-color 520ms ease;
+    }
     .project:last-child { border-bottom: 1px solid var(--line); }
+    .project:focus-visible { outline: 2px solid var(--acid); outline-offset: 6px; }
+    .project.is-search-dimmed { opacity: .22; }
+    .project.is-flashing { background: rgba(184, 243, 75, .1); }
     .project-grid { display: grid; grid-template-columns: minmax(0, .83fr) minmax(0, 1.17fr); gap: clamp(34px, 7vw, 90px); align-items: start; }
     .project:nth-child(even) .project-copy { order: 2; }
+    .project-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; }
     .project-number { color: var(--acid); font-size: 11px; }
+    .project-deep-link {
+      flex: 0 0 auto; color: var(--dim); font: 10px var(--mono); text-decoration: none;
+      border-bottom: 1px solid #394138;
+    }
+    .project-deep-link:hover, .project-deep-link:focus-visible { color: var(--acid); border-color: var(--acid); }
     .project h3 { margin: 16px 0 20px; font: 600 clamp(32px, 4vw, 54px)/.98 var(--display); letter-spacing: -.03em; }
     .project-copy > p { color: var(--muted); }
+    mark.search-hit { padding: 0 .08em; background: var(--acid); color: var(--black); }
+    .compact-row { display: none; min-width: 0; align-items: center; border-bottom: 1px solid var(--line); }
+    .compact-main {
+      min-width: 0; flex: 1; display: grid; grid-template-columns: 52px minmax(120px, .55fr) minmax(180px, 1fr) minmax(180px, 1fr);
+      gap: 16px; align-items: center; border: 0; padding: 18px 0; background: transparent; color: var(--ink);
+      text-align: left; font: 11px/1.4 var(--mono); cursor: pointer;
+    }
+    .compact-number, .compact-kicker { color: var(--acid); }
+    .compact-title { color: var(--paper); }
+    .compact-result { color: var(--muted); }
+    html.density-compact .project { padding-block: 0; contain-intrinsic-size: auto 58px; }
+    html.density-compact .compact-row { display: flex; }
+    html.density-compact .project:not(.is-expanded) .project-grid { display: none; }
+    html.density-compact .project.is-expanded { padding-bottom: clamp(42px, 6vw, 72px); }
+    html.density-compact .project.is-expanded .project-grid { padding-top: 26px; }
     .facts { margin: 28px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
     .facts li { display: grid; grid-template-columns: minmax(112px, auto) 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .facts span:first-child { color: var(--dim); }
@@ -336,6 +442,16 @@
       .metric:nth-child(2) { border-right: 0; }
       .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
       .section-head { grid-template-columns: 1fr; gap: 16px; }
+      .project-browser { grid-template-columns: 1fr; gap: 24px; }
+      .chapter-rail {
+        display: block; top: 0; max-height: none; overflow: hidden; padding: 8px 0;
+        border-top: 0; border-bottom: 1px solid var(--line); background: var(--bg);
+      }
+      .chapter-select-wrap { display: block; width: 100%; }
+      .chapter-list { display: none; }
+      .project { scroll-margin-top: 64px; }
+      .compact-main { grid-template-columns: 46px minmax(118px, .6fr) minmax(170px, 1fr); }
+      .compact-result { display: none; }
       .service { grid-template-columns: minmax(160px, .48fr) 1fr; }
       .service .price { grid-column: 2; }
       .project-grid { grid-template-columns: 1fr; }
@@ -359,6 +475,12 @@
       .actions { margin-top: 24px; }
       .actions, .project-actions { flex-direction: column; }
       .btn { width: 100%; }
+      .project .actions .btn { width: 170px; max-width: 100%; white-space: normal; text-align: left; }
+      .proof-toolbar { grid-template-columns: 1fr; gap: 18px; }
+      .proof-toolbar-side { justify-items: start; }
+      .density-control legend { text-align: left; }
+      .compact-main { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
+      .compact-kicker { display: none; }
       .metrics-inner { grid-template-columns: 1fr 1fr; }
       .metric { min-height: 104px; padding: 18px 14px 18px 0; }
       .metric + .metric { padding-left: 14px; }
@@ -375,7 +497,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .floating-contact { transition: none; }
+      .floating-contact, .project { transition: none; }
     }
   </style>
 </head>
@@ -437,7 +559,43 @@
         </div>
       </div>
 
-      <div id="projects-list"></div>
+      <div class="proof-toolbar" aria-label="Proof navigation controls">
+        <div class="search-control">
+          <label class="control-label" for="proof-search">Search proofs</label>
+          <div class="search-line">
+            <input id="proof-search" type="search" placeholder="riscv interrupt" autocomplete="off" spellcheck="false" />
+            <button class="search-clear" type="button">Clear</button>
+          </div>
+          <p class="search-status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="proof-toolbar-side">
+          <fieldset class="density-control">
+            <legend>Density</legend>
+            <div class="density-buttons">
+              <button class="density-button" type="button" data-density="detailed" aria-pressed="true">Detailed</button>
+              <button class="density-button" type="button" data-density="compact" aria-pressed="false">Compact</button>
+            </div>
+          </fieldset>
+          <p class="proof-key-hint">j / k move, / searches</p>
+        </div>
+      </div>
+
+      <div class="project-browser">
+        <nav class="chapter-rail" aria-label="Proof chapters">
+          <div class="chapter-select-wrap">
+            <label class="chapter-select-label" for="chapter-select">Proof chapter</label>
+            <select class="chapter-select" id="chapter-select"></select>
+          </div>
+          <div class="chapter-list"></div>
+        </nav>
+        <div class="project-record">
+          <div id="projects-list"></div>
+          <div class="record-close" aria-label="Complete proof record">
+            <p class="record-kicker">COMPLETE RECORD</p>
+            <p class="record-total"></p>
+          </div>
+        </div>
+      </div>
       <p class="pg-quiet" aria-label="Interactive sketches">The ideas above, as small interactive sketches: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">See Proving Ground for various simulations <span aria-hidden="true">&#8599;</span></a></p>
       <div class="section-cta">
         <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
@@ -3340,6 +3498,7 @@ sanitizers ................ ASan+UBSan clean
         .map((audience) => `<li>${audience}</li>`)
         .join('');
 
+      const totalChecks = PROJECTS.reduce((sum, project) => sum + project.checks, 0);
       const totalFailures = PROJECTS.reduce((sum, project) => sum + project.failures, 0);
       const metrics = [
         {
@@ -3347,7 +3506,7 @@ sanitizers ................ ASan+UBSan clean
           label: `${environments.join(' + ').toUpperCase()} VERIFIED DEMOS`
         },
         {
-          value: String(PROJECTS.reduce((sum, project) => sum + project.checks, 0)),
+          value: String(totalChecks),
           label: `VERIFIED CHECKS, ${totalFailures} FAILURES`
         },
         {
@@ -3361,13 +3520,60 @@ sanitizers ................ ASan+UBSan clean
         .map((metric) => `<div class="metric"><strong>${metric.value}</strong><span>${metric.label}</span></div>`)
         .join('');
 
-      document.getElementById('work-lede').textContent = `${PROJECTS.length} ${PROJECTS.length === 1 ? 'project compiles and runs' : 'projects compile and run'} in ${PROJECTS.length === 1 ? 'its' : 'their'} verification ${environments.length === 1 ? 'environment' : 'environments'}: ${environmentSummary}. The source archives include build instructions and the implementation behind every claim below.`;
+      document.getElementById('work-lede').textContent = `${PROJECTS.length} projects, ${totalChecks} checks, ${totalFailures} failures. ${PROJECTS.length} ${PROJECTS.length === 1 ? 'project compiles and runs' : 'projects compile and run'} in ${PROJECTS.length === 1 ? 'its' : 'their'} verification ${environments.length === 1 ? 'environment' : 'environments'}: ${environmentSummary}. The source archives include build instructions and the implementation behind every claim below.`;
+      document.querySelector('.record-total').textContent = `${PROJECTS.length} projects. ${totalChecks} verification checks. ${totalFailures} failures.`;
+
+      const stripHTML = (html) => {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        return template.content.textContent || '';
+      };
+      const measuredResult = (project) => {
+        const row = project.specRows.find(([label]) => /^(MEASURED|RESULT)$/i.test(label)) || project.specRows.at(-1);
+        return row ? stripHTML(row[1]) : '';
+      };
+
+      const chapters = [];
+      const chapterByName = new Map();
+      PROJECTS.forEach((project) => {
+        if (!chapterByName.has(project.kicker)) {
+          const chapter = { kicker: project.kicker, count: 0, firstId: project.id };
+          chapterByName.set(project.kicker, chapter);
+          chapters.push(chapter);
+        }
+        chapterByName.get(project.kicker).count += 1;
+      });
+
+      const chapterList = document.querySelector('.chapter-list');
+      const chapterSelect = document.getElementById('chapter-select');
+      chapters.forEach((chapter) => {
+        const targetId = `project-${chapter.firstId}`;
+        const label = `${chapter.kicker} (${chapter.count})`;
+        const button = document.createElement('button');
+        button.className = 'chapter-button';
+        button.type = 'button';
+        button.dataset.kicker = chapter.kicker;
+        button.dataset.target = targetId;
+        button.setAttribute('aria-label', `${chapter.kicker}, ${chapter.count} ${chapter.count === 1 ? 'project' : 'projects'}`);
+        button.innerHTML = `<span>${chapter.kicker}</span><span class="chapter-count">${chapter.count}</span>`;
+        chapterList.appendChild(button);
+        chapterSelect.add(new Option(label, targetId));
+      });
 
       const projectsContainer = document.getElementById('projects-list');
       PROJECTS.forEach((project, index) => {
         const article = document.createElement('article');
         article.className = 'project';
-        article.id = project.id;
+        article.id = `project-${project.id}`;
+        article.tabIndex = 0;
+        article.dataset.kicker = project.kicker;
+        article.dataset.search = [
+          project.title,
+          project.kicker,
+          stripHTML(project.summary),
+          ...project.specRows.flat().map(stripHTML),
+          stripHTML(project.terminalOutput)
+        ].join(' ').toLowerCase();
 
         const facts = project.specRows
           .map(([label, value]) => `<li><span>${label}</span><span>${value}</span></li>`)
@@ -3380,9 +3586,21 @@ sanitizers ................ ASan+UBSan clean
           : '';
 
         article.innerHTML = `
+          <div class="compact-row">
+            <button class="compact-main" type="button" aria-expanded="false">
+              <span class="compact-number">${padNumber(index + 1)}</span>
+              <span class="compact-kicker">${project.kicker}</span>
+              <span class="compact-title">${project.title}</span>
+              <span class="compact-result">${measuredResult(project)}</span>
+            </button>
+            <a class="project-deep-link" href="#project-${project.id}" aria-label="Link to ${project.title}">Link</a>
+          </div>
           <div class="project-grid">
             <div class="project-copy">
-              <div class="project-number">PROJECT ${padNumber(index + 1)} / ${project.kicker}</div>
+              <div class="project-meta">
+                <div class="project-number">PROJECT ${padNumber(index + 1)} / ${project.kicker}</div>
+                <a class="project-deep-link" href="#project-${project.id}" aria-label="Link to ${project.title}">Link</a>
+              </div>
               <h3>${project.title}</h3>
               <p>${project.summary}</p>
               <ul class="facts">${facts}</ul>
@@ -3396,6 +3614,219 @@ sanitizers ................ ASan+UBSan clean
           </div>`;
         projectsContainer.appendChild(article);
       });
+
+      const projectCards = [...document.querySelectorAll('.project')];
+      const chapterRail = document.querySelector('.chapter-rail');
+      const chapterButtons = [...document.querySelectorAll('.chapter-button')];
+      const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const topOffset = () => window.innerWidth <= 900 ? 64 : 24;
+      const nearestProject = () => projectCards.reduce((nearest, card) => {
+        const distance = Math.abs(card.getBoundingClientRect().top - topOffset());
+        return !nearest || distance < nearest.distance ? { card, distance } : nearest;
+      }, null)?.card;
+
+      const setActiveChapter = (kicker) => {
+        chapterButtons.forEach((button) => {
+          const active = button.dataset.kicker === kicker;
+          button.classList.toggle('is-active', active);
+          if (active) {
+            button.setAttribute('aria-current', 'true');
+            chapterSelect.value = button.dataset.target;
+          } else {
+            button.removeAttribute('aria-current');
+          }
+        });
+      };
+
+      const replaceHash = (targetId) => {
+        const hash = `#${encodeURIComponent(targetId)}`;
+        history.replaceState(history.state, '', `${location.pathname}${location.search}${hash}`);
+      };
+      const goToChapter = (targetId) => {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+        target.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'start' });
+        replaceHash(target.id);
+        setActiveChapter(target.dataset.kicker);
+      };
+      chapterButtons.forEach((button) => button.addEventListener('click', () => goToChapter(button.dataset.target)));
+      chapterList.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const currentIndex = chapterButtons.indexOf(document.activeElement);
+        if (currentIndex < 0) return;
+        event.preventDefault();
+        let nextIndex = currentIndex;
+        if (event.key === 'ArrowLeft') nextIndex = Math.max(0, currentIndex - 1);
+        if (event.key === 'ArrowRight') nextIndex = Math.min(chapterButtons.length - 1, currentIndex + 1);
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = chapterButtons.length - 1;
+        chapterButtons[nextIndex].focus();
+        chapterButtons[nextIndex].scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
+      });
+      chapterSelect.addEventListener('change', () => goToChapter(chapterSelect.value));
+
+      const searchInput = document.getElementById('proof-search');
+      const searchClear = document.querySelector('.search-clear');
+      const searchStatus = document.querySelector('.search-status');
+      const highlightSelectors = '.project-number, .project h3, .project-copy > p, .facts, .terminal pre, .compact-kicker, .compact-title, .compact-result';
+      const clearHighlights = (card) => {
+        card.querySelectorAll('mark.search-hit').forEach((mark) => mark.replaceWith(document.createTextNode(mark.textContent)));
+        card.normalize();
+      };
+      const highlightTerms = (card, terms) => {
+        const pattern = terms
+          .slice()
+          .sort((a, b) => b.length - a.length)
+          .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('|');
+        if (!pattern) return;
+        const regex = new RegExp(`(${pattern})`, 'gi');
+        card.querySelectorAll(highlightSelectors).forEach((root) => {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+          const nodes = [];
+          while (walker.nextNode()) nodes.push(walker.currentNode);
+          nodes.forEach((node) => {
+            if (!regex.test(node.nodeValue)) {
+              regex.lastIndex = 0;
+              return;
+            }
+            regex.lastIndex = 0;
+            const fragment = document.createDocumentFragment();
+            node.nodeValue.split(regex).forEach((part) => {
+              if (!part) return;
+              if (terms.some((term) => part.toLowerCase() === term)) {
+                const mark = document.createElement('mark');
+                mark.className = 'search-hit';
+                mark.textContent = part;
+                fragment.appendChild(mark);
+              } else {
+                fragment.appendChild(document.createTextNode(part));
+              }
+            });
+            node.replaceWith(fragment);
+          });
+        });
+      };
+      const applySearch = () => {
+        const terms = [...new Set(searchInput.value.trim().toLowerCase().split(/\s+/).filter(Boolean))];
+        let matches = 0;
+        projectCards.forEach((card) => {
+          clearHighlights(card);
+          const match = terms.length === 0 || terms.every((term) => card.dataset.search.includes(term));
+          card.classList.toggle('is-search-dimmed', !match);
+          if (match) {
+            matches += 1;
+            if (terms.length) highlightTerms(card, terms);
+          }
+        });
+        searchStatus.textContent = `${matches} of ${PROJECTS.length} match`;
+      };
+      searchInput.addEventListener('input', applySearch);
+      searchClear.addEventListener('click', () => {
+        searchInput.value = '';
+        applySearch();
+        searchInput.focus();
+      });
+      applySearch();
+
+      const densityButtons = [...document.querySelectorAll('.density-button')];
+      const initialDensity = new URLSearchParams(location.search).get('view') === 'compact' ? 'compact' : 'detailed';
+      const setDensity = (density, updateUrl = false) => {
+        const nextDensity = density === 'compact' ? 'compact' : 'detailed';
+        document.documentElement.classList.toggle('density-compact', nextDensity === 'compact');
+        densityButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.density === nextDensity)));
+        if (updateUrl) {
+          const params = new URLSearchParams(location.search);
+          params.set('view', nextDensity);
+          history.replaceState(history.state, '', `${location.pathname}?${params}${location.hash}`);
+        }
+      };
+      densityButtons.forEach((button) => button.addEventListener('click', () => setDensity(button.dataset.density, true)));
+      projectCards.forEach((card) => {
+        const compactButton = card.querySelector('.compact-main');
+        compactButton.addEventListener('click', () => {
+          const expanded = card.classList.toggle('is-expanded');
+          compactButton.setAttribute('aria-expanded', String(expanded));
+        });
+      });
+      setDensity(initialDensity);
+
+      const focusProject = (direction) => {
+        const focusedCard = document.activeElement.closest?.('.project');
+        const start = focusedCard ? projectCards.indexOf(focusedCard) : projectCards.indexOf(nearestProject());
+        const index = Math.max(0, Math.min(projectCards.length - 1, start + direction));
+        const target = projectCards[index];
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'start' });
+      };
+      document.addEventListener('keydown', (event) => {
+        const typing = event.target.matches?.('input, textarea, select, [contenteditable="true"]');
+        if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault();
+          searchInput.focus();
+          searchInput.select();
+          return;
+        }
+        if (event.key === 'Escape') {
+          if (searchInput.value) {
+            searchInput.value = '';
+            applySearch();
+          } else if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+          return;
+        }
+        if (typing || document.getElementById('contact-chooser').open) return;
+        if (event.key === 'j' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          focusProject(1);
+        } else if (event.key === 'k' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          focusProject(-1);
+        }
+      });
+
+      const flashProject = (card) => {
+        card.classList.remove('is-flashing');
+        requestAnimationFrame(() => card.classList.add('is-flashing'));
+        window.setTimeout(() => card.classList.remove('is-flashing'), motionReduced ? 0 : 900);
+      };
+      const activateHashProject = () => {
+        if (!location.hash.startsWith('#project-')) return;
+        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        if (!target) return;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          target.scrollIntoView({ behavior: 'auto', block: 'start' });
+          flashProject(target);
+          setActiveChapter(target.dataset.kicker);
+        }));
+      };
+      window.addEventListener('hashchange', activateHashProject);
+      activateHashProject();
+
+      let scrollTimer = 0;
+      let railFrame = 0;
+      const updateProofPosition = () => {
+        const current = nearestProject();
+        if (!current) return;
+        setActiveChapter(current.dataset.kicker);
+        const workRect = document.getElementById('work').getBoundingClientRect();
+        if (workRect.bottom > 0 && workRect.top < window.innerHeight) {
+          replaceHash(current.id);
+        }
+      };
+      window.addEventListener('scroll', () => {
+        if (!railFrame) {
+          railFrame = requestAnimationFrame(() => {
+            railFrame = 0;
+            const current = nearestProject();
+            if (current) setActiveChapter(current.dataset.kicker);
+          });
+        }
+        window.clearTimeout(scrollTimer);
+        scrollTimer = window.setTimeout(updateProofPosition, 140);
+      }, { passive: true });
+      if (projectCards[0]) setActiveChapter(projectCards[0].dataset.kicker);
 
       document.getElementById('services-title').textContent = `${numberWord(SERVICES.length)} simple ways to get unstuck.`;
       document.querySelector('.services').innerHTML = SERVICES
