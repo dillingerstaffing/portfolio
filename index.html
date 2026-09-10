@@ -68,6 +68,7 @@
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
     html { scroll-behavior: smooth; }
+    html.view-switching { scroll-behavior: auto; }
     body {
       margin: 0;
       min-width: 0;
@@ -107,6 +108,12 @@
       gap: 24px;
       border-bottom: 1px solid var(--line);
     }
+    header.frame.topline {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--bg);
+    }
     .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .signal { width: 8px; height: 8px; background: var(--acid); box-shadow: 0 0 0 4px rgba(184,243,75,.1); }
     .identity strong { font-size: 13px; letter-spacing: .02em; }
@@ -115,9 +122,12 @@
     nav a { color: var(--muted); text-decoration: none; font-size: 12px; }
     nav a:hover, nav a:focus-visible, nav a.is-active { color: var(--acid); }
     nav a.is-active { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
-    nav a.resume-reading { color: var(--acid-soft); }
-    nav a.resume-reading::before { content: "↳"; margin-right: 6px; color: var(--dim); }
-    nav a.resume-reading:hover, nav a.resume-reading:focus-visible { color: var(--acid); }
+    nav a.resume-reading { display: none; color: var(--acid); font-weight: 600; }
+    body.has-blog-resume:not(.view-blog) nav a.resume-reading { display: inline; }
+    nav a.resume-reading:hover, nav a.resume-reading:focus-visible { color: var(--acid-soft); }
+
+    body.view-blog .normal-section { display: none; }
+    body:not(.view-blog) #blog { display: none; }
 
     .hero {
       padding-block: clamp(54px, 6vw, 82px) clamp(60px, 8vw, 96px);
@@ -202,7 +212,8 @@
     .metric span { margin-top: 10px; color: var(--dim); font-size: 11px; }
 
     section { scroll-margin-top: 24px; }
-    section#work, section#services, section#contact, section#blog { scroll-margin-top: 92px; }
+    section#work, section#contact, section#blog { scroll-margin-top: 92px; }
+    section#services { scroll-margin-top: 110px; }
     .section { padding-block: clamp(80px, 10vw, 136px); }
     .section-head { display: grid; grid-template-columns: .4fr 1fr; gap: 36px; margin-bottom: clamp(48px, 7vw, 84px); }
     .section-index { color: var(--acid); font-size: 12px; }
@@ -520,6 +531,7 @@
       font: 500 12px/1 var(--mono);
       letter-spacing: .08em;
       text-transform: uppercase;
+      text-decoration: none;
     }
     .scroll-control:hover { color: var(--acid); border-color: var(--acid); }
     .scroll-control:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
@@ -551,22 +563,16 @@
         background: rgba(12, 15, 13, .97);
       }
       .chapter-list {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
-      .chapter-list::-webkit-scrollbar { display: none; }
       .chapter-button {
-        flex: 0 0 auto;
-        width: auto;
+        width: 100%;
         min-height: 46px;
         padding: 9px 12px;
         border-right: 1px solid var(--line);
-        border-bottom: 0;
-        white-space: nowrap;
+        border-bottom: 1px solid var(--line);
+        white-space: normal;
       }
       .project { contain-intrinsic-size: auto 1200px; scroll-margin-top: 64px; }
       html.density-compact .project { contain-intrinsic-size: auto 58px; }
@@ -636,12 +642,12 @@
       <a href="#blog">Blog</a>
       <a href="#services">Services</a>
       <a href="#contact">Contact</a>
-      <a class="resume-reading" href="#blog" hidden>Resume reading</a>
+      <a class="resume-reading" href="#blog">↳ Resume reading</a>
     </nav>
   </header>
 
   <main>
-    <section class="frame hero" aria-labelledby="hero-title">
+    <section class="frame hero normal-section" aria-labelledby="hero-title">
       <div>
         <p class="eyebrow">C / RISC-V / FIRMWARE / OS INTERNALS</p>
         <h1 id="hero-title" aria-label="Chris Dillinger, freelance low-level C, RISC-V, and OS kernel systems programmer"><span class="visually-hidden">Chris Dillinger, freelance RISC-V and OS kernel systems programmer</span>I help firmware teams and hardware startups ship reliable low-level C, covering board bring-up and crash fixes.</h1>
@@ -663,7 +669,7 @@
       </aside>
     </section>
 
-    <section class="fit-strip" aria-labelledby="fit-title">
+    <section class="fit-strip normal-section" aria-labelledby="fit-title">
       <div class="frame fit-inner">
         <h2 class="fit-label" id="fit-title">WHO THIS IS FOR</h2>
         <ul class="fit-list"></ul>
@@ -671,11 +677,11 @@
       </div>
     </section>
 
-    <div class="metrics" aria-label="Technical proof at a glance">
+    <div class="metrics normal-section" aria-label="Technical proof at a glance">
       <div class="frame metrics-inner"></div>
     </div>
 
-    <section class="frame section" id="work" aria-labelledby="work-title">
+    <section class="frame section normal-section" id="work" aria-labelledby="work-title">
       <div class="section-head">
         <div class="section-index">01 / PROOF</div>
         <div class="section-title">
@@ -719,7 +725,7 @@
       </div>
     </section>
 
-    <section id="blog" class="frame research-page" aria-labelledby="blog-title" hidden>
+    <section id="blog" class="frame research-page" aria-labelledby="blog-title">
       <header class="research-header">
         <p class="research-label">BLOG / FIELD NOTES</p>
         <div>
@@ -849,7 +855,7 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
       </article>
     </section>
 
-    <section class="frame section" id="services" aria-labelledby="services-title">
+    <section class="frame section normal-section" id="services" aria-labelledby="services-title">
       <div class="section-head">
         <div class="section-index">02 / SERVICES + PRICING</div>
         <div class="section-title">
@@ -864,7 +870,7 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
       </div>
     </section>
 
-    <section class="frame section" aria-labelledby="approach-title">
+    <section class="frame section normal-section" aria-labelledby="approach-title">
       <div class="section-head">
         <div class="section-index">03 / HOW IT WORKS</div>
         <div class="section-title">
@@ -875,7 +881,7 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
       <div class="approach"></div>
     </section>
 
-    <section class="frame contact-section" id="contact" aria-labelledby="contact-title">
+    <section class="frame contact-section normal-section" id="contact" aria-labelledby="contact-title">
       <div class="contact-panel">
         <div>
           <h2 id="contact-title">Bring the crash log. I’ll bring the questions.</h2>
@@ -898,7 +904,7 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
 
   <div class="floating-actions" aria-label="Page navigation">
     <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1">↑</button>
-    <button class="scroll-control scroll-to-services is-visible" type="button" aria-label="Scroll to services" aria-hidden="false" tabindex="0">services</button>
+    <a class="scroll-control scroll-to-services is-visible" href="#services" aria-label="Scroll to services" aria-hidden="false" tabindex="0">services</a>
     <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
     <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -4994,6 +5000,102 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         }
 
       ];
+
+      PROJECTS.push(
+        {
+          id: 'lab-94-saturate-to-u16',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'Branchless int32 to uint16 Saturation',
+          summary: 'Clamp every signed 32-bit input into [0, 65535] using two sign masks and bitwise selection, with no branching construct in the implementation. All 4,294,967,296 int32 values plus 12 directed anchors were checked against an independent if/else reference: 4,294,967,308 cases, 0 mismatches. The output checksum matched across -O0, -O2, and ASan+UBSan, with no sanitizer reports; gcc 13.3 emitted no conditional jump or cmov at -O2.',
+          specRows: [
+            ['CHECKS', '4,294,967,308, including every int32 value'],
+            ['MISMATCHES', '0 vs independent if/else reference'],
+            ['CHECKSUM', '0x31f7e4badfa3e62a across -O0/-O2/ASan+UBSan'],
+            ['DISASSEMBLY', '0 conditional jumps, 0 cmov at -O2'],
+            ['MEASURED', '0.694 ns/value at -O2, best of 5']
+          ],
+          terminalName: 'systems-lab / lab / 94-saturate-to-u16',
+          terminalOutput: `$ make all && ./test_saturate_u16_o2\nexhaustive int32 ...... 4,294,967,296 inputs\ndirected anchors ...... 12\ntotal checks .......... 4,294,967,308\nmismatches ............ 0\nchecksum .............. 0x31f7e4badfa3e62a\ndisassembly ........... 0 conditional jumps, 0 cmov\nmeasured .............. 0.694 ns/value at -O2\nRESULT: PASS\n\nBranchless int32-to-uint16 saturation verified`,
+          verificationEnvironment: 'Host',
+          checks: 4294967308,
+          failures: 0,
+          stressItems: 4294967296,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified saturate-to-u16 test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-satp-asid',
+          kicker: 'RISC-V / PRIVILEGED',
+          title: 'satp ASID WARL Discovery',
+          summary: 'Bare-metal RV64 program that drops into S-mode and probes the satp ASID field using write/readback behavior while MODE and PPN stay zero. QEMU 8.2.2 exposed a contiguous 16-bit writable ASID mask; ASIDs 0, 1, 0x8000, and 0xffff round-tripped exactly. A reserved MODE=15 write read back as Bare, with 0 traps. Three runs passed with byte-identical logs.',
+          specRows: [
+            ['ASIDLEN', '16 on QEMU 8.2.2 virt'],
+            ['ROUND TRIPS', '0, 1, 0x8000, 0xffff'],
+            ['RESERVED MODE', 'MODE=15 write read back as Bare (0)'],
+            ['TRAPS', '0'],
+            ['RESULT', 'PASS x3, byte-identical']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / satp-asid',
+          terminalOutput: `$ make run-satp-asid (3 runs)\nASID all-ones write ... 0xffff00000000000\nASID readback ......... 0xffff00000000000\ndiscovered ASIDLEN .... 16\nround trips ........... 0 / 1 / 0x8000 / 0xffff PASS\nreserved MODE=15 ...... readback MODE=0\ntraps observed ........ 0\nRESULT: PASS x3, byte-identical\n\nsatp ASID WARL behavior verified`,
+          verificationEnvironment: 'QEMU 8.2.2',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified satp ASID write/readback output',
+          showRepoLink: true
+        },
+        {
+          id: 'lab-95-swar-hsum',
+          kicker: 'C / SWAR',
+          title: 'Horizontal Sum of Four Packed uint16 Lanes',
+          summary: 'Horizontal sum of four unsigned 16-bit lanes in one 64-bit word using a two-stage pairwise-add cascade. The guard fields keep the two pair sums independent, and the maximum result is 262,140. The implementation was checked against a scalar lane-shift reference over every replicated 16-bit pair plus 10,000,000 fixed-seed 64-bit words: 4,304,967,310 checks, 0 mismatches. One checksum matched across -O0, -O2, and ASan+UBSan.',
+          specRows: [
+            ['CHECKS', '4,304,967,310'],
+            ['MISMATCHES', '0 vs scalar lane-shift reference'],
+            ['MAXIMUM', '262,140 for 0xffffffffffffffff'],
+            ['CHECKSUM', '0eb4f4d7484f98bd across -O0/-O2/ASan+UBSan'],
+            ['MEASURED', '2.21 ns/value at -O2, best of 5']
+          ],
+          terminalName: 'systems-lab / lab / 95-swar-hsum',
+          terminalOutput: `$ make run\ndirected rows ......... 14, all ok\nreplicated lane pairs . 4,294,967,296\nrandom 64-bit words ... 10,000,000\nchecks ................ 4,304,967,310\nmismatches ............ 0\nchecksum .............. 0eb4f4d7484f98bd\nmeasured .............. 2.21 ns/value at -O2\nRESULT: PASS\n\nPacked uint16 horizontal sum verified`,
+          verificationEnvironment: 'Host',
+          checks: 4304967310,
+          failures: 0,
+          stressItems: 10000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified SWAR horizontal-sum test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mtval-fault-address',
+          kicker: 'RISC-V / TRAPS',
+          title: 'mtval Agreement for Load and Store Faults',
+          summary: 'Bare-metal RV64 program that issues one load and one store to the same unmapped address, then compares the machine-trap records. The load produced mcause=0x5 and the store mcause=0x7; both reported mtval=0xffffffffc0000000, and each mepc matched its assembler-captured 4-byte fault site. Exactly 2 traps occurred per run, the faulting load never committed its destination register, and all 3 QEMU runs passed.',
+          specRows: [
+            ['FAULT ADDRESS', '0xffffffffc0000000 for load and store'],
+            ['CAUSES', 'load 0x5, store 0x7'],
+            ['TRAPS', 'exactly 2 per run'],
+            ['RESUME DELTA', '4 bytes at both fault sites'],
+            ['RESULT', 'PASS x3, exit code 0']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mtval-fault-address',
+          terminalOutput: `$ make mtval-fault-address.elf && qemu-system-riscv64 ...\nload mcause ........... 0x5\nload mtval ............ 0xffffffffc0000000\nstore mcause .......... 0x7\nstore mtval ........... 0xffffffffc0000000\nmtval equal ........... yes\nresume deltas ......... 4 / 4\ntraps ................. 2\nRESULT: PASS x3\n\nload/store mtval agreement verified`,
+          verificationEnvironment: 'QEMU 8.2.2',
+          checks: 3,
+          failures: 0,
+          stressItems: 2,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified mtval fault-address test output',
+          showRepoLink: true
+        }
+      );
+
       const AUDIENCES = [
         'Firmware teams with a defined blocker',
         'Hardware startups bringing up a board',
@@ -5494,9 +5596,9 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       scrollToTop.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'auto' });
       });
-      scrollToServices.addEventListener('click', () => {
-        prepareNormalViewFromBlog('#services');
-        location.hash = '#services';
+      scrollToServices.addEventListener('click', (event) => {
+        event.preventDefault();
+        navigateToHash('#services');
       });
       scrollToBottom.addEventListener('click', () => {
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
@@ -5573,50 +5675,62 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         .sort((a, b) => b.released - a.released || a.index - b.index)
         .forEach(({ note }) => blogPage.appendChild(note));
 
-      const normalPageSections = [...document.querySelectorAll('main > :not(#blog)')];
       const primaryNavLinks = [...document.querySelectorAll('nav[aria-label="Primary navigation"] a')];
-      const resumeReadingLink = document.querySelector('.resume-reading');
-      let previousHash = location.hash;
-      const prepareNormalViewFromBlog = (nextHash) => {
-        if (location.hash !== '#blog') return;
-        sessionStorage.setItem('blog-scroll-pos', String(window.scrollY));
-        resumeReadingLink.hidden = false;
-        blogPage.hidden = true;
-        normalPageSections.forEach((section) => {
-          section.hidden = false;
-        });
-        previousHash = nextHash;
+      let previousHash = null;
+      let savedBlogScrollPosition = sessionStorage.getItem('blog-scroll-pos');
+
+      const saveBlogPositionBeforeLeaving = () => {
+        if (!document.body.classList.contains('view-blog')) return;
+        savedBlogScrollPosition = String(window.scrollY);
+        sessionStorage.setItem('blog-scroll-pos', savedBlogScrollPosition);
+        document.body.classList.add('has-blog-resume');
       };
+
+      const navigateToHash = (hash) => {
+        document.documentElement.classList.add('view-switching');
+        if (hash === '#blog') {
+          document.body.classList.add('view-blog');
+        } else {
+          saveBlogPositionBeforeLeaving();
+          document.body.classList.remove('view-blog');
+        }
+        void document.body.offsetHeight;
+        if (location.hash === hash) {
+          history.replaceState(history.state, '', `${location.pathname}${location.search}`);
+        }
+        location.hash = hash;
+        window.requestAnimationFrame(() => document.documentElement.classList.remove('view-switching'));
+      };
+
       primaryNavLinks.forEach((link) => {
         const href = link.getAttribute('href');
-        if (href !== '#blog') {
-          link.addEventListener('click', () => prepareNormalViewFromBlog(href));
-        }
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          navigateToHash(href);
+        });
       });
+
       const updatePageView = () => {
         const hash = location.hash;
         const blogIsActive = hash === '#blog';
-        if (previousHash === '#blog' && hash !== '#blog') {
-          sessionStorage.setItem('blog-scroll-pos', String(window.scrollY));
-        }
-        const savedBlogScrollPosition = blogIsActive ? sessionStorage.getItem('blog-scroll-pos') : null;
-        resumeReadingLink.hidden = blogIsActive || savedBlogScrollPosition === null;
-        blogPage.hidden = !blogIsActive;
-        normalPageSections.forEach((section) => {
-          section.hidden = blogIsActive;
-        });
+        const wasBlogActive = document.body.classList.contains('view-blog');
+
+        if (wasBlogActive && !blogIsActive) saveBlogPositionBeforeLeaving();
+        document.body.classList.toggle('view-blog', blogIsActive);
+        savedBlogScrollPosition = sessionStorage.getItem('blog-scroll-pos');
+        document.body.classList.toggle('has-blog-resume', savedBlogScrollPosition !== null);
 
         const activeHash = blogIsActive
           ? '#blog'
           : ['#services', '#contact'].includes(hash) ? hash : '#work';
         primaryNavLinks.forEach((link) => {
-          const active = link.getAttribute('href') === activeHash;
+          const active = link.getAttribute('href') === activeHash && !link.classList.contains('resume-reading');
           link.classList.toggle('is-active', active);
           if (active) link.setAttribute('aria-current', 'page');
           else link.removeAttribute('aria-current');
         });
 
-        if (blogIsActive) {
+        if (blogIsActive && previousHash !== '#blog') {
           window.requestAnimationFrame(() => {
             const scrollPosition = Number(savedBlogScrollPosition);
             window.scrollTo({
@@ -5628,6 +5742,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         }
         previousHash = hash;
       };
+      window.addEventListener('popstate', updatePageView);
       window.addEventListener('hashchange', updatePageView);
       updatePageView();
     })();
