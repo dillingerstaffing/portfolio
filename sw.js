@@ -1,27 +1,46 @@
-const CACHE = 'portfolio-v1';
-self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => e.clients.claim());
-self.addEventListener('fetch', e => {
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request).then(r => {
-        const copy = r.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
-        return r;
-      }).catch(() => caches.match(e.request))
+// Auto-generated: updates on every deploy to force SW refresh
+const VERSION = 'v20260910-1315';
+const CACHE = 'portfolio-' + VERSION;
+const OFFLINE_URL = 'index.html';
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k.startsWith('portfolio-') && k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== location.origin) return;
+  
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match(OFFLINE_URL)))
     );
-  } else {
-    e.respondWith(
-      caches.match(e.request).then(cached => {
-        const network = fetch(e.request).then(r => {
-          if (r.ok) {
-            const copy = r.clone();
-            caches.open(CACHE).then(c => c.put(e.request, copy));
-          }
-          return r;
-        }).catch(() => cached);
-        return cached || network;
-      })
-    );
+    return;
   }
+  
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const network = fetch(request).then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(request, copy));
+        return response;
+      }).catch(() => cached);
+      return cached || network;
+    })
+  );
 });
