@@ -614,7 +614,7 @@
     </div>
     <nav aria-label="Primary navigation">
       <a href="#work">Proof</a>
-      <a href="#research">Research</a>
+      <a href="#blog">Blog</a>
       <a href="#services">Services</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -699,12 +699,12 @@
       </div>
     </section>
 
-    <section id="research" class="frame research-page" aria-labelledby="research-title" hidden>
+    <section id="blog" class="frame research-page" aria-labelledby="blog-title" hidden>
       <header class="research-header">
-        <p class="research-label">RESEARCH / FIELD NOTES</p>
+        <p class="research-label">BLOG / FIELD NOTES</p>
         <div>
-          <h2 id="research-title">Research Notes</h2>
-          <p class="research-intro">Short technical notes on C, RISC-V, and systems internals. Each one earned its place by being verified first.</p>
+          <h2 id="blog-title">Blog</h2>
+          <p class="research-intro">Short notes on C, RISC-V, and systems internals.</p>
         </div>
       </header>
 
@@ -714,12 +714,12 @@
           <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
         </div>
         <div class="research-body">
-          <p>Everyone knows 0xCBF43926, the CRC-32 of “123456789”. But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending.</p>
-          <p>Lab/82 proved it: one million random buffers, checksum, append, re-checksum, every single one landed on the residue, zero mismatches. Append big-endian instead and there is no universal residue (for “123456789” it happens to be 0x3cc9742c, which is the trap the lab sets deliberately). The fingerprint was byte-identical across -O2, -O0, and sanitizer builds.</p>
-          <p>Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue. The check itself is three lines:</p>
+          <p>Append a message’s CRC-32 checksum to the message in little-endian byte order, then run CRC-32 over the combined bytes. The result is always 0x2144DF1C, no matter what the original message contained.</p>
           <pre><code>crc = crc32(msg);
 append_le(msg, crc);
 assert(crc32(msg) == 0x2144DF1C);</code></pre>
+          <p>This CRC-32 algorithm flips every bit before it returns a checksum. The appended bytes are therefore not the raw remainder from the division inside CRC-32, so checking them again does not cancel to zero. Instead, the second pass always ends at the same fixed value, called the residue.</p>
+          <p>Ethernet hardware uses that shortcut: after reading a frame and its checksum, it only has to compare the result with 0x2144DF1C. Lab/82 tested one million random buffers at 207.7 MiB/s with zero mismatches, and the result stayed byte-identical at -O0, at -O2, and with sanitizers enabled.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
         </div>
       </article>
@@ -730,9 +730,7 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
         </div>
         <div class="research-body">
-          <p>Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with <code>v |= v &gt;&gt; 1, 2, 4, 8, 16</code>, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones.</p>
-          <p>The decrement is the quiet genius: without it, a value already a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it.</p>
-          <p>Lab/84 verified it: 194 contract rows, exhaustive 16-bit, one million random 64-bit values, zero mismatches, 2.27 ns/value at -O2. The whole trick:</p>
+          <p>The decrement is what keeps an exact power of two unchanged. Start with <code>v = 8</code>. Without the decrement, spreading its top 1-bit downward produces 15, and adding 1 returns 16, which is wrong. With the decrement, <code>v</code> becomes 7; spreading the bits leaves it at 7, and adding 1 restores the correct answer, 8.</p>
           <pre><code>v--;
 v |= v &gt;&gt; 1;
 v |= v &gt;&gt; 2;
@@ -740,6 +738,8 @@ v |= v &gt;&gt; 4;
 v |= v &gt;&gt; 8;
 v |= v &gt;&gt; 16;
 v++;</code></pre>
+          <p>Each shift doubles how far the highest 1-bit reaches, until every lower position is 1 and the final increment carries to the next power of two.</p>
+          <p>Lab/84 checked 194 edge cases, every 16-bit input, and one million random 64-bit values. It found zero mismatches and measured 2.27 ns per value at -O2.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
         </div>
       </article>
@@ -750,9 +750,9 @@ v++;</code></pre>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
         </div>
         <div class="research-body">
-          <p>In 1881 Alexander Graham Bell was granted US Patent 244,426 for twisting telephone wires together. His reasoning: if the direct and return wire are affected equally by a disturbance, the current generated in one will neutralize and destroy the current created in the other. That sentence is differential signaling, written before the light bulb was common.</p>
-          <p>The first implementation was literal wire transposition on pole lines, about four twists per kilometer. By 1900 the entire American telephone network was twisted. The mechanism: each half-twist reverses the induced current, two successive half-twists cancel, interference becomes common-mode and the differential receiver deletes it.</p>
-          <p>T568A and T568B differ only in the orange/green interchange, electrically identical. A SPLIT fault (pair 3-6 from different pairs) passes continuity but kills the twist protection, which is why the Crimp Bay tester checks pair integrity, not just continuity. 1000BASE-T runs all four pairs at 250 Mbps each, simultaneous bidirectional, PAM-5 at 125 Mbaud.</p>
+          <p>Alexander Graham Bell’s 1881 idea was simple: if outside noise pushes both wires by the same amount, comparing one wire with the other removes that shared noise. The signal survives because it is carried by the difference between the two wires.</p>
+          <p>Each half-twist swaps which wire is closer to the source of the noise. Over a full twist, both wires spend the same amount of distance in each position, so they pick up nearly the same average noise and the receiver can subtract it away.</p>
+          <p>This is why Ethernet cables contain twisted pairs. It is also why a SPLIT fault, where the two wires come from different pairs, can pass a basic continuity test but still fail in use: the wires no longer trade places together, so their noise no longer cancels.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/proving-ground" target="_blank" rel="noopener">GitHub: proving-ground</a></p>
         </div>
       </article>
@@ -763,14 +763,14 @@ v++;</code></pre>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10</time></p>
         </div>
         <div class="research-body">
-          <p>Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x² + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation.</p>
-          <p>The honest signature is the square: over GF(2), (sum c_i x^i)² = sum c_i x^(2i), the freshman dream made true, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only.</p>
-          <p>This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2. The core loop has no carries, just shift and XOR:</p>
+          <p>Here is the surprise: <code>0xff × 0xff</code> can equal <code>0x5555</code>, not the ordinary answer <code>0xfe01</code>. Write <code>0xff</code> as eight 1-bits: <code>11111111</code>. Ordinary multiplication adds the overlapping shifted rows and carries into the next column. This version combines the rows with XOR, so an odd number of 1s leaves a 1, an even number leaves a 0, and nothing carries. The alternating columns produce <code>0101010101010101</code>, or <code>0x5555</code>.</p>
           <pre><code>while (b) {
   if (b &amp; 1) res ^= a;
   a &lt;&lt;= 1;
   b &gt;&gt;= 1;
 }</code></pre>
+          <p>This is called carryless multiplication. AES-GCM uses it to authenticate encrypted data, and modern chips provide a dedicated instruction for it.</p>
+          <p>Lab/67 checked all 4,294,967,296 pairs of 16-bit inputs and one million random larger values. It found zero mismatches and measured 102.53 ns per value at -O2.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
         </div>
       </article>
@@ -4458,9 +4458,9 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         },
         {
           id: 'research-crc32-residue',
-          kicker: 'RESEARCH NOTE',
+          kicker: 'BLOG',
           title: 'The Checksum That Always Lands on 0x2144DF1C',
-          summary: 'Everyone knows 0xCBF43926, the CRC-32 of "123456789". But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending. Lab/82 proved it: one million random buffers, checksum, append, re-checksum, every single one landed on the residue, zero mismatches. Append big-endian instead and there is no universal residue (for "123456789" it happens to be 0x3cc9742c, which is the trap the lab sets deliberately). The fingerprint was byte-identical across -O2, -O0, and sanitizer builds. Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue. The check itself is three lines: crc = crc32(msg); append_le(msg, crc); assert(crc32(msg) == 0x2144DF1C).',
+          summary: 'Everyone knows 0xCBF43926, the CRC-32 of "123456789". But append a message CRC to the message itself (little-endian) and re-checksum the whole thing, and the answer is never zero. It is always 0x2144DF1C, for every message, because real-world CRC-32 inverts the register before appending. Lab/82 ran one million random buffers through checksum, append, and re-checksum; every buffer landed on the residue, with zero mismatches. Append big-endian instead and there is no universal residue (for "123456789" it happens to be 0x3cc9742c, which is the trap the lab sets deliberately). The fingerprint was byte-identical across -O2, -O0, and sanitizer builds. Ethernet hardware exploits this: the receiver never needs the expected checksum, it just checks for the residue. The check itself is three lines: crc = crc32(msg); append_le(msg, crc); assert(crc32(msg) == 0x2144DF1C).',
           specRows: [
             ['RESIDUE', '0x2144DF1C for every message, little-endian append'],
             ['BE TRAP', '0x3cc9742c for "123456789"; no universal BE residue'],
@@ -4481,9 +4481,9 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         },
         {
           id: 'research-round-up-pow2',
-          kicker: 'RESEARCH NOTE',
+          kicker: 'BLOG',
           title: 'The Decrement That Leaves Room for the Ceiling',
-          summary: 'Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with v |= v >> 1, 2, 4, 8, 16, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones. The decrement is the quiet genius: without it, a value already a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it. Lab/84 verified it: 194 contract rows, exhaustive 16-bit, one million random 64-bit values, zero mismatches, 2.27 ns/value at -O2. The whole trick: v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++.',
+          summary: 'Rounding up to the next power of two with nothing but shifts, ORs, and one increment. The 32-bit form: decrement the value, then smear the highest set bit downward with v |= v >> 1, 2, 4, 8, 16, then add one. The smear doubles its reach each step, five steps cover all 32 bits, and the final increment carries through the sea of ones. The decrement handles exact powers of two: without it, a value already at a power of two would round up to the next one. Sean Anderson wrote it down September 14, 2001; Pete Hart traced the same algorithm to February 1997 newsgroup posts by Anderson and William Lewis. MIT 6.172 still teaches it. Lab/84 ran 194 contract rows, the full 16-bit input range, and one million random 64-bit values: zero mismatches, 2.27 ns/value at -O2. The sequence: v--; v |= v >> 1; v |= v >> 2; v |= v >> 4; v |= v >> 8; v |= v >> 16; v++.',
           specRows: [
             ['OPERATIONS', '12 ops for 32-bit (decrement + 5 smears + increment)'],
             ['EDGE CASE', 'input 0 returns 0 (documented, not hidden)'],
@@ -4504,7 +4504,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         },
         {
           id: 'research-twisted-pair',
-          kicker: 'RESEARCH NOTE',
+          kicker: 'BLOG',
           title: 'The Twist That Carries a Gigabit',
           summary: 'In 1881 Alexander Graham Bell was granted US Patent 244,426 for twisting telephone wires together. His reasoning: if the direct and return wire are affected equally by a disturbance, the current generated in one will neutralize and destroy the current created in the other. That sentence is differential signaling, written before the light bulb was common. The first implementation was literal wire transposition on pole lines, about four twists per kilometer. By 1900 the entire American telephone network was twisted. The mechanism: each half-twist reverses the induced current, two successive half-twists cancel, interference becomes common-mode and the differential receiver deletes it. T568A and T568B differ only in the orange/green interchange, electrically identical. A SPLIT fault (pair 3-6 from different pairs) passes continuity but kills the twist protection, which is why the Crimp Bay tester checks pair integrity, not just continuity. 1000BASE-T runs all four pairs at 250 Mbps each, simultaneous bidirectional, PAM-5 at 125 Mbaud.',
           specRows: [
@@ -4527,9 +4527,9 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         },
         {
           id: 'research-carryless-multiply',
-          kicker: 'RESEARCH NOTE',
+          kicker: 'BLOG',
           title: 'The Multiply That Never Carries',
-          summary: 'Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x^2 + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation. The honest signature is the square: over GF(2), (sum c_i x^i)^2 = sum c_i x^{2i}, the freshman dream made true, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only. This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2. The core loop: while (b) { if (b & 1) res ^= a; a <<= 1; b >>= 1; } No carries, just shift and XOR.',
+          summary: 'Multiplication is two operations wearing one name. Read 0b10 times 0b11 the carryless way: as polynomials over GF(2) that is x times (x + 1), which is x^2 + x, bits 2 and 1, decimal 6. Small numbers hide a completely different operation. The distinguishing signature is the square: over GF(2), (sum c_i x^i)^2 = sum c_i x^{2i}, because every cross term carries a coefficient of 2, which is 0. Lab/67 derives 0xff * 0xff = 0x5555 from it: squaring doubles every exponent, so set bits land on even positions only. This is the heart of AES-GCM: GHASH is polynomial multiplication in GF(2^128) reduced modulo x^128 + x^7 + x^2 + x + 1. Intel proposed PCLMULQDQ in March 2008 for exactly this; RISC-V has it as the Zbc extension (clmul/clmulh/clmulr). Lab/67: 4,294,967,296 exhaustive checks plus one million random, zero mismatches, 102.53 ns/value at -O2. The core loop: while (b) { if (b & 1) res ^= a; a <<= 1; b >>= 1; } No carries, just shift and XOR.',
           specRows: [
             ['FIELD', 'GF(2): addition is XOR, no carries exist'],
             ['SIGNATURE', '0xff * 0xff = 0x5555 (bits land on even positions)'],
@@ -5109,19 +5109,19 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         copyStatus.textContent = 'Email address copied.';
       });
 
-      const researchPage = document.getElementById('research');
-      const normalPageSections = [...document.querySelectorAll('main > :not(#research)')];
+      const blogPage = document.getElementById('blog');
+      const normalPageSections = [...document.querySelectorAll('main > :not(#blog)')];
       const primaryNavLinks = [...document.querySelectorAll('nav[aria-label="Primary navigation"] a')];
       const updatePageView = () => {
         const hash = location.hash;
-        const researchIsActive = hash === '#research';
-        researchPage.hidden = !researchIsActive;
+        const blogIsActive = hash === '#blog';
+        blogPage.hidden = !blogIsActive;
         normalPageSections.forEach((section) => {
-          section.hidden = researchIsActive;
+          section.hidden = blogIsActive;
         });
 
-        const activeHash = researchIsActive
-          ? '#research'
+        const activeHash = blogIsActive
+          ? '#blog'
           : ['#services', '#contact'].includes(hash) ? hash : '#work';
         primaryNavLinks.forEach((link) => {
           const active = link.getAttribute('href') === activeHash;
@@ -5133,7 +5133,7 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         if (hash) {
           window.requestAnimationFrame(() => {
             const target = document.getElementById(hash.slice(1));
-            if (researchIsActive) window.scrollTo({ top: 0, behavior: 'auto' });
+            if (blogIsActive) window.scrollTo({ top: 0, behavior: 'auto' });
             else if (target && !target.hidden) target.scrollIntoView({ behavior: 'auto', block: 'start' });
             scheduleScrollControlUpdate();
           });
