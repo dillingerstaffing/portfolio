@@ -4012,6 +4012,54 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: riscv-baremetal-demo',
           terminalLabel: 'Verified mstatus.MPP encoding test output',
           showRepoLink: true
+        },
+        {
+          id: 'swar-max-no-branches',
+          kicker: 'C / SWAR',
+          title: 'SWAR max, no branches',
+          summary: 'Branchless per-lane unsigned 16-bit maximum of two packed words in one 64-bit word, built from the guarded-subtraction comparison identity with one guard bit per lane. Differential verification against a per-lane scalar reference found zero lane crosstalk.',
+          specRows: [
+            ['METHOD', 'guarded subtraction with one guard bit per 16-bit lane'],
+            ['DIFFERENTIAL', '4,309,161,635 checks, 0 mismatches'],
+            ['LANES', '0 crosstalk against the per-lane scalar reference'],
+            ['CHECKSUM', 'FNV-1a 0x64d1c937981935ce, identical across -O0, -O2, ASan+UBSan'],
+            ['MEASURED', 'horizontal max 3.943 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 78-swar-max',
+          terminalOutput: `$ make run (3 builds)\ndifferential ............ 4,309,161,635 checks\nmismatches .............. 0\nlane crosstalk .......... 0\nreference ............... per-lane scalar max\nchecksum ................ 0x64d1c937981935ce\nbuilds .................. -O0, -O2, ASan+UBSan IDENTICAL\nhorizontal max .......... 3.943 ns/value at -O2\nRESULT: PASS\n\nbranchless 16-bit lane max, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 4309161635,
+          failures: 0,
+          stressItems: 4309161635,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/78-swar-max',
+          repoLabel: 'GitHub: systems-lab/lab/78-swar-max',
+          terminalLabel: 'Verified branchless SWAR maximum differential test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mstatus-mpp-hardware-behavior',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'mstatus.MPP encoding, verified on hardware behavior',
+          summary: 'A bare-metal M-mode program that writes the <code>mstatus.MPP</code> field through all four encodings, reads back the CSR, then uses <code>mret</code> to enter a one-instruction <code>ecall</code> payload. The trap handler records <code>mcause</code>, <code>mepc</code>, <code>mtval</code>, and the trap-entry MPP bits.',
+          specRows: [
+            ['MPP 00', 'mcause 0x8, trap-entry MPP 0'],
+            ['MPP 01', 'mcause 0x9, trap-entry MPP 1'],
+            ['MPP 11', 'mcause 0xb, trap-entry MPP 3'],
+            ['RESERVED 10', 'coerced to 00 at write time'],
+            ['MEPC', '0x800002d2, exactly the payload ecall address every phase'],
+            ['RUNS', 'QEMU 8.2.2, 3 byte-identical runs'],
+            ['RESULT', 'PASS x3']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mpp-encoding',
+          terminalOutput: '$ make qemu (QEMU 8.2.2, 3 runs)\nMPP 00 ........ mcause 0x8, entry MPP 0\nMPP 01 ........ mcause 0x9, entry MPP 1\nMPP 11 ........ mcause 0xb, entry MPP 3\nreserved 10 ... coerced to 00 at write time\nmepc .......... 0x800002d2, payload ecall every phase\nmtval ........ recorded every phase\noutput ........ byte-identical across all 3 runs\nRESULT: PASS x3\n\nall four mstatus.MPP encodings verified by trap behavior',
+          verificationEnvironment: 'QEMU',
+          checks: 4,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mpp-encoding',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/mpp-encoding',
+          terminalLabel: 'Verified mstatus.MPP hardware-behavior output',
+          showRepoLink: true
         }
 
       ];
