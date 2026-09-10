@@ -326,8 +326,17 @@
       gap: clamp(28px, 5vw, 64px);
       align-items: start;
     }
-    .chapter-rail { position: sticky; top: calc(68px + 16px); z-index: 24; }
+    .chapter-rail { position: sticky; top: 68px; z-index: 24; background: var(--bg); border-top: 1px solid var(--line); }
     .chapter-list { display: grid; }
+    .rail-compact { display: none; }
+    .rail-sentinel { height: 0; }
+    @media (min-width: 901px) {
+      .chapter-rail { position: sticky; }
+      .chapter-rail.is-stuck .chapter-list { opacity: 0; transform: translateY(-10px); pointer-events: none; transition: none; }
+      .chapter-rail.is-stuck .rail-compact { display: flex; opacity: 1; transform: none; pointer-events: auto; transition: opacity 220ms ease-out, transform 220ms ease-out; }
+      .rail-compact { position: absolute; inset: 0; align-items: center; gap: 8px; overflow-x: auto; padding: 0 12px; opacity: 0; transform: translateY(10px); pointer-events: none; }
+      .rail-compact .chapter-button { flex: 0 0 auto; width: auto; min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; white-space: nowrap; }
+    }
     .chapter-button {
       position: relative; width: 100%; min-height: 44px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px;
       border: 0; border-bottom: 1px solid var(--line); padding: 9px 0;
@@ -629,7 +638,7 @@
       .project-browser { display: block; }
       .chapter-rail {
         position: sticky;
-        top: calc(68px + 16px);
+        top: 68px;
         margin-inline: calc(-1 * var(--pad));
         padding-inline: var(--pad);
         border-block: 1px solid var(--line);
@@ -793,8 +802,10 @@
       </div>
 
       <div class="project-browser">
+        <div class="rail-sentinel" aria-hidden="true"></div>
         <nav class="chapter-rail" aria-label="Proof filters">
           <div class="chapter-list" id="proof-filter-list"></div>
+          <div class="rail-compact" id="proof-filter-compact" aria-hidden="true"></div>
         </nav>
         <div class="project-record">
           <div id="projects-list"></div>
@@ -5391,6 +5402,36 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         button.innerHTML = `<span>${chapter.name}</span><span class="chapter-count">${chapter.count}</span>`;
         chapterList.appendChild(button);
       });
+
+      // Two-state rail: spacious at rest, compact strip when stuck
+      const rail = document.querySelector('.chapter-rail');
+      const sentinel = document.querySelector('.rail-sentinel');
+      const compact = document.getElementById('proof-filter-compact');
+      if (rail && sentinel && compact) {
+        // Clone buttons into compact strip
+        chapterList.querySelectorAll('.chapter-button').forEach((btn) => {
+          const clone = btn.cloneNode(true);
+          clone.addEventListener('click', () => btn.click());
+          compact.appendChild(clone);
+        });
+        // Sync active state
+        const syncCompact = () => {
+          const active = chapterList.querySelector('.chapter-button.is-active');
+          compact.querySelectorAll('.chapter-button').forEach((c) => {
+            c.classList.toggle('is-active', active && c.dataset.chapter === active.dataset.chapter);
+          });
+        };
+        new MutationObserver(syncCompact).observe(chapterList, { attributes: true, subtree: true, attributeFilter: ['class'] });
+        // Observer toggles stuck state
+        let wasStuck = false;
+        new IntersectionObserver((entries) => {
+          const stuck = !entries[0].isIntersecting;
+          if (stuck !== wasStuck) {
+            wasStuck = stuck;
+            rail.classList.toggle('is-stuck', stuck);
+          }
+        }, { rootMargin: '-68px 0px 0px 0px' }).observe(sentinel);
+      }
 
       const projectsContainer = document.getElementById('projects-list');
       const permalinkClear = document.getElementById('permalink-clear');
