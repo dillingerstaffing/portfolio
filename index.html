@@ -115,6 +115,9 @@
     nav a { color: var(--muted); text-decoration: none; font-size: 12px; }
     nav a:hover, nav a:focus-visible, nav a.is-active { color: var(--acid); }
     nav a.is-active { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+    nav a.resume-reading { color: var(--acid-soft); }
+    nav a.resume-reading::before { content: "↳"; margin-right: 6px; color: var(--dim); }
+    nav a.resume-reading:hover, nav a.resume-reading:focus-visible { color: var(--acid); }
 
     .hero {
       padding-block: clamp(54px, 6vw, 82px) clamp(60px, 8vw, 96px);
@@ -199,6 +202,7 @@
     .metric span { margin-top: 10px; color: var(--dim); font-size: 11px; }
 
     section { scroll-margin-top: 24px; }
+    section#work, section#services, section#contact, section#blog { scroll-margin-top: 92px; }
     .section { padding-block: clamp(80px, 10vw, 136px); }
     .section-head { display: grid; grid-template-columns: .4fr 1fr; gap: 36px; margin-bottom: clamp(48px, 7vw, 84px); }
     .section-index { color: var(--acid); font-size: 12px; }
@@ -352,6 +356,8 @@
     .contact-list { margin: 0 0 26px; padding: 0; list-style: none; }
     .contact-list li { padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--paper); font-size: 12px; }
     .contact-list li::before { content: ">"; color: var(--acid); margin-right: 10px; }
+    .contact-email { display: block; width: fit-content; margin-top: 14px; color: var(--muted); font-size: 11px; text-decoration: none; border-bottom: 1px solid #394138; overflow-wrap: anywhere; }
+    .contact-email:hover, .contact-email:focus-visible { color: var(--acid); border-color: var(--acid); }
 
     .research-page {
       padding-block: clamp(64px, 9vw, 112px) clamp(88px, 12vw, 160px);
@@ -630,6 +636,7 @@
       <a href="#blog">Blog</a>
       <a href="#services">Services</a>
       <a href="#contact">Contact</a>
+      <a class="resume-reading" href="#blog" hidden>Resume reading</a>
     </nav>
   </header>
 
@@ -724,6 +731,24 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Division That Never Divides</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 13:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Suppose you need x divided by 3, where x is a 32-bit unsigned integer, on a chip where division is slow or missing entirely. The instinct is the / operator. There is a one-line replacement: multiply by 0xAAAAAAAB and shift right by 33. That is the whole division, and no div instruction appears anywhere.</p>
+          <p>Why does it work? Write x as 3a + r, where r is 0, 1, or 2 and a is the answer we want. The constant 0xAAAAAAAB equals ceil(2^33 / 3), which is (2^33 + 1) / 3. Multiply out: x * M = a * 2^33 + (a + r*(2^33 + 1)/3). The second term stays below 2^33 for every 32-bit x (a is under 2^31, so a/2^33 stays under 1/6, and the r part stays under 2/3 plus a hair). Shifting right by 33 bits drops exactly the leftover and leaves a, which is floor(x/3). The product fits in 64 bits, so the widening multiply is exact.</p>
+          <p>Verified against the native / operator: 19 directed edge rows at the ends of the range, all 65,536 16-bit inputs exhaustively, and 1,000,000 fixed-seed random values. 1,065,555 checks, 0 mismatches, with an identical FNV-1a checksum across -O0, -O2, and ASan+UBSan builds. The compiled code at -O2 is mov, imul, shr, ret: no div instruction. It measures 2.221 ns per value.</p>
+          <p>The trick comes from Granlund and Montgomery's 1994 PLDI paper on strength-reducing integer division, which gives the general construction for any divisor. The lab pins down the 32-bit divide-by-3 case with the exact error bound, the edge cases, and the measurements.</p>
+          <pre><code>uint32_t div3_u32(uint32_t x)
+{
+    return (uint32_t)(((uint64_t)x * 0xAAAAAAABULL) &gt;&gt; 33);
+}</code></pre>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/91-div3-magic" target="_blank" rel="noopener">lab/91-div3-magic</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Four Bytes the Trap Handler Skips</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 12:01 EDT</time></p>
         </div>
@@ -860,6 +885,7 @@ assert(crc32(msg) == 0x2144DF1C);</code></pre>
           <h3 id="contact-brief-title"></h3>
           <ul class="contact-list"></ul>
           <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
+          <a class="contact-email" href="mailto:shipthisgroup@gmail.com">shipthisgroup@gmail.com</a>
         </div>
       </div>
     </section>
@@ -4893,6 +4919,78 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: riscv-baremetal-demo/src/mtime-write',
           terminalLabel: 'Verified mtime write coherence test output',
           showRepoLink: true
+        },
+        {
+          id: 'lab-92-branchless-select',
+          kicker: 'BIT MANIPULATION',
+          title: 'Branchless 2-Way uint64 Select',
+          summary: 'Branchless <code>select(sel, a, b)</code> from the mask identity: <code>mask = (uint64_t)(-(uint64_t)sel)</code>, <code>out = (a & ~mask) | (b & mask)</code>, sel in {0,1}. 8,599,934,601 differential checks vs the ternary operator, 0 mismatches; the -O2 object has 0 jump instructions; one FNV fingerprint identical across -O0, -O2, and ASan.',
+          specRows: [
+            ['CHECKS', '8,599,934,601'],
+            ['MISMATCHES', '0'],
+            ['CHECKSUM', '47f9a66e9c481f08 across -O0/-O2/ASan'],
+            ['DISASSEMBLY', '0 jump instructions at -O2'],
+            ['MEASURED', '2.68 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 92-branchless-select',
+          link: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/92-branchless-select',
+          terminalOutput: `$ make check\ndifferential checks .... 8,599,934,601\nmismatches ............. 0\nchecksum ............... 47f9a66e9c481f08 across -O0/-O2/ASan\ndisassembly ............ 0 jump instructions at -O2\nmeasured ............... 2.68 ns/value at -O2\n\nBranchless 2-way select verified`,
+          verificationEnvironment: 'Host',
+          checks: 8599934601,
+          failures: 0,
+          stressItems: 8599934601,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/92-branchless-select',
+          repoLabel: 'GitHub: systems-lab/lab/92-branchless-select',
+          terminalLabel: 'Verified branchless select test output',
+          showRepoLink: true
+        },
+        {
+          id: 'lab-93-swar-zero-count',
+          kicker: 'BIT MANIPULATION',
+          title: 'Zero-Byte Count in a 64-Bit Word',
+          summary: 'Count of zero bytes in a 64-bit word from the zero-byte detection identity. The naive form overcounts: a borrow out of a zero low byte sets a phantom 0x80 bit in the byte above (1001 overcounts measured in 10,065,536 inputs), so the subtraction runs in 16-bit lanes with a 0x7F guard per lane and no borrow ever crosses a lane boundary. 10,065,536 differential checks vs a per-byte reference, 0 mismatches; the -O2 hot path is straight-line integer arithmetic with no byte-by-byte loop.',
+          specRows: [
+            ['CHECKS', '10,065,536'],
+            ['MISMATCHES', '0'],
+            ['CHECKSUM', 'ca180bdf75d1ddd9 across -O0/-O2/ASan+UBSan'],
+            ['DISASSEMBLY', 'no branch, no byte-by-byte loop'],
+            ['MEASURED', '2.244 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 93-swar-zero-count',
+          link: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/93-swar-zero-count',
+          terminalOutput: `$ make test\ndifferential checks .... 10,065,536\nmismatches ............. 0\nchecksum ............... ca180bdf75d1ddd9 across -O0/-O2/ASan+UBSan\ndisassembly ............ no byte-by-byte loop\nmeasured ............... 2.244 ns/value at -O2\n\nZero-byte count verified`,
+          verificationEnvironment: 'Host',
+          checks: 10065536,
+          failures: 0,
+          stressItems: 10065536,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/93-swar-zero-count',
+          repoLabel: 'GitHub: systems-lab/lab/93-swar-zero-count',
+          terminalLabel: 'Verified zero-byte count test output',
+          showRepoLink: true
+        },
+        {
+          id: 'lab-94-mulhi-signed',
+          kicker: 'BIT MANIPULATION',
+          title: 'Signed 128-Bit Product, High Word',
+          summary: 'High 64 bits of the signed 128-bit product of two int64 values from the 32-bit splitting identity with sign corrections: from a = ua - sa*2^64 and b = ub - sb*2^64, the high word is exactly <code>mulhi_u64(ua,ub) - sa*ub - sb*ua</code> (mod 2^64). No __int128 and no full-width signed multiply in the implementation; signed __int128 appears only in the test oracle. 4,304,979,732 differential checks per build (all 2^32 sign-extended 16-bit pairs, 10M random pairs, 12,436 directed sign-edge cases), 0 mismatches across -O0/-O2/ASan+UBSan; the -O2 disassembly shows only 32-bit half-width multiplies, the full-width signed multiply never re-forms.',
+          specRows: [
+            ['CHECKS', '4,304,979,732'],
+            ['MISMATCHES', '0'],
+            ['CHECKSUM', '0x3282d931333f6a85 across -O0/-O2/ASan+UBSan'],
+            ['DISASSEMBLY', '32-bit half-width imuls only, no 64x64 multiply'],
+            ['MEASURED', '5.942 ns/pair at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 94-mulhi-signed',
+          link: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/94-mulhi-signed',
+          terminalOutput: `$ make test\ndifferential checks .... 4,304,979,732\nmismatches ............. 0\nchecksum ............... 0x3282d931333f6a85 across -O0/-O2/ASan+UBSan\ndisassembly ............ 32-bit half-width imuls only\nmeasured ............... 5.942 ns/pair at -O2\n\nSigned mulhi verified`,
+          verificationEnvironment: 'Host',
+          checks: 4304979732,
+          failures: 0,
+          stressItems: 4304979732,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/94-mulhi-signed',
+          repoLabel: 'GitHub: systems-lab/lab/94-mulhi-signed',
+          terminalLabel: 'Verified signed mulhi test output',
+          showRepoLink: true
         }
 
       ];
@@ -5397,7 +5495,8 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         window.scrollTo({ top: 0, behavior: 'auto' });
       });
       scrollToServices.addEventListener('click', () => {
-        document.getElementById('services').scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth' });
+        prepareNormalViewFromBlog('#services');
+        location.hash = '#services';
       });
       scrollToBottom.addEventListener('click', () => {
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
@@ -5476,16 +5575,32 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
 
       const normalPageSections = [...document.querySelectorAll('main > :not(#blog)')];
       const primaryNavLinks = [...document.querySelectorAll('nav[aria-label="Primary navigation"] a')];
+      const resumeReadingLink = document.querySelector('.resume-reading');
       let previousHash = location.hash;
+      const prepareNormalViewFromBlog = (nextHash) => {
+        if (location.hash !== '#blog') return;
+        sessionStorage.setItem('blog-scroll-pos', String(window.scrollY));
+        resumeReadingLink.hidden = false;
+        blogPage.hidden = true;
+        normalPageSections.forEach((section) => {
+          section.hidden = false;
+        });
+        previousHash = nextHash;
+      };
+      primaryNavLinks.forEach((link) => {
+        const href = link.getAttribute('href');
+        if (href !== '#blog') {
+          link.addEventListener('click', () => prepareNormalViewFromBlog(href));
+        }
+      });
       const updatePageView = () => {
         const hash = location.hash;
         const blogIsActive = hash === '#blog';
         if (previousHash === '#blog' && hash !== '#blog') {
           sessionStorage.setItem('blog-scroll-pos', String(window.scrollY));
         }
-        const savedBlogScrollPosition = blogIsActive
-          ? sessionStorage.getItem('blog-scroll-pos')
-          : null;
+        const savedBlogScrollPosition = blogIsActive ? sessionStorage.getItem('blog-scroll-pos') : null;
+        resumeReadingLink.hidden = blogIsActive || savedBlogScrollPosition === null;
         blogPage.hidden = !blogIsActive;
         normalPageSections.forEach((section) => {
           section.hidden = blogIsActive;
@@ -5501,17 +5616,13 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           else link.removeAttribute('aria-current');
         });
 
-        if (hash) {
+        if (blogIsActive) {
           window.requestAnimationFrame(() => {
-            const target = document.getElementById(hash.slice(1));
-            if (blogIsActive) {
-              const scrollPosition = Number(savedBlogScrollPosition);
-              window.scrollTo({
-                top: savedBlogScrollPosition !== null && Number.isFinite(scrollPosition) ? scrollPosition : 0,
-                behavior: 'auto'
-              });
-            }
-            else if (target && !target.hidden) target.scrollIntoView({ behavior: 'auto', block: 'start' });
+            const scrollPosition = Number(savedBlogScrollPosition);
+            window.scrollTo({
+              top: savedBlogScrollPosition !== null && Number.isFinite(scrollPosition) ? scrollPosition : 0,
+              behavior: 'auto'
+            });
             scheduleScrollControlUpdate();
           });
         }
