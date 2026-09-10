@@ -440,13 +440,12 @@
         border-top: 0; border-bottom: 1px solid var(--line); background: var(--bg);
       }
       .chapter-list {
-        display: flex; width: 100%; overflow-x: auto; overflow-y: hidden;
-        scroll-snap-type: x mandatory; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; overflow: visible;
       }
       .chapter-button {
-        flex: 0 0 auto; width: auto; min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
-        gap: 8px; padding: 10px 14px; border-bottom: 0; border-right: 1px solid var(--line);
-        white-space: nowrap; scroll-snap-align: start;
+        width: 100%; min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+        gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+        white-space: normal;
       }
       .chapter-button::before { display: none; }
       .chapter-button.is-active { background: var(--acid); color: var(--black); }
@@ -3420,55 +3419,6 @@ sanitizers ................ ASan+UBSan clean
           showRepoLink: true
         },
         {
-          id: 'bit-rotate-add',
-          kicker: 'BITWISE',
-          title: 'bit-rotate-add (systems-lab/lab/56)',
-          summary: '64-bit rotate-left by k composed with wrapping add, built from the shift modulo identity ((n - (k % n)) % n for the counter-rotation) and verified against an independent per-bit reference that never uses the shift/OR rotate identity. Verified: 64,000,000 differential cases (all 64 rotation amounts x 1,000,000 fixed-seed values, 3 checks each), 0 mismatches, FNV-1a checksum 11571239451276328976 identical across -O0, -O2, and ASan+UBSan builds; measured 10.51 ns/value at -O2 including PRNG.',
-          specRows: [
-            ['OPERATION', 'rotl64 and rot_add64 (rotate composed with wrapping add)'],
-            ['MECHANISM', 'Shift modulo identity ((n - (k % n)) % n)'],
-            ['REFERENCE', 'Independent per-bit rotate, never the shift/OR identity'],
-            ['CHECKS', '64,000,000 differential, 0 mismatches'],
-            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
-            ['MEASURED', '10.51 ns/value at -O2 (includes PRNG)']
-          ],
-          terminalOutput: `$ ./test_rotadd\nrotation_amounts ........... 64\nvalues_per_amount .......... 1000000\ntotal_cases ................ 64000000\nmismatches ................. 0\nfnv1a_checksum ............. 11571239451276328976\nns_per_value (-O2) ......... 10.51\n\n10.51 ns/value at -O2, 0 mismatches`,
-          verificationEnvironment: 'host',
-          checks: 64000000,
-          failures: 0,
-          stressItems: 64000000,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/56-bit-rotate-add',
-          repoLabel: 'GitHub: systems-lab/lab/56-bit-rotate-add',
-          terminalName: 'systems-lab / lab / 56-bit-rotate-add',
-          terminalLabel: 'Verified bit-rotate-add test output',
-          showRepoLink: true
-        },
-        {
-          id: 'saturating-sub-borrow',
-          kicker: 'INTEGER ARITHMETIC',
-          title: 'saturating-sub-borrow (systems-lab/lab/57)',
-          summary: 'Branch-free unsigned saturating subtract built from the borrow-out identity using unsigned arithmetic only: result = a - b, saturate to 0 when borrow. Verified: 4,294,967,296 exhaustive pairs (2^16 x 2^16) plus 10,000,000 fixed-seed random pairs, 4,304,967,296 total checks, 0 mismatches, checksum 0xfb3dd8407f4dd8d1 identical across -O0, -O2, and ASan+UBSan builds; measured 4.300 ns/pair at -O2 including PRNG.',
-          specRows: [
-            ['OPERATION', 'sat_sub64: a - b, saturate to 0 on borrow'],
-            ['MECHANISM', 'Borrow-out identity, unsigned arithmetic only, no branches'],
-            ['EXHAUSTIVE', '4,294,967,296 pairs (2^16 x 2^16)'],
-            ['RANDOM', '10,000,000 fixed-seed pairs'],
-            ['CHECKS', '4,304,967,296 total, 0 mismatches'],
-            ['BUILDS', 'Identical checksum, -O0, -O2, ASan+UBSan'],
-            ['MEASURED', '4.300 ns/pair at -O2 (includes PRNG)']
-          ],
-          terminalOutput: `$ ./test_satsub\nexhaustive_pairs ............ 4294967296\nrandom_pairs ................ 10000000\ntotal_checks ................ 4304967296\nmismatches .................. 0\nchecksum .................... 0xfb3dd8407f4dd8d1\nns_per_pair (-O2) ........... 4.300\n\n4.300 ns/pair at -O2, 0 mismatches`,
-          verificationEnvironment: 'host',
-          checks: 4304967296,
-          failures: 0,
-          stressItems: 4304967296,
-          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/57-saturating-sub-borrow',
-          repoLabel: 'GitHub: systems-lab/lab/57-saturating-sub-borrow',
-          terminalName: 'systems-lab / lab / 57-saturating-sub-borrow',
-          terminalLabel: 'Verified saturating-sub-borrow test output',
-          showRepoLink: true
-        },
-        {
           id: 'high-n-bit-mask',
           kicker: 'BIT MASKS',
           title: 'High-bit mask, 65,000,000 cases',
@@ -3541,13 +3491,58 @@ done
           terminalName: 'qemu / riscv64 / medeleg-mask.elf',
           terminalLabel: 'Measured medeleg/mideleg writable-mask output',
           showRepoLink: true
+        },
+        {
+          id: 'bit-rotate-add',
+          kicker: 'BITWISE',
+          title: 'bit-rotate-add (systems-lab/lab/56)',
+          summary: '64-bit rotate-left by k composed with wrapping add, built from the shift modulo identity ((n - (k % n)) % n for the counter-rotation) and verified against an independent per-bit reference that never uses the shift/OR rotate identity. Verified: 64,000,000 differential cases (all 64 rotation amounts x 1,000,000 fixed-seed values, 3 checks each), 0 mismatches, FNV-1a checksum 11571239451276328976 identical across -O0, -O2, and ASan+UBSan builds; measured 10.51 ns/value at -O2 including PRNG.',
+          specRows: [
+            ['OPERATION', 'rotl64 and rot_add64 (rotate composed with wrapping add)'],
+            ['MECHANISM', 'Shift modulo identity ((n - (k % n)) % n)'],
+            ['REFERENCE', 'Independent per-bit rotate, never the shift/OR identity'],
+            ['CHECKS', '64,000,000 differential, 0 mismatches'],
+            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '10.51 ns/value at -O2 (includes PRNG)']
+          ],
+          terminalOutput: `$ ./test_rotadd\nrotation_amounts ........... 64\nvalues_per_amount .......... 1000000\ntotal_cases ................ 64000000\nmismatches ................. 0\nfnv1a_checksum ............. 11571239451276328976\nns_per_value (-O2) ......... 10.51\n\n10.51 ns/value at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 64000000,
+          failures: 0,
+          stressItems: 64000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/56-bit-rotate-add',
+          repoLabel: 'GitHub: systems-lab/lab/56-bit-rotate-add',
+          terminalName: 'systems-lab / lab / 56-bit-rotate-add',
+          terminalLabel: 'Verified bit-rotate-add test output',
+          showRepoLink: true
+        },
+        {
+          id: 'saturating-sub-borrow',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'saturating-sub-borrow (systems-lab/lab/57)',
+          summary: 'Branch-free unsigned saturating subtract built from the borrow-out identity using unsigned arithmetic only: result = a - b, saturate to 0 when borrow. Verified: 4,294,967,296 exhaustive pairs (2^16 x 2^16) plus 10,000,000 fixed-seed random pairs, 4,304,967,296 total checks, 0 mismatches, checksum 0xfb3dd8407f4dd8d1 identical across -O0, -O2, and ASan+UBSan builds; measured 4.300 ns/pair at -O2 including PRNG.',
+          specRows: [
+            ['OPERATION', 'sat_sub64: a - b, saturate to 0 on borrow'],
+            ['MECHANISM', 'Borrow-out identity, unsigned arithmetic only, no branches'],
+            ['EXHAUSTIVE', '4,294,967,296 pairs (2^16 x 2^16)'],
+            ['RANDOM', '10,000,000 fixed-seed pairs'],
+            ['CHECKS', '4,304,967,296 total, 0 mismatches'],
+            ['BUILDS', 'Identical checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '4.300 ns/pair at -O2 (includes PRNG)']
+          ],
+          terminalOutput: `$ ./test_satsub\nexhaustive_pairs ............ 4294967296\nrandom_pairs ................ 10000000\ntotal_checks ................ 4304967296\nmismatches .................. 0\nchecksum .................... 0xfb3dd8407f4dd8d1\nns_per_pair (-O2) ........... 4.300\n\n4.300 ns/pair at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 4304967296,
+          failures: 0,
+          stressItems: 4304967296,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/57-saturating-sub-borrow',
+          repoLabel: 'GitHub: systems-lab/lab/57-saturating-sub-borrow',
+          terminalName: 'systems-lab / lab / 57-saturating-sub-borrow',
+          terminalLabel: 'Verified saturating-sub-borrow test output',
+          showRepoLink: true
         }
 
       ];
-      ['bit-rotate-add', 'saturating-sub-borrow'].forEach((id) => {
-        const index = PROJECTS.findIndex((project) => project.id === id);
-        if (index !== -1) PROJECTS.splice(index, 1);
-      });
       const AUDIENCES = [
         'Firmware teams with a defined blocker',
         'Hardware startups bringing up a board',
