@@ -682,11 +682,11 @@
   </footer>
 
   <div class="scroll-controls" aria-label="Page navigation">
-    <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1" disabled>↑</button>
+    <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1">↑</button>
     <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
   </div>
 
-  <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1" disabled>
+  <button class="floating-contact cta-trigger is-visible" type="button" aria-label="Contact Chris" aria-hidden="false" tabindex="0">
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <rect x="3" y="5" width="18" height="14" rx="1"></rect>
       <path d="m4 7 8 6 8-6"></path>
@@ -4625,7 +4625,6 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       const copyButton = chooser.querySelector('.copy-email');
       const copyStatus = chooser.querySelector('.copy-status');
       const email = 'shipthisgroup@gmail.com';
-      const floatingContact = document.querySelector('.floating-contact');
       const scrollToTop = document.querySelector('.scroll-to-top');
       const scrollToBottom = document.querySelector('.scroll-to-bottom');
       let lastTrigger = null;
@@ -4633,7 +4632,6 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
 
       const setScrollControlVisible = (control, visible) => {
         control.classList.toggle('is-visible', visible);
-        control.disabled = !visible;
         control.setAttribute('aria-hidden', String(!visible));
         control.tabIndex = visible ? 0 : -1;
         if (!visible && document.activeElement === control) control.blur();
@@ -4651,52 +4649,25 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
         window.requestAnimationFrame(updateScrollControls);
       };
       scrollToTop.addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: motionReduced ? 'auto' : 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'auto' });
       });
       scrollToBottom.addEventListener('click', () => {
-        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: motionReduced ? 'auto' : 'smooth' });
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
       });
       window.addEventListener('scroll', scheduleScrollControlUpdate, { passive: true });
       window.addEventListener('resize', scheduleScrollControlUpdate);
       updateScrollControls();
-
-      const hideZones = [
-        document.querySelector('.hero'),
-        document.getElementById('contact'),
-        document.querySelector('footer'),
-        ...document.querySelectorAll('.cta-trigger:not(.floating-contact)')
-      ];
-      const zoneVisibility = new Map(hideZones.map((zone) => [zone, false]));
-      const updateFloatingContact = () => {
-        const contactOptionOnScreen = [...zoneVisibility.values()].some(Boolean);
-        const shouldShow = !chooser.open && !contactOptionOnScreen;
-        floatingContact.classList.toggle('is-visible', shouldShow);
-        floatingContact.disabled = !shouldShow;
-        floatingContact.setAttribute('aria-hidden', String(!shouldShow));
-        floatingContact.tabIndex = shouldShow ? 0 : -1;
-        if (!shouldShow && document.activeElement === floatingContact) floatingContact.blur();
-      };
-
-      if ('IntersectionObserver' in window) {
-        const visibilityObserver = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => zoneVisibility.set(entry.target, entry.isIntersecting));
-          updateFloatingContact();
-        }, { threshold: 0.01 });
-        hideZones.forEach((zone) => visibilityObserver.observe(zone));
-      }
 
       document.querySelectorAll('.cta-trigger').forEach((trigger) => {
         trigger.addEventListener('click', () => {
           lastTrigger = trigger;
           copyStatus.textContent = '';
           chooser.showModal();
-          updateFloatingContact();
         });
       });
 
       const closeChooser = () => {
         chooser.close();
-        updateFloatingContact();
         lastTrigger?.focus();
       };
 
@@ -4704,7 +4675,6 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       chooser.addEventListener('click', (event) => {
         if (event.target === chooser) closeChooser();
       });
-      chooser.addEventListener('close', updateFloatingContact);
 
       chooser.querySelectorAll('a').forEach((link) => {
         link.addEventListener('click', () => chooser.close());
