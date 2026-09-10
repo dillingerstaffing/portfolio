@@ -214,9 +214,9 @@
     .search-line:focus-within { border-color: var(--acid); }
     .search-line input {
       width: 100%; min-width: 0; border: 0; padding: 10px 0; outline: 0;
-      background: transparent; color: var(--ink); font: 13px var(--mono);
+      background: transparent; color: var(--ink); font: 16px var(--mono);
     }
-    .search-line input::placeholder { color: var(--dim); }
+    .search-line input::placeholder { color: var(--dim); font-style: italic; opacity: .42; }
     .search-clear {
       border: 0; padding: 10px 0 10px 18px; background: transparent; color: var(--dim);
       font: 11px var(--mono); cursor: pointer;
@@ -250,14 +250,6 @@
       max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain;
       border-top: 1px solid var(--line); background: var(--bg); scrollbar-width: thin;
     }
-    .chapter-select-wrap { display: none; }
-    .chapter-select-label { display: block; margin-bottom: 7px; color: var(--dim); font-size: 10px; }
-    .chapter-select {
-      display: block; width: 100%; max-width: 100%; min-width: 0;
-      border: 1px solid #485348; padding: 10px 34px 10px 10px;
-      border-radius: 0; background: var(--bg); color: var(--acid); font: 11px var(--mono);
-    }
-    .chapter-select:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
     .chapter-button {
       position: relative; width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 8px;
       border: 0; border-bottom: 1px solid var(--line); padding: 10px 8px 10px 15px;
@@ -442,14 +434,24 @@
       .metric:nth-child(2) { border-right: 0; }
       .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
       .section-head { grid-template-columns: 1fr; gap: 16px; }
-      .project-browser { grid-template-columns: 1fr; gap: 24px; }
+      .project-browser { display: block; }
       .chapter-rail {
-        display: block; top: 0; max-height: none; overflow: hidden; padding: 8px 0;
+        position: sticky; top: 0; z-index: 24; max-height: none; overflow: visible; padding: 0;
         border-top: 0; border-bottom: 1px solid var(--line); background: var(--bg);
       }
-      .chapter-select-wrap { display: block; width: 100%; }
-      .chapter-list { display: none; }
-      .project { scroll-margin-top: 64px; }
+      .chapter-list {
+        display: flex; width: 100%; overflow-x: auto; overflow-y: hidden;
+        scroll-snap-type: x mandatory; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+      }
+      .chapter-button {
+        flex: 0 0 auto; width: auto; min-height: 52px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+        gap: 8px; padding: 10px 14px; border-bottom: 0; border-right: 1px solid var(--line);
+        white-space: nowrap; scroll-snap-align: start;
+      }
+      .chapter-button::before { display: none; }
+      .chapter-button.is-active { background: var(--acid); color: var(--black); }
+      .project { contain-intrinsic-size: auto 1200px; scroll-margin-top: 64px; }
+      html.density-compact .project { contain-intrinsic-size: auto 58px; }
       .compact-main { grid-template-columns: 46px minmax(118px, .6fr) minmax(170px, 1fr); }
       .compact-result { display: none; }
       .service { grid-template-columns: minmax(160px, .48fr) 1fr; }
@@ -499,6 +501,7 @@
       html { scroll-behavior: auto; }
       .floating-contact, .project { transition: none; }
     }
+
   </style>
 </head>
 <body>
@@ -582,10 +585,6 @@
 
       <div class="project-browser">
         <nav class="chapter-rail" aria-label="Proof chapters">
-          <div class="chapter-select-wrap">
-            <label class="chapter-select-label" for="chapter-select">Proof chapter</label>
-            <select class="chapter-select" id="chapter-select"></select>
-          </div>
           <div class="chapter-list"></div>
         </nav>
         <div class="project-record">
@@ -3419,9 +3418,136 @@ sanitizers ................ ASan+UBSan clean
           terminalName: 'systems-lab / lab / 55-zero-run',
           terminalLabel: 'Verified longest zero-run test output',
           showRepoLink: true
-        }
-      ];
+        },
+        {
+          id: 'bit-rotate-add',
+          kicker: 'BITWISE',
+          title: 'bit-rotate-add (systems-lab/lab/56)',
+          summary: '64-bit rotate-left by k composed with wrapping add, built from the shift modulo identity ((n - (k % n)) % n for the counter-rotation) and verified against an independent per-bit reference that never uses the shift/OR rotate identity. Verified: 64,000,000 differential cases (all 64 rotation amounts x 1,000,000 fixed-seed values, 3 checks each), 0 mismatches, FNV-1a checksum 11571239451276328976 identical across -O0, -O2, and ASan+UBSan builds; measured 10.51 ns/value at -O2 including PRNG.',
+          specRows: [
+            ['OPERATION', 'rotl64 and rot_add64 (rotate composed with wrapping add)'],
+            ['MECHANISM', 'Shift modulo identity ((n - (k % n)) % n)'],
+            ['REFERENCE', 'Independent per-bit rotate, never the shift/OR identity'],
+            ['CHECKS', '64,000,000 differential, 0 mismatches'],
+            ['BUILDS', 'Identical FNV-1a checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '10.51 ns/value at -O2 (includes PRNG)']
+          ],
+          terminalOutput: `$ ./test_rotadd\nrotation_amounts ........... 64\nvalues_per_amount .......... 1000000\ntotal_cases ................ 64000000\nmismatches ................. 0\nfnv1a_checksum ............. 11571239451276328976\nns_per_value (-O2) ......... 10.51\n\n10.51 ns/value at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 64000000,
+          failures: 0,
+          stressItems: 64000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/56-bit-rotate-add',
+          repoLabel: 'GitHub: systems-lab/lab/56-bit-rotate-add',
+          terminalName: 'systems-lab / lab / 56-bit-rotate-add',
+          terminalLabel: 'Verified bit-rotate-add test output',
+          showRepoLink: true
+        },
+        {
+          id: 'saturating-sub-borrow',
+          kicker: 'INTEGER ARITHMETIC',
+          title: 'saturating-sub-borrow (systems-lab/lab/57)',
+          summary: 'Branch-free unsigned saturating subtract built from the borrow-out identity using unsigned arithmetic only: result = a - b, saturate to 0 when borrow. Verified: 4,294,967,296 exhaustive pairs (2^16 x 2^16) plus 10,000,000 fixed-seed random pairs, 4,304,967,296 total checks, 0 mismatches, checksum 0xfb3dd8407f4dd8d1 identical across -O0, -O2, and ASan+UBSan builds; measured 4.300 ns/pair at -O2 including PRNG.',
+          specRows: [
+            ['OPERATION', 'sat_sub64: a - b, saturate to 0 on borrow'],
+            ['MECHANISM', 'Borrow-out identity, unsigned arithmetic only, no branches'],
+            ['EXHAUSTIVE', '4,294,967,296 pairs (2^16 x 2^16)'],
+            ['RANDOM', '10,000,000 fixed-seed pairs'],
+            ['CHECKS', '4,304,967,296 total, 0 mismatches'],
+            ['BUILDS', 'Identical checksum, -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '4.300 ns/pair at -O2 (includes PRNG)']
+          ],
+          terminalOutput: `$ ./test_satsub\nexhaustive_pairs ............ 4294967296\nrandom_pairs ................ 10000000\ntotal_checks ................ 4304967296\nmismatches .................. 0\nchecksum .................... 0xfb3dd8407f4dd8d1\nns_per_pair (-O2) ........... 4.300\n\n4.300 ns/pair at -O2, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 4304967296,
+          failures: 0,
+          stressItems: 4304967296,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/57-saturating-sub-borrow',
+          repoLabel: 'GitHub: systems-lab/lab/57-saturating-sub-borrow',
+          terminalName: 'systems-lab / lab / 57-saturating-sub-borrow',
+          terminalLabel: 'Verified saturating-sub-borrow test output',
+          showRepoLink: true
+        },
+        {
+          id: 'high-n-bit-mask',
+          kicker: 'BIT MASKS',
+          title: 'High-bit mask, 65,000,000 cases',
+          summary: 'A high-n-bit mask built from the <code>~0ULL &lt;&lt; (64 - n)</code> identity. The n=0 case returns 0 through a ternary branch, so no 64-bit shift by 64 ever executes (n=64 shifts by 0 and returns <code>~0ULL</code>). Differential testing against an independent per-bit reference covered all 65 widths across 1,000,000 fixed-seed splitmix64 random 64-bit values: 65,000,000 cases, 0 mismatches. The <code>popcount(mask) == n</code> and high-bit-field contiguity (<code>mask | (mask - 1) == ~0ULL</code>) invariants held on every case. FNV-1a checksum <code>cf623e770a179ce5</code> identical across <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds; zero sanitizer reports (UBSan specifically confirms the n=0 edge executes no shift by 64). Measured at <code>-O2</code>: 3.379 ns/value.',
+          specRows: [
+            ['BUILD', 'High-n-bit mask from ~0ULL &lt;&lt; (64 - n)'],
+            ['EDGE CASE', 'n=0 returns 0, no shift by 64 executes'],
+            ['REFERENCE', 'Independent per-bit loop'],
+            ['CASES', '65,000,000 across all 65 widths'],
+            ['INVARIANTS', 'popcount(mask) == n, contiguity holds on every case'],
+            ['RESULT', '0 mismatches, zero sanitizer reports'],
+            ['CHECKSUM', 'cf623e770a179ce5 across every build'],
+            ['-O2', '3.379 ns/value']
+          ],
+          terminalOutput: `<span class="prompt">$</span> ./test_mask
+cases=65000000
+mismatches=0
+invariant_failures=0
+random_failures=0
+fnv1a=cf623e770a179ce5
+verification_time=3.018 s
+throughput_ns_per_value=3.379
+run_exit=0
 
+<span class="result">65,000,000 cases, 0 mismatches</span>`,
+          verificationEnvironment: 'Host',
+          checks: 65000000,
+          failures: 0,
+          stressItems: 65000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/60-mask-above',
+          repoLabel: 'View the high-bit mask proof',
+          terminalName: 'systems-lab / lab/60-mask-above',
+          terminalLabel: 'Measured high-bit mask differential test output',
+          showRepoLink: true
+        },
+        {
+          id: 'medeleg-writable-mask',
+          kicker: 'RISC-V PRIVILEGE',
+          title: 'medeleg/mideleg writable-mask measurement (riscv-baremetal-demo/src/medeleg-mask)',
+          summary: 'Bare-metal RV64 M-mode program that writes all-ones to the trap-delegation CSRs <code>medeleg</code> and <code>mideleg</code>, reads back the writable-bit mask (each write/readback done twice, both readbacks must agree), restores the recorded boot values, and verifies trap behavior is unchanged by requiring a pre-write and post-restore M-mode <code>ecall</code> trap to match exactly on <code>mcause</code>, <code>mepc</code>, and <code>mtval</code>. Measured on QEMU 8.2.2, 3 runs, output identical: boot <code>medeleg=0x0</code>, boot <code>mideleg=0x1444</code>; <code>medeleg</code> writable mask <code>0xf0bfff</code> (bits 0-9 except reserved bit 10, plus 11, 12, 13, 15, and reserved bits 20-23 writable on this QEMU build); <code>mideleg</code> writable mask <code>0x3666</code> (bits 1, 2, 5, 6, 9, 12, 13); both traps match at <code>mcause=0xb</code> (ecall from M-mode), <code>mepc=0x8000020a</code>, <code>mtval=0x0</code>. Boot <code>mideleg</code> was nonzero, so the program restores the recorded boot values rather than zeroing. <code>RESULT: PASS</code> on all 3 runs.',
+          specRows: [
+            ['MODE', 'Bare-metal RV64 M-mode'],
+            ['METHOD', 'All-ones write, double readback, restore to boot values'],
+            ['MEDELEG', 'Writable mask 0xf0bfff, boot 0x0'],
+            ['MIDELEG', 'Writable mask 0x3666, boot 0x1444'],
+            ['TRAP CHECK', 'Pre/post ecall traps match: mcause=0xb, mepc=0x8000020a, mtval=0x0'],
+            ['RUNS', '3 QEMU 8.2.2 runs, identical output'],
+            ['RESULT', 'PASS on all 3 runs']
+          ],
+          terminalOutput: String.raw`<span class="prompt">$</span> qemu-system-riscv64 -machine virt \
+  -nographic -bios none -kernel medeleg-mask.elf
+
+medeleg-mask: medeleg/mideleg writable-bit measurement
+boot: medeleg=0x0 mideleg=0x1444
+trap1: traps=1 mcause=0xb mepc=0x8000020a mtval=0x0
+mask: medeleg-write=0xffffffffffffffff readback1=0xf0bfff readback2=0xf0bfff
+mask: mideleg-write=0xffffffffffffffff readback1=0x3666 readback2=0x3666
+restore: medeleg=0x0 mideleg=0x1444
+trap2: traps=2 mcause=0xb mepc=0x8000020a mtval=0x0
+RESULT: PASS
+done
+
+<span class="result">writable masks measured, traps unchanged, PASS x3</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-mask/',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/medeleg-mask',
+          terminalName: 'qemu / riscv64 / medeleg-mask.elf',
+          terminalLabel: 'Measured medeleg/mideleg writable-mask output',
+          showRepoLink: true
+        }
+
+      ];
+      ['bit-rotate-add', 'saturating-sub-borrow'].forEach((id) => {
+        const index = PROJECTS.findIndex((project) => project.id === id);
+        if (index !== -1) PROJECTS.splice(index, 1);
+      });
       const AUDIENCES = [
         'Firmware teams with a defined blocker',
         'Hardware startups bringing up a board',
@@ -3533,31 +3659,45 @@ sanitizers ................ ASan+UBSan clean
         return row ? stripHTML(row[1]) : '';
       };
 
+      const chapterGroups = {
+        'RISC-V TRAPS & PRIVILEGE': ['RISC-V INTERRUPTS', 'RISC-V TRAP DISPATCH', 'RISC-V PRIVILEGE TRANSITIONS', 'RISC-V PRIVILEGE TRANSITION', 'RISC-V PRIVILEGE MODES', 'RISC-V PRIVILEGE', 'RISC-V MACHINE MODE'],
+        'RISC-V MEMORY & MULTICORE': ['RISC-V VIRTUAL MEMORY', 'RISC-V MEMORY ACCESS', 'RISC-V MULTICORE', 'RISC-V ATOMICS', 'RISC-V STORAGE', 'MEMORY MANAGEMENT'],
+        'RISC-V CSRs & COUNTERS': ['RISC-V CSRs', 'RISC-V CSRS', 'RISC-V MACHINE COUNTERS', 'RISC-V CYCLE COUNTER', 'RISC-V'],
+        'INTEGER ARITHMETIC': ['INTEGER ARITHMETIC', 'INTEGER ALGORITHM', 'DECIMAL ARITHMETIC', 'FIXED-POINT ARITHMETIC', 'FLOATING POINT'],
+        'BIT MANIPULATION': ['BIT MANIPULATION', 'BIT IDENTITIES', 'BIT MASKS', 'BIT ARITHMETIC', 'BIT REDUCTION', 'BIT REPRESENTATION', 'BYTE PERMUTATION'],
+        'CHECKSUMS & HASHING': ['CHECKSUMS', 'CHECKSUM', 'HASH FUNCTIONS', 'ERROR DETECTION'],
+        'STRINGS & MEMORY OPS': ['BOUNDED STRING SCAN', 'MEMORY COPY', 'MEMORY', 'LIBC IMPLEMENTATION'],
+        'CONCURRENCY': ['CONCURRENCY', 'LOCK-FREE', 'CONCURRENT DATA STRUCTURE'],
+        'ALGORITHMS': ['BINARY SEARCH', 'PSEUDORANDOM GENERATOR', 'BENCHMARKS'],
+        'SYSTEMS & KERNEL': ['XV6 SYSCALL', 'KERNEL EXTENSION', 'BARE-METAL KERNEL', 'SYSTEMS-LAB', 'TESTING']
+      };
+      const chapterForKicker = new Map(
+        Object.entries(chapterGroups).flatMap(([chapter, kickers]) => kickers.map((kicker) => [kicker, chapter]))
+      );
       const chapters = [];
       const chapterByName = new Map();
       PROJECTS.forEach((project) => {
-        if (!chapterByName.has(project.kicker)) {
-          const chapter = { kicker: project.kicker, count: 0, firstId: project.id };
-          chapterByName.set(project.kicker, chapter);
+        const chapterName = chapterForKicker.get(project.kicker) || project.kicker;
+        project.chapter = chapterName;
+        if (!chapterByName.has(chapterName)) {
+          const chapter = { name: chapterName, count: 0, firstId: project.id };
+          chapterByName.set(chapterName, chapter);
           chapters.push(chapter);
         }
-        chapterByName.get(project.kicker).count += 1;
+        chapterByName.get(chapterName).count += 1;
       });
 
       const chapterList = document.querySelector('.chapter-list');
-      const chapterSelect = document.getElementById('chapter-select');
       chapters.forEach((chapter) => {
         const targetId = `project-${chapter.firstId}`;
-        const label = `${chapter.kicker} (${chapter.count})`;
         const button = document.createElement('button');
         button.className = 'chapter-button';
         button.type = 'button';
-        button.dataset.kicker = chapter.kicker;
+        button.dataset.chapter = chapter.name;
         button.dataset.target = targetId;
-        button.setAttribute('aria-label', `${chapter.kicker}, ${chapter.count} ${chapter.count === 1 ? 'project' : 'projects'}`);
-        button.innerHTML = `<span>${chapter.kicker}</span><span class="chapter-count">${chapter.count}</span>`;
+        button.setAttribute('aria-label', `${chapter.name}, ${chapter.count} ${chapter.count === 1 ? 'project' : 'projects'}`);
+        button.innerHTML = `<span>${chapter.name}</span><span class="chapter-count">${chapter.count}</span>`;
         chapterList.appendChild(button);
-        chapterSelect.add(new Option(label, targetId));
       });
 
       const projectsContainer = document.getElementById('projects-list');
@@ -3567,6 +3707,7 @@ sanitizers ................ ASan+UBSan clean
         article.id = `project-${project.id}`;
         article.tabIndex = 0;
         article.dataset.kicker = project.kicker;
+        article.dataset.chapter = project.chapter;
         article.dataset.search = [
           project.title,
           project.kicker,
@@ -3625,13 +3766,16 @@ sanitizers ................ ASan+UBSan clean
         return !nearest || distance < nearest.distance ? { card, distance } : nearest;
       }, null)?.card;
 
-      const setActiveChapter = (kicker) => {
+      const setActiveChapter = (chapter) => {
         chapterButtons.forEach((button) => {
-          const active = button.dataset.kicker === kicker;
+          const active = button.dataset.chapter === chapter;
+          const changed = active && !button.classList.contains('is-active');
           button.classList.toggle('is-active', active);
           if (active) {
             button.setAttribute('aria-current', 'true');
-            chapterSelect.value = button.dataset.target;
+            if (changed && window.innerWidth <= 900) {
+              button.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
+            }
           } else {
             button.removeAttribute('aria-current');
           }
@@ -3647,7 +3791,7 @@ sanitizers ................ ASan+UBSan clean
         if (!target) return;
         target.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'start' });
         replaceHash(target.id);
-        setActiveChapter(target.dataset.kicker);
+        setActiveChapter(target.dataset.chapter);
       };
       chapterButtons.forEach((button) => button.addEventListener('click', () => goToChapter(button.dataset.target)));
       chapterList.addEventListener('keydown', (event) => {
@@ -3663,8 +3807,6 @@ sanitizers ................ ASan+UBSan clean
         chapterButtons[nextIndex].focus();
         chapterButtons[nextIndex].scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'nearest', inline: 'nearest' });
       });
-      chapterSelect.addEventListener('change', () => goToChapter(chapterSelect.value));
-
       const searchInput = document.getElementById('proof-search');
       const searchClear = document.querySelector('.search-clear');
       const searchStatus = document.querySelector('.search-status');
@@ -3798,7 +3940,7 @@ sanitizers ................ ASan+UBSan clean
         requestAnimationFrame(() => requestAnimationFrame(() => {
           target.scrollIntoView({ behavior: 'auto', block: 'start' });
           flashProject(target);
-          setActiveChapter(target.dataset.kicker);
+          setActiveChapter(target.dataset.chapter);
         }));
       };
       window.addEventListener('hashchange', activateHashProject);
@@ -3809,7 +3951,7 @@ sanitizers ................ ASan+UBSan clean
       const updateProofPosition = () => {
         const current = nearestProject();
         if (!current) return;
-        setActiveChapter(current.dataset.kicker);
+        setActiveChapter(current.dataset.chapter);
         const workRect = document.getElementById('work').getBoundingClientRect();
         if (workRect.bottom > 0 && workRect.top < window.innerHeight) {
           replaceHash(current.id);
@@ -3820,13 +3962,13 @@ sanitizers ................ ASan+UBSan clean
           railFrame = requestAnimationFrame(() => {
             railFrame = 0;
             const current = nearestProject();
-            if (current) setActiveChapter(current.dataset.kicker);
+            if (current) setActiveChapter(current.dataset.chapter);
           });
         }
         window.clearTimeout(scrollTimer);
         scrollTimer = window.setTimeout(updateProofPosition, 140);
       }, { passive: true });
-      if (projectCards[0]) setActiveChapter(projectCards[0].dataset.kicker);
+      if (projectCards[0]) setActiveChapter(projectCards[0].dataset.chapter);
 
       document.getElementById('services-title').textContent = `${numberWord(SERVICES.length)} simple ways to get unstuck.`;
       document.querySelector('.services').innerHTML = SERVICES
@@ -3862,6 +4004,7 @@ sanitizers ................ ASan+UBSan clean
         document.querySelector('.hero'),
         document.getElementById('contact'),
         document.querySelector('footer'),
+        chapterRail,
         ...document.querySelectorAll('.cta-trigger:not(.floating-contact)')
       ];
       const zoneVisibility = new Map(hideZones.map((zone) => [zone, false]));
