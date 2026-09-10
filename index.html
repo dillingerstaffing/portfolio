@@ -847,16 +847,17 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
         </div>
       </article>
 
-      <article class="research-note">
+            <article class="research-note">
         <div>
           <h3>The Division That Never Divides</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 13:05 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>Suppose you need x divided by 3, where x is a 32-bit unsigned integer, on a chip where division is slow or missing entirely. The instinct is the / operator. There is a one-line replacement: multiply by 0xAAAAAAAB and shift right by 33. That is the whole division, and no div instruction appears anywhere.</p>
-          <p>Why does it work? Write x as 3a + r, where r is 0, 1, or 2 and a is the answer we want. The constant 0xAAAAAAAB equals ceil(2^33 / 3), which is (2^33 + 1) / 3. Multiply out: x * M = a * 2^33 + (a + r*(2^33 + 1)/3). The second term stays below 2^33 for every 32-bit x (a is under 2^31, so a/2^33 stays under 1/6, and the r part stays under 2/3 plus a hair). Shifting right by 33 bits drops exactly the leftover and leaves a, which is floor(x/3). The product fits in 64 bits, so the widening multiply is exact.</p>
-          <p>Verified against the native / operator: 19 directed edge rows at the ends of the range, all 65,536 16-bit inputs exhaustively, and 1,000,000 fixed-seed random values. 1,065,555 checks, 0 mismatches, with an identical FNV-1a checksum across -O0, -O2, and ASan+UBSan builds. The compiled code at -O2 is mov, imul, shr, ret: no div instruction. It measures 2.221 ns per value.</p>
-          <p>The trick comes from Granlund and Montgomery's 1994 PLDI paper on strength-reducing integer division, which gives the general construction for any divisor. The lab pins down the 32-bit divide-by-3 case with the exact error bound, the edge cases, and the measurements.</p>
+          <p>On some chips division is slow, twenty cycles or more against three for a multiply, and on others the instruction barely exists. So compilers never emit a real division when the divisor is a known constant. They multiply by the reciprocal instead, written in fixed point. For division by 3, the reciprocal is 1/3, and at 33 bits of precision the fixed-point 1/3 is the constant 0xAAAAAAAB, the smallest integer just above 2^33 / 3.</p>
+          <p>Try it on 10, where the true answer is 3. Multiply 10 by 0xAAAAAAAB to get 28,633,115,310, then shift right by 33, which divides by 2^33 = 8,589,934,592. The quotient is 3.33, and the shift keeps only the whole part: 3. Exact.</p>
+          <p>The reason it never overshoots is the shape of the product. For every 32-bit input, the 64-bit product holds the true answer above bit 33 and all of the rounding error below it, and the error can never grow large enough to reach bit 33. The shift therefore discards exactly the error and keeps exactly the answer. The lab's proof walks that bound; the short version is that the constant was chosen as the ceiling of 2^33 / 3, and with that choice the error term provably stays under 2^33 for every input.</p>
+          <p>Verified against the native / operator on 19 directed edge rows at the ends of the range, all 65,536 16-bit inputs exhaustively, and 1,000,000 fixed-seed random values: 1,065,555 checks, 0 mismatches, with an identical FNV-1a checksum across -O0, -O2, and ASan+UBSan builds. At -O2 the compiler emits mov, imul, shr, ret, no div instruction, about 2.2 nanoseconds per call.</p>
+          <p>The general construction for any divisor comes from Granlund and Montgomery's 1994 PLDI paper on strength-reducing integer division. The lab pins down the 32-bit divide-by-3 case with the exact error bound, the edge cases, and the measurements. In one sentence: division by a constant is multiplication by a fixed-point reciprocal, and the whole art is proving the rounding error never reaches the bits you keep.</p>
           <pre><code>uint32_t div3_u32(uint32_t x)
 {
     return (uint32_t)(((uint64_t)x * 0xAAAAAAABULL) &gt;&gt; 33);
@@ -865,104 +866,123 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
         </div>
       </article>
 
-      <article class="research-note">
+            <article class="research-note">
         <div>
           <h3>The Four Bytes the Trap Handler Skips</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 12:01 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>When a RISC-V trap fires, the hardware writes mepc with the address of the faulting instruction, and never advances it. Resume the hart without touching mepc and the faulting instruction runs again. So the handler is responsible for skipping past it. The subtle part is the skip length: RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits. Anything but 11 there is a 16-bit instruction; 11 starts the longer forms. A blind mepc plus 4 after a 2-byte compressed load lands the hart in the middle of an instruction.</p>
-          <pre><code>la      t0, 1f          # assembler resolves the target, not the C label
-lw      a0, 0(a1)       # faults here; pinned to 4 bytes by .option norvc
-1:
-# resume mepc + 4, asserted from the two captured addresses</code></pre>
-          <p>The module pins the fault site with <code>.option norvc</code> so the assembler cannot silently choose the 2-byte c.lw form, then refuses to trust the pin alone. It asserts the 4-byte delta at runtime from two independent address captures using in-asm numeric local labels, the <code>la t0, 1f</code> construction. That construction came out of the &amp;&amp;label correction: with no computed goto in reach, -O2 may move a labels-as-values label and the address follows it, so the assembler must resolve the address exactly.</p>
-          <p>The proof reads like an exhaustion of the alternatives. Trap count is exactly 1: a plus 0 would have re-trapped and counted 2. The marker 0xdeadbeefdeadbeef sits in its slot: a plus 8 would have sailed over it. mcause is 5 with the sign-extended unmapped address in mtval, the instruction word at the fault address reads 0x0005a503, the intended lw and nothing else, and a0 still holds its sentinel afterward, direct evidence the faulting load never committed its destination. Three QEMU runs, byte-identical, all PASS.</p>
-          <p>This rhymes with xv6's usertrap, which advances epc by 4 past the ecall before dispatching the syscall. That is safe only because ecall has no compressed form. This module is the general case of that line: prove the length, then skip. The honest limit, stated in the PROOF, is that this verifies QEMU's M-mode model, not silicon.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mepc-resume-skip" target="_blank" rel="noopener">GitHub: riscv-baremetal-demo</a></p>
+          <p>A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction's address into the mepc register and jumps to your handler. When the handler returns, the CPU resumes at whatever mepc points to. If the handler changed nothing, the CPU re-runs the same bad load, traps again, and you have an infinite loop. So the handler's most basic job is to move mepc past the dead instruction before returning.</p>
+          <p>How far past? RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits of the first parcel: anything but 11 there is a 16-bit compressed instruction, and 11 starts the longer forms. A handler that blindly adds 4 will land in the middle of an instruction whenever the faulting one was compressed, and the CPU will try to execute half an instruction.</p>
+          <p>This module pins the fault site to exactly 4 bytes, twice over. First it assembles the faulting load under .option norvc, which tells the assembler to emit no compressed instructions in that region. Then it refuses to trust that promise alone: it captures the address on both sides of the faulting load with in-assembly numeric local labels, la t0, 1f before and 1: after, and the test asserts at runtime that the two addresses differ by exactly 4.</p>
+          <p>Why in-assembly labels instead of a C labels-as-values label? A C label only stays where the programmer put it if a computed goto can reach it. With no computed goto in range, -O2 is free to merge blocks and move the label, and the captured address follows the label to its new home. An assembler numeric label is resolved by the assembler exactly where written. That is the whole reason, and the construction is trustworthy because of it.</p>
+          <p>The test then proves the skip happened exactly once: the trap counter reads exactly 1, since a re-trap would have made it 2; the 0xdeadbeefdeadbeef marker still sits at its address, since a skip of 8 would have sailed over it; mcause reads 5 for a load access fault with the bad address in mtval; the instruction word at the fault address reads 0x0005a503, the intended lw; and the destination register still holds its pre-fault sentinel, proving the faulting load never committed. Three QEMU runs, byte-identical.</p>
+          <p>One honest boundary. The xv6 kernel gets away with mepc += 4 after an ecall only because ecall has no compressed form. This module is the general case: prove the instruction's length first, then skip it. And the verification is against QEMU's M-mode model, which is faithful, but it is still a model, not silicon. In one sentence: a trap handler that skips must know the instruction's length, and the only length worth trusting is one measured at runtime from both sides of the fault.</p>
+          <pre><code>    la      t0, 1f          # capture the address before the faulting load
+    lw      a0, 0(a1)       # the fault: 4 bytes, guaranteed by .option norvc
+1:                          # mepc advances here; the test asserts the gap is 4</code></pre>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">riscv-baremetal-demo</a></p>
         </div>
       </article>
 
-      <article class="research-note">
+            <article class="research-note">
         <div>
           <h3>The Lookup Table That Fits in 16 Bits</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 11:05 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>The parity of a 32-bit word is the XOR of all its bits. Fold the word down and the XOR survives every step: <code>x ^= x &gt;&gt; 16</code>, then 8, then 4, and the answer sits in the lowest nibble. The final step is where it turns beautiful: <code>(0x6996 &gt;&gt; v) &amp; 1</code>. The constant in binary is <code>0110 1001 1001 0110</code>, and bit <code>i</code> of it is exactly the parity of nibble <code>i</code>, so one shift reads out a 16-entry lookup table packed into a single immediate. No table, no branches, no popcount instruction.</p>
-          <pre><code>x ^= x &gt;&gt; 16;
-x ^= x &gt;&gt; 8;
-x ^= x &gt;&gt; 4;
-return (0x6996 &gt;&gt; (x &amp; 0xf)) &amp; 1;</code></pre>
-          <p>Writing the constant down is not the hard part; trusting it is. All sixteen rows were hand-derived against the naive per-bit definition rather than assumed. And the compiler takes the construction literally: the -O2 disassembly shows <code>movl $27030</code>, which is 0x6996 in decimal, with no popcount-class instruction emitted.</p>
-          <p>Lab/97 checked 1,065,536 differential cases and a million homomorphism pairs confirming that parity(a^b) equals parity(a) XOR parity(b). Zero mismatches. One FNV fingerprint identical across -O0, -O2, and the sanitizers. The shift-lookup idea is credited to Mathew Hendry in December 2002; lab/35 built the fold, lab/97 packed the table that fits in sixteen bits.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+          <p>Parity asks a small question: does this 32-bit word hold an odd or an even number of 1-bits? The lab answers it with no popcount instruction, no table in memory, and no branches.</p>
+          <p>First, fold the word down. XOR the top 16 bits into the bottom 16: x ^= x &gt;&gt; 16. Each bit of the result is the XOR of two original bits, and the XOR of two bits is 1 exactly when the pair held an odd number of ones. So the 16-bit result has the same parity as the whole word. Fold again by 8, then by 4, and the parity of all 32 bits now lives in the low nibble.</p>
+          <p>Check it on 0xD2, which is 11010010, four ones, even. Fold by 4: 1101 XOR 0010 = 1111. Fold by 2: 11 XOR 11 = 00. The low nibble is 1100, still even. The count collapsed, but its oddness or evenness survived every step, because XOR-ing pairs can never change the parity of the total.</p>
+          <p>Now the answer is a 4-bit value, and there are only 16 possible answers. Write all 16 down as bits, with bit i holding the parity of the nibble i: bit 0 is 0, bit 1 is 1, bit 2 is 1, bit 3 is 0, and so on through bit 15. Those 16 bits spell 0110 1001 1001 0110, which is 0x6996. Reading the table is one shift: (0x6996 &gt;&gt; v) &amp; 1. For our 0xD2, v is 12, bit 12 of the constant is 0, even, correct.</p>
+          <p>The constant is only trustworthy because every one of its 16 bits was hand-derived against the naive definition in the lab's proof, and the compiler emits movl $27030, that is 0x6996 in decimal, with no popcount in sight: the table really is an immediate, not a memory reference.</p>
+          <p>Verified three ways: all 65,536 16-bit inputs against a naive bit counter, 1,065,536 differential cases over full 32-bit values, and a million random pairs checking the homomorphism the fold relies on, parity(a XOR b) = parity(a) XOR parity(b). Zero mismatches, and one FNV fingerprint shared across -O0, -O2, and sanitizer builds, so the result does not depend on how it was compiled. The shift-and-mask table read is Mathew Hendry's 2002 comp.lang.c trick; the lab's contribution is the fold that shrinks any word to the nibble the table can read. In one sentence: when a table has 16 entries of one bit each, the table fits inside a 16-bit constant.</p>
+          <pre><code>int parity32(uint32_t x)
+{
+    x ^= x &gt;&gt; 16;
+    x ^= x &gt;&gt; 8;
+    x ^= x &gt;&gt; 4;
+    return (int)((0x6996u &gt;&gt; (x &amp; 0xfu)) &amp; 1u);
+}</code></pre>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996" target="_blank" rel="noopener">lab/97-parity-6996</a></p>
         </div>
       </article>
 
-      <article class="research-note">
+            <article class="research-note">
         <div>
           <h3>The Multiply That Never Carries</h3>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>Here is the surprise: <code>0xff × 0xff</code> can equal <code>0x5555</code>, not the ordinary answer <code>0xfe01</code>. Write <code>0xff</code> as eight 1-bits: <code>11111111</code>. Ordinary multiplication adds the overlapping shifted rows and carries into the next column. This version combines the rows with XOR, so an odd number of 1s leaves a 1, an even number leaves a 0, and nothing carries. The alternating columns produce <code>0101010101010101</code>, or <code>0x5555</code>.</p>
-          <pre><code>while (b) {
-  if (b &amp; 1) res ^= a;
-  a &lt;&lt;= 1;
-  b &gt;&gt;= 1;
+          <p>Multiply 0xFF by 0xFF the schoolbook way: write out 8 shifted copies of 0xFF, one per set bit, and add the columns. The columns produce carries, and the total is 0xFE01. Now do the same thing but combine the columns with XOR instead of addition. Column 0 holds one 1, column 1 holds two, column 2 holds three, climbing to eight in column 7, then back down. XOR keeps a 1 wherever the count is odd, which is exactly the even-numbered columns, giving 0101010101010101 in binary: 0x5555. No carry ever propagated, because XOR never produces one.</p>
+          <p>That is carryless multiplication: ordinary shift-and-add with XOR as the combine step. Each bit is treated as a coefficient of a polynomial, and the result is the polynomial product. It sounds like a curiosity until you learn that AES-GCM authentication, the machinery that keeps TLS sessions honest, is built on exactly this operation, and that modern chips carry a dedicated PCLMULQDQ instruction for it. A pure-C version matters wherever that instruction is absent and the crypto still has to run.</p>
+          <pre><code>static inline clmul128 clmul64(uint64_t a, uint64_t b)
+{
+    uint64_t lo = 0, hi = 0;
+    for (int i = 0; i &lt; 64; i++) {
+        uint64_t m = 0ULL - ((a &gt;&gt; i) &amp; 1ULL);
+        lo ^= (b &lt;&lt; i) &amp; m;
+        hi ^= (i == 0) ? 0ULL : (b &gt;&gt; (64 - i)) &amp; m;
+    }
+    return (clmul128){ .hi = hi, .lo = lo };
 }</code></pre>
-          <p>This is called carryless multiplication. AES-GCM uses it to authenticate encrypted data, and modern chips provide a dedicated instruction for it.</p>
-          <p>Lab/67 checked all 4,294,967,296 pairs of 16-bit inputs and one million random larger values. It found zero mismatches and measured 102.53 ns per value at -O2.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+          <p>For each set bit i of a, the loop XORs b shifted left by i into a 128-bit accumulator. The mask m turns the conditional into arithmetic, so there is no branch; the hi half catches the bits that shift past bit 64. Verified on all 2^32 pairs of 16-bit inputs plus a million random 64-bit pairs, checking the algebraic laws the construction must obey: distributivity over XOR, commutativity, multiply-by-one, multiply-by-zero. Zero mismatches, about 103 nanoseconds per 64-bit multiply. In one sentence: change the combine step from addition to XOR and multiplication becomes carryless, which is exactly the operation cryptography needed badly enough to put in hardware.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul" target="_blank" rel="noopener">lab/67-clmul</a></p>
         </div>
       </article>
 
-      <article class="research-note">
+            <article class="research-note">
         <div>
           <h3>The Twist That Carries a Gigabit</h3>
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
+          <p class="research-date"><time datetime="2026-09-09">2026-09-09 09:15 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>Alexander Graham Bell’s 1881 idea was simple: if outside noise pushes both wires by the same amount, comparing one wire with the other removes that shared noise. The signal survives because it is carried by the difference between the two wires.</p>
-          <p>Each half-twist swaps which wire is closer to the source of the noise. Over a full twist, both wires spend the same amount of distance in each position, so they pick up nearly the same average noise and the receiver can subtract it away.</p>
-          <p>This is why Ethernet cables contain twisted pairs. It is also why a SPLIT fault, where the two wires come from different pairs, can pass a basic continuity test but still fail in use: the wires no longer trade places together, so their noise no longer cancels.</p>
+          <p>When Alexander Graham Bell strung the first twisted telephone lines in 1881, the problem was crosstalk: parallel wires running side by side picked up each other's signals, and one conversation leaked into the next. Twisting the pair was the fix, and the reason it works is still the reason your gigabit Ethernet works.</p>
+          <p>Noise from outside hits both wires of the pair almost equally. The receiver never reads either wire alone; it reads the difference between them, so the shared noise subtracts out. The twist makes that subtraction honest: each half-turn swaps which wire sits closer to the interference source, so over the length of the cable both wires average the same exposure and neither carries a systematic advantage. Without the twist, one wire would consistently couple more noise than the other, and the difference would stop canceling.</p>
+          <p>The failure mode is concrete and has a name: a SPLIT pair, where one wire of a twisted pair gets crossed with a wire from another pair at a jack. The two wires no longer share the same noise, the subtraction breaks, and the link degrades or dies. Cable testers hunt for exactly this fault.</p>
+          <p>Twisted pair still carries most of the world's wired bits because the fix scales: better twist rates and shielding pushed the same 1881 idea from voice to 10 gigabits. The physics did not change; the manufacturing got more precise. In one sentence: twist the pair so both wires share the same noise, then subtract; anything that breaks the pairing breaks the cancellation.</p>
         </div>
       </article>
 
-      <article class="research-note">
+            <article class="research-note">
         <div>
           <h3>The Decrement That Leaves Room for the Ceiling</h3>
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
+          <p class="research-date"><time datetime="2026-09-08">2026-09-08 09:15 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>The decrement is what keeps an exact power of two unchanged. Start with <code>v = 8</code>. Without the decrement, spreading its top 1-bit downward produces 15, and adding 1 returns 16, which is wrong. With the decrement, <code>v</code> becomes 7; spreading the bits leaves it at 7, and adding 1 restores the correct answer, 8.</p>
-          <pre><code>v--;
-v |= v &gt;&gt; 1;
-v |= v &gt;&gt; 2;
-v |= v &gt;&gt; 4;
-v |= v &gt;&gt; 8;
-v |= v &gt;&gt; 16;
-v++;</code></pre>
-          <p>Each shift doubles how far the highest 1-bit reaches, until every lower position is 1 and the final increment carries to the next power of two.</p>
-          <p>Lab/84 checked 194 edge cases, every 16-bit input, and one million random 64-bit values. It found zero mismatches and measured 2.27 ns per value at -O2.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/84-round-up-pow2" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+          <p>Suppose you need the smallest power of two that is at least x. The shape of the answer gives the algorithm away: a power of two in binary is a single 1-bit, so rounding up means finding the highest set bit of x and clearing everything below it. But there is an edge: if x is already a power of two, say 8, which is 0b1000, the highest set bit is already the answer, and any smearing of that bit downward would overshoot to 16.</p>
+          <p>The decrement fixes the edge before anything else happens. Set v = x - 1. If x was exactly 8, v is now 7, 0b0111, whose highest set bit sits one below the answer, and the algorithm will climb back to 8. If x was 9, v is 8, 0b1000, and the algorithm climbs to 16. The subtraction turns "at or below" into "strictly below," which is exactly what the rest of the construction needs.</p>
+          <p>Then smear the top bit downward: each OR with a right-shifted copy doubles how far the highest 1 reaches, so after shifts of 1, 2, 4, 8, 16, and 32, every bit below the top is 1, and v has the form 2^m - 1. One final +1 gives 2^m, the ceiling.</p>
+          <pre><code>uint64_t round_up_pow2_64(uint64_t x) {
+    uint64_t v = x - 1u;
+    v |= v &gt;&gt; 1;
+    v |= v &gt;&gt; 2;
+    v |= v &gt;&gt; 4;
+    v |= v &gt;&gt; 8;
+    v |= v &gt;&gt; 16;
+    v |= v &gt;&gt; 32;
+    return v + 1u;
+}</code></pre>
+          <p>Every line is the algorithm: the decrement handles the already-a-power-of-two case, the six ORs smear the top bit down through all 64 positions, and the increment lands on the ceiling. All 2^32 32-bit inputs plus targeted 64-bit edge cases verify against a naive loop with zero mismatches, in about half a nanosecond per call. In one sentence: round up by first stepping down, because x - 1 makes the highest set bit safe to smear, and the smear plus one is the ceiling.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/84-round-up-pow2" target="_blank" rel="noopener">lab/84-round-up-pow2</a></p>
         </div>
       </article>
 
-      <article class="research-note">
+            <article class="research-note">
         <div>
           <h3>The Checksum That Always Lands on 0x2144DF1C</h3>
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
+          <p class="research-date"><time datetime="2026-09-07">2026-09-07 09:15 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>Append a message's CRC-32 checksum to the message in little-endian byte order, then run CRC-32 over the combined bytes. The result is always 0x2144DF1C, no matter what the original message contained.</p>
-          <pre><code>crc = crc32(msg);
-append_le(msg, crc);
-assert(crc32(msg) == 0x2144DF1C);</code></pre>
-          <p>This CRC-32 algorithm flips every bit before it returns a checksum. The appended bytes are therefore not the raw remainder from the division inside CRC-32, so checking them again does not cancel to zero. Instead, the second pass always ends at the same fixed value, called the residue.</p>
-          <p>Ethernet hardware uses that shortcut: after reading a frame and its checksum, it only has to compare the result with 0x2144DF1C. Lab/82 tested one million random buffers at 207.7 MiB/s with zero mismatches, and the result stayed byte-identical at -O0, at -O2, and with sanitizers enabled.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+          <p>Three lines that verify any buffer against corruption:</p>
+          <pre><code>uint32_t c = crc32(buf, len); append_le32(buf + len, c);
+uint32_t check = crc32(buf, len + 4);
+assert(check == 0x2144DF1C);</code></pre>
+          <p>Compute the CRC-32 of a message, append the four checksum bytes in little-endian order, and checksum the whole thing again. The result is always 0x2144DF1C, for every message. Ethernet hardware has relied on this since the 1980s: instead of recomputing and comparing against a stored value, the receiver checks one constant.</p>
+          <p>The reason it lands on a nonzero constant instead of zero is the bit-flip. This CRC variant inverts every bit of the register before returning it, so the appended bytes are not the raw remainder of the message; they are the remainder with every bit flipped. Re-checking therefore does not cancel to zero the way a plain remainder would. The fixed pre- and post-inversions steer every message, long or empty, to the same nonzero residue.</p>
+          <p>Byte order is load-bearing, and the lab proves it with a control: append the checksum big-endian instead, and the second pass gives 0x3CC9742C, not the residue. Get the order wrong and the magic constant silently stops working, which is exactly the kind of bug this check exists to catch.</p>
+          <p>The lab runs the residue check over a million random buffers, including empty messages and the empty-plus-four-zero-bytes case, with zero mismatches, at about 208 MiB/s. The table and bitwise implementations agree on every case, so the constant is a property of the algorithm, not of one implementation. In one sentence: append the checksum and re-check against one constant; the bit-flip is what makes the constant nonzero, and the byte order is what makes it work at all.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue" target="_blank" rel="noopener">lab/82-crc32-residue</a></p>
         </div>
       </article>
     </section>
