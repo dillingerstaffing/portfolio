@@ -375,6 +375,21 @@
     .chooser-option span:last-child { color: var(--dim); font-size: 16px; }
     .copy-status { min-height: 18px; margin: 2px 0 0; color: var(--acid); font-size: 11px; }
 
+    .permalink-clear {
+      position: fixed;
+      top: max(10px, env(safe-area-inset-top));
+      left: 10px;
+      z-index: 60;
+      font: 10px var(--mono);
+      padding: 8px 10px;
+      background: var(--bg);
+      color: var(--dim);
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .permalink-clear[hidden] { display: none !important; }
+
     .floating-contact {
       position: fixed;
       z-index: 20;
@@ -507,6 +522,8 @@
   </style>
 </head>
 <body>
+  <button id="permalink-clear" class="permalink-clear" type="button" hidden>× clear link</button>
+
   <header class="frame topline">
     <div class="identity">
       <span class="signal" aria-hidden="true"></span>
@@ -3876,6 +3893,18 @@ done
       });
 
       const projectsContainer = document.getElementById('projects-list');
+      const permalinkClear = document.getElementById('permalink-clear');
+      const updatePermalinkClear = () => {
+        permalinkClear.hidden = !location.hash.startsWith('#project-');
+      };
+      updatePermalinkClear();
+      window.addEventListener('hashchange', updatePermalinkClear);
+      permalinkClear.addEventListener('click', () => {
+        history.replaceState(null, '', location.pathname + location.search);
+        updatePermalinkClear();
+        permalinkClear.blur();
+      });
+
       PROJECTS.forEach((project, index) => {
         const article = document.createElement('article');
         article.className = 'project';
@@ -3936,6 +3965,7 @@ done
         if (!link || !projectsContainer.contains(link)) return;
         event.preventDefault();
         history.replaceState(null, '', link.getAttribute('href'));
+        updatePermalinkClear();
         link.textContent = 'Linked';
         window.setTimeout(() => {
           link.textContent = 'Link';
@@ -4184,7 +4214,6 @@ done
         document.querySelector('.hero'),
         document.getElementById('contact'),
         document.querySelector('footer'),
-        chapterRail,
         ...document.querySelectorAll('.cta-trigger:not(.floating-contact)')
       ];
       const zoneVisibility = new Map(hideZones.map((zone) => [zone, false]));
