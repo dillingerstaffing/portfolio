@@ -3841,6 +3841,111 @@ done
           repoLabel: 'GitHub: systems-lab/lab/73-mullo-split',
           terminalLabel: 'Verified low-word multiply test output',
           showRepoLink: true
+        },
+        {
+          id: 'fma-mod-64',
+          kicker: 'C / SYSTEMS',
+          title: 'Fused Multiply-Add, Modulo 2^64, Exactly',
+          summary: 'Exact (a*b+c) mod 2^64 computed from the 32-bit splitting identities: four 32x32->64 partial products accumulated with explicit wrap detection, the high word accumulated for exactness accounting and then discarded, and +c applied by unsigned wraparound. The implementation never uses the 128-bit integer type; the unsigned-128-bit arithmetic appears only in the test oracle. The disassembly at -O2 confirms the split/accumulate sequence survives and the compiler never folds it into one multiply.',
+          specRows: [
+            ['METHOD', '32-bit splitting, no 128-bit integer type'],
+            ['CHECKS', '34,369,738,593 checks, 0 mismatches'],
+            ['CHECKSUM', '0xee898af0ca125a96, identical -O0/-O2/ASan+UBSan'],
+            ['MEASURED', '2.144 ns/triple at -O2']
+          ],
+          terminalOutput: `$ make run (3 runs)\ndifferential ............ 34369738593 checks, 0 mismatches\nchecksum ................ 0xee898af0ca125a96 (identical -O0/-O2/ASan+UBSan)\nthroughput .............. 2.144 ns/triple at -O2\nRESULT: PASS (3/3 runs)\n\n32-bit splitting, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 34369738593,
+          failures: 0,
+          stressItems: 34369738593,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/74-fma-mod',
+          repoLabel: 'GitHub: systems-lab/lab/74-fma-mod',
+          terminalName: 'systems-lab / lab / 74-fma-mod',
+          terminalLabel: 'Verified fma-mod64 test output',
+          showRepoLink: true
+        },
+        {
+          id: 'leading-ones',
+          kicker: 'BIT MANIPULATION',
+          title: 'leading-ones (systems-lab/lab/75)',
+          summary: 'Count of consecutive 1 bits from the most significant bit of a 64-bit word, from the invert-then-scan identity <code>clo(x) = clz(~x)</code>, where clz is built from the shift/OR fill propagation cascade (<code>y |= y >> k</code> for k = 1, 2, 4, 8, 16, 32) followed by a SWAR popcount; no clz-class instruction, no builtins, no intrinsics, no inline asm. The zero input of the scan (the all-ones word) is defined by contract as 64. Verified: 10,065,619 differential checks against a naive bit-by-bit reference (10 hand-checked anchors, all 65,536 16-bit inputs, 73 directed run-length/pattern edges, 10,000,000 fixed-seed splitmix64 words, seed <code>0xC10DCAFE12345678</code>), 0 mismatches in each of the <code>-O0</code>, <code>-O2</code>, and ASan+UBSan builds; FNV-1a checksum of every output count identical across all three builds: <code>0x89c5b240295bdfcc</code>. <code>-O2</code> disassembly shows no <code>bsr</code>, <code>lzcnt</code>, or <code>popcnt</code>: the fill cascade survives as six <code>shr</code>/<code>or</code> pairs and the SWAR popcount as shifts, masks, adds, and one <code>imul</code> for the byte-sum step. Measured best of 5 at <code>-O2</code>: 5.483 ns/value (182.386 M values/s) with the PRNG pre-generated outside the timed loop; 8.267 ns/value with the splitmix64 step inside the loop. Zero warnings under <code>-std=c11 -Wall -Wextra -Werror</code>, clean under ASan and UBSan.',
+          specRows: [
+            ['OPERATION', 'count of leading 1 bits of a 64-bit word'],
+            ['IDENTITY', 'clo(x) = clz(~x); clz from shift/OR fill cascade + SWAR popcount'],
+            ['ZERO INPUT', 'all-ones word defined as 64, no special case'],
+            ['DIFFERENTIAL', '10,065,619 checks vs naive bit-scan reference, 0 mismatches'],
+            ['CHECKSUM', 'FNV-1a 0x89c5b240295bdfcc, identical in -O0, -O2, ASan+UBSan'],
+            ['DISASSEMBLY', 'no bsr/lzcnt/popcnt at -O2; cascade survives as six shr/or pairs'],
+            ['SANITIZERS', 'clean under ASan+UBSan, zero warnings'],
+            ['MEASURED', '5.483 ns/value at -O2, best of 5 (PRNG excluded from timing)']
+          ],
+          terminalOutput: String.raw`<span class="prompt">$</span> ./test_leading_ones
+clo64 differential test, build -O2
+[1/5] anchors
+  anchors checked: 10, mismatches so far: 0
+[2/5] exhaustive 16-bit inputs
+  done: cases=65546 mismatches=0
+[3/5] directed edge words
+  done: cases=65619 mismatches=0
+[4/5] random 64-bit words (splitmix64, seed 0xC10DCAFE12345678)
+  done: cases=10065619 mismatches=0
+[5/5] throughput (PRNG pre-generated, excluded from timing)
+  throughput best of 5: 5.483 ns/value (182.386 M values/s)
+total verification cases: 10065619
+total mismatches: 0
+FNV-1a checksum of all outputs: 0x89c5b240295bdfcc
+RESULT: PASS
+
+<span class="result">10,065,619 checks, 0 mismatches, 5.483 ns/value at -O2</span>`,
+          verificationEnvironment: 'host',
+          checks: 10065619,
+          failures: 0,
+          stressItems: 10000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/75-leading-ones',
+          repoLabel: 'GitHub: systems-lab/lab/75-leading-ones',
+          terminalName: 'systems-lab / lab / 75-leading-ones',
+          terminalLabel: 'Verified count-leading-ones differential test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-pmp-tor-boundary',
+          kicker: 'RISC-V PMP',
+          title: 'PMP TOR exact boundary (riscv-baremetal-demo/src/pmp-tor)',
+          summary: 'Bare-metal RV64 M-mode program forming one exact PMP boundary with two TOR entries: entry 0 allows <code>[0, 0x80002000)</code>, entry 1 denies <code>[0x80002000, 0x80003000)</code> (4 KiB scratch) with the lock bit set (<code>pmpcfg0</code> readback <code>0x880f</code>; a clear attempt leaves <code>0x8800</code>, the locked entry-1 byte holding). The trap handler records <code>mcause</code>/<code>mepc</code>/<code>mtval</code>: an <code>lbu</code> of the last allowed byte <code>0x80001fff</code> completes with no trap and returns the <code>0x5a</code> sentinel; an <code>lbu</code> of the first denied byte <code>0x80002000</code> traps with <code>mcause=5</code> (load access fault), <code>mepc=0x80000272</code> exactly the faulting instruction (disassembly-verified layout, resume-8), and <code>mtval=0x80002000</code> exactly the faulting address. Verified: 3 QEMU 8.2.2 runs, output byte-identical, <code>RESULT: PASS</code> each run. One development defect (entry-1 config byte <code>0x89</code> left the region readable because bit 0 is the R bit; nothing trapped) was caught by reading QEMU\'s own <code>pmp.c</code> privilege check and fixed to <code>0x88</code> before commit.',
+          specRows: [
+            ['MODE', 'Bare-metal RV64 M-mode, QEMU 8.2.2 virt'],
+            ['REGION', 'two TOR entries: allow [0, 0x80002000), deny [0x80002000, 0x80003000) locked'],
+            ['ALLOWED BYTE', 'lbu @0x80001fff: no trap, byte 0x5a'],
+            ['DENIED BYTE', 'lbu @0x80002000: mcause=5, mepc=0x80000272 (faulting insn), mtval=0x80002000'],
+            ['LOCK BIT', 'pmpcfg0 0x880f; clear attempt leaves 0x8800'],
+            ['RUNS', '3 QEMU runs, byte-identical'],
+            ['RESULT', 'PASS x3']
+          ],
+          terminalOutput: String.raw`<span class="prompt">$</span> qemu-system-riscv64 -machine virt \
+  -nographic -bios none -kernel pmp-tor.elf
+
+pmp-tor-boundary: PMP TOR boundary test
+hart mhartid=0
+control: scratch readable/writable before PMP: ok
+control: sentinel 0x5A at boundary-1: ok
+config: pmpaddr0=0x20000800 (TOR [0, 0x80002000) allow) pmpaddr1=0x20000c00 (TOR [0x80002000, 0x80003000) deny,locked)
+config: pmpcfg0 readback=0x880f
+config: pmpcfg0 after clear attempt=0x8800 (entry1 byte 0x88 locked, entry0 byte cleared)
+control: address outside region still accessible: ok
+lbu @0x80001fff: seen=0 mcause=0x0 mepc=0x0 mtval=0x0 resume-8=0x80000272 byte=0x5a
+lbu @0x80002000: seen=1 mcause=0x5 mepc=0x80000272 mtval=0x80002000 resume-8=0x80000272 byte=0xd
+RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
+
+<span class="result">exact boundary verified: 0x80001fff clean, 0x80002000 traps mcause=5</span>`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-tor/',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/pmp-tor',
+          terminalName: 'qemu / riscv64 / pmp-tor.elf',
+          terminalLabel: 'Measured PMP TOR boundary test output',
+          showRepoLink: true
         }
 
       ];
