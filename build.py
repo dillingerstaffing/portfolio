@@ -8,7 +8,7 @@ Flow:
   3. Bake the data into index.src.html at build time:
        - /*__PROJECTS_JSON__*/ -> the 140 cards (deterministic JSON)
        - /*__CHIPS_JSON__*/    -> chips keyed by chip key (deterministic JSON)
-       - <!-- LAYER-STRIP:<slug> --> (x9) -> static article layer strips
+       - <!-- LAYER-STRIP:<slug> --> (x10) -> static article layer strips
   4. node --check every generated <script> block.
   5. Write index.html only if everything above succeeded.
 
@@ -138,8 +138,8 @@ def load_data():
     for c in cards:
         check_portability(c.get("portability"), f"card {c['id']}", chip_keys)
 
-    if not isinstance(articles, list) or len(articles) != 9:
-        fail(f"articles.json must hold exactly 9 articles, found {len(articles) if isinstance(articles, list) else type(articles)}")
+    if not isinstance(articles, list) or len(articles) != 10:
+        fail(f"articles.json must hold exactly 10 articles, found {len(articles) if isinstance(articles, list) else type(articles)}")
     seen_titles = set()
     for a in articles:
         for f in ("title", "date", "paragraphs", "codeLink", "layers"):
