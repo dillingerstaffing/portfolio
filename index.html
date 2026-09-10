@@ -10629,6 +10629,128 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoLabel": "GitHub: systems-lab/lab/104-mulhi-u16-nomul",
     "terminalLabel": "Verified mulhi-u16 test output",
     "showRepoLink": true
+  },
+  {
+    "id": "lab-114-swar-eq-mask",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the 4,304,967,312-check bench and its disassembly run in a host user-space process against software, never a RISC-V instruction."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the bench runs in a host user-space process, with no M-mode boot code running."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the 4,304,967,312 checks prove the lane-guarded SWAR construction in isolation, with no scheduler, VM, driver, or syscall path running."
+      },
+      "PORTABLE": {
+        "applies": true,
+        "because": "The 16-bit-lane borrow-suppressed zero-byte identity gives an exact bytewise equality mask on every ISA."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/114-swar-eq-mask/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "Bytewise Equality Mask, No Branches",
+    "summary": "Exact bytewise equality mask of two 64-bit words from the zero-byte detection identity: the naive form false-positives on 0x01-with-borrow, so the subtraction runs in 16-bit lanes with the untested half parked at 0xFF. 4,304,967,312 differential checks, 0 mismatches, checksum identical across three builds.",
+    "specRows": [
+      [
+        "CHECKS",
+        "4,304,967,312 differential vs per-byte loop"
+      ],
+      [
+        "MISMATCHES",
+        "0"
+      ],
+      [
+        "CHECKSUM",
+        "FNV-1a 731e0818deb17926 across -O0/-O2/ASan+UBSan"
+      ],
+      [
+        "THROUGHPUT",
+        "4.31 ns/value at -O2"
+      ],
+      [
+        "RESULT",
+        "PASS"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 114-swar-eq-mask",
+    "terminalOutput": "$ make run\\ndifferential ............ 4304967312 checks\\nmismatches .............. 0\\nchecksum ................ 731e0818deb17926\\nbuilds .................. -O0, -O2, ASan+UBSan IDENTICAL\\nthroughput .............. 4.31 ns/value at -O2\\nRESULT: PASS\\n\\nbytewise equality mask, 0 mismatches",
+    "verificationEnvironment": "Host",
+    "checks": 4304967312,
+    "failures": 0,
+    "stressItems": 4304967312,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/114-swar-eq-mask",
+    "repoLabel": "GitHub: systems-lab/lab/114-swar-eq-mask",
+    "terminalLabel": "Verified swar-eq-mask test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "riscv-mcause-warl",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because mcause writability is machine-contract WARL behavior; this measurement publishes which bits this hart actually lets software write."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because trap handlers read mcause to dispatch, and firmware that writes mcause must know whether the write sticks."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the probe runs standalone in M-mode with no kernel present; the write/readback/trap-overwrite triples isolate the CSR behavior kernels rely on, not any kernel trap path."
+      },
+      "PORTABLE": {
+        "applies": false,
+        "because": "not here because mcause writability is implementation-defined per hart, not an ISA-independent algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcause-warl/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "RISC-V / PRIVILEGED",
+    "title": "mcause WARL: All Bits Writable",
+    "summary": "Backlog premise not reproduced: on QEMU 8.2.2 virt, all 64 bits of mcause are software-writable (all-ones reads back all-ones, zero reads back zero, trap count stays 1 across both writes); a second M-mode ecall reports mcause = 11 again, so trap entry overwrites the register regardless. 3 runs byte-identical, PASS.",
+    "specRows": [
+      [
+        "WRITE ALL-ONES",
+        "reads back 0xffffffffffffffff"
+      ],
+      [
+        "WRITE ZERO",
+        "reads back 0x0"
+      ],
+      [
+        "TRAP OVERWRITE",
+        "second ecall reports mcause = 11"
+      ],
+      [
+        "RUNS",
+        "3 QEMU 8.2.2, byte-identical"
+      ],
+      [
+        "RESULT",
+        "PASS x3"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mcause-warl",
+    "terminalOutput": "$ qemu-system-riscv64 ...\\nwrite-ones .............. 0xffffffffffffffff\\nwrite-zero ............... 0x0\\ntrap count ............... 1 across writes\\nsecond ecall ............ mcause=0xb, count=2\\nRESULT: PASS x3\\n\\npremise not reproduced, all bits writable",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 3,
+    "failures": 0,
+    "stressItems": 3,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcause-warl",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mcause-warl",
+    "terminalLabel": "Verified mcause-warl run output",
+    "showRepoLink": true
   }
 ];
       const CHIPS_BY_KEY = {

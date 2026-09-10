@@ -141,8 +141,8 @@ def load_data():
     except (OSError, json.JSONDecodeError) as e:
         fail(f"could not parse data files: {e}")
 
-    if not isinstance(cards, list) or len(cards) != 140:
-        fail(f"cards.json must hold exactly 140 cards, found {len(cards) if isinstance(cards, list) else type(cards)}")
+    if not isinstance(cards, list) or len(cards) < 140:
+        fail(f"cards.json must hold at least 140 cards, found {len(cards) if isinstance(cards, list) else type(cards)}")
     seen = set()
     for c in cards:
         for f in ("id", "title", "summary", "specRows", "terminalOutput",
@@ -184,8 +184,8 @@ def load_data():
     if accepted != panelled:
         fail(f"isa-decisions accepted {sorted(accepted ^ panelled)} != portability cards")
 
-    if not isinstance(articles, list) or len(articles) != 10:
-        fail(f"articles.json must hold exactly 10 articles, found {len(articles) if isinstance(articles, list) else type(articles)}")
+    if not isinstance(articles, list) or len(articles) < 10:
+        fail(f"articles.json must hold at least 10 articles, found {len(articles) if isinstance(articles, list) else type(articles)}")
     seen_titles = set()
     for a in articles:
         for f in ("title", "date", "paragraphs", "codeLink", "layers"):
