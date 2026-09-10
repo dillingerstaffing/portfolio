@@ -4092,6 +4092,53 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: systems-lab/lab/81-wrapping-neg',
           terminalLabel: 'Verified negation differential test output',
           showRepoLink: true
+        },
+        {
+          id: 'crc32-residue',
+          kicker: 'C / CHECKSUMS',
+          title: 'CRC-32 Residue Invariant',
+          summary: 'The CRC-32 residue identity: crc32(M) appended in little-endian wire order and re-checksummed always yields 0x2144DF1C, checked against the lab/04 implementation as oracle over 1,000,000 fixed-seed random buffers.',
+          specRows: [
+            ['METHOD', 'checksum, append CRC, re-checksum the extended message'],
+            ['DIFFERENTIAL', '1,000,000 random buffers, 0 mismatches'],
+            ['KNOWN ANSWERS', '"123456789" -> 0xCBF43926, residue 0x2144DF1C on every case'],
+            ['CONTROL', 'big-endian append yields a different residue, documented as contract'],
+            ['CHECKSUM', 'FNV-1a 0x277d10c8b7ea96ec, identical across -O0, -O2, ASan+UBSan'],
+            ['MEASURED', '207.7 MiB/s two-pass at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 82-crc32-residue',
+          terminalOutput: `$ make run (3 builds)\nresidue ............. 0x2144DF1C, 1000000/1000000 cases\nmismatches .......... 0\nknown answer ........ "123456789" -> 0xCBF43926\nempty message ....... residue holds\nchecksum ............ 0x277d10c8b7ea96ec\nbuilds .............. -O0, -O2, ASan+UBSan IDENTICAL\nthroughput .......... 207.7 MiB/s two-pass at -O2\nRESULT: PASS\n\nCRC-32 residue invariant, 0 mismatches`,
+          verificationEnvironment: 'host',
+          checks: 1000000,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue',
+          repoLabel: 'GitHub: systems-lab/lab/82-crc32-residue',
+          terminalLabel: 'Verified CRC-32 residue test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mcycle-write',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'mcycle Write and Readback',
+          summary: 'A bare-metal M-mode program writing 0x100000000 to the mcycle CSR with csrw, reading it back, and verifying the counter keeps advancing from the written base, publishing the write/readback/delta triples across 3 QEMU runs.',
+          specRows: [
+            ['WRITE', '0x100000000 via csrw'],
+            ['READBACK', '0x100001e1e / 0x100001d5b / 0x100001cc5 across 3 runs'],
+            ['DELTA', '~7.4-7.7k host-tick units, write takes effect'],
+            ['ADVANCE', '4 further readbacks strictly increasing, all above written base'],
+            ['RESULT', 'PASS x3, structurally identical (host-clock time base)']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mcycle-write',
+          terminalOutput: `$ make qemu (3 runs)\nwrite ............. 0x100000000\nreadback .......... 0x100001e1e / 0x100001d5b / 0x100001cc5\ndelta ............. 7710 / 7515 / 7365 host ticks\nadvance ........... 4 readbacks strictly increasing, all >= base\nRESULT: PASS x3\n\nmcycle write/readback/advance verified`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified mcycle write/readback test output',
+          showRepoLink: true
         }
 
       ];
@@ -4391,6 +4438,8 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       chapterButtons.forEach((button) => button.addEventListener('click', () => {
         const chapter = button.dataset.chapter;
         setChapterFilter(chapter === 'ALL' || chapter === activeFilter ? null : chapter);
+        const browser = button.closest('.project-browser');
+        if (browser) browser.scrollIntoView({ behavior: motionReduced ? 'auto' : 'smooth', block: 'start' });
       }));
       chapterList.addEventListener('keydown', (event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
