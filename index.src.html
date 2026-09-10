@@ -418,6 +418,48 @@
     .layer-source:hover, .layer-source:focus-visible { color: var(--acid); border-color: var(--acid); }
     .slot-ext { display: inline-block; margin-top: 6px; font: 10px/1.5 var(--mono); color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
     .slot-ext:hover, .slot-ext:focus-visible { color: var(--acid); border-color: var(--acid); }
+    /* Wigmore argument affordance: a CK3-style underlined "why" marker, inline
+       in the because sentence. It changes nothing about layout or order; it
+       only opens the argument panels. */
+    .why-marker { display: inline; padding: 0; margin: 0 0 0 6px; border: 0; background: none;
+      font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+      color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .why-marker:hover, .why-marker:focus-visible { color: var(--acid); outline: none; }
+    .why-marker[aria-expanded="true"] { color: var(--acid); }
+    /* Argument panels: anchored to the marker, never cursor-following, never
+       reflowing text (Factorio/FFXIV lesson). Flat blueprint treatment. */
+    .wig-tip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 32px));
+      background: var(--panel); border: 1px solid var(--line); color: var(--ink);
+      font: 11px/1.55 var(--mono); padding: 0; margin: 0; text-align: left; }
+    .wig-tip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      font-size: 9px; text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
+    .wig-tip-verdict { padding: 10px 12px 4px; color: var(--ink); }
+    .wig-tip-rows { padding: 6px 12px 4px; }
+    .wig-tip-row { display: grid; grid-template-columns: 86px 1fr; gap: 10px; padding: 5px 0;
+      border-top: 1px dotted var(--line); }
+    .wig-tip-row:first-child { border-top: 0; }
+    .wig-tip-k { color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: .12em; padding-top: 2px; }
+    .wig-tip-v { color: var(--muted); }
+    .wig-tip-v .num { color: var(--dim); }
+    .wig-term { padding: 0; border: 0; background: none; font: inherit; color: inherit;
+      text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
+    button.wig-term { color: var(--acid-soft); }
+    .wig-term:hover, .wig-term:focus-visible { color: var(--acid); outline: none; }
+    .wig-tip-obj { margin: 6px 12px 0; padding: 8px 0 2px; border-top: 1px solid var(--line); }
+    .wig-tip-obj .wig-tip-k { display: block; margin-bottom: 4px; }
+    .wig-tip-answered { color: var(--dim); font-size: 10px; }
+    .wig-tip-src { display: block; margin-top: 6px; color: var(--dim); text-decoration: none;
+      border-bottom: 1px solid var(--line); width: fit-content; }
+    a.wig-tip-src:hover, a.wig-tip-src:focus-visible { color: var(--acid); border-color: var(--acid); }
+    .wig-tip-back { display: inline-block; margin: 8px 12px 10px; padding: 0; border: 0; background: none;
+      font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+      color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .wig-tip-back:hover, .wig-tip-back:focus-visible { color: var(--acid); outline: none; }
+    .wig-tip-foot { padding: 8px 12px 10px; color: var(--dim); font-size: 10px; }
+    @media (max-width: 700px) {
+      .wig-tip { width: min(340px, calc(100vw - 32px)); font-size: 12px; }
+    }
     .portability { margin: 24px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
     .portability li { display: grid; grid-template-columns: minmax(112px, auto) 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .portability .port-label { font-family: var(--mono); color: var(--dim); }
@@ -1144,6 +1186,10 @@ assert(check == 0x2144DF1C);</code></pre>
     (() => {
       const PROJECTS = /*__PROJECTS_JSON__*/;
       const CHIPS_BY_KEY = /*__CHIPS_JSON__*/;
+      // Formal Wigmore argument analyses, keyed "item|slot". Only slots with
+      // an approved analysis carry the argument affordance; the tooltip
+      // renderer below activates on this map.
+      const WIGMORE = /*__WIGMORE_JSON__*/;
 
 
       const AUDIENCES = [
@@ -1365,7 +1411,12 @@ assert(check == 0x2144DF1C);</code></pre>
             const slot = project.layers[name] || { applies: false, because: '' };
             const cls = slot.applies ? 'layer-slot lit' : 'layer-slot dim';
             const ext = (name === 'ISA' && slot.applies) ? specLink : '';
-            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}</p>${ext}</div>`;
+            // Argument affordance: only where a formal Wigmore analysis exists.
+            const wigKey = `${project.id}|${name}`;
+            const why = WIGMORE[wigKey]
+              ? `<button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
+              : '';
+            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}${why}</p>${ext}</div>`;
           })
           .join('');
         return `<div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span>${proofLink}</div>${slots}</div>`;
@@ -2019,6 +2070,232 @@ assert(check == 0x2144DF1C);</code></pre>
       window.addEventListener('popstate', () => updatePageView());
       hideContinuePosition();
       updatePageView({ alignServices: true });
+    })();
+
+    /* Wigmore nested-argument tooltips (pilot: slots with WIGMORE analyses).
+       Interaction model from AAA precedents: CK3-style underlined terms open
+       child panels (max 2 levels per NN/g); anchored to the marker with
+       viewport clamping, never cursor-following (Factorio/FFXIV lesson);
+       hover-intent + travel grace + click-to-pin + stack-aware ESC on
+       desktop; tap-toggle, one-open-at-a-time, drill-in with back button,
+       panel below the marker on touch. */
+    (() => {
+      const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
+      const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
+      let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
+      let intentT = 0, graceT = 0;
+      const clearTimers = () => { clearTimeout(intentT); clearTimeout(graceT); };
+      const short = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+
+      function closeAll() {
+        clearTimers();
+        if (l1) { l1.remove(); l1 = null; }
+        if (l2) { l2.remove(); l2 = null; }
+        l1Key = null; pinned = false; drillStack = [];
+        document.querySelectorAll('.why-marker[aria-expanded="true"]')
+          .forEach((m) => m.setAttribute('aria-expanded', 'false'));
+      }
+
+      function place(panel, anchorRect, mode) {
+        panel.style.visibility = 'hidden';
+        document.body.appendChild(panel);
+        const pw = panel.offsetWidth, ph = panel.offsetHeight;
+        const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+        let x, y;
+        if (mode === 'side') {
+          const roomRight = vw - anchorRect.right - M, roomLeft = anchorRect.left - M;
+          x = roomRight >= pw || roomRight >= roomLeft
+            ? anchorRect.right + M : anchorRect.left - M - pw;
+          y = anchorRect.top;
+        } else {
+          x = Math.min(Math.max(anchorRect.left, M), vw - pw - M);
+          const below = anchorRect.bottom + M, above = anchorRect.top - M - ph;
+          y = (below + ph <= vh || below <= above) ? below : Math.max(M, above);
+        }
+        x = Math.min(Math.max(x, M), Math.max(M, vw - pw - M));
+        y = Math.min(Math.max(y, M), Math.max(M, vh - ph - M));
+        panel.style.left = `${x}px`;
+        panel.style.top = `${y}px`;
+        panel.style.visibility = '';
+      }
+
+      function termButton(a, n) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return esc(`(${n})`);
+        return `<button class="wig-term" type="button" data-node="${n}">(${n}) ${esc(short(node.text, 64))}</button>`;
+      }
+
+      function nodePanel(a, n, opts) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return null;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        let body = `<div class="wig-tip-head"><span>${KIND_LABEL[node.kind] || node.kind} (${node.n})</span></div>`
+          + `<div class="wig-tip-verdict">${esc(node.text)}</div>`;
+        if (node.kind === 'evidence' && node.source) {
+          body += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">source</span>`
+            + `<span class="wig-tip-v"><a class="wig-tip-src" href="${node.source.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(TIER_LABEL[node.source.tier] || node.source.tier)}: ${esc(node.source.cite || '')} <span aria-hidden="true">↗</span></a></span></div></div>`;
+        }
+        if (node.kind === 'refutation' && node.refutes) {
+          body += `<div class="wig-tip-foot">answers objection (${node.refutes})</div>`;
+        }
+        if (node.kind === 'generalization') {
+          body += `<div class="wig-tip-foot">warrant: stated explicitly, the license for the inference above it.</div>`;
+        }
+        if (opts && opts.back) {
+          body += `<button class="wig-tip-back" type="button">← back to argument</button>`;
+        }
+        el.innerHTML = body;
+        return el;
+      }
+
+      function l1Panel(a, slotName, applies) {
+        const title = applies ? `why the ${slotName} layer matters` : `why the ${slotName} layer does not apply`;
+        const ev = a.keyList.filter((e) => e.kind === 'evidence');
+        const via = a.keyList.filter((e) => e.kind === 'generalization');
+        const pens = a.keyList.filter((e) => e.kind === 'penultimate');
+        const objs = a.keyList.filter((e) => e.kind === 'explanation');
+        let html = `<div class="wig-tip-head"><span>${esc(title)}</span></div>`
+          + `<div class="wig-tip-verdict">${esc(a.probandum)}</div>`;
+        if (ev.length || via.length) {
+          html += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">support</span><span class="wig-tip-v">`
+            + ev.map((e) => `<span class="num">(${e.n})</span> ${termButton(a, e.n)}`).join('<br>')
+            + (via.length ? `<br><span class="num">via</span> ` + via.map((e) => termButton(a, e.n)).join(' · ') : '')
+            + `</span></div></div>`;
+        }
+        if (pens.length) {
+          html += `<div class="wig-tip-rows">` + pens.map((e) =>
+            `<div class="wig-tip-row"><span class="wig-tip-k">therefore</span><span class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}</span></div>`
+          ).join('') + `</div>`;
+        }
+        if (objs.length) {
+          html += `<div class="wig-tip-obj"><span class="wig-tip-k">objection</span>` + objs.map((e) => {
+            const ref = a.keyList.find((r) => r.kind === 'refutation' && r.refutes === e.n);
+            return `<div class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}`
+              + (ref ? `<br><span class="wig-tip-answered">answered ${termButton(a, ref.n)}</span>`
+                     : `<br><span class="wig-tip-answered">no answer recorded</span>`) + `</div>`;
+          }).join('') + `</div>`;
+        }
+        html += `<div class="wig-tip-foot">${a.keyList.length} numbered claims · hover or tap an underlined claim for its evidence</div>`;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        el.innerHTML = html;
+        return el;
+      }
+
+      function openL1(marker) {
+        const key = marker.getAttribute('data-wigmore');
+        const a = WIGMORE[key];
+        if (!a) return;
+        closeAll();
+        const slotName = key.split('|')[1] || '';
+        const slotEl = marker.closest('.layer-slot');
+        const slotApplies = slotEl ? slotEl.classList.contains('lit') : false;
+        l1 = l1Panel(a, slotName, slotApplies);
+        l1.dataset.wigKey = key;
+        marker.setAttribute('aria-expanded', 'true');
+        place(l1, marker.getBoundingClientRect(), 'below');
+        l1Key = key;
+      }
+
+      function openL2(termBtn) {
+        const key = l1 ? l1.dataset.wigKey : null;
+        const a = key ? WIGMORE[key] : null;
+        const n = parseInt(termBtn.getAttribute('data-node'), 10);
+        if (!a || !n) return;
+        if (FINE) {
+          if (l2) l2.remove();
+          l2 = nodePanel(a, n, null);
+          if (l2) place(l2, termBtn.getBoundingClientRect(), 'side');
+        } else {
+          // Touch: drill in, one panel at a time, with a back button.
+          drillStack.push(l1.innerHTML);
+          const detail = nodePanel(a, n, { back: true });
+          if (detail) { l1.innerHTML = detail.innerHTML; }
+        }
+      }
+
+      function drillBack() {
+        if (!drillStack.length || !l1) return;
+        l1.innerHTML = drillStack.pop();
+      }
+
+      document.addEventListener('click', (event) => {
+        const back = event.target.closest('.wig-tip-back');
+        if (back && l1 && l1.contains(back)) { drillBack(); return; }
+        const term = event.target.closest('.wig-term');
+        if (term && l1 && l1.contains(term)) {
+          if (!FINE) openL2(term);
+          else { pinned = true; openL2(term); }
+          return;
+        }
+        const marker = event.target.closest('.why-marker');
+        if (marker) {
+          const key = marker.getAttribute('data-wigmore');
+          if (l1Key === key && l1) {
+            // Second click/tap on the open marker: desktop pins a
+            // hover-opened panel, otherwise everything closes.
+            if (!FINE || pinned) { closeAll(); return; }
+            pinned = true;
+            return;
+          }
+          closeAll();
+          if (FINE) pinned = true;
+          openL1(marker);
+          return;
+        }
+        if ((l1 && !l1.contains(event.target)) && (!l2 || !l2.contains(event.target))) {
+          closeAll();
+        }
+      });
+
+      if (FINE) {
+        document.addEventListener('mouseover', (event) => {
+          const term = event.target.closest('.wig-term');
+          if (term && l1 && l1.contains(term) && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => openL2(term), 250);
+            return;
+          }
+          const marker = event.target.closest('.why-marker');
+          if (marker && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => { if (!pinned) openL1(marker); }, 350);
+          }
+        });
+        document.addEventListener('mouseout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || to.closest('.why-marker'));
+          if (!inStack && !pinned) {
+            clearTimers();
+            graceT = setTimeout(closeAll, 250);
+          }
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && (l1 || l2)) closeAll();
+        });
+        document.addEventListener('focusin', (event) => {
+          const marker = event.target.closest('.why-marker');
+          if (marker) { clearTimers(); openL1(marker); }
+        });
+        document.addEventListener('focusout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || (to.closest && to.closest('.why-marker')));
+          if (!inStack && !pinned) closeAll();
+        });
+      } else {
+        // Touch contract: tap toggles, outside tap closes, ESC not needed.
+        document.addEventListener('touchstart', (event) => {
+          const t = event.target;
+          if (t.closest('.why-marker') || (l1 && l1.contains(t))) return;
+          closeAll();
+        }, { passive: true });
+      }
+      window.addEventListener('scroll', () => { if (l1 || l2) closeAll(); }, { passive: true });
+      window.addEventListener('resize', () => { if (l1 || l2) closeAll(); });
     })();
   </script>
   <script>

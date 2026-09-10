@@ -2,12 +2,14 @@
 """Build the portfolio index.html from canonical data files.
 
 Flow:
-  1. Load and validate data/cards.json, data/articles.json, data/chips.json.
+  1. Load and validate data/cards.json, data/articles.json, data/chips.json,
+     data/isa-decisions.json, data/wigmore.json.
   2. Run drift-gate.py against the source PROOF.md checkouts. Abort on any
      real contradiction (gate exit != 0). index.html is never touched then.
   3. Bake the data into index.src.html at build time:
        - /*__PROJECTS_JSON__*/ -> the 140 cards (deterministic JSON)
        - /*__CHIPS_JSON__*/    -> chips keyed by chip key (deterministic JSON)
+       - /*__WIGMORE_JSON__*/  -> Wigmore slot analyses, keyed "item|slot"
        - <!-- LAYER-STRIP:<slug> --> (x10) -> static article layer strips
   4. node --check every generated <script> block.
   5. Write index.html only if everything above succeeded.
@@ -33,6 +35,10 @@ GATE = HERE / "drift-gate.py"
 
 LAYERS = ("ISA", "FIRMWARE", "KERNEL", "PORTABLE")
 PORTABILITY_FIELDS = ("instruction", "extension", "specRef", "specUrl", "whereNeeded", "costNote")
+WIGMORE_KINDS = ("probandum", "penultimate", "evidence", "generalization",
+                 "explanation", "refutation")
+WIGMORE_TIERS = ("lab", "spec", "vendor", "reference", "community")
+WIGMORE_STRENGTHS = ("strong", "normal", "weak")
 
 
 class BuildError(Exception):
@@ -132,12 +138,105 @@ def check_decisions(decisions, card_ids):
                 fail(f"decision {d['id']}: source url must be https")
 
 
+def check_wigmore(doc, card_ids, article_slugs):
+    # Formal Wigmore argument store: one analysis per card/article per layer
+    # slot. Pilot phase (2026-09-10): partial coverage is allowed; every
+    # analysis present is validated strictly. After Chris approves the pilot,
+    # coverage becomes mandatory for all 608 slots.
+    if not isinstance(doc, dict) or doc.get("version") != 1:
+        fail("wigmore.json must be {version: 1, analyses: [...]}")
+    analyses = doc.get("analyses")
+    if not isinstance(analyses, list) or not analyses:
+        fail("wigmore.json analyses must be a non-empty list")
+    seen = set()
+    for a in analyses:
+        for f in ("item", "kind", "slot", "probandum", "keyList", "inferences"):
+            if f not in a:
+                fail(f"wigmore analysis missing field {f}: {a.get('item')}/{a.get('slot')}")
+        key = (a["item"], a["slot"])
+        if key in seen:
+            fail(f"duplicate wigmore analysis {key}")
+        seen.add(key)
+        if a["kind"] == "card":
+            if a["item"] not in card_ids:
+                fail(f"wigmore analysis {key}: unknown card")
+        elif a["kind"] == "article":
+            if a["item"] not in article_slugs:
+                fail(f"wigmore analysis {key}: unknown article slug")
+        else:
+            fail(f"wigmore analysis {key}: kind must be card or article")
+        if a["slot"] not in LAYERS:
+            fail(f"wigmore analysis {key}: unknown slot")
+        nodes = {}
+        for e in a["keyList"]:
+            for f in ("n", "kind", "text"):
+                if f not in e:
+                    fail(f"wigmore {key}: keyList entry missing {f}")
+            if e["n"] in nodes:
+                fail(f"wigmore {key}: duplicate node n={e['n']}")
+            nodes[e["n"]] = e
+            if e["kind"] not in WIGMORE_KINDS:
+                fail(f"wigmore {key}: unknown node kind {e['kind']}")
+            if not isinstance(e["text"], str) or not e["text"].strip():
+                fail(f"wigmore {key}: node {e['n']} text must be non-empty")
+            if any(ch in e["text"] for ch in "<>&"):
+                fail(f"wigmore {key}: node {e['n']} text contains <, > or &")
+            if "—" in e["text"]:
+                fail(f"wigmore {key}: node {e['n']} text contains an em dash")
+            if e["kind"] == "evidence":
+                s = e.get("source")
+                if (not isinstance(s, dict) or s.get("tier") not in WIGMORE_TIERS
+                        or not isinstance(s.get("url"), str)
+                        or not s["url"].startswith("https://")
+                        or any(ch in s["url"] for ch in " '\"<>")):
+                    fail(f"wigmore {key}: evidence node {e['n']} needs "
+                         f"{{tier in {WIGMORE_TIERS}, url: safe https URL}}")
+        if sum(1 for e in nodes.values() if e["kind"] == "probandum") != 1:
+            fail(f"wigmore {key}: exactly one probandum required")
+        probandum = next(n for n, e in nodes.items() if e["kind"] == "probandum")
+        for inf in a["inferences"]:
+            for f in ("from", "via", "to", "strength"):
+                if f not in inf:
+                    fail(f"wigmore {key}: inference missing {f}")
+            if inf["strength"] not in WIGMORE_STRENGTHS:
+                fail(f"wigmore {key}: unknown strength {inf['strength']}")
+            for n in inf["from"]:
+                if nodes[n]["kind"] not in ("evidence", "penultimate"):
+                    fail(f"wigmore {key}: inference from-node {n} must be "
+                         f"evidence or penultimate")
+            for n in inf["via"]:
+                if nodes[n]["kind"] != "generalization":
+                    fail(f"wigmore {key}: inference via-node {n} must be a "
+                         f"generalization")
+            for n in inf["to"]:
+                if nodes[n]["kind"] not in ("probandum", "penultimate"):
+                    fail(f"wigmore {key}: inference to-node {n} must be "
+                         f"probandum or penultimate")
+        # Reachability: the probandum must be reachable from evidence through
+        # the inference graph, otherwise the argument proves nothing.
+        evidence = {n for n, e in nodes.items() if e["kind"] == "evidence"}
+        reach = set(evidence)
+        changed = True
+        while changed:
+            changed = False
+            for inf in a["inferences"]:
+                if all(x in reach for x in inf["from"]):
+                    for t in inf["to"]:
+                        if t not in reach:
+                            reach.add(t)
+                            changed = True
+        if probandum not in reach:
+            fail(f"wigmore {key}: probandum not reachable from evidence")
+    return {(a["item"], a["slot"]): a for a in analyses}
+
+
 def load_data():
     try:
         cards = json.loads((DATA / "cards.json").read_text(encoding="utf-8"))
         articles = json.loads((DATA / "articles.json").read_text(encoding="utf-8"))
         chips = json.loads((DATA / "chips.json").read_text(encoding="utf-8"))
         decisions = json.loads((DATA / "isa-decisions.json").read_text(encoding="utf-8"))
+        wigmore = json.loads((DATA / "wigmore.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         fail(f"could not parse data files: {e}")
 
@@ -199,7 +298,11 @@ def load_data():
         check_layers(a["layers"], f"article {a['title']}")
         check_evidence(a.get("evidence"), f"article {a['title']}")
 
-    return cards, articles, chips_by_key
+    article_slugs = {slugify(a["title"]) for a in articles}
+    wigmore_by_slot = check_wigmore(wigmore, set(seen), article_slugs)
+    print(f"wigmore: {len(wigmore_by_slot)} slot analyses validated")
+
+    return cards, articles, chips_by_key, wigmore_by_slot
 
 
 def run_gate(systems_lab, baremetal, xv6):
@@ -272,7 +375,7 @@ def node_check_scripts(html_text):
 
 
 def build(systems_lab, baremetal, xv6):
-    cards, articles, chips_by_key = load_data()
+    cards, articles, chips_by_key, wigmore_by_slot = load_data()
     print(f"data OK: {len(cards)} cards, {len(articles)} articles, "
           f"{len(chips_by_key)} chips, "
           f"{sum(1 for c in cards if c.get('portability'))} portability panels")
@@ -284,13 +387,20 @@ def build(systems_lab, baremetal, xv6):
 
     projects_json = json.dumps(cards, indent=2, ensure_ascii=False)
     chips_json = json.dumps(chips_by_key, indent=2, ensure_ascii=False)
+    # Keyed "item|slot" for O(1) lookup by the tooltip renderer.
+    wigmore_json = json.dumps(
+        {f"{item}|{slot}": a for (item, slot), a in wigmore_by_slot.items()},
+        indent=2, ensure_ascii=False)
 
     if template.count("/*__PROJECTS_JSON__*/") != 1:
         fail("expected exactly one /*__PROJECTS_JSON__*/ placeholder")
     if template.count("/*__CHIPS_JSON__*/") != 1:
         fail("expected exactly one /*__CHIPS_JSON__*/ placeholder")
+    if template.count("/*__WIGMORE_JSON__*/") != 1:
+        fail("expected exactly one /*__WIGMORE_JSON__*/ placeholder")
     page = template.replace("/*__PROJECTS_JSON__*/", projects_json)
     page = page.replace("/*__CHIPS_JSON__*/", chips_json)
+    page = page.replace("/*__WIGMORE_JSON__*/", wigmore_json)
 
     used_slugs = set()
     for article in articles:
@@ -303,7 +413,7 @@ def build(systems_lab, baremetal, xv6):
             fail(f"expected exactly one {marker} placeholder")
         page = page.replace(marker, article_strip_html(article))
 
-    for leftover in ("__PROJECTS_JSON__", "__CHIPS_JSON__", "LAYER-STRIP:"):
+    for leftover in ("__PROJECTS_JSON__", "__CHIPS_JSON__", "__WIGMORE_JSON__", "LAYER-STRIP:"):
         if leftover in page:
             fail(f"unresolved placeholder remains: {leftover}")
 

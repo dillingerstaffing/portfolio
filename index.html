@@ -418,6 +418,48 @@
     .layer-source:hover, .layer-source:focus-visible { color: var(--acid); border-color: var(--acid); }
     .slot-ext { display: inline-block; margin-top: 6px; font: 10px/1.5 var(--mono); color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); }
     .slot-ext:hover, .slot-ext:focus-visible { color: var(--acid); border-color: var(--acid); }
+    /* Wigmore argument affordance: a CK3-style underlined "why" marker, inline
+       in the because sentence. It changes nothing about layout or order; it
+       only opens the argument panels. */
+    .why-marker { display: inline; padding: 0; margin: 0 0 0 6px; border: 0; background: none;
+      font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+      color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .why-marker:hover, .why-marker:focus-visible { color: var(--acid); outline: none; }
+    .why-marker[aria-expanded="true"] { color: var(--acid); }
+    /* Argument panels: anchored to the marker, never cursor-following, never
+       reflowing text (Factorio/FFXIV lesson). Flat blueprint treatment. */
+    .wig-tip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 32px));
+      background: var(--panel); border: 1px solid var(--line); color: var(--ink);
+      font: 11px/1.55 var(--mono); padding: 0; margin: 0; text-align: left; }
+    .wig-tip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      font-size: 9px; text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
+    .wig-tip-verdict { padding: 10px 12px 4px; color: var(--ink); }
+    .wig-tip-rows { padding: 6px 12px 4px; }
+    .wig-tip-row { display: grid; grid-template-columns: 86px 1fr; gap: 10px; padding: 5px 0;
+      border-top: 1px dotted var(--line); }
+    .wig-tip-row:first-child { border-top: 0; }
+    .wig-tip-k { color: var(--dim); font-size: 9px; text-transform: uppercase; letter-spacing: .12em; padding-top: 2px; }
+    .wig-tip-v { color: var(--muted); }
+    .wig-tip-v .num { color: var(--dim); }
+    .wig-term { padding: 0; border: 0; background: none; font: inherit; color: inherit;
+      text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
+    button.wig-term { color: var(--acid-soft); }
+    .wig-term:hover, .wig-term:focus-visible { color: var(--acid); outline: none; }
+    .wig-tip-obj { margin: 6px 12px 0; padding: 8px 0 2px; border-top: 1px solid var(--line); }
+    .wig-tip-obj .wig-tip-k { display: block; margin-bottom: 4px; }
+    .wig-tip-answered { color: var(--dim); font-size: 10px; }
+    .wig-tip-src { display: block; margin-top: 6px; color: var(--dim); text-decoration: none;
+      border-bottom: 1px solid var(--line); width: fit-content; }
+    a.wig-tip-src:hover, a.wig-tip-src:focus-visible { color: var(--acid); border-color: var(--acid); }
+    .wig-tip-back { display: inline-block; margin: 8px 12px 10px; padding: 0; border: 0; background: none;
+      font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
+      color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .wig-tip-back:hover, .wig-tip-back:focus-visible { color: var(--acid); outline: none; }
+    .wig-tip-foot { padding: 8px 12px 10px; color: var(--dim); font-size: 10px; }
+    @media (max-width: 700px) {
+      .wig-tip { width: min(340px, calc(100vw - 32px)); font-size: 12px; }
+    }
     .portability { margin: 24px 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
     .portability li { display: grid; grid-template-columns: minmax(112px, auto) 1fr; gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
     .portability .port-label { font-family: var(--mono); color: var(--dim); }
@@ -2757,19 +2799,19 @@ assert(check == 0x2144DF1C);</code></pre>
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "the SWAR construction implements exactly what the cpop instruction provides, so the instruction is the comparison target"
+        "because": "the lab works the boundary between the cpop instruction and its software emulation: what the ISA guarantees, which extension carries it, and catching the compiler if it silently crosses over"
       },
       "FIRMWARE": {
         "applies": false,
-        "because": "not here because the lab's 10,000,133 differential comparisons and the disassembly check for the POPCNT shortcut run on the host over the 0x5555/0x3333/0x0F0F mask identities, configuring no machine-mode state and no boot-time code."
+        "because": "nothing here touches privileged state, so no boot code, CSR, or trap handler can affect the result"
       },
       "KERNEL": {
         "applies": false,
-        "because": "not here because it is a pure bit-counting routine, no kernel subsystem is involved"
+        "because": "the routine is a pure function of its input word, so no scheduler, VM, or driver behavior can perturb it"
       },
       "PORTABLE": {
         "applies": true,
-        "because": "the SWAR identities are identical on every ISA, and the 10M-case differential check is the value"
+        "because": "the SWAR identities are exact integer math, so the correctness argument ports with the code; its assumptions are stated: word width, unsigned wraparound"
       }
     },
     "evidence": {
@@ -11029,6 +11071,315 @@ assert(check == 0x2144DF1C);</code></pre>
     "notes": "Exact sentence from section 18.1.2.2: \"C910/C920 支持的指令集架构为 RV64GC，对应的 MISA 寄存器复位值为 0x800000000094112d。\" (The instruction set architecture supported by C910/C920 is RV64GC; the MISA register reset value is 0x800000000094112d.) Document: 玄铁 C910 与 C920 R1S6 用户手册（xrvm）, Revision 06, dated 2025-01-24 (date from filename). Hosted on T-Head's own Open Chip Community OSS (occ-oss-prod). RV64GC as documented omits Zba, Zbb, Zbs, and Zbc."
   }
 };
+      // Formal Wigmore argument analyses, keyed "item|slot". Only slots with
+      // an approved analysis carry the argument affordance; the tooltip
+      // renderer below activates on this map.
+      const WIGMORE = {
+  "swar-popcount-64|ISA": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          4
+        ],
+        "note": "The check in (4) is what keeps the 10M comparisons in (2) honest.",
+        "strength": "strong",
+        "to": [
+          5
+        ],
+        "via": [
+          6
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The disassembly check is the boundary toolkit in action: it enforces (5).",
+        "strength": "normal",
+        "to": [
+          5
+        ],
+        "via": [
+          8
+        ]
+      },
+      {
+        "from": [
+          3
+        ],
+        "note": "Extension membership is load-bearing: get it wrong and the instruction traps.",
+        "strength": "normal",
+        "to": [
+          1
+        ],
+        "via": [
+          7
+        ]
+      },
+      {
+        "from": [
+          5,
+          3
+        ],
+        "note": "The method depends on the ISA-defined boundary, and the failure modes live at the ISA level.",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          9
+        ]
+      }
+    ],
+    "item": "swar-popcount-64",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The ISA layer matters for this lab because the lab works the boundary the ISA draws between the cpop instruction and its software emulation: what the instruction guarantees, which extension carries it, and whether the code stayed on the intended side."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/17-bitcount/PROOF.md, differential-test section",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+        },
+        "text": "lab/17-bitcount/PROOF.md records 10,000,133 differential comparisons of the SWAR popcount against cpop under QEMU, with 0 mismatches."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "riscv-isa-manual, Bit Manipulation Extensions chapter, Zbb / cpop",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The ISA manual defines cpop in the Zbb extension: population count of the source register. Zbb is an extension, not base ISA, so its presence varies by chip."
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "source": {
+          "cite": "lab/17-bitcount/PROOF.md, disassembly-check section",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+        },
+        "text": "The lab's disassembly check verifies the compiler did not replace the SWAR mask sequence with a cpop instruction (the POPCNT shortcut), so the two sides of the comparison are genuinely independent."
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The lab's method depends on the two sides of the comparison staying on opposite sides of the instruction/emulation boundary."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "If the compiler silently emits cpop for the SWAR code, the differential test becomes circular, cpop tested against cpop, and proves nothing. Crossing the boundary unknowingly is the failure mode."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "The complementary failure mode is assuming cpop where Zbb is absent: the instruction raises an illegal-instruction trap on chips without the extension."
+      },
+      {
+        "kind": "generalization",
+        "n": 8,
+        "text": "The working tools for this boundary are the ISA manual (which extension owns the instruction), the disassembler (what the compiler actually emitted), and QEMU with extensions toggled (does it trap without Zbb)."
+      },
+      {
+        "kind": "generalization",
+        "n": 9,
+        "text": "A layer matters to a lab when the lab's method depends on a boundary that layer defines and the characteristic failure modes live at that boundary."
+      },
+      {
+        "kind": "explanation",
+        "n": 10,
+        "text": "The lab never executes cpop on real hardware, only under QEMU, so one could argue no real ISA is involved."
+      },
+      {
+        "kind": "refutation",
+        "n": 11,
+        "refutes": 10,
+        "text": "The boundary exercised is between the specified instruction and the emulation; QEMU implements the specified semantics, so the comparison is against the ISA's definition either way. Real-hardware execution would add timing, which is a microarchitecture question, not an ISA one."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The ISA layer matters for this lab because the lab works the boundary the ISA draws between the cpop instruction and its software emulation: what the instruction guarantees, which extension carries it, and whether the code stayed on the intended side.",
+    "slot": "ISA"
+  },
+  "swar-popcount-64|FIRMWARE": {
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "note": "Absence is directly observable in the log: no privileged operations recorded.",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          3
+        ]
+      }
+    ],
+    "item": "swar-popcount-64",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The firmware layer does not matter for this lab because the lab's result cannot depend on privileged state: no boot code runs, no CSR is touched, no trap handler exists, so nothing about the machine's pre-main configuration can change the outcome."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/17-bitcount/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+        },
+        "text": "lab/17-bitcount/PROOF.md shows the 10,000,133 comparisons and the disassembly check for the POPCNT shortcut running on the host over the 0x5555/0x3333/0x0F0F mask identities; the log records no CSR access, no trap handler, and no machine-mode entry."
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "Firmware matters when code depends on what the machine looked like before it ran: boot state, PMP configuration, SBI behavior. A computation whose inputs are fully determined in unprivileged code has no such dependence."
+      },
+      {
+        "kind": "explanation",
+        "n": 4,
+        "text": "QEMU emulates machine mode underneath the lab, so firmware is arguably involved through the harness."
+      },
+      {
+        "kind": "refutation",
+        "n": 5,
+        "refutes": 4,
+        "text": "The harness is not the subject: the claim under test is evaluated identically regardless of the harness's privilege model."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The firmware layer does not matter for this lab because the lab's result cannot depend on privileged state: no boot code runs, no CSR is touched, no trap handler exists, so nothing about the machine's pre-main configuration can change the outcome.",
+    "slot": "FIRMWARE"
+  },
+  "swar-popcount-64|KERNEL": {
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "note": "Straight-line integer arithmetic with no syscalls and no shared kernel state.",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          3
+        ]
+      }
+    ],
+    "item": "swar-popcount-64",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The kernel layer does not matter for this lab because the routine is a pure function of its input word: no syscalls, no shared state, nothing a scheduler, VM subsystem, or driver could perturb."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/17-bitcount/PROOF.md and lab source",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+        },
+        "text": "The routine is straight-line integer arithmetic over the 0x5555/0x3333/0x0F0F mask identities; the differential test invokes it as a pure function of its input word with no syscalls and no shared kernel state."
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "The kernel matters when code crosses into it (syscalls), shares state with it (mapped memory, file descriptors), or depends on its timing (preemption). A pure function with no such contact has no kernel premises."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The kernel layer does not matter for this lab because the routine is a pure function of its input word: no syscalls, no shared state, nothing a scheduler, VM subsystem, or driver could perturb.",
+    "slot": "KERNEL"
+  },
+  "swar-popcount-64|PORTABLE": {
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "note": "Plain C unsigned arithmetic; no inline asm, no intrinsics.",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          3
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "Portability with stated assumptions, not assumed portability.",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          5
+        ]
+      }
+    ],
+    "item": "swar-popcount-64",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The portability layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/17-bitcount source, via PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+        },
+        "text": "The SWAR routine is plain C over uint64_t built only from the 0x5555/0x3333/0x0F0F mask identities: no inline assembly, no compiler intrinsics, no ISA-specific operations."
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "C unsigned integer arithmetic wraps modulo 2^N on every conforming implementation, so identities built only on unsigned arithmetic and shifts hold identically on every ISA at the same word width."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The routine's behavior is fixed by C unsigned arithmetic, not by any ISA feature."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The failure mode of a portability claim is hidden ISA dependence: an assumption the proof needed but never stated. Stating word width and wraparound up front is the defense."
+      },
+      {
+        "kind": "explanation",
+        "n": 6,
+        "note": "Scope note: it bounds the portable claim rather than weakening it.",
+        "text": "Measured timing (3.98 ns/value at -O2 on the test host) does not port; only the correctness argument does."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The portability layer matters because the SWAR identities are exact integer math, so the correctness argument itself ports with the code; the honest version of this claim states its assumptions up front: word width and unsigned wraparound.",
+    "slot": "PORTABLE"
+  }
+};
 
 
       const AUDIENCES = [
@@ -11250,7 +11601,12 @@ assert(check == 0x2144DF1C);</code></pre>
             const slot = project.layers[name] || { applies: false, because: '' };
             const cls = slot.applies ? 'layer-slot lit' : 'layer-slot dim';
             const ext = (name === 'ISA' && slot.applies) ? specLink : '';
-            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}</p>${ext}</div>`;
+            // Argument affordance: only where a formal Wigmore analysis exists.
+            const wigKey = `${project.id}|${name}`;
+            const why = WIGMORE[wigKey]
+              ? `<button class="why-marker" type="button" data-wigmore="${esc(wigKey).replace(/"/g, '&quot;')}" aria-expanded="false" aria-label="Show why the ${name} layer ${slot.applies ? 'matters' : 'does not apply'}">why</button>`
+              : '';
+            return `<div class="${cls}"><div class="layer-name">${name}</div><p class="layer-because">${esc(slot.because)}${why}</p>${ext}</div>`;
           })
           .join('');
         return `<div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span>${proofLink}</div>${slots}</div>`;
@@ -11904,6 +12260,232 @@ assert(check == 0x2144DF1C);</code></pre>
       window.addEventListener('popstate', () => updatePageView());
       hideContinuePosition();
       updatePageView({ alignServices: true });
+    })();
+
+    /* Wigmore nested-argument tooltips (pilot: slots with WIGMORE analyses).
+       Interaction model from AAA precedents: CK3-style underlined terms open
+       child panels (max 2 levels per NN/g); anchored to the marker with
+       viewport clamping, never cursor-following (Factorio/FFXIV lesson);
+       hover-intent + travel grace + click-to-pin + stack-aware ESC on
+       desktop; tap-toggle, one-open-at-a-time, drill-in with back button,
+       panel below the marker on touch. */
+    (() => {
+      const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
+      const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
+      let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
+      let intentT = 0, graceT = 0;
+      const clearTimers = () => { clearTimeout(intentT); clearTimeout(graceT); };
+      const short = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+
+      function closeAll() {
+        clearTimers();
+        if (l1) { l1.remove(); l1 = null; }
+        if (l2) { l2.remove(); l2 = null; }
+        l1Key = null; pinned = false; drillStack = [];
+        document.querySelectorAll('.why-marker[aria-expanded="true"]')
+          .forEach((m) => m.setAttribute('aria-expanded', 'false'));
+      }
+
+      function place(panel, anchorRect, mode) {
+        panel.style.visibility = 'hidden';
+        document.body.appendChild(panel);
+        const pw = panel.offsetWidth, ph = panel.offsetHeight;
+        const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+        let x, y;
+        if (mode === 'side') {
+          const roomRight = vw - anchorRect.right - M, roomLeft = anchorRect.left - M;
+          x = roomRight >= pw || roomRight >= roomLeft
+            ? anchorRect.right + M : anchorRect.left - M - pw;
+          y = anchorRect.top;
+        } else {
+          x = Math.min(Math.max(anchorRect.left, M), vw - pw - M);
+          const below = anchorRect.bottom + M, above = anchorRect.top - M - ph;
+          y = (below + ph <= vh || below <= above) ? below : Math.max(M, above);
+        }
+        x = Math.min(Math.max(x, M), Math.max(M, vw - pw - M));
+        y = Math.min(Math.max(y, M), Math.max(M, vh - ph - M));
+        panel.style.left = `${x}px`;
+        panel.style.top = `${y}px`;
+        panel.style.visibility = '';
+      }
+
+      function termButton(a, n) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return esc(`(${n})`);
+        return `<button class="wig-term" type="button" data-node="${n}">(${n}) ${esc(short(node.text, 64))}</button>`;
+      }
+
+      function nodePanel(a, n, opts) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return null;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        let body = `<div class="wig-tip-head"><span>${KIND_LABEL[node.kind] || node.kind} (${node.n})</span></div>`
+          + `<div class="wig-tip-verdict">${esc(node.text)}</div>`;
+        if (node.kind === 'evidence' && node.source) {
+          body += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">source</span>`
+            + `<span class="wig-tip-v"><a class="wig-tip-src" href="${node.source.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(TIER_LABEL[node.source.tier] || node.source.tier)}: ${esc(node.source.cite || '')} <span aria-hidden="true">↗</span></a></span></div></div>`;
+        }
+        if (node.kind === 'refutation' && node.refutes) {
+          body += `<div class="wig-tip-foot">answers objection (${node.refutes})</div>`;
+        }
+        if (node.kind === 'generalization') {
+          body += `<div class="wig-tip-foot">warrant: stated explicitly, the license for the inference above it.</div>`;
+        }
+        if (opts && opts.back) {
+          body += `<button class="wig-tip-back" type="button">← back to argument</button>`;
+        }
+        el.innerHTML = body;
+        return el;
+      }
+
+      function l1Panel(a, slotName, applies) {
+        const title = applies ? `why the ${slotName} layer matters` : `why the ${slotName} layer does not apply`;
+        const ev = a.keyList.filter((e) => e.kind === 'evidence');
+        const via = a.keyList.filter((e) => e.kind === 'generalization');
+        const pens = a.keyList.filter((e) => e.kind === 'penultimate');
+        const objs = a.keyList.filter((e) => e.kind === 'explanation');
+        let html = `<div class="wig-tip-head"><span>${esc(title)}</span></div>`
+          + `<div class="wig-tip-verdict">${esc(a.probandum)}</div>`;
+        if (ev.length || via.length) {
+          html += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">support</span><span class="wig-tip-v">`
+            + ev.map((e) => `<span class="num">(${e.n})</span> ${termButton(a, e.n)}`).join('<br>')
+            + (via.length ? `<br><span class="num">via</span> ` + via.map((e) => termButton(a, e.n)).join(' · ') : '')
+            + `</span></div></div>`;
+        }
+        if (pens.length) {
+          html += `<div class="wig-tip-rows">` + pens.map((e) =>
+            `<div class="wig-tip-row"><span class="wig-tip-k">therefore</span><span class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}</span></div>`
+          ).join('') + `</div>`;
+        }
+        if (objs.length) {
+          html += `<div class="wig-tip-obj"><span class="wig-tip-k">objection</span>` + objs.map((e) => {
+            const ref = a.keyList.find((r) => r.kind === 'refutation' && r.refutes === e.n);
+            return `<div class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}`
+              + (ref ? `<br><span class="wig-tip-answered">answered ${termButton(a, ref.n)}</span>`
+                     : `<br><span class="wig-tip-answered">no answer recorded</span>`) + `</div>`;
+          }).join('') + `</div>`;
+        }
+        html += `<div class="wig-tip-foot">${a.keyList.length} numbered claims · hover or tap an underlined claim for its evidence</div>`;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        el.innerHTML = html;
+        return el;
+      }
+
+      function openL1(marker) {
+        const key = marker.getAttribute('data-wigmore');
+        const a = WIGMORE[key];
+        if (!a) return;
+        closeAll();
+        const slotName = key.split('|')[1] || '';
+        const slotEl = marker.closest('.layer-slot');
+        const slotApplies = slotEl ? slotEl.classList.contains('lit') : false;
+        l1 = l1Panel(a, slotName, slotApplies);
+        l1.dataset.wigKey = key;
+        marker.setAttribute('aria-expanded', 'true');
+        place(l1, marker.getBoundingClientRect(), 'below');
+        l1Key = key;
+      }
+
+      function openL2(termBtn) {
+        const key = l1 ? l1.dataset.wigKey : null;
+        const a = key ? WIGMORE[key] : null;
+        const n = parseInt(termBtn.getAttribute('data-node'), 10);
+        if (!a || !n) return;
+        if (FINE) {
+          if (l2) l2.remove();
+          l2 = nodePanel(a, n, null);
+          if (l2) place(l2, termBtn.getBoundingClientRect(), 'side');
+        } else {
+          // Touch: drill in, one panel at a time, with a back button.
+          drillStack.push(l1.innerHTML);
+          const detail = nodePanel(a, n, { back: true });
+          if (detail) { l1.innerHTML = detail.innerHTML; }
+        }
+      }
+
+      function drillBack() {
+        if (!drillStack.length || !l1) return;
+        l1.innerHTML = drillStack.pop();
+      }
+
+      document.addEventListener('click', (event) => {
+        const back = event.target.closest('.wig-tip-back');
+        if (back && l1 && l1.contains(back)) { drillBack(); return; }
+        const term = event.target.closest('.wig-term');
+        if (term && l1 && l1.contains(term)) {
+          if (!FINE) openL2(term);
+          else { pinned = true; openL2(term); }
+          return;
+        }
+        const marker = event.target.closest('.why-marker');
+        if (marker) {
+          const key = marker.getAttribute('data-wigmore');
+          if (l1Key === key && l1) {
+            // Second click/tap on the open marker: desktop pins a
+            // hover-opened panel, otherwise everything closes.
+            if (!FINE || pinned) { closeAll(); return; }
+            pinned = true;
+            return;
+          }
+          closeAll();
+          if (FINE) pinned = true;
+          openL1(marker);
+          return;
+        }
+        if ((l1 && !l1.contains(event.target)) && (!l2 || !l2.contains(event.target))) {
+          closeAll();
+        }
+      });
+
+      if (FINE) {
+        document.addEventListener('mouseover', (event) => {
+          const term = event.target.closest('.wig-term');
+          if (term && l1 && l1.contains(term) && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => openL2(term), 250);
+            return;
+          }
+          const marker = event.target.closest('.why-marker');
+          if (marker && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => { if (!pinned) openL1(marker); }, 350);
+          }
+        });
+        document.addEventListener('mouseout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || to.closest('.why-marker'));
+          if (!inStack && !pinned) {
+            clearTimers();
+            graceT = setTimeout(closeAll, 250);
+          }
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && (l1 || l2)) closeAll();
+        });
+        document.addEventListener('focusin', (event) => {
+          const marker = event.target.closest('.why-marker');
+          if (marker) { clearTimers(); openL1(marker); }
+        });
+        document.addEventListener('focusout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || (to.closest && to.closest('.why-marker')));
+          if (!inStack && !pinned) closeAll();
+        });
+      } else {
+        // Touch contract: tap toggles, outside tap closes, ESC not needed.
+        document.addEventListener('touchstart', (event) => {
+          const t = event.target;
+          if (t.closest('.why-marker') || (l1 && l1.contains(t))) return;
+          closeAll();
+        }, { passive: true });
+      }
+      window.addEventListener('scroll', () => { if (l1 || l2) closeAll(); }, { passive: true });
+      window.addEventListener('resize', () => { if (l1 || l2) closeAll(); });
     })();
   </script>
   <script>

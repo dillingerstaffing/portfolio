@@ -32,7 +32,7 @@ print("no unresolved placeholders")
 EOF
 
 echo "==> committing and pushing"
-git add data/cards.json data/articles.json data/chips.json index.src.html index.html build.py build-portfolio.sh BUILD.md drift-gate.py
+git add data/cards.json data/articles.json data/chips.json data/isa-decisions.json data/wigmore.json index.src.html index.html build.py build-portfolio.sh BUILD.md drift-gate.py
 git commit -m "$1"
 git push
 
