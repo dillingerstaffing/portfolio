@@ -395,9 +395,6 @@
       display: grid;
       gap: 6px;
       justify-items: end;
-      transform: translateZ(0);
-      -webkit-transform: translateZ(0);
-      -webkit-backface-visibility: hidden;
     }
     .floating-contact {
       width: 52px;
@@ -415,13 +412,14 @@
       visibility: hidden;
       pointer-events: none;
       transform: translateY(10px);
-      transition: background-color 140ms ease;
+      transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms, background-color 140ms ease;
     }
     .floating-contact.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
       transform: translateY(0);
+      transition-delay: 0s;
     }
     .floating-contact:hover { background: var(--acid-soft); }
     .floating-contact:focus-visible { outline: 3px solid var(--acid-soft); outline-offset: 4px; }
@@ -442,12 +440,13 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
-      transition: color 120ms ease, border-color 120ms ease;
+      transition: color 120ms ease, border-color 120ms ease, opacity 120ms ease, visibility 0s linear 120ms;
     }
     .scroll-control.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
+      transition-delay: 0s;
     }
     .scroll-to-services {
       width: auto;
@@ -698,7 +697,7 @@
 
   <div class="floating-actions" aria-label="Page navigation">
     <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1">↑</button>
-    <button class="scroll-control scroll-to-services is-visible" type="button" aria-label="Scroll to services" aria-hidden="false" tabindex="0">services</button>
+    <button class="scroll-control scroll-to-services" type="button" aria-label="Scroll to services" aria-hidden="true" tabindex="-1">services</button>
     <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
     <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -4188,6 +4187,99 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           terminalLabel: 'Verified mip MSIP pending-bit test output',
           showRepoLink: true
         },
+        {
+          id: 'riscv-mie-msip',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'mie MSIE Interrupt Gate',
+          summary: 'A bare-metal M-mode program demonstrating the mie MSIE bit as an independent interrupt gate: with MSIE clear, CLINT msip=1 produces zero traps; with MSIE set, msip triggers exactly one machine software interrupt, verified across 3 byte-identical QEMU runs.',
+          specRows: [
+            ['MSIE CLEAR', 'msip=1 produces 0 traps'],
+            ['MSIE SET', 'msip triggers exactly 1 trap, mcause 0x8000000000000003'],
+            ['MIE READBACKS', '0x0 boot, 0x0 clear, 0x8 set, 0x0 clear'],
+            ['RESULT', 'PASS x3, byte-identical']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mie-msip',
+          terminalOutput: `$ make qemu (3 runs)\nmsie clear + msip=1 ... 0 traps\nmsie set + msip=1 ..... 1 trap (mcause 0x8000000000000003)\nmie readbacks ......... 0x0 / 0x0 / 0x8 / 0x0\nRESULT: PASS x3\n\nmie MSIE independent gate verified`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified mie MSIE gate test output',
+          showRepoLink: true
+        },
+        {
+          id: 'lab-83-ctz-via-ctzless',
+          kicker: 'C / BIT MANIPULATION',
+          title: 'CTZ via Popcount',
+          summary: 'Count-trailing-zeros implemented as popcount((x ^ (x-1)) >> 1) with a hand-rolled SWAR popcount, no builtin ctz. Verified against a shift-loop reference over 65,535 exhaustive 16-bit inputs plus 1M fixed-seed 64-bit values, zero mismatches.',
+          specRows: [
+            ['FORMULA', 'popcount((x ^ (x-1)) >> 1), SWAR popcount'],
+            ['COVERAGE', '65,535 exhaustive 16-bit + 1M fixed-seed 64-bit'],
+            ['MISMATCHES', '0 vs shift-loop reference'],
+            ['CHECKSUM', '0xdd36dc676b59b047 across -O0/-O2/ASan+UBSan'],
+            ['SPEED', '3.00 ns/value at -O2, no tzcnt/bsf/popcnt in disasm']
+          ],
+          terminalName: 'systems-lab / lab / 83-ctz-via-ctzless',
+          terminalOutput: `$ make check (3 configs)\nexhaustive 16-bit ..... 65,535 cases, 0 mismatches\nrandom 64-bit ......... 1,000,000 cases, 0 mismatches\nchecksum .............. 0xdd36dc676b59b047 (all configs)\nspeed ................. 3.00 ns/value\nRESULT: PASS\n\nctz-via-popcount verified`,
+          verificationEnvironment: 'native',
+          checks: 1065535,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab',
+          repoLabel: 'GitHub: systems-lab',
+          terminalLabel: 'Verified ctz-via-ctzless test output',
+          showRepoLink: true
+        },
+        {
+          id: 'lab-84-round-up-pow2',
+          kicker: 'C / BIT MANIPULATION',
+          title: 'Round up to next power of two (lab/84)',
+          summary: 'round_up_pow2_64 from the shift/OR fill cascade applied to (x-1), then +1, unsigned arithmetic, no builtins. Verified: 194 dedicated contract rows (0 maps to 0, every 2^k is identity, 2^k-1 and 2^k+1 boundaries, inputs above 2^63 wrap to 0 since 2^64 is unrepresentable), exhaustive 16-bit inputs, and 1,000,000 fixed-seed splitmix64 64-bit values: 0 mismatches against an independent division-loop reference. FNV-1a checksum 0x45777d315651eb4c identical across -O0, -O2, and ASan+UBSan builds. -O2 disassembly shows exactly the intended construction (sub, five shr/or pairs, add, ret) with no bit-scan instructions. Measured at -O2: 2.27 ns/value.',
+          specRows: [
+            ['METHOD', 'shift/OR fill cascade on x-1, then +1, unsigned arithmetic, no builtins'],
+            ['COVERAGE', '194 contract rows + exhaustive 16-bit + 1,000,000 fixed-seed 64-bit values'],
+            ['MISMATCHES', '0 vs independent division-loop reference'],
+            ['CHECKSUM', 'FNV-1a 0x45777d315651eb4c across -O0, -O2, ASan+UBSan'],
+            ['DISASSEMBLY', 'sub, five shr/or pairs, add, ret; no bit-scan instructions'],
+            ['MEASURED', '2.27 ns/value at -O2']
+          ],
+          terminalName: 'systems-lab / lab / 84-round-up-pow2',
+          terminalOutput: `$ make check (3 configs)\ncontract rows .......... 194\nexhaustive 16-bit ...... 65,536 inputs\nrandom 64-bit .......... 1,000,000 fixed-seed values\nmismatches ............. 0\nchecksum ............... 0x45777d315651eb4c\nbuilds ................. -O0, -O2, ASan+UBSan IDENTICAL\ndisassembly ............ sub, five shr/or pairs, add, ret\nmeasured ............... 2.27 ns/value at -O2\nRESULT: PASS\n\nround_up_pow2_64 verified`,
+          verificationEnvironment: 'host',
+          checks: 1065730,
+          failures: 0,
+          stressItems: 1000000,
+          repoUrl: 'https://github.com/dillingerstaffing/systems-lab/tree/main/lab/84-round-up-pow2',
+          repoLabel: 'GitHub: systems-lab/lab/84-round-up-pow2',
+          terminalLabel: 'Verified round-up-to-power-of-two test output',
+          showRepoLink: true
+        },
+        {
+          id: 'riscv-mie-global',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'mstatus.MIE global interrupt gate (mie-global)',
+          summary: 'Bare-metal M-mode experiment on QEMU 8.2.2 with the CLINT software-interrupt pending (msip=1) and the mie MSIE bit held set. With mstatus.MIE clear: 0 traps, the pending bit stays set in mip. Setting MIE: exactly 1 machine software interrupt (mcause 0x8000000000000003, trap-entry mstatus 0xa00001880), no re-delivery after msip is cleared, and re-clearing MIE re-arms the gate. mstatus write 0xa00000008 read back 0xa00000088 (the interleaved trap plus mret sets MPIE before the readback). 3 runs byte-identical, RESULT: PASS on all 3 runs.',
+          specRows: [
+            ['MIE CLEAR', '0 traps, pending bit stays set in mip'],
+            ['MIE SET', 'exactly 1 machine software interrupt, mcause 0x8000000000000003'],
+            ['TRAP ENTRY', 'mstatus 0xa00001880'],
+            ['READBACK', 'write 0xa00000008, read back 0xa00000088 after trap plus mret'],
+            ['RE-ARM', 'no re-delivery after msip clear; re-clearing MIE re-arms the gate'],
+            ['RESULT', 'PASS x3, byte-identical']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mie-global',
+          terminalOutput: `$ make qemu (3 runs)\nmstatus.MIE clear ...... 0 traps, mip pending bit stays set\nmstatus.MIE set ........ 1 machine software interrupt\nmcause ................. 0x8000000000000003\ntrap-entry mstatus ..... 0xa00001880\nwrite/readback ......... 0xa00000008 / 0xa00000088\nmsip clear ............. no re-delivery\nre-clear MIE ........... gate re-armed\nRESULT: PASS x3, byte-identical\n\nmstatus.MIE global gate verified`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-global',
+          repoLabel: 'GitHub: riscv-baremetal-demo/src/mie-global',
+          terminalLabel: 'Verified mstatus.MIE global interrupt gate output',
+          showRepoLink: true
+        }
 
       ];
       const AUDIENCES = [
