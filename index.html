@@ -773,6 +773,23 @@ v++;</code></pre>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
         </div>
       </article>
+
+      <article class="research-note">
+        <div>
+          <h3>The Lookup Table That Fits in 16 Bits</h3>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 11:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The parity of a 32-bit word is the XOR of all its bits. Fold the word down and the XOR survives every step: <code>x ^= x &gt;&gt; 16</code>, then 8, then 4, and the answer sits in the lowest nibble. The final step is where it turns beautiful: <code>(0x6996 &gt;&gt; v) &amp; 1</code>. The constant in binary is <code>0110 1001 1001 0110</code>, and bit <code>i</code> of it is exactly the parity of nibble <code>i</code>, so one shift reads out a 16-entry lookup table packed into a single immediate. No table, no branches, no popcount instruction.</p>
+          <pre><code>x ^= x &gt;&gt; 16;
+x ^= x &gt;&gt; 8;
+x ^= x &gt;&gt; 4;
+return (0x6996 &gt;&gt; (x &amp; 0xf)) &amp; 1;</code></pre>
+          <p>Writing the constant down is not the hard part; trusting it is. All sixteen rows were hand-derived against the naive per-bit definition rather than assumed. And the compiler takes the construction literally: the -O2 disassembly shows <code>movl $27030</code>, which is 0x6996 in decimal, with no popcount-class instruction emitted.</p>
+          <p>Lab/97 checked 1,065,536 differential cases and a million homomorphism pairs confirming that parity(a^b) equals parity(a) XOR parity(b). Zero mismatches. One FNV fingerprint identical across -O0, -O2, and the sanitizers. The shift-lookup idea is credited to Mathew Hendry in December 2002; lab/35 built the fold, lab/97 packed the table that fits in sixteen bits.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996" target="_blank" rel="noopener">GitHub: systems-lab</a></p>
+        </div>
+      </article>
     </section>
 
     <section class="frame section" id="services" aria-labelledby="services-title">
