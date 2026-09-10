@@ -167,7 +167,9 @@ def article_strip_html(article):
             f'<div class="{cls}"><div class="layer-name">{name}</div>'
             f'<p class="layer-because">{because}</p></div>'
         )
-    return '<div class="layer-strip">' + "".join(slots) + "</div>"
+    return ('<div class="layer-strip">'
+            '<div class="layer-strip-caption">Relevance by layer</div>'
+            + "".join(slots) + "</div>")
 
 
 def node_check_scripts(html_text):
