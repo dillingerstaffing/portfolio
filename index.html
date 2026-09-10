@@ -395,6 +395,9 @@
       display: grid;
       gap: 6px;
       justify-items: end;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
     }
     .floating-contact {
       width: 52px;
@@ -412,14 +415,13 @@
       visibility: hidden;
       pointer-events: none;
       transform: translateY(10px);
-      transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms, background-color 140ms ease;
+      transition: background-color 140ms ease;
     }
     .floating-contact.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
       transform: translateY(0);
-      transition-delay: 0s;
     }
     .floating-contact:hover { background: var(--acid-soft); }
     .floating-contact:focus-visible { outline: 3px solid var(--acid-soft); outline-offset: 4px; }
@@ -440,13 +442,12 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
-      transition: color 120ms ease, border-color 120ms ease, opacity 120ms ease, visibility 0s linear 120ms;
+      transition: color 120ms ease, border-color 120ms ease;
     }
     .scroll-control.is-visible {
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
-      transition-delay: 0s;
     }
     .scroll-to-services {
       width: auto;
@@ -697,7 +698,7 @@
 
   <div class="floating-actions" aria-label="Page navigation">
     <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1">↑</button>
-    <button class="scroll-control scroll-to-services" type="button" aria-label="Scroll to services" aria-hidden="true" tabindex="-1">services</button>
+    <button class="scroll-control scroll-to-services is-visible" type="button" aria-label="Scroll to services" aria-hidden="false" tabindex="0">services</button>
     <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
     <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -4163,7 +4164,30 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
           repoLabel: 'GitHub: riscv-baremetal-demo',
           terminalLabel: 'Verified mcycle write/readback test output',
           showRepoLink: true
-        }
+        },
+        {
+          id: 'riscv-mip-msip',
+          kicker: 'RISC-V / BARE METAL',
+          title: 'mip MSIP Pending Bit',
+          summary: 'A bare-metal M-mode program writing the CLINT msip register and reading mip to verify the MSIP pending bit (bit 3) sets and clears with the msip write/clear, with interrupts disabled, publishing the bit transitions across 3 QEMU runs.',
+          specRows: [
+            ['MSIP BIT', 'bit 3 of mip sets/clears with CLINT msip write/clear'],
+            ['BOOT MIP', '0x80 observed (MTIP pending), tracked and conserved'],
+            ['INTERRUPTS', 'disabled during test, no trap taken'],
+            ['NON-MSIP BITS', 'unchanged by msip operations'],
+            ['RESULT', 'PASS x3']
+          ],
+          terminalName: 'riscv-baremetal-demo / src / mip-msip',
+          terminalOutput: `$ make qemu (3 runs)\nboot mip .......... 0x80 (MTIP pending)\nmsip set .......... mip bit 3 = 1\nmsip clear ........ mip bit 3 = 0\nnon-MSIP bits ..... conserved across operations\nRESULT: PASS x3\n\nmip MSIP pending-bit tracking verified`,
+          verificationEnvironment: 'QEMU',
+          checks: 3,
+          failures: 0,
+          stressItems: 3,
+          repoUrl: 'https://github.com/dillingerstaffing/riscv-baremetal-demo',
+          repoLabel: 'GitHub: riscv-baremetal-demo',
+          terminalLabel: 'Verified mip MSIP pending-bit test output',
+          showRepoLink: true
+        },
 
       ];
       const AUDIENCES = [
@@ -4680,7 +4704,6 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       const floatingContact = document.querySelector('.floating-contact');
       const heroObserver = new IntersectionObserver(([entry]) => {
         const visible = !entry.isIntersecting;
-        setScrollControlVisible(scrollToServices, visible);
         floatingContact.classList.toggle('is-visible', visible);
         floatingContact.setAttribute('aria-hidden', String(!visible));
         floatingContact.tabIndex = visible ? 0 : -1;
