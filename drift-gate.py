@@ -39,6 +39,7 @@ TREE_PATH_RE = re.compile(r'/tree/main/([^?#]*)')
 # resolve_proof before the terminalName derivation. Repo keys are
 # 'baremetal' (riscv-baremetal-demo) and 'systems-lab'.
 CARD_MODULE_OVERRIDES = {
+    'riscv-bare-metal-scheduler': ('baremetal', 'PROOF.md'),
     'riscv-preemptive-scheduler': ('baremetal', 'src/preempt/PROOF.md'),
     'scheduler-benchmarks-o0-o2': ('baremetal', 'src/preempt/PROOF.md'),
     'bare-metal-uart-shell': ('baremetal', 'src/shell/PROOF.md'),
@@ -118,8 +119,13 @@ def resolve_proof(card, systems_lab, baremetal, xv6):
     has_lab_or_src = any(s in ('lab', 'src') for s in segs)
     candidates = []
     if is_baremetal and not has_lab_or_src:
-        # Root-mapped card (e.g. qemu / riscv64 / demo.elf).
-        candidates.append(('PROOF.md', 'no root PROOF.md'))
+        # Root-mapped card (e.g. qemu / riscv64 / demo.elf): these resolve
+        # through the /tree/main/<path> fallback below. The root PROOF.md
+        # belongs to exactly one card (wired above via CARD_MODULE_OVERRIDES)
+        # and is never matched generically, so it cannot shadow module
+        # proofs. (Incident 2026-09-10: adding the root proof briefly made
+        # every root-mapped card compare against it.)
+        pass
     else:
         rel = ensure_proof_path('/'.join(segs[1:]))
         candidates.append((rel, 'no PROOF.md at ' + rel))
@@ -132,6 +138,8 @@ def resolve_proof(card, systems_lab, baremetal, xv6):
         full = os.path.join(base, relpath)
         if os.path.isfile(full):
             return ('file', (full, relpath))
+    if not candidates:
+        return ('skip', 'no PROOF.md candidate')
     return ('skip', candidates[0][1])
 
 
