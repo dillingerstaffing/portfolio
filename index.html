@@ -391,7 +391,7 @@
       position: fixed;
       z-index: 20;
       right: max(calc(18px + env(safe-area-inset-right)), calc((100vw - var(--max)) / 2 + 18px));
-      bottom: max(24px, calc(18px + env(safe-area-inset-bottom)));
+      bottom: max(140px, calc(134px + env(safe-area-inset-bottom)));
       width: 52px;
       height: 52px;
       display: grid;
@@ -420,22 +420,44 @@
     .floating-contact:focus-visible { outline: 3px solid var(--acid-soft); outline-offset: 4px; }
     .floating-contact svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
-    .pg-quiet {
-      margin: 56px 0 8px;
-      border-top: 1px solid var(--line);
-      padding-top: 24px;
-      font-family: var(--mono);
-      font-size: 13px;
-      letter-spacing: 0.02em;
-      color: var(--dim);
+    .scroll-controls {
+      position: fixed;
+      z-index: 21;
+      right: max(calc(18px + env(safe-area-inset-right)), calc((100vw - var(--max)) / 2 + 18px));
+      bottom: max(24px, calc(18px + env(safe-area-inset-bottom)));
+      display: grid;
+      gap: 6px;
     }
-    .pg-quiet a { color: var(--paper); text-decoration: underline; text-underline-offset: 3px; }
-    .pg-quiet a:hover { color: var(--acid); }
+    .scroll-control {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      border: 1px solid #485348;
+      border-radius: 2px;
+      background: rgba(12, 15, 13, .9);
+      color: var(--muted);
+      font: 500 20px/1 var(--mono);
+      cursor: pointer;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: color 120ms ease, border-color 120ms ease, opacity 120ms ease, visibility 0s linear 120ms;
+    }
+    .scroll-control.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition-delay: 0s;
+    }
+    .scroll-control:hover { color: var(--acid); border-color: var(--acid); }
+    .scroll-control:focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
 
     footer { min-height: 110px; padding-block: 26px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 30px; color: var(--dim); font-size: 11px; }
-    footer a, .footer-cta { color: var(--muted); text-decoration: none; overflow-wrap: anywhere; }
-    .footer-cta { padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
-    footer a:hover, footer a:focus-visible, .footer-cta:hover, .footer-cta:focus-visible { color: var(--acid); }
+    .elsewhere { color: var(--dim); }
+    .elsewhere a { color: var(--muted); text-decoration: none; overflow-wrap: anywhere; }
+    .elsewhere a:hover, .elsewhere a:focus-visible { color: var(--acid); }
 
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; align-items: start; }
@@ -448,31 +470,22 @@
       .section-head { grid-template-columns: 1fr; gap: 16px; }
       .project-browser { display: block; }
       .chapter-rail {
-        position: sticky;
-        top: 0;
-        margin-inline: calc(-1 * var(--pad));
-        padding-inline: var(--pad);
+        position: relative;
+        top: auto;
         border-block: 1px solid var(--line);
-        background: rgba(12, 15, 13, .97);
       }
       .chapter-list {
-        display: flex;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
-      .chapter-list::-webkit-scrollbar { display: none; }
       .chapter-button {
-        flex: 0 0 auto;
-        width: auto;
+        width: 100%;
         min-height: 46px;
-        padding: 9px 12px;
+        padding: 9px 10px;
         border-right: 1px solid var(--line);
-        border-bottom: 0;
-        white-space: nowrap;
+        white-space: normal;
       }
+      .chapter-button:nth-child(even) { border-right: 0; }
       .project { contain-intrinsic-size: auto 1200px; scroll-margin-top: 64px; }
       html.density-compact .project { contain-intrinsic-size: auto 58px; }
       .compact-main { grid-template-columns: 46px minmax(118px, .6fr) minmax(170px, 1fr); }
@@ -522,7 +535,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .floating-contact, .project { transition: none; }
+      .floating-contact, .scroll-control, .project { transition: none; }
     }
 
   </style>
@@ -620,10 +633,6 @@
           </div>
         </div>
       </div>
-      <p class="pg-quiet" aria-label="Interactive sketches">The ideas above, as small interactive sketches: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">See Proving Ground for various simulations <span aria-hidden="true">&#8599;</span></a></p>
-      <div class="section-cta">
-        <button class="btn cta-trigger" type="button">Start your project <span class="arrow" aria-hidden="true">↗</span></button>
-      </div>
     </section>
 
     <section class="frame section" id="services" aria-labelledby="services-title">
@@ -650,9 +659,6 @@
         </div>
       </div>
       <div class="approach"></div>
-      <div class="section-cta">
-        <button class="cta-trigger text-cta" type="button">Start your project <span aria-hidden="true">↗</span></button>
-      </div>
     </section>
 
     <section class="frame contact-section" id="contact" aria-labelledby="contact-title">
@@ -672,9 +678,13 @@
 
   <footer class="frame">
     <span>Chris / C, firmware, and OS internals</span>
-    <a href="https://dillingerstaffing.github.io/proving-ground/#bench=riscv-playground" target="_blank" rel="noopener">A hands-on RISC-V tutorial <span aria-hidden="true">&#8599;</span></a>
-    <button class="footer-cta cta-trigger" type="button">Start your project</button>
+    <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">↗</span></a></span>
   </footer>
+
+  <div class="scroll-controls" aria-label="Page navigation">
+    <button class="scroll-control scroll-to-top" type="button" aria-label="Scroll to top" aria-hidden="true" tabindex="-1" disabled>↑</button>
+    <button class="scroll-control scroll-to-bottom" type="button" aria-label="Scroll to bottom">↓</button>
+  </div>
 
   <button class="floating-contact cta-trigger" type="button" aria-label="Contact Chris" aria-hidden="true" tabindex="-1" disabled>
     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -4616,7 +4626,39 @@ RESULT: PASS (boundary-1 readable, boundary traps mcause=5)
       const copyStatus = chooser.querySelector('.copy-status');
       const email = 'shipthisgroup@gmail.com';
       const floatingContact = document.querySelector('.floating-contact');
+      const scrollToTop = document.querySelector('.scroll-to-top');
+      const scrollToBottom = document.querySelector('.scroll-to-bottom');
       let lastTrigger = null;
+      let scrollUpdatePending = false;
+
+      const setScrollControlVisible = (control, visible) => {
+        control.classList.toggle('is-visible', visible);
+        control.disabled = !visible;
+        control.setAttribute('aria-hidden', String(!visible));
+        control.tabIndex = visible ? 0 : -1;
+        if (!visible && document.activeElement === control) control.blur();
+      };
+      const updateScrollControls = () => {
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        const distanceFromBottom = document.documentElement.scrollHeight - scrollTop - window.innerHeight;
+        setScrollControlVisible(scrollToTop, scrollTop > 600);
+        setScrollControlVisible(scrollToBottom, distanceFromBottom > 600);
+        scrollUpdatePending = false;
+      };
+      const scheduleScrollControlUpdate = () => {
+        if (scrollUpdatePending) return;
+        scrollUpdatePending = true;
+        window.requestAnimationFrame(updateScrollControls);
+      };
+      scrollToTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: motionReduced ? 'auto' : 'smooth' });
+      });
+      scrollToBottom.addEventListener('click', () => {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: motionReduced ? 'auto' : 'smooth' });
+      });
+      window.addEventListener('scroll', scheduleScrollControlUpdate, { passive: true });
+      window.addEventListener('resize', scheduleScrollControlUpdate);
+      updateScrollControls();
 
       const hideZones = [
         document.querySelector('.hero'),
