@@ -12164,5 +12164,58 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-tm-gate",
     "terminalLabel": "Verified src-scounteren-tm-gate QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "forkisolation",
+    "kicker": "XV6 KERNEL",
+    "title": "fork gives the child a private heap copy, xv6",
+    "summary": "A user-space xv6 test proves fork gives the child a private copy of the parent's address space. The parent writes canary 0xcafef00d, the child observes it (the copy happened), writes 0xdeadbeef, and the parent still reads 0xcafef00d (the child's write never leaked back).",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The test runs as a user program exercising fork; it checks memory contents, not the machine contract. The 3 checks, 0 mismatches are insensitive to the ISA: they pass on any machine where the kernel copies the page."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is about the kernel's address-space copy, not the implementation behind it: 3 checks, 0 mismatches. Whether the copy is one page or many is determined by the kernel's copyuvm, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The test runs entirely in user space on xv6 with no machine-mode involvement. Firmware never configures the page the copy targets, so the verified property is indifferent to firmware."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "fork is the kernel's address-space duplication contract, and this test verifies it from outside the kernel: the child observes the parent's canary (the copy happened) and the parent's page is untouched (the copy is private). The verified property is the kernel's copyuvm behavior."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure deep-copy construction: duplicate the page table, allocate fresh physical pages, copy contents word for word. The same clone-the-address-space pattern appears in portable code wherever a buffer or state must be copied before mutation."
+      }
+    },
+    "evidence": {
+      "label": "repo",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "3 checks in user space on QEMU 8.2.2: child observes parent canary 0xcafef00d, parent re-reads 0xcafef00d after child wrote 0xdeadbeef, 0 mismatches"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / forkisolation.c",
+    "terminalOutput": "$ make qemu (runs forkisolation)\nchild read: 0xcafef00d\nparent read after child: 0xcafef00d\nchecks=3 mismatches=0\n\nfork gives the child a private copy: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 3,
+    "failures": 0,
+    "stressItems": 3,
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/forkisolation.c",
+    "terminalLabel": "Verified forkisolation QEMU output",
+    "showRepoLink": true
   }
 ]
