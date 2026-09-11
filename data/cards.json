@@ -13898,5 +13898,119 @@
     },
     "portability": null,
     "stressItems": 5
+  },
+{
+    "id": "src-mideleg-mtip-route",
+    "title": "mideleg bit 7 is read-only zero, timer stays in M-mode",
+    "kicker": "RISCV PRIV",
+    "summary": "A bare-metal RISC-V program probes whether the machine timer interrupt can be delegated to S-mode via mideleg bit 7. On QEMU 8.2.2 the bit is read-only zero: writes of 0x0, 0x80, and 0x14c4 all read back 0x1444 with bit 7 clear. With the hart dropped to S-mode and the CLINT timer armed, the interrupt lands in M-mode with mcause 0x8000000000000007 and zero traps reach S-mode.",
+    "checks": 20,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mideleg-mtip-route/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-mtip-route/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "20 checks on QEMU 8.2.2: three mideleg writes all read back 0x1444 with bit 7 dropped; armed timer traps once in M-mode with mcause 0x8000000000000007; 0 S-mode traps; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xc02ae00765d9bb85, over the readbacks, trap counts, and mcause, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode bare metal dropping to S-mode"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mideleg-mtip-route",
+    "terminalLabel": "Verified mideleg MTIP routing QEMU output",
+    "terminalOutput": "mideleg-mtip-route: machine timer interrupt routing check\nboot: mideleg=0x1444\ntrap: mtvec=0x800001e8\ntrap: stvec=0x80000244\nmideleg: write=0x0 readback=0x1444\nmideleg: write=0x80 readback=0x1444\nmideleg: write=0x14c4 readback=0x1444\ndrop: mie=0x80 mideleg=0x1444\ns-mode: hart dropped to S-mode, timer disarmed\narm: mtimecmp=0x2b231\ntrap: m_traps=1 s_traps=0 mcause=0x8000000000000007 mtval=0x0\nquiet: m_traps=1 s_traps=0\nrecord checksum=0xc02ae00765d9bb85\nRESULT: PASS (checks=20)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because mideleg is a WARL register whose legal values are defined by the privileged architecture, and this test publishes the measured legalization: bit 7 reads back zero on this implementation, so the machine timer interrupt cannot be delegated."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the WARL legalization is a property of the CSR implementation's defined behavior; no pipeline, cache, or predictor behavior is measured or asserted."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because M-mode firmware that wants S-mode timer handling must know whether delegation is available; on this implementation it is not, so firmware must keep the timer in M-mode."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because the finding is that delegation is unavailable; a supervisor kernel cannot receive what mideleg cannot route, so there is no kernel behavior to verify here."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware delegation-availability fact directly, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "pipeatomic",
+    "title": "xv6 concurrent pipe writes never interleave",
+    "kicker": "XV6",
+    "summary": "A user-space test verifies xv6's pipe write atomicity. Four children each write one 128-byte record (a single label byte repeated) to the same pipe concurrently on a 3-hart machine; the parent reads 512 bytes and verifies the stream is four intact 128-byte uniform blocks with labels 0, 1, 2, 3 each exactly once, proving pipewrite holds the pipe lock across the whole call.",
+    "checks": 8,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/pipeatomic.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "8 checks on QEMU 8.2.2: pipe fds valid; 4 children forked; 512 bytes read; sticky EOF; 4 uniform 128-byte blocks; labels 0-3 each once; children reaped with status 0; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xD8EBD304B30BBA83 (run 1), over the 512 received bytes; 3 runs, 0 mismatches"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, 3 harts"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / pipeatomic",
+    "terminalLabel": "Verified pipeatomic QEMU output",
+    "terminalOutput": "xv6 kernel is booting\n\nhart 1 starting\nhart 2 starting\ninit: starting sh\n$ pipeatomic\ncheck 1: pipe() ok, read fd 3, write fd 4\ncheck 2: 4 children forked\ncheck 3: read 512 bytes before EOF, matches 4*128 written\ncheck 4: read after EOF returned 0\ncheck 5: all 4 128-byte blocks byte-uniform\ncheck 6: labels present exactly once each: 0 1 2 3 (stream order for this run)\ncheck 7: read end closed\ncheck 8: all 4 children reaped with exit status 0 (each write returned 128)\nchecksum: 0xD8EBD304B30BBA83\nbytes written: 512, bytes read: 512\nchecks: 8 mismatches: 0\nPASS: 4 concurrent 128-byte writes landed as 4 intact uniform records, no interleaving\n$",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the test exercises the pipe write system call; it checks byte-stream integrity under concurrency, not the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is about the kernel's pipe lock discipline, not the implementation behind it; the 3-hart contention is a test condition, not a measured microarchitectural property."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test is a user program exercising pipe I/O; firmware never manages pipes."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because pipe atomicity is the kernel's locking contract: pipewrite holds the pipe lock for the whole write, so concurrent fixed-size writes must land as intact records, verified here from user space under real contention."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a kernel locking invariant, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
   }
 ]
