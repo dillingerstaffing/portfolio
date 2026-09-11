@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-045452">
+  <meta name="build-version" content="v20260911-050050">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -6413,7 +6413,7 @@ assert(check == 0x2144DF1C);</code></pre>
       },
       "KERNEL": {
         "applies": true,
-        "because": "matters because a kernel's floating-point context switch programs the FS field directly: on trap it reads FS to decide whether floating-point state is dirty and must be saved, and writes FS to mark the state clean or dirty. The proof verifies the exact contract that logic assumes, all four values write and read back and the SD bit moves only on the FS equals 3 writes, so if a written value did not read back, the kernel could not trust the dirty tracking."
+        "because": "matters because a kernel's floating-point context switch programs this field directly: on trap it reads the FS (floating-point state) field to decide whether floating-point state is dirty and must be saved, and it writes FS to mark the state clean or dirty. The proof verifies the exact contract that logic assumes, all four values write and read back exactly and the SD bit moves only on the FS equals 3 writes. If a written value did not read back, the kernel could not trust the dirty bit, so the claim is load-bearing for kernel work."
       },
       "ALGORITHM": {
         "applies": false,
@@ -8938,8 +8938,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "not here because the probe raises the pending interrupt itself and sets the MSIE bit itself; it depends on no firmware-programmed enable, no boot-time delegation default, and no SBI call, so the gate's behavior is established by the probe's own writes."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The verified property is the M-mode mstatus.MIE global gate: with the mie CSR's MSIE bit set and a software interrupt pending, MIE clear means no trap fires and MIE set lets exactly one machine software interrupt through. That gate is M-mode firmware's to program; a supervisor kernel gates its own interrupts through SIE and never touches MIE. If the gating rule differed, firmware would change, but no kernel code reads or writes this gate, so kernel work is invariant under the claim and KERNEL stays dim."
+        "applies": true,
+        "because": "The MIE gate is the hardware mechanism kernels rely on to defer interrupts: with the mie CSR's MSIE bit set and a software interrupt pending, the MIE bit in mstatus decides whether the trap fires, exactly one machine software interrupt gets through when MIE is set with mcause 0x8000000000000003, and clearing the pending bit stops re-delivery until MIE is re-armed. Kernel critical sections program this gate directly, so if the gating rule were different, kernel deferral code would have to change; the verified properties are load-bearing for the kernel's interrupt handling."
       },
       "ALGORITHM": {
         "applies": false,
@@ -16340,12 +16340,12 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "riscv-mstatus-fs-field",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "matters because a kernel's floating-point context switch programs the FS field directly: on trap it reads FS to decide whether floating-point state is dirty and must be saved, and writes FS to mark the state clean or dirty. The proof verifies the exact contract that logic assumes, all four values write and read back and the SD bit moves only on the FS equals 3 writes, so if a written value did not read back, the kernel could not trust the dirty tracking.",
+    "probandum": "matters because a kernel's floating-point context switch programs this field directly: on trap it reads the FS (floating-point state) field to decide whether floating-point state is dirty and must be saved, and it writes FS to mark the state clean or dirty. The proof verifies the exact contract that logic assumes, all four values write and read back exactly and the SD bit moves only on the FS equals 3 writes. If a written value did not read back, the kernel could not trust the dirty bit, so the claim is load-bearing for kernel work.",
     "keyList": [
       {
         "kind": "probandum",
         "n": 1,
-        "text": "matters because a kernel's floating-point context switch programs the FS field directly: on trap it reads FS to decide whether floating-point state is dirty and must be saved, and writes FS to mark the state clean or dirty. The proof verifies the exact contract that logic assumes, all four values write and read back and the SD bit moves only on the FS equals 3 writes, so if a written value did not read back, the kernel could not trust the dirty tracking."
+        "text": "matters because a kernel's floating-point context switch programs this field directly: on trap it reads the FS (floating-point state) field to decide whether floating-point state is dirty and must be saved, and it writes FS to mark the state clean or dirty. The proof verifies the exact contract that logic assumes, all four values write and read back exactly and the SD bit moves only on the FS equals 3 writes. If a written value did not read back, the kernel could not trust the dirty bit, so the claim is load-bearing for kernel work."
       },
       {
         "kind": "evidence",
@@ -54444,12 +54444,12 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "riscv-mie-global",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "The verified property is the M-mode mstatus.MIE global gate: with the mie CSR's MSIE bit set and a software interrupt pending, MIE clear means no trap fires and MIE set lets exactly one machine software interrupt through. That gate is M-mode firmware's to program; a supervisor kernel gates its own interrupts through SIE and never touches MIE. If the gating rule differed, firmware would change, but no kernel code reads or writes this gate, so kernel work is invariant under the claim and KERNEL stays dim.",
+    "probandum": "The MIE gate is the hardware mechanism kernels rely on to defer interrupts: with the mie CSR's MSIE bit set and a software interrupt pending, the MIE bit in mstatus decides whether the trap fires, exactly one machine software interrupt gets through when MIE is set with mcause 0x8000000000000003, and clearing the pending bit stops re-delivery until MIE is re-armed. Kernel critical sections program this gate directly, so if the gating rule were different, kernel deferral code would have to change; the verified properties are load-bearing for the kernel's interrupt handling.",
     "keyList": [
       {
         "kind": "probandum",
         "n": 1,
-        "text": "The verified property is the M-mode mstatus.MIE global gate: with the mie CSR's MSIE bit set and a software interrupt pending, MIE clear means no trap fires and MIE set lets exactly one machine software interrupt through. That gate is M-mode firmware's to program; a supervisor kernel gates its own interrupts through SIE and never touches MIE. If the gating rule differed, firmware would change, but no kernel code reads or writes this gate, so kernel work is invariant under the claim and KERNEL stays dim."
+        "text": "The MIE gate is the hardware mechanism kernels rely on to defer interrupts: with the mie CSR's MSIE bit set and a software interrupt pending, the MIE bit in mstatus decides whether the trap fires, exactly one machine software interrupt gets through when MIE is set with mcause 0x8000000000000003, and clearing the pending bit stops re-delivery until MIE is re-armed. Kernel critical sections program this gate directly, so if the gating rule were different, kernel deferral code would have to change; the verified properties are load-bearing for the kernel's interrupt handling."
       },
       {
         "kind": "evidence",
