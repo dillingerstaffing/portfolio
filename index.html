@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-175701">
+  <meta name="build-version" content="v20260911-180912">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -948,6 +948,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-alignment-the-page-table-demands-of-itself/">The Alignment the Page Table Demands of Itself</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-alignment-the-page-table-demands-of-itself|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified property is a clause of the machine contract: the privileged architecture defines a superpage leaf as misaligned when its low PPN bits are nonzero and mandates a page fault there, so every correct implementation of the translation process must reach the same verdict; the module's two independent constructions agree on that verdict across thirty million cases, and the article states plainly which parts were verified and which were cited from knowledge.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-alignment-the-page-table-demands-of-itself|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verdict under test is fixed by the architecture: every conforming implementation of the translation process faults on the same misaligned entries, so the thirty million agreements say nothing about any particular implementation's timing or structure; the rule is identical on all of them, which is exactly why the module can test it in portable C.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-alignment-the-page-table-demands-of-itself|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the consumer of the rule is the code that builds page tables: bare-metal firmware maps 2 MiB superpages by writing leaf entries directly, and a nonzero low PPN bit faults on first use, so the alignment is a precondition the firmware's setup must establish before the translation is trusted.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-alignment-the-page-table-demands-of-itself|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because kernels that map superpages write the same leaf entries: the malformed-entry fault awaits a kernel's 2 MiB mapping exactly as it awaits firmware's, so the alignment rule is a load-bearing precondition for kernel memory management wherever superpages are used.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-alignment-the-page-table-demands-of-itself|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the mechanism under test is pure computation: the low-bit mask identity and the top-down positional scan are portable C with no target-specific content, and the testing discipline, two structurally different constructions agreeing on every verdict, is an argument for correctness that travels unchanged to any platform.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 14:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A level-1 leaf in Sv39 maps a 2 MiB superpage: the page-table walk stops early, and one entry covers the whole region. That entry's physical page number must fit the claim it makes. Give it PPN 0x200, which is bit 9 alone: the rule checks bits 8 down to 0, finds nothing set, and the translation proceeds. Now give it 0x201: bit 0 sits inside the checked range, and the translation faults. Bit 9 is the first bit of the superpage's base address; bit 8 is the last bit of the offset inside the superpage. The boundary between aligned and misaligned is exactly one bit wide, and the lab's 53 directed rows probe the bit on each side of it, plus the all-ones and all-zeros corners.</p>
+          <p>Why does the rule exist at all? When the walk stops early at a superpage leaf, the virtual-address bits the lower levels would have consumed become the offset inside the superpage instead, and the finished address takes its low page-number segments from the virtual address, not from the entry. The entry's own low PPN bits would simply be discarded. The tempting design is to ignore them. The architecture refuses the silent discard: a nonzero bit there means the entry is malformed, so it raises a page fault. The hardware would rather tell you the entry is wrong than quietly use an address the entry does not fully describe.</p>
+          <p>The implementation builds the mask and tests the masked PPN. Nine bits per level is the whole rule: a leaf at tree level L must have its low 9 times L PPN bits clear:</p>
+<pre><code>// for a leaf at tree level L, the entry's low 9*L PPN bits
+// must be zero, or the translation faults
+uint64_t mask = (1ULL &lt;&lt; (9 * level)) - 1;
+int misaligned = (ppn &amp; mask) != 0;</code></pre>
+          <p>What makes the verification honest is that the oracle is a different machine from the implementation. The oracle never builds a mask: it walks the 44-bit PPN field from the top down and faults the moment it finds a set bit below position nine times the level. Two constructions, same verdict, on 30,000,063 pairs, zero disagreements, with an FNV-1a checksum identical under -O0, -O2, and the sanitizers.</p>
+          <p>The file says what it does not do: no walking, no permission bits, no accessed or dirty updates; those live in the sibling labs. It also says what it did not verify: no privileged-spec PDF existed on the machine, so the section number is cited from knowledge while the logical rule itself was checked thirty million times over. A module that names its own edges is one you can trust. One sentence to carry away: when a page table entry claims a whole region at once, its address must fit the claim exactly, and the hardware checks the receipt before trusting it.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/152-pte-superpage-misalign" target="_blank" rel="noopener">lab/152-pte-superpage-misalign</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-read-the-compiler-must-not-skip/">The Read the Compiler Must Not Skip</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c" target="_blank" rel="noopener">driver source <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-read-the-compiler-must-not-skip|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is what machine code the compiler emits, a rule of the C language, not of any machine contract: both builds came from the same compiler, and the hoist-versus-reload argument is identical on any target, so no RISC-V instruction behavior is load-bearing for the verdict.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-read-the-compiler-must-not-skip|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the difference under test is in the emitted code itself, decided by the compiler before any hardware runs: the plain build's loop contains no load at all, so no pipeline, cache, or predictor behavior could change which version observes the UART's next state.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-read-the-compiler-must-not-skip|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the use under test is bare-metal firmware's only I/O path: the driver polls a memory-mapped UART register with no operating system underneath, and the kernel's volatile-considered-harmful note says the qualifier was meant for exactly memory-mapped I/O registers; the verified reload is what lets firmware see the hardware change its mind.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-read-the-compiler-must-not-skip|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because volatile offers no atomicity, synchronization, or memory ordering, so it cannot carry communication between threads: a kernel needing cross-thread visibility reaches for atomics or locks either way, and the races that volatile leaves unfixed are invariant under adding or removing the qualifier.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-read-the-compiler-must-not-skip|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the volatile contract is a property of the C language, not of any machine: volatile accesses are observable side effects the compiler must not elide, on every conforming implementation, so the poll loop's correctness argument is portable and travels unchanged to any target.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 13:10 EDT</time></p>
@@ -119330,6 +119350,446 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the dim verdict in (1)."
+      }
+    ]
+  },
+  "the-alignment-the-page-table-demands-of-itself|ISA": {
+    "item": "the-alignment-the-page-table-demands-of-itself",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified property is a clause of the machine contract: the privileged architecture defines a superpage leaf as misaligned when its low PPN bits are nonzero and mandates a page fault there, so every correct implementation of the translation process must reach the same verdict; the module's two independent constructions agree on that verdict across thirty million cases, and the article states plainly which parts were verified and which were cited from knowledge.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified property is a clause of the machine contract: the privileged architecture defines a superpage leaf as misaligned when its low PPN bits are nonzero and mandates a page fault there, so every correct implementation of the translation process must reach the same verdict; the module's two independent constructions agree on that verdict across thirty million cases, and the article states plainly which parts were verified and which were cited from knowledge."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md records 30,000,063 (level, PPN) pairs checked by two independent constructions with zero disagreements, including 53 directed rows that probe the bit on each side of the alignment boundary at each of the three levels.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The file states the rule it encodes: a superpage leaf is misaligned when its low PPN bits are nonzero, and the translation faults; it also states plainly that no privileged-spec PDF was found on the machine, so the section number is cited from knowledge while the logical rule itself was verified.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The implementation builds a low-bit mask from nine times the level and tests the masked PPN; the oracle scans the 44-bit PPN field from the top down and reports misalignment at the first set bit below position nine times the level, never constructing a mask.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The verdicts encode the machine-contract clause rather than a shared implementation detail, because the two constructions share no mechanism."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "When a rule belongs to the machine contract, agreement between independent constructions is evidence the clause itself was captured."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "A test that marks the boundary between verified and cited-from-knowledge is more trustworthy, because the reader sees where the evidence ends."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured verdicts and the constructions establish the intermediate conclusion through the domain warrant."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The intermediate conclusion plus the lighting rule yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alignment-the-page-table-demands-of-itself|MICROARCH": {
+    "item": "the-alignment-the-page-table-demands-of-itself",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the verdict under test is fixed by the architecture: every conforming implementation of the translation process faults on the same misaligned entries, so the thirty million agreements say nothing about any particular implementation's timing or structure; the rule is identical on all of them, which is exactly why the module can test it in portable C.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the verdict under test is fixed by the architecture: every conforming implementation of the translation process faults on the same misaligned entries, so the thirty million agreements say nothing about any particular implementation's timing or structure; the rule is identical on all of them, which is exactly why the module can test it in portable C."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every check ran the same verdict logic in portable C; the lab measures a contract verdict, not the timing or structure of any particular implementation.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The FNV-1a checksum over all verdicts is identical under -O0, -O2, and the sanitizers, so the verdict does not depend on how the code was compiled.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The PROOF.md lists an honest scope: the module implements only the misalignment rule, not the walk, the permission bits, or the accessed and dirty updates.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The verified property is invariant across implementations, so no implementation-specific behavior is load-bearing for the verdict."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A claim that holds identically on every conforming implementation carries no information about any one implementation's internals."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "Dimming a layer states invariance; it is a positive claim about what the evidence cannot distinguish."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured verdicts and the constructions establish the intermediate conclusion through the domain warrant."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The intermediate conclusion plus the lighting rule yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alignment-the-page-table-demands-of-itself|FIRMWARE": {
+    "item": "the-alignment-the-page-table-demands-of-itself",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because the consumer of the rule is the code that builds page tables: bare-metal firmware maps 2 MiB superpages by writing leaf entries directly, and a nonzero low PPN bit faults on first use, so the alignment is a precondition the firmware's setup must establish before the translation is trusted.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because the consumer of the rule is the code that builds page tables: bare-metal firmware maps 2 MiB superpages by writing leaf entries directly, and a nonzero low PPN bit faults on first use, so the alignment is a precondition the firmware's setup must establish before the translation is trusted."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The article's concrete case is direct: a level-1 leaf maps a 2 MiB superpage, PPN 0x200 passes because only bit 9 is set, while PPN 0x201 faults because bit 0 falls inside the checked range.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alignment the Page Table Demands of Itself",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alignment-the-page-table-demands-of-itself/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Bare-metal firmware maps superpages by writing leaf entries directly, with no operating system underneath to paper over a malformed entry; the first use of the mapping is what would fault.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alignment the Page Table Demands of Itself",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alignment-the-page-table-demands-of-itself/"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The rule exists because the walk's early stop turns the entry's low PPN bits into discarded data, and the architecture faults rather than silently discarding them.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Firmware's page-table setup must establish the alignment before the translation is trusted, so the rule is load-bearing for firmware work."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A precondition that faults on first violation is load-bearing for whoever must establish it."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "Hardware that reports a malformed entry instead of silently accepting it moves the failure to where the author can see it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured verdicts and the constructions establish the intermediate conclusion through the domain warrant."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The intermediate conclusion plus the lighting rule yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alignment-the-page-table-demands-of-itself|KERNEL": {
+    "item": "the-alignment-the-page-table-demands-of-itself",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because kernels that map superpages write the same leaf entries: the malformed-entry fault awaits a kernel's 2 MiB mapping exactly as it awaits firmware's, so the alignment rule is a load-bearing precondition for kernel memory management wherever superpages are used.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because kernels that map superpages write the same leaf entries: the malformed-entry fault awaits a kernel's 2 MiB mapping exactly as it awaits firmware's, so the alignment rule is a load-bearing precondition for kernel memory management wherever superpages are used."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Kernels that map superpages write the same leaf entries the module tests; the misalignment verdict is identical for kernel-written and firmware-written entries.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alignment the Page Table Demands of Itself",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alignment-the-page-table-demands-of-itself/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The module's scope statement places permission checks and the accessed and dirty updates in sibling labs, which is where kernel memory-management policy lives.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The 53 directed rows include the all-ones and all-zeros corners and the boundary bit at exactly nine times the level, the shapes an allocator would actually produce.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The alignment rule is a precondition for kernel memory management wherever superpages are used, so the verified property is load-bearing at the kernel layer."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A contract clause that binds every writer of a data structure is load-bearing for each writer."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "Testing the corners an allocator actually produces is how a lab earns relevance to the code that will use the rule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured verdicts and the constructions establish the intermediate conclusion through the domain warrant."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The intermediate conclusion plus the lighting rule yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alignment-the-page-table-demands-of-itself|ALGORITHM": {
+    "item": "the-alignment-the-page-table-demands-of-itself",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "matters at Algorithm because the mechanism under test is pure computation: the low-bit mask identity and the top-down positional scan are portable C with no target-specific content, and the testing discipline, two structurally different constructions agreeing on every verdict, is an argument for correctness that travels unchanged to any platform.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Algorithm because the mechanism under test is pure computation: the low-bit mask identity and the top-down positional scan are portable C with no target-specific content, and the testing discipline, two structurally different constructions agreeing on every verdict, is an argument for correctness that travels unchanged to any platform."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Both constructions are portable C with no target-specific content: a shifted mask test and a top-down positional scan of the 44-bit field.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The agreement covers 30,000,063 verdicts with zero disagreements, including ten million fixed-seed random PPNs per level.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The same FNV-1a checksum across -O0, -O2, and the sanitizers shows the verdict is a property of the algorithm, not of the build.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The mechanism and its testing discipline are pure computation, so they travel unchanged to any platform."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "Differential agreement between structurally different constructions is a portable argument for correctness."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "An algorithm verified independently of its build settings can be trusted on settings it was never run under."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured verdicts and the constructions establish the intermediate conclusion through the domain warrant."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The intermediate conclusion plus the lighting rule yields the verdict in (1)."
       }
     ]
   }
