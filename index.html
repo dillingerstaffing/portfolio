@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-163146">
+  <meta name="build-version" content="v20260911-171122">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -15934,6 +15934,124 @@ assert(check == 0x2144DF1C);</code></pre>
     },
     "portability": null,
     "stressItems": 5
+  },
+  {
+    "checks": 26,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+    },
+    "failures": 0,
+    "id": "src-sip-stip-mideleg-reconcile",
+    "kicker": "RISC-V PRIVILEGED",
+    "layers": {
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The verified property is a pure WARL legalization verdict: the all-ones write reads back 0x2 under both mideleg states, documenting exactly which bits the hart admits. The same write-may-be-ignored pattern appears in portable code wherever a register's writable bits are a subset of its width."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mideleg, so the delegation state is a firmware decision. The module shows delegating STI changes nothing about which sip bits S-mode can write, which tells firmware that STIP is not a writable mailbox for supervisor software on this hart and the timer interrupt must arrive through the normal path."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sip as the supervisor interrupt-pending register and mideleg bit 5 as the STI delegation bit, so the S-mode write contract is what this module verifies. The same S-mode all-ones sip write runs under both mideleg states and reads back 0x2 in each: SSIP sticks, STIP is legalized away, which reconciles the backlog's expectation of a difference with the hart's actual WARL behavior."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "A supervisor kernel pends inter-processor interrupts by writing sip.SSIP, and the module shows SSIP sticks in both configurations while STIP never does. The kernel can rely on SSIP as a writable software-interrupt bit and must not expect a software write to sip to ever pend the supervisor timer interrupt."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks write-readback outcomes only, 26 checks and 0 mismatches. Which bits an S-mode write admits is decided by the hart's CSR legalization, not by pipeline or cache behavior, so the verdict is about the register contract rather than the implementation."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sip-stip-mideleg-reconcile/",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "26 in-program checks on QEMU 8.2.2: the S-mode all-ones sip write reads back 0x2 with mideleg bit 5 clear and again with the bit set (SSIP sticks, STIP legalized away in both); the zero write clears the writable bits in both phases; 0 unexpected traps; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xaee064c41add58e2, byte-identical across 6 runs (3 per configuration)"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode boot dropping to S-mode on virt board"
+      ]
+    ],
+    "stressItems": 26,
+    "summary": "A bare-metal module runs the same S-mode all-ones sip write twice in one boot: once with mideleg bit 5 (STI delegation) clear, once with it set. In both configurations the write reads back 0x2: SSIP sticks, STIP is legalized away, so the delegation bit changes nothing about which bits an S-mode write can admit.",
+    "terminalLabel": "Verified src-sip-stip-mideleg-reconcile QEMU output",
+    "terminalName": "riscv-baremetal-demo / src / sip-stip-mideleg-reconcile",
+    "terminalOutput": "sip-stip-mideleg-reconcile: STIP write vs mideleg bit 5\nphaseA mideleg=0x1446\ndropping to S-mode\nin S-mode: Phase A, mideleg bit 5 (STI) CLEAR; SSI delegated\nsie at entry=0x0\nphaseA sip before=0x0\nphaseA writing all-ones to sip from S-mode\nphaseA sip after all-ones=0x2\nphaseA SSIP-stuck=1 STIP-stuck=0\nphaseA M-mode trap count=0 (expect 0)\nphaseA writing zero to sip from S-mode\nphaseA sip after zero=0x0\nphaseA done; ecall to M-mode to delegate STI for phase B\nphase B mideleg=0x1466\nM-mode trap count after the ecall=1 (expect 1)\nrecorded mcause=0x9 (expect 9: S-mode ecall)\nphaseB sip before=0x0\nphaseB writing all-ones to sip from S-mode\nphaseB sip after all-ones=0x2\nphaseB SSIP-stuck=1 STIP-stuck=0\nphaseB M-mode trap count=1 (expect 1)\nphaseB writing zero to sip from S-mode\nphaseB sip after zero=0x0\nreconciliation: STIP-stuck phaseA=0 phaseB=0\nchecks=26 mismatches=0 checksum=0xaee064c41add58e2\nRESULT: PASS",
+    "title": "S-mode STIP write reads back identically, mideleg bit 5 clear or set",
+    "verificationEnvironment": "QEMU 8.2.2"
+  },
+  {
+    "checks": 30000063,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+    },
+    "failures": 0,
+    "id": "lab-152-pte-superpage-misalign",
+    "kicker": "RISC-V VIRTUAL MEMORY",
+    "layers": {
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The check is a portable computation: masking the low 9*level PPN bits is identical on every ISA, while the verdict it computes comes from the RISC-V contract. Both hold at once: the mechanism ports, the rule it enforces does not."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The module verifies the architecture's fault verdict for a given PTE word; firmware and kernel page-table builders are consumers of this rule, not what was tested. The claim judges the rule itself, so no firmware configuration stands between the input and the verdict."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The misaligned-superpage rule is the privileged ISA's own Sv39 translation contract in section 4.3.2: a leaf at level 1 or 2 whose low 9*level PPN bits are nonzero raises a page fault. The module predicts exactly that verdict, and the differential test checks the prediction against an independent bit-by-bit oracle on 30000063 cases with 0 mismatches. The lab did not choose the rule; the specification did, and the claim is agreement with it."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "A supervisor kernel's page-table code must zero the low PPN bits of every superpage leaf, and must read a fault on such a PTE as a table-construction bug rather than an access violation. The module proves the exact bit positions where nonzero bits fault, which is the rule kernel virtual memory is written against."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares fault verdicts against a bit-by-bit reference, 30000063 checks and 0 mismatches. The verdict is a pure function of the (level, PPN) pair fixed by the input word, so the claim is about the architecture's rule rather than how any particular walker or TLB implements the check."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: systems-lab/lab/152-pte-superpage-misalign/",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "30000063 inputs checked against an independent bit-by-bit oracle that never constructs a mask, levels 0/1/2 on every case, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "53 directed rows (all-zeros and all-ones PPNs, low 9*level bits set, the boundary bit at exactly 9*level, single-bit sweeps of positions 0..18) plus 10 out-of-domain rows (levels -1, 3, 4, 100, -100, both sides must return -1) plus 30000000 fixed-seed splitmix64 44-bit PPNs"
+      ],
+      [
+        "CHECKSUM",
+        "0x5cb66b0d233f83a1, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "4.548 ns/predict at -O2, best of 5"
+      ]
+    ],
+    "stressItems": 30000063,
+    "summary": "pte_superpage_misaligned answers one Sv39 question: given the translation level where the walk terminated and the leaf's 44-bit PPN, must the walk raise a page fault for misalignment? A leaf at level 1 or 2 faults exactly when any of its low 9*level PPN bits is set; a level-0 leaf never faults on this rule. The differential test pits the mask construction against an independent oracle that scans the PPN one bit at a time and never builds a mask, and the two agreed on every case.",
+    "terminalLabel": "Verified lab-152-pte-superpage-misalign host output",
+    "terminalName": "systems-lab / lab / 152-pte-superpage-misalign",
+    "terminalOutput": "$ make clean && make && make run && make opt0 && make sanitize && make bench\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o test_pte_superpage test_pte_superpage.c pte_superpage.c\n./test_pte_superpage\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O0 -Wall -Wextra -Werror -o test_pte_superpage_o0 test_pte_superpage.c pte_superpage.c\n./test_pte_superpage_o0\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -o test_pte_superpage_asan test_pte_superpage.c pte_superpage.c\n./test_pte_superpage_asan\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o bench_pte_superpage bench_pte_superpage.c pte_superpage.c\n./bench_pte_superpage\n4.548 ns/predict at -O2 (best of 5, N=50000000)",
+    "title": "Sv39 superpage misalignment fault rule",
+    "verificationEnvironment": "Host"
   }
 ];
       const CHIPS_BY_KEY = {
@@ -116078,6 +116196,726 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-sip-stip-mideleg-reconcile|ISA": {
+    "item": "src-sip-stip-mideleg-reconcile",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines sip as the supervisor interrupt-pending register and mideleg bit 5 as the STI delegation bit, so the S-mode write contract is what this module verifies. The same S-mode all-ones sip write runs under both mideleg states and reads back 0x2 in each: SSIP sticks, STIP is legalized away, which reconciles the backlog's expectation of a difference with the hart's actual WARL behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines sip as the supervisor interrupt-pending register and mideleg bit 5 as the STI delegation bit, so the S-mode write contract is what this module verifies. The same S-mode all-ones sip write runs under both mideleg states and reads back 0x2 in each: SSIP sticks, STIP is legalized away, which reconciles the backlog's expectation of a difference with the hart's actual WARL behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module ran the same S-mode all-ones sip write in two phases of one boot: phase A with mideleg 0x1446 (bit 5 clear) and phase B with mideleg 0x1466 (bit 5 set).",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Both phases read back sip 0x2 after the all-ones write: SSIP stuck at 1 and STIP stayed 0, with 26 in-program checks and 0 mismatches across 6 byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A CSR's write-readback behavior under S-mode is defined by the privileged architecture's sip and mideleg contract, so an identical readback under both delegation states documents the contract rather than the guess."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The hart's actual WARL behavior contradicts the backlog's expected clear-versus-set difference: mideleg bit 5 does not control STIP write admission."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The identical readbacks under both delegation states warrant the claim that the contract, not the guess, governs the bit."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The reconciled contract is what the module verified, so the ISA verdict is warranted."
+      }
+    ]
+  },
+  "src-sip-stip-mideleg-reconcile|MICROARCH": {
+    "item": "src-sip-stip-mideleg-reconcile",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks write-readback outcomes only, 26 checks and 0 mismatches. Which bits an S-mode write admits is decided by the hart's CSR legalization, not by pipeline or cache behavior, so the verdict is about the register contract rather than the implementation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks write-readback outcomes only, 26 checks and 0 mismatches. Which bits an S-mode write admits is decided by the hart's CSR legalization, not by pipeline or cache behavior, so the verdict is about the register contract rather than the implementation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof checks write-readback outcomes only: 26 in-program checks, 0 mismatches, with a trap count of 0 in phase A and exactly the 1 deliberate ecall trap in phase B.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The 6 QEMU 8.2.2 runs were byte-identical with checksum 0xaee064c41add58e2, so no run-to-run variance exists for any implementation detail to explain.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When a measurement is about which register bits a write admits, pipeline or cache behavior cannot be the cause, so the verdict attaches to the register contract."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Nothing in the proof varies with implementation behavior; the outcome is fully explained by the CSR legalization rule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "Byte-identical runs plus write-readback-only checks rule out implementation behavior as a contributor."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With implementation behavior ruled out, the dim verdict at MICROARCH is warranted."
+      }
+    ]
+  },
+  "src-sip-stip-mideleg-reconcile|FIRMWARE": {
+    "item": "src-sip-stip-mideleg-reconcile",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns mideleg, so the delegation state is a firmware decision. The module shows delegating STI changes nothing about which sip bits S-mode can write, which tells firmware that STIP is not a writable mailbox for supervisor software on this hart and the timer interrupt must arrive through the normal path.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware owns mideleg, so the delegation state is a firmware decision. The module shows delegating STI changes nothing about which sip bits S-mode can write, which tells firmware that STIP is not a writable mailbox for supervisor software on this hart and the timer interrupt must arrive through the normal path."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module changes mideleg bit 5 between phases by trapping from S-mode to M-mode via a deliberate ecall; only M-mode can write mideleg.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Phase A ran with mideleg 0x1446 and phase B with 0x1466, and the S-mode sip write read back 0x2 in both phases.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "Ownership of a CSR by machine mode makes its configuration a firmware decision, so a probe that changes the CSR across phases tests the firmware boundary."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Delegating STI in mideleg changes nothing about which sip bits S-mode can write."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The phase change required an M-mode write, and the outcome was identical on both sides of it."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The unchanged outcome across a firmware-controlled boundary warrants the lit FIRMWARE verdict."
+      }
+    ]
+  },
+  "src-sip-stip-mideleg-reconcile|KERNEL": {
+    "item": "src-sip-stip-mideleg-reconcile",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "A supervisor kernel pends inter-processor interrupts by writing sip.SSIP, and the module shows SSIP sticks in both configurations while STIP never does. The kernel can rely on SSIP as a writable software-interrupt bit and must not expect a software write to sip to ever pend the supervisor timer interrupt.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "A supervisor kernel pends inter-processor interrupts by writing sip.SSIP, and the module shows SSIP sticks in both configurations while STIP never does. The kernel can rely on SSIP as a writable software-interrupt bit and must not expect a software write to sip to ever pend the supervisor timer interrupt."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "SSIP stuck at 1 in both phases, proving the S-mode write executed and the software-writable bit admitted it.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "STIP stayed 0 in both phases: the bit the backlog expected to become writable under delegation never was.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A supervisor kernel can only rely on write-admission behavior that holds across the configurations it may run under, so a bit that sticks in both phases is a usable mechanism and one that never sticks is not."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "SSIP is a reliable writable software-interrupt bit; STIP is not a writable timer-pending mailbox on this hart."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The stick-in-both behavior of SSIP and the never-stick behavior of STIP warrant the kernel-usable claim."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "A claim that guides kernel IPI and timer design warrants the lit KERNEL verdict."
+      }
+    ]
+  },
+  "src-sip-stip-mideleg-reconcile|ALGORITHM": {
+    "item": "src-sip-stip-mideleg-reconcile",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The verified property is a pure WARL legalization verdict: the all-ones write reads back 0x2 under both mideleg states, documenting exactly which bits the hart admits. The same write-may-be-ignored pattern appears in portable code wherever a register's writable bits are a subset of its width.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified property is a pure WARL legalization verdict: the all-ones write reads back 0x2 under both mideleg states, documenting exactly which bits the hart admits. The same write-may-be-ignored pattern appears in portable code wherever a register's writable bits are a subset of its width."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The all-ones write read back 0x2 under both mideleg states, documenting exactly which bits the hart admits: bit 1 only.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The verdict bytes feed an FNV-1a checksum that is byte-identical across all 6 runs, so the legalization outcome is fully determined.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sip-stip-mideleg-reconcile/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-mideleg-reconcile/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A write that the implementation partially discards, with the readback documenting the legalized value, is a general register pattern, not just a CSR anecdote."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The module's verdict is a pure write-may-be-ignored legalization rule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The determined, partially-discarded write warrants the legalization-rule characterization."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "A general write-may-be-ignored pattern warrants the lit ALGORITHM verdict."
+      }
+    ]
+  },
+  "lab-152-pte-superpage-misalign|ISA": {
+    "item": "lab-152-pte-superpage-misalign",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The misaligned-superpage rule is the privileged ISA's own Sv39 translation contract in section 4.3.2: a leaf at level 1 or 2 whose low 9*level PPN bits are nonzero raises a page fault. The module predicts exactly that verdict, and the differential test checks the prediction against an independent bit-by-bit oracle on 30000063 cases with 0 mismatches. The lab did not choose the rule; the specification did, and the claim is agreement with it.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The misaligned-superpage rule is the privileged ISA's own Sv39 translation contract in section 4.3.2: a leaf at level 1 or 2 whose low 9*level PPN bits are nonzero raises a page fault. The module predicts exactly that verdict, and the differential test checks the prediction against an independent bit-by-bit oracle on 30000063 cases with 0 mismatches. The lab did not choose the rule; the specification did, and the claim is agreement with it."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "30000063 inputs were checked against an independent oracle that scans the PPN one bit at a time and never constructs a mask, with 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The contract held for every level: level 0 never faults on this rule, level 1 faults exactly when a low 9 bit is set, level 2 exactly when a low 18 bit is set.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "Agreement with an independent oracle on the full test space warrants the claim that the implementation matches the specified rule."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The function predicts the Sv39 misaligned-superpage fault verdict exactly as the privileged specification defines it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The full-space agreement plus the per-level verdicts warrant the specification-match claim."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "A verified match to the ISA's own translation contract warrants the lit ISA verdict."
+      }
+    ]
+  },
+  "lab-152-pte-superpage-misalign|MICROARCH": {
+    "item": "lab-152-pte-superpage-misalign",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof compares fault verdicts against a bit-by-bit reference, 30000063 checks and 0 mismatches. The verdict is a pure function of the (level, PPN) pair fixed by the input word, so the claim is about the architecture's rule rather than how any particular walker or TLB implements the check.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof compares fault verdicts against a bit-by-bit reference, 30000063 checks and 0 mismatches. The verdict is a pure function of the (level, PPN) pair fixed by the input word, so the claim is about the architecture's rule rather than how any particular walker or TLB implements the check."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof compares verdicts only: 30000063 checks, 0 mismatches, with an identical checksum across -O0, -O2, and ASan+UBSan builds.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The verdict is a pure function of the (level, PPN) pair fixed by the input word; no timing, TLB, or walker state enters the computation.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A pure function of the input word cannot be influenced by implementation behavior, so the claim attaches to the architectural rule."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The verified property is the architecture's rule, not any microarchitecture's execution of it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The verdict-only comparison plus the pure-function form rule out implementation influence."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With implementation influence ruled out, the dim MICROARCH verdict is warranted."
+      }
+    ]
+  },
+  "lab-152-pte-superpage-misalign|FIRMWARE": {
+    "item": "lab-152-pte-superpage-misalign",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The module verifies the architecture's fault verdict for a given PTE word; firmware and kernel page-table builders are consumers of this rule, not what was tested. The claim judges the rule itself, so no firmware configuration stands between the input and the verdict.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The module verifies the architecture's fault verdict for a given PTE word; firmware and kernel page-table builders are consumers of this rule, not what was tested. The claim judges the rule itself, so no firmware configuration stands between the input and the verdict."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test runs entirely on the host with no trap vector, CSR, or privilege level configured; satp is never programmed and paging is never enabled.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The oracle and the implementation both consume only the (level, PPN) pair; no page table built by any firmware is involved.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim verified without any firmware artifact in the loop cannot be a claim about firmware, so the layer stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The module judges the architecture's fault rule itself, not any table a firmware build produced."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The firmware-free test setup warrants the claim that the rule itself is what was judged."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "Judging the rule rather than any firmware artifact warrants the dim FIRMWARE verdict."
+      }
+    ]
+  },
+  "lab-152-pte-superpage-misalign|KERNEL": {
+    "item": "lab-152-pte-superpage-misalign",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "A supervisor kernel's page-table code must zero the low PPN bits of every superpage leaf, and must read a fault on such a PTE as a table-construction bug rather than an access violation. The module proves the exact bit positions where nonzero bits fault, which is the rule kernel virtual memory is written against.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "A supervisor kernel's page-table code must zero the low PPN bits of every superpage leaf, and must read a fault on such a PTE as a table-construction bug rather than an access violation. The module proves the exact bit positions where nonzero bits fault, which is the rule kernel virtual memory is written against."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The contract states the exact bit positions where nonzero bits fault: the low 9 for level 1, the low 18 for level 2, never for level 0.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Out-of-domain rows confirm the function returns -1 for levels outside {0, 1, 2}, so the contract's scope is explicit.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A kernel's page-table code is correct exactly when it satisfies the fault rule the architecture enforces, so a proven statement of that rule is load-bearing for kernel virtual memory."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The module states the rule that kernel page-table code must satisfy and faults must be read against."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The exact bit positions plus the explicit scope warrant the rule-statement claim."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "A rule that kernel page-table code must satisfy warrants the lit KERNEL verdict."
+      }
+    ]
+  },
+  "lab-152-pte-superpage-misalign|ALGORITHM": {
+    "item": "lab-152-pte-superpage-misalign",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The check is a portable computation: masking the low 9*level PPN bits is identical on every ISA, while the verdict it computes comes from the RISC-V contract. Both hold at once: the mechanism ports, the rule it enforces does not.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The check is a portable computation: masking the low 9*level PPN bits is identical on every ISA, while the verdict it computes comes from the RISC-V contract. Both hold at once: the mechanism ports, the rule it enforces does not."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The check masks the low 9*level PPN bits, a shift-and-mask construction identical on every ISA.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The differential test agreed with the bit-by-bit oracle on 30000063 cases with 0 mismatches, so the portable construction computes the contract verdict exactly.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/152-pte-superpage-misalign/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A computation whose form is identical on every ISA but whose verdict enforces a RISC-V rule splits cleanly: the mechanism ports, the rule does not."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The module is a portable mechanism that enforces a non-portable contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The portable construction plus the exact verdict agreement warrant the mechanism-enforces-contract claim."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "A portable mechanism enforcing the RISC-V rule warrants the lit ALGORITHM verdict."
       }
     ]
   }
