@@ -11354,5 +11354,119 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sip-write-probe",
     "terminalLabel": "Run log",
     "showRepoLink": true
+  },
+  {
+    "id": "lab-133-sv39-pte-decode",
+    "kicker": "RISC-V VIRTUAL MEMORY",
+    "title": "Sv39 PTE decode, 4.3B cases",
+    "summary": "A 64-bit Sv39 page-table entry is a fixed bit layout: PPN in bits 53:10, RSW in 9:8, flag bits in 7:0. pte_decode pulls each field with one shift and one mask, pte_encode puts them back, and encode(decode(pte)) returns the input word on every case.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The PTE bit layout is the privileged ISA's own Sv39 contract: PPN in bits 53:10, RSW in 9:8, D/A/G/U/X/W/R in 7:1, V in 0. The proof checks the exact boundaries the specification fixes: 4,304,967,566 inputs against a per-field reference with encode(decode(pte)) returning the input on every case, zero mismatches. The lab did not choose this layout; the specification did, and the claim is agreement with it."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares decoded field values against a per-field reference: 4,304,967,566 checks, zero mismatches. Decoding bit fields is a value operation; which bits sit at each position is fixed by the input word, so no unmeasured implementation behavior could change the result. The 9.626 ns figure is a measurement, not part of the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The decoder configures no trap vector, CSR, or privilege level; it treats the PTE layout as a bit-field specification to parse, the way one parses a file header. Firmware establishes page tables, it does not decode individual entries, so no firmware configuration stands between the input and the claim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "PTE decode is what the kernel does when it walks page tables and handles page faults: xv6's walk() reads each level's PTE to extract the PPN and check the permission bits. The verified property (correct field extraction against a per-field reference) is the parsing step kernel virtual memory depends on. A misdecoded PTE here is a wrong mapping or a missed fault in the kernel."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The shift-and-mask decode identities are portable computational mechanisms: pulling the PPN and flag fields with shifts and masks is identical on every ISA, while the bit boundaries themselves come from the RISC-V contract. Both verdicts hold at once: the mechanism ports, the layout does not."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/133-sv39-pte-decode/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4,304,967,566 inputs checked against a per-field loop reference, encode(decode(pte)) equal to pte on every case, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "e3c4316e414a6146, identical across builds"
+      ],
+      [
+        "BENCHMARK",
+        "9.626 ns per decode at -O2, best of 5"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 133-sv39-pte-decode",
+    "terminalOutput": "$ gcc -std=c11 -O2 -Wall -Wextra -Werror -o test_pte_decode test_pte_decode.c pte_decode.c\n$ ./test_pte_decode\nchecks=4304967566 mismatches=0 checksum=e3c4316e414a6146\n$ ./bench_pte_decode\nbest=9.626 ns/value\n\npte_decode: encode(decode(pte)) == pte on 4,304,967,566 cases",
+    "verificationEnvironment": "Host",
+    "checks": 4304967566,
+    "failures": 0,
+    "stressItems": 4304967566,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/133-sv39-pte-decode",
+    "repoLabel": "GitHub: systems-lab/lab/133-sv39-pte-decode",
+    "terminalLabel": "Verified lab-133-sv39-pte-decode host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-134-satp-ppn-extract",
+    "kicker": "RISC-V VIRTUAL MEMORY",
+    "title": "satp field extraction, 60M cases",
+    "summary": "An RV64 satp CSR packs MODE in bits 63:60, ASID in 59:44, and PPN in 43:0. satp_decode pulls each field with one shift and one mask, satp_recombine puts them back, and recombine(extract(s)) returns the input on every case.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The satp field layout is the privileged ISA's own contract, specified in section 4.1.11: MODE in bits 63:60, ASID in 59:44, PPN in 43:0 on RV64. The proof checks the exact boundaries the specification fixes: 60,397,376 inputs against a per-field reference with recombine(extract(s)) returning the input on every case, zero mismatches. The lab did not choose these boundaries; the specification did."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares extracted field values against a per-field reference: 60,397,376 checks, zero mismatches. Extracting bit fields is a value operation; which bits sit at each position is fixed by the input word, so no unmeasured implementation behavior could change the result."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The extractor configures no trap vector or privilege level; it parses the satp value as a bit-field specification. Firmware writes satp once at setup, but the field extraction is the reader's parsing job, and no firmware configuration stands between the input and the claim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The kernel writes satp on every context switch to install the next process's page-table root: the PPN field is the physical page number the kernel's allocator handed out, and MODE selects the translation scheme. The verified property (correct MODE, ASID, and PPN extraction against a per-field reference) is the parsing step kernel virtual memory depends on when it reads back or validates the register."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The shift-and-mask extraction identities are portable computational mechanisms: pulling three fields with shifts and masks is identical on every ISA, while the 4-16-44 boundaries themselves come from the RISC-V contract. Both verdicts hold at once: the mechanism ports, the layout does not."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/134-satp-ppn-extract/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "60,397,376 inputs checked against a per-field loop reference, recombine(extract(s)) equal to s on every case, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "a5936745f37e6d57, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "153.158 ns per check at -O2"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 134-satp-ppn-extract",
+    "terminalOutput": "$ gcc -std=c11 -O2 -Wall -Wextra -Werror -o test_satp_fields test_satp_fields.c satp_fields.c\n$ ./test_satp_fields\nchecks=60397376 mismatches=0 checksum=a5936745f37e6d57\nelapsed=9.250 s (153.158 ns/check)\n\nsatp_decode: recombine(extract(s)) == s on 60,397,376 cases",
+    "verificationEnvironment": "Host",
+    "checks": 60397376,
+    "failures": 0,
+    "stressItems": 60397376,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/134-satp-ppn-extract",
+    "repoLabel": "GitHub: systems-lab/lab/134-satp-ppn-extract",
+    "terminalLabel": "Verified lab-134-satp-ppn-extract host output",
+    "showRepoLink": true
   }
 ]
