@@ -1,5 +1,46 @@
 [
   {
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/satp-mode-warl",
+    "date": "2026-09-11",
+    "description": "A RISC-V register field called WARL lets you write anything but only keeps legal values. A new bare-metal probe asks the satp register which address-translation schemes it will accept, and the readback answers: Sv48 and Sv57 stick, the reserved encoding is ignored whole.",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+    },
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the verified claim is a hardware register contract measured on a specific machine model, not a computation: write then read back is a probe discipline, not a portable mechanism, and the Sv48 and Sv57 results travel no further than the QEMU 8.2.2 model they were measured on."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because machine-mode firmware owns satp at boot and chooses the translation scheme: the module records the boot word 0x0, runs the MODE discovery in M-mode where a sticking scheme cannot fault instruction fetch, and restores satp before dropping to S-mode, so the write and readback discipline is load-bearing for whoever writes the boot code."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified behavior is the privileged specification's own contract: section 2.3.3 prescribes exactly this experiment, that the range of supported values is determined by writing a desired setting and reading back whether it was retained, and that unsupported WARL writes never raise; the MODE encodings, 0 Bare, 8 Sv39, 9 Sv48, 10 Sv57, are the spec's table, so this probe binds every compliant hart."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the supervisor kernel is the layer that switches address spaces through satp: the module's S-mode canary read is the supervisor's own proof that translation is live, and the WARL write and readback discipline is how a kernel discovers which address schemes a hart will accept before committing an address space to one."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the verified contract is an architectural property: section 2.3.3 guarantees an unsupported WARL write never raises and the readback is legal on every compliant hart, so no implementation choice changes the readback; the Sv48 and Sv57 stick is this QEMU model's retained set, measured and labeled as QEMU 8.2.2 behavior."
+      }
+    },
+    "paragraphs": [
+      "The satp register carries the page-table scheme in its MODE field: 0 is Bare, 8 is Sv39, 9 is Sv48, 10 is Sv57. The new module wrote each one and read it back. MODE=8: write 0x8000000000000000, readback 0x8000000000000000, stuck. MODE=9: write 0x9000000000000000, readback 0x9000000000000000, stuck, the whole write took effect. MODE=10: the same, stuck at 0xa000000000000000. Sv48 and Sv57 accepted, which the backlog had not expected. Then MODE=15, a reserved encoding: write 0xf000000000000000, readback 0xa000000000000000, the prior value bit for bit. The whole write ignored.",
+      "MODE is a WARL field, and WARL is the spec's arrangement for registers whose legal values vary by implementation: you may write anything, but what you read back must be one of the legal values. The privileged specification prescribes exactly this experiment in section 2.3.3: the range of supported values can be determined by attempting to write a desired setting and then reading to see if the value was retained. It adds the sentence that makes the experiment safe: implementations will not raise an exception on writes of unsupported values to a WARL field. An illegal write is not a fault. It is a question, and the hardware answers in the readback.",
+      "The MODE=15 row is the one that had to be designed, not just run. The write went in while the register already held MODE=10, and the readback came back identical to the prior value. The nonzero prior matters: had the register held zero, an ignored write would read back zero, exactly what a write that stuck at zero would also produce, and the test could not tell the two answers apart. Running with a nonzero prior makes no-effect and stuck look different, which is what turns the absence of an effect into a finding. The module states the remaining boundary plainly: the readback cannot distinguish a wholly ignored write from every field independently legalized back to its prior value, so the claim is exactly the observed equality, nothing more.",
+      "The probe idiom is three lines:",
+      "The discovery ran in M-mode on purpose: a MODE write that sticks cannot fault anything there, because M-mode accesses are never translated. The first version probed MODE=9 in S-mode instead. The write stuck, and the next instruction fetch faulted with mcause 0xc, an instruction page fault at the faulting PC. That crash was converging evidence: the hart had accepted MODE=9 and tried to translate. After the discovery the module dropped to S-mode, enabled Sv39, and read a canary, 0xc0ffee11deadbeef, stored with translation off, back through the active walk at its virtual address, bit-exact. Nineteen checks, zero mismatches, three byte-identical runs, all on QEMU 8.2.2, which the module names plainly. Silicon gets its own say.",
+      "One sentence to carry away: on a WARL field, the question is never what you wrote, it is what the hardware agreed to keep, and the only way to ask is to write it and read it back."
+    ],
+    "slug": "the-register-that-answers-in-readback",
+    "title": "The Register That Answers in Readback"
+  },
+  {
     "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-dirty",
     "date": "2026-09-11",
     "description": "A two-bit field in mstatus reports whether the floating-point unit changed since the last context save. The kernel trusts it, and skips thirty-two register stores on every switch that never needed them.",

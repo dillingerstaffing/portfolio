@@ -949,6 +949,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Register That Answers in Readback</h3>
+          <!-- LAYER-STRIP:the-register-that-answers-in-readback -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 17:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The satp register carries the page-table scheme in its MODE field: 0 is Bare, 8 is Sv39, 9 is Sv48, 10 is Sv57. The new module wrote each one and read it back. MODE=8: write 0x8000000000000000, readback 0x8000000000000000, stuck. MODE=9: write 0x9000000000000000, readback 0x9000000000000000, stuck, the whole write took effect. MODE=10: the same, stuck at 0xa000000000000000. Sv48 and Sv57 accepted, which the backlog had not expected. Then MODE=15, a reserved encoding: write 0xf000000000000000, readback 0xa000000000000000, the prior value bit for bit. The whole write ignored.</p>
+          <p>MODE is a WARL field, and WARL is the spec&#x27;s arrangement for registers whose legal values vary by implementation: you may write anything, but what you read back must be one of the legal values. The privileged specification prescribes exactly this experiment in section 2.3.3: the range of supported values can be determined by attempting to write a desired setting and then reading to see if the value was retained. It adds the sentence that makes the experiment safe: implementations will not raise an exception on writes of unsupported values to a WARL field. An illegal write is not a fault. It is a question, and the hardware answers in the readback.</p>
+          <p>The MODE=15 row is the one that had to be designed, not just run. The write went in while the register already held MODE=10, and the readback came back identical to the prior value. The nonzero prior matters: had the register held zero, an ignored write would read back zero, exactly what a write that stuck at zero would also produce, and the test could not tell the two answers apart. Running with a nonzero prior makes no-effect and stuck look different, which is what turns the absence of an effect into a finding. The module states the remaining boundary plainly: the readback cannot distinguish a wholly ignored write from every field independently legalized back to its prior value, so the claim is exactly the observed equality, nothing more.</p>
+          <p>The probe idiom is three lines:</p>
+<pre><code>uint64_t prior = read_satp();
+write_satp((prior &amp; ~MODE_MASK) | ((uint64_t)mode &lt;&lt; 60));
+uint64_t kept = read_satp();   /* the hardware&#x27;s answer */</code></pre>
+          <p>The discovery ran in M-mode on purpose: a MODE write that sticks cannot fault anything there, because M-mode accesses are never translated. The first version probed MODE=9 in S-mode instead. The write stuck, and the next instruction fetch faulted with mcause 0xc, an instruction page fault at the faulting PC. That crash was converging evidence: the hart had accepted MODE=9 and tried to translate. After the discovery the module dropped to S-mode, enabled Sv39, and read a canary, 0xc0ffee11deadbeef, stored with translation off, back through the active walk at its virtual address, bit-exact. Nineteen checks, zero mismatches, three byte-identical runs, all on QEMU 8.2.2, which the module names plainly. Silicon gets its own say.</p>
+          <p>One sentence to carry away: on a WARL field, the question is never what you wrote, it is what the hardware agreed to keep, and the only way to ask is to write it and read it back.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/satp-mode-warl" target="_blank" rel="noopener">src/satp-mode-warl</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Two Bits That Spare the Kernel Thirty-Two Saves</h3>
           <!-- LAYER-STRIP:the-two-bits-that-spare-the-kernel-thirty-two-saves -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 16:13 EDT</time></p>

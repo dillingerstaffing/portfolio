@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-205620">
+  <meta name="build-version" content="v20260911-211452">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-register-that-answers-in-readback/">The Register That Answers in Readback</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-register-that-answers-in-readback|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified behavior is the privileged specification's own contract: section 2.3.3 prescribes exactly this experiment, that the range of supported values is determined by writing a desired setting and reading back whether it was retained, and that unsupported WARL writes never raise; the MODE encodings, 0 Bare, 8 Sv39, 9 Sv48, 10 Sv57, are the spec's table, so this probe binds every compliant hart.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-register-that-answers-in-readback|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified contract is an architectural property: section 2.3.3 guarantees an unsupported WARL write never raises and the readback is legal on every compliant hart, so no implementation choice changes the readback; the Sv48 and Sv57 stick is this QEMU model's retained set, measured and labeled as QEMU 8.2.2 behavior.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-register-that-answers-in-readback|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because machine-mode firmware owns satp at boot and chooses the translation scheme: the module records the boot word 0x0, runs the MODE discovery in M-mode where a sticking scheme cannot fault instruction fetch, and restores satp before dropping to S-mode, so the write and readback discipline is load-bearing for whoever writes the boot code.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-register-that-answers-in-readback|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the supervisor kernel is the layer that switches address spaces through satp: the module's S-mode canary read is the supervisor's own proof that translation is live, and the WARL write and readback discipline is how a kernel discovers which address schemes a hart will accept before committing an address space to one.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-register-that-answers-in-readback|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is a hardware register contract measured on a specific machine model, not a computation: write then read back is a probe discipline, not a portable mechanism, and the Sv48 and Sv57 results travel no further than the QEMU 8.2.2 model they were measured on.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 17:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The satp register carries the page-table scheme in its MODE field: 0 is Bare, 8 is Sv39, 9 is Sv48, 10 is Sv57. The new module wrote each one and read it back. MODE=8: write 0x8000000000000000, readback 0x8000000000000000, stuck. MODE=9: write 0x9000000000000000, readback 0x9000000000000000, stuck, the whole write took effect. MODE=10: the same, stuck at 0xa000000000000000. Sv48 and Sv57 accepted, which the backlog had not expected. Then MODE=15, a reserved encoding: write 0xf000000000000000, readback 0xa000000000000000, the prior value bit for bit. The whole write ignored.</p>
+          <p>MODE is a WARL field, and WARL is the spec&#x27;s arrangement for registers whose legal values vary by implementation: you may write anything, but what you read back must be one of the legal values. The privileged specification prescribes exactly this experiment in section 2.3.3: the range of supported values can be determined by attempting to write a desired setting and then reading to see if the value was retained. It adds the sentence that makes the experiment safe: implementations will not raise an exception on writes of unsupported values to a WARL field. An illegal write is not a fault. It is a question, and the hardware answers in the readback.</p>
+          <p>The MODE=15 row is the one that had to be designed, not just run. The write went in while the register already held MODE=10, and the readback came back identical to the prior value. The nonzero prior matters: had the register held zero, an ignored write would read back zero, exactly what a write that stuck at zero would also produce, and the test could not tell the two answers apart. Running with a nonzero prior makes no-effect and stuck look different, which is what turns the absence of an effect into a finding. The module states the remaining boundary plainly: the readback cannot distinguish a wholly ignored write from every field independently legalized back to its prior value, so the claim is exactly the observed equality, nothing more.</p>
+          <p>The probe idiom is three lines:</p>
+<pre><code>uint64_t prior = read_satp();
+write_satp((prior &amp; ~MODE_MASK) | ((uint64_t)mode &lt;&lt; 60));
+uint64_t kept = read_satp();   /* the hardware&#x27;s answer */</code></pre>
+          <p>The discovery ran in M-mode on purpose: a MODE write that sticks cannot fault anything there, because M-mode accesses are never translated. The first version probed MODE=9 in S-mode instead. The write stuck, and the next instruction fetch faulted with mcause 0xc, an instruction page fault at the faulting PC. That crash was converging evidence: the hart had accepted MODE=9 and tried to translate. After the discovery the module dropped to S-mode, enabled Sv39, and read a canary, 0xc0ffee11deadbeef, stored with translation off, back through the active walk at its virtual address, bit-exact. Nineteen checks, zero mismatches, three byte-identical runs, all on QEMU 8.2.2, which the module names plainly. Silicon gets its own say.</p>
+          <p>One sentence to carry away: on a WARL field, the question is never what you wrote, it is what the hardware agreed to keep, and the only way to ask is to write it and read it back.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/satp-mode-warl" target="_blank" rel="noopener">src/satp-mode-warl</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-two-bits-that-spare-the-kernel-thirty-two-saves/">The Two Bits That Spare the Kernel Thirty-Two Saves</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-two-bits-that-spare-the-kernel-thirty-two-saves|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified behavior is the privileged specification's own contract, section 3.1.6.7: FS, the field in mstatus bits 14:13, reports the floating-point unit's save state, SD at bit 63 is the OR of the dirty states, and Off makes floating-point instructions trap, so this state machine binds every machine-mode supervisor.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-two-bits-that-spare-the-kernel-thirty-two-saves|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified contract is an architecturally specified state machine: the Initial-to-Dirty move on a single fmv.d.x and the trap on Off are specified by the privilege manual, so they hold on every compliant hart and vary with no implementation choice.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-two-bits-that-spare-the-kernel-thirty-two-saves|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because machine-mode firmware owns mstatus at boot and sets FS before any supervisor runs: the verified sequence opens with the boot word 0xa00000000, FS at Off, and that starting value is firmware's decision, so the field is load-bearing for whoever writes the boot code.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-two-bits-that-spare-the-kernel-thirty-two-saves|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the kernel's context switch is the consumer of the verified bits: the save discipline writes the floating-point state out only when FS reads Dirty and marks it Clean, the restore discipline loads from memory only when Clean, and Initial is restored from the constant instead of memory, so the two bits delete thirty-two register spills on the switches that never needed them.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-two-bits-that-spare-the-kernel-thirty-two-saves|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is a hardware state transition read from mstatus, not a computation: the Initial-to-Dirty move on a real fmv.d.x exists only where a floating-point unit sits behind the FS field, so no portable argument can carry it.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 16:13 EDT</time></p>
@@ -16806,6 +16826,120 @@ assert(check == 0x2144DF1C);</code></pre>
     },
     "portability": null,
     "stressItems": 7
+  },
+  {
+    "id": "src-mstatus-sie-toggle",
+    "kicker": "RISC-V",
+    "title": "mstatus.SIE gates S-mode interrupts from M-mode",
+    "summary": "A bare-metal M-mode program toggles the supervisor interrupt-enable bit and watches a pending delegated supervisor software interrupt. With the bit clear the interrupt stays pending and no S-mode trap fires; with the bit set the same pending interrupt delivers exactly one S-mode trap carrying the interrupt cause code, then the handler clears the pending bit. The bit reads back through both the mstatus and sstatus views, confirming one physical bit.",
+    "checks": 26,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mstatus-sie-toggle",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sie-toggle/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "26 checks on QEMU 8.2.2: with SIE clear a pending supervisor software interrupt stays pending and 0 S-mode traps fire; with SIE set the same pending interrupt delivers exactly 1 S-mode trap with the interrupt cause code and the handler clears the pending bit; the gate reads back through both the mstatus and sstatus views; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x56131e82d159a905, the FNV-1a fold of the CSR readbacks, trap counts, and cause codes, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, bare-metal M-mode on the virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mstatus-sie-toggle",
+    "terminalLabel": "Verified QEMU 8.2.2 output",
+    "terminalOutput": "$ qemu-system-riscv64 -machine virt -nographic -bios none -kernel mstatus-sie-toggle.elf\nmstatus-sie-toggle: S-mode interrupt gate driven from M-mode via mstatus.SIE\nboot: mideleg=0x1444 medeleg=0x0 mie=0x0 mstatus=0xa00000000 sie=0x0\nsetup: mideleg-after-delegate=0x1446\nsetup: sie-after-enable=0x2\nphase1: mstatus-after-clear=0xa00000000 sstatus-after-clear=0x200000000\nphase1: mip-after-pend=0x82\nphase1: pad=[0x80000418,0x80000432]\nphase1: s_traps=0 m_traps=1 mcause=0x9 mepc=0x80000432\nphase2: mstatus-after-set=0xa000000a2 sstatus-after-set=0x200000022 mip=0x82\nphase2: s_traps=1 scause=0x8000000000000001 sepc=0x80000418 m_traps=2\nChecks: 26\nMismatches: 0\nChecksum: 0x56131e82d159a905\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the claim is the machine contract's interrupt-delivery rule: a pending interrupt traps in S-mode only when the global enable bit is set, and the module verifies that rule directly, with no S-mode trap when the bit is clear and exactly one when it is set."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts trap counts and register readbacks, never timing: pipeline or cache behavior changes how fast a trap returns, never whether the enable gate admits it."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because machine-mode software arbitrates S-mode interrupt delivery with this bit across boot and handoff, and the module drives the bit from M-mode in both phases of the test, verifying the gate firmware actually controls."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor kernel toggles this same bit through its sstatus view to guard critical sections, and the module verifies the gate genuinely refuses the trap rather than clearing the pending state: the pending bit stays set and readable while no trap fires."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim is about a control bit's effect on trap delivery, not a computation: there is no portable operation here, only the machine's enable gate."
+      }
+    },
+    "portability": null,
+    "stressItems": null
+  },
+  {
+    "id": "user-sbrk-shrink",
+    "kicker": "XV6",
+    "title": "sbrk with a negative increment releases memory",
+    "summary": "An xv6 user-space test grows the heap one page, tiles a canary across the new page and reads it back byte-exact, then shrinks with a negative sbrk and checks the break moved back down to its original address. It grows once more and writes a different canary to prove the released address is usable again.",
+    "checks": 9,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/sbrkshrink.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks on QEMU 8.2.2: the break moves from 0x5000 to 0x6000 on a 4096-byte grow with a canary tiled over the new page reading back byte-exact; a -4096 shrink moves the break back to 0x5000; a second grow returns to 0x6000 and a reversed canary reads back byte-exact; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x73916C5B31770205, the FNV-1a fold of the break values and canary readbacks, independently recomputed on the host to the same value, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, no kernel changes"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / sbrkshrink",
+    "terminalLabel": "Verified xv6 sbrk QEMU output",
+    "terminalOutput": "$ sbrkshrink\ncheck 1: initial break 0x5000 is page-aligned\ncheck 2: sbrk(4096) returned old break 0x5000\ncheck 3: sbrk(0)=0x6000 == 0x5000+4096, matches\ncheck 4: 4096-byte canary write/readback byte-exact\ncheck 5: sbrk(-4096) returned old break 0x6000\ncheck 6: sbrk(0)=0x5000 back at initial break, shrink released the page\ncheck 7: sbrk(4096) after shrink returned 0x5000, same page reused\ncheck 8: sbrk(0)=0x6000 == 0x5000+4096, matches\ncheck 9: regrown page canary write/readback byte-exact\nchecksum: 0x73916C5B31770205\nchecks: 9 mismatches: 0\nPASS: sbrk(-4096) releases the page, regrow works",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the claim is about xv6's heap bookkeeping, not the machine contract: the module asserts break addresses and byte-exact canary readbacks, which would behave identically on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts byte-exact readbacks and break addresses across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the verified property is the allocator's contract: a negative sbrk must return the page through deallocuvm and a later grow must hand back a usable page, and the module checks the exact break arithmetic and the writable regrow that prove it."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim depends on xv6's growproc and deallocuvm behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
+      }
+    },
+    "portability": null,
+    "stressItems": null
   }
 ];
       const CHIPS_BY_KEY = {
@@ -123031,6 +123165,949 @@ assert(check == 0x2144DF1C);</code></pre>
     "kind": "article",
     "probandum": "not at Algorithm because the verified claim is a hardware state transition read from mstatus, not a computation: the Initial-to-Dirty move on a real fmv.d.x exists only where a floating-point unit sits behind the FS field, so no portable argument can carry it.",
     "slot": "ALGORITHM"
+  },
+  "the-register-that-answers-in-readback|ISA": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "note": "The measured pairs in (2), the prescribed experiment and its safety in (3), and the encoding table in (4) establish per (6) that the module observed the architecture's own contract, giving (5).",
+        "strength": "strong",
+        "to": [
+          5
+        ],
+        "via": [
+          6
+        ]
+      },
+      {
+        "from": [
+          5
+        ],
+        "note": "The confirmed contract observation in (5) plus (7) yields the lit verdict in (1), with the objection in (8) answered by (9).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          7
+        ]
+      }
+    ],
+    "item": "the-register-that-answers-in-readback",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the verified behavior is the privileged specification's own contract: section 2.3.3 prescribes exactly this experiment, that the range of supported values is determined by writing a desired setting and reading back whether it was retained, and that unsupported WARL writes never raise; the MODE encodings, 0 Bare, 8 Sv39, 9 Sv48, 10 Sv57, are the spec's table, so this probe binds every compliant hart."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/satp-mode-warl/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+        },
+        "text": "The module's MODE discovery on QEMU 8.2.2: MODE=8 write 0x8000000000000000 read back identical; MODE=9 and MODE=10 whole writes took effect; MODE=15 write 0xf000000000000000 with nonzero prior read back 0xa000000000000000, bit-identical to prior; 19 checks, 0 mismatches, 3 byte-identical runs."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "RISC-V privileged spec, section 2.3.3",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "Section 2.3.3 of the privileged specification: the range of supported values can be determined by attempting to write a desired setting then reading to see if the value was retained, and implementations will not raise an exception on writes of unsupported values to a WARL field."
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "source": {
+          "cite": "RISC-V privileged spec, satp MODE table",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The privileged specification's satp MODE encodings: 0 Bare, 8 Sv39, 9 Sv48, 10 Sv57, the remaining values reserved; the module probed exactly these five rows."
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The measured write and readback pairs match the specification's WARL experiment: supported values retained, the reserved encoding's whole write ignored, no trap raised on any unsupported write."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A behavior that is both specified by the architecture manual and measured on a machine model is a claim about the machine contract, not about the model it was measured on."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "The ISA layer lights when the verified claim is the architecture's own contract, confirmed by measurement against the specified behavior."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "One could object that QEMU 8.2.2 is a model and not silicon, so the measured readbacks prove nothing about the machine contract."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The contract claim rests on the specification text, which the measurements instantiate: the spec sentences prescribe the experiment and its safety, so the ISA slot argues specified behavior that binds every compliant hart."
+      }
+    ],
+    "kind": "article",
+    "probandum": "matters at ISA because the verified behavior is the privileged specification's own contract: section 2.3.3 prescribes exactly this experiment, that the range of supported values is determined by writing a desired setting and reading back whether it was retained, and that unsupported WARL writes never raise; the MODE encodings, 0 Bare, 8 Sv39, 9 Sv48, 10 Sv57, are the spec's table, so this probe binds every compliant hart.",
+    "slot": "ISA"
+  },
+  "the-register-that-answers-in-readback|MICROARCH": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The documented model boundary in (2) and the implementation-free guarantee in (3) establish per (5) that the verified contract is invariant, giving (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The invariance in (4) plus (6) yields the dim verdict in (1), with the objection in (7) answered by (8).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "the-register-that-answers-in-readback",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at Microarch because the verified contract is an architectural property: section 2.3.3 guarantees an unsupported WARL write never raises and the readback is legal on every compliant hart, so no implementation choice changes the readback; the Sv48 and Sv57 stick is this QEMU model's retained set, measured and labeled as QEMU 8.2.2 behavior."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/satp-mode-warl/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+        },
+        "text": "The module's Limits section states the boundary plainly: a hart without Sv48/Sv57 would leave those writes without effect, and the MODE=9/10 checks accept either clean outcome, so the probe documents rather than assumes."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "RISC-V privileged spec, section 2.3.3",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "Section 2.3.3 guarantees no exception on unsupported WARL writes and requires the readback to be a legal value, a guarantee stated without reference to any implementation."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The no-fault, legal-readback guarantee is specified and therefore identical on every compliant hart; which values a hart retains is the implementation's choice, and this model's choice was measured and labeled as such."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A dim verdict must establish invariance: the layer stays dim when the verified property holds identically across every implementation choice the layer could make."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The Microarch layer lights for implementation-varying behavior; an architecturally specified guarantee that no implementation choice can change keeps it dim."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that the Sv48/Sv57 stick is an implementation behavior, so the Microarch layer should light."
+      },
+      {
+        "kind": "refutation",
+        "n": 8,
+        "text": "The verified contract under test is the specified no-fault legal-readback rule, which is invariant; the retained set is this model's documented choice, labeled as QEMU 8.2.2 behavior, not as a microarchitectural mechanism."
+      }
+    ],
+    "kind": "article",
+    "probandum": "not at Microarch because the verified contract is an architectural property: section 2.3.3 guarantees an unsupported WARL write never raises and the readback is legal on every compliant hart, so no implementation choice changes the readback; the Sv48 and Sv57 stick is this QEMU model's retained set, measured and labeled as QEMU 8.2.2 behavior.",
+    "slot": "MICROARCH"
+  },
+  "the-register-that-answers-in-readback|FIRMWARE": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The M-mode discovery design in (2) and the S-mode fault that forced it in (3) establish per (5) that the probe belongs to boot-time machine-mode software, giving (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The firmware ownership in (4) plus (6) yields the lit verdict in (1), with the objection in (7) answered by (8).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "the-register-that-answers-in-readback",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at Firmware because machine-mode firmware owns satp at boot and chooses the translation scheme: the module records the boot word 0x0, runs the MODE discovery in M-mode where a sticking scheme cannot fault instruction fetch, and restores satp before dropping to S-mode, so the write and readback discipline is load-bearing for whoever writes the boot code."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/satp-mode-warl/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+        },
+        "text": "The module runs the MODE discovery in M-mode deliberately: a MODE write that sticks cannot fault anything there, because M-mode accesses are never translated; satp is read twice at boot (0x0), restored after discovery, and the payload drops to S-mode via mret with mstatus.MPP=01."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "src/satp-mode-warl/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+        },
+        "text": "The first design iteration probed MODE=9 in S-mode with PPN=0: the write took effect and the next instruction fetch faulted with mcause=0xc, which moved the discovery to M-mode; the design lesson is recorded in the proof log."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "Machine-mode firmware is the layer that programs satp at boot, discovers the supported schemes, and must do so where a sticking scheme cannot fault instruction fetch."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A register programmed at boot by machine-mode software, whose discovery procedure only makes sense in M-mode, is a firmware concern."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The Firmware layer lights when the verified property is load-bearing for the machine-mode software that brings the hart up."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that a supervisor kernel also writes satp, so the discovery is not firmware-specific."
+      },
+      {
+        "kind": "refutation",
+        "n": 8,
+        "text": "The module's discovery deliberately runs in M-mode because only there is a sticking MODE write provably safe; the boot word record and the restore are firmware's responsibilities, whatever supervisors do later."
+      }
+    ],
+    "kind": "article",
+    "probandum": "matters at Firmware because machine-mode firmware owns satp at boot and chooses the translation scheme: the module records the boot word 0x0, runs the MODE discovery in M-mode where a sticking scheme cannot fault instruction fetch, and restores satp before dropping to S-mode, so the write and readback discipline is load-bearing for whoever writes the boot code.",
+    "slot": "FIRMWARE"
+  },
+  "the-register-that-answers-in-readback|KERNEL": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The supervisor's translation proof in (2) and the scheme-support map in (3) establish per (5) that the discovery serves address-space management, giving (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The supervisor relevance in (4) plus (6) yields the lit verdict in (1), with the objection in (7) answered by (8).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "the-register-that-answers-in-readback",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at Kernel because the supervisor kernel is the layer that switches address spaces through satp: the module's S-mode canary read is the supervisor's own proof that translation is live, and the WARL write and readback discipline is how a kernel discovers which address schemes a hart will accept before committing an address space to one."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/satp-mode-warl/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+        },
+        "text": "After the M-mode discovery, the module mrets into the S-mode payload, writes satp with MODE=8 and the table PPN, and reads the RAM canary stored with translation off back through the active translation at VA 0x80003110 as 0xc0ffee11deadbeef, bit-exact."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "src/satp-mode-warl/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+        },
+        "text": "The module's discovery table gives the supervisor the scheme-support map: Bare, Sv39, Sv48, Sv57 retained on this hart, MODE=15 whole-write ignored, so a supervisor knows which schemes it may commit an address space to."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The supervisor is the consumer of the discovery: it enables translation through satp and commits address spaces to schemes the probe has shown the hart retains."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "Address-space management through satp is the supervisor kernel's mechanism; a verified scheme-support map is load-bearing for the layer that switches address spaces."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The Kernel layer lights when the verified property is load-bearing for supervisor-mode work: scheduling, memory management, or drivers."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that the discovery ran in M-mode, so the kernel never performed the probe."
+      },
+      {
+        "kind": "refutation",
+        "n": 8,
+        "text": "The S-mode canary read is the supervisor's own proof that translation is live, and the probe discipline transfers: satp is supervisor-writable, so a kernel can run the same write and readback discovery the module ran in M-mode."
+      }
+    ],
+    "kind": "article",
+    "probandum": "matters at Kernel because the supervisor kernel is the layer that switches address spaces through satp: the module's S-mode canary read is the supervisor's own proof that translation is live, and the WARL write and readback discipline is how a kernel discovers which address schemes a hart will accept before committing an address space to one.",
+    "slot": "KERNEL"
+  },
+  "the-register-that-answers-in-readback|ALGORITHM": {
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "note": "The model-bound readbacks in (2) establish per (4) that no portable computation is under test, giving (3).",
+        "strength": "strong",
+        "to": [
+          3
+        ],
+        "via": [
+          4
+        ]
+      },
+      {
+        "from": [
+          3
+        ],
+        "note": "The non-portability in (3) plus (5) yields the dim verdict in (1), with the objection in (6) answered by (7).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          5
+        ]
+      }
+    ],
+    "item": "the-register-that-answers-in-readback",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at Algorithm because the verified claim is a hardware register contract measured on a specific machine model, not a computation: write then read back is a probe discipline, not a portable mechanism, and the Sv48 and Sv57 results travel no further than the QEMU 8.2.2 model they were measured on."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/satp-mode-warl/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+        },
+        "text": "Every verified number in the module is a register readback on QEMU 8.2.2: MODE=9/10 stick, MODE=15 ignored with nonzero prior, canary 0xc0ffee11deadbeef through the Sv39 walk; the Limits section states the Sv48/Sv57 results are this model's behavior, not silicon."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The verified claims are observations of one machine model's register contract; no computation is specified that another platform could reimplement."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A dim verdict must establish invariance: the Algorithm layer stays dim when the verified property cannot be restated as a portable computation."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The Algorithm layer lights for portable computational mechanisms; a hardware register probe whose results are tied to one machine model keeps it dim."
+      },
+      {
+        "kind": "explanation",
+        "n": 6,
+        "text": "One could object that write then read back is a general probing technique any platform could reuse."
+      },
+      {
+        "kind": "refutation",
+        "n": 7,
+        "text": "The technique transfers, but the verified results do not: Sv48 and Sv57 sticking is a fact about this QEMU model, and the article's claims are the measured readbacks, not the method."
+      }
+    ],
+    "kind": "article",
+    "probandum": "not at Algorithm because the verified claim is a hardware register contract measured on a specific machine model, not a computation: write then read back is a probe discipline, not a portable mechanism, and the Sv48 and Sv57 results travel no further than the QEMU 8.2.2 model they were measured on.",
+    "slot": "ALGORITHM"
+  },
+  "src-mstatus-sie-toggle|ISA": {
+    "item": "src-mstatus-sie-toggle",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the claim is the machine contract's interrupt-delivery rule: a pending interrupt traps in S-mode only when the global enable bit is set, and the module verifies that rule directly, with no S-mode trap when the bit is clear and exactly one when it is set.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ISA because the claim is the machine contract's interrupt-delivery rule: a pending interrupt traps in S-mode only when the global enable bit is set, and the module verifies that rule directly, with no S-mode trap when the bit is clear and exactly one when it is set."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Phase 1: mstatus.SIE clear, mip.SSIP pending, 0 S-mode traps. Phase 2: SIE set, exactly 1 S-mode trap with scause=0x8000000000000001, then the handler clears the pending bit.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sie-toggle/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture specifies that an interrupt traps only when its enable bit and the global enable are set; a pending but disabled interrupt waits.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The observed trap and no-trap behavior follows the enable bit, not the pending state, which is the contract's delivery rule."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim that depends on the machine contract's trap-delivery rule engages the ISA layer, because the ISA is the contract the behavior is checked against."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mstatus-sie-toggle|MICROARCH": {
+    "item": "src-mstatus-sie-toggle",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof asserts trap counts and register readbacks, never timing: pipeline or cache behavior changes how fast a trap returns, never whether the enable gate admits it.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof asserts trap counts and register readbacks, never timing: pipeline or cache behavior changes how fast a trap returns, never whether the enable gate admits it."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log asserts trap counts (0 in phase 1, 1 in phase 2) and CSR readbacks across 3 byte-identical runs; no cycle counts enter the verdict.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sie-toggle/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim proven by counts and readbacks, with timing excluded from the verdict, does not engage implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mstatus-sie-toggle|FIRMWARE": {
+    "item": "src-mstatus-sie-toggle",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because machine-mode software arbitrates S-mode interrupt delivery with this bit across boot and handoff, and the module drives the bit from M-mode in both phases of the test, verifying the gate firmware actually controls.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at FIRMWARE because machine-mode software arbitrates S-mode interrupt delivery with this bit across boot and handoff, and the module drives the bit from M-mode in both phases of the test, verifying the gate firmware actually controls."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Both phases set and clear mstatus.SIE from M-mode; the S-mode landing pad runs only because M-mode delegated the interrupt through mideleg and opened memory with a PMP NAPOT entry.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sie-toggle/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture assigns trap delegation, PMP configuration, and the mstatus enable bits to machine mode.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The module's claim is about M-mode's control of S-mode interrupt delivery, which is machine-mode software's job."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim about what machine-mode software configures and controls engages the firmware layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mstatus-sie-toggle|KERNEL": {
+    "item": "src-mstatus-sie-toggle",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because a supervisor kernel toggles this same bit through its sstatus view to guard critical sections, and the module verifies the gate genuinely refuses the trap rather than clearing the pending state: the pending bit stays set and readable while no trap fires.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at KERNEL because a supervisor kernel toggles this same bit through its sstatus view to guard critical sections, and the module verifies the gate genuinely refuses the trap rather than clearing the pending state: the pending bit stays set and readable while no trap fires."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "With SIE clear the mip.SSIP pending bit stayed set and readable at 0x82 while 0 S-mode traps fired; the gate refused delivery without clearing state.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sie-toggle/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "Refusing the trap while the pending bit stays set is what a kernel relies on when it guards a critical section: the interrupt waits, and nothing is lost."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A verified claim about the exact enable bit a supervisor kernel toggles, showing the pending interrupt survives the guard, engages the kernel layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mstatus-sie-toggle|ALGORITHM": {
+    "item": "src-mstatus-sie-toggle",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the claim is about a control bit's effect on trap delivery, not a computation: there is no portable operation here, only the machine's enable gate.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the claim is about a control bit's effect on trap delivery, not a computation: there is no portable operation here, only the machine's enable gate."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's checks are register readbacks and trap counts; no input-output function is computed or ported.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sie-toggle/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about a control bit's effect on trap delivery states machine behavior, not a portable computation, so it does not engage the algorithm layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-shrink|ISA": {
+    "item": "user-sbrk-shrink",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the claim is about xv6's heap bookkeeping, not the machine contract: the module asserts break addresses and byte-exact canary readbacks, which would behave identically on any RISC-V implementation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ISA because the claim is about xv6's heap bookkeeping, not the machine contract: the module asserts break addresses and byte-exact canary readbacks, which would behave identically on any RISC-V implementation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's 9 checks assert sbrk return values, break addresses, and byte-exact canary readbacks; no instruction's behavior is asserted.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A layer slot stays dim when the verified claim asserts nothing about the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-shrink|MICROARCH": {
+    "item": "user-sbrk-shrink",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof asserts byte-exact readbacks and break addresses across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof asserts byte-exact readbacks and break addresses across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The 9 checks assert break addresses and byte-exact canary readbacks, identical across 3 runs; no timing measurement enters the verdict.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim proven by values and readbacks, with timing excluded from the verdict, does not engage implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-shrink|FIRMWARE": {
+    "item": "user-sbrk-shrink",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test runs entirely in xv6 user space after boot; the checks never read a machine-mode register.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim proven after boot without consulting machine-mode state does not engage the firmware layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-shrink|KERNEL": {
+    "item": "user-sbrk-shrink",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because the verified property is the allocator's contract: a negative sbrk must return the page through deallocuvm and a later grow must hand back a usable page, and the module checks the exact break arithmetic and the writable regrow that prove it.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at KERNEL because the verified property is the allocator's contract: a negative sbrk must return the page through deallocuvm and a later grow must hand back a usable page, and the module checks the exact break arithmetic and the writable regrow that prove it."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "sbrk(-4096) returned the pre-shrink break 0x6000 and sbrk(0) then read 0x5000; regrow returned 0x5000 and a reversed canary read back byte-exact.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "In xv6, sys_sbrk calls growproc for the size change, and growproc calls deallocuvm for negative increments to release pages.",
+        "source": {
+          "tier": "reference",
+          "url": "https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/proc.c"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The break arithmetic and the writable regrow are exactly the allocator contract a kernel's memory manager must honor."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim about a kernel data structure's behavior engages the kernel layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-shrink|ALGORITHM": {
+    "item": "user-sbrk-shrink",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the claim depends on xv6's growproc and deallocuvm behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the claim depends on xv6's growproc and deallocuvm behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The checks are break addresses and canary readbacks on this kernel; no portable computation is claimed.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim that depends on one kernel's implementation states that kernel's behavior, not a portable mechanism."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
   }
 };
       // Exposed for the tooltip renderer, which lives in its own script
