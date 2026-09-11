@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-120802">
+  <meta name="build-version" content="v20260911-124752">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -14612,6 +14612,110 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoLabel": "systems-lab/lab/147-pte-global-bit",
     "terminalName": "lab-147",
     "terminalLabel": "lab/147-pte-global-bit",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-medeleg-ecall-destination",
+    "title": "medeleg bit 9 routes the same ecall to S-mode, measured on the trap destination",
+    "kicker": "one CSR bit flips where the trap lands, M-mode with the bit clear, S-mode with it set",
+    "summary": "src/medeleg-ecall-destination is a bare-metal RISC-V program that issues the same ecall from S-mode in two phases. With medeleg bit 9 clear the trap lands in M-mode; with the bit set it lands in S-mode.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The card verifies the medeleg bit-9 delegation the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "The card proves the trap-delegation control M-mode firmware configures, so the verified property is load-bearing for firmware work."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The card runs in M-mode and S-mode with no supervisor kernel loaded, so the slot stays dim."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware delegation bit, not a computational construction, so the slot stays dim."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 checks against trap destination, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x5ce302e5b39ef6f0, identical across 3 QEMU 8.2.2 runs"
+      ]
+    ],
+    "terminalOutput": "Checks: 14\nMismatches: 0\nChecksum: 0x5ce302e5b39ef6f0\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 14,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-ecall-destination",
+    "repoLabel": "riscv-baremetal-demo/src/medeleg-ecall-destination",
+    "terminalName": "src-medeleg",
+    "terminalLabel": "src/medeleg-ecall-destination",
+    "showRepoLink": true
+  },
+  {
+    "id": "user-pipeorder",
+    "title": "xv6 pipe delivers a 2048-byte stream byte-exact in order",
+    "kicker": "four times the pipe buffer, blocked and drained, every byte lands where it was written",
+    "summary": "user/pipeorder is a user-space xv6 test that moves a fixed 2048-byte pattern through a pipe. The child writes the sequence and closes; the parent reads until EOF and compares every byte.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The card verifies xv6 pipe behavior, not a RISC-V instruction, so the slot stays dim."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card runs in xv6 user space with no firmware involved, so the slot stays dim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The card proves the ordered byte-stream the kernel's pipe implementation provides, so the verified property is load-bearing for kernel work."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies kernel IPC behavior, not a portable construction, so the slot stays dim."
+      }
+    },
+    "evidence": {
+      "label": "repo",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeorder.c"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4 checks against byte-exact readback, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xB1120CB4FAD2BF83, FNV-1a 64 of the 2048-byte stream"
+      ]
+    ],
+    "terminalOutput": "Checks: 4\nMismatches: 0\nChecksum: 0xB1120CB4FAD2BF83\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 4,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeorder.c",
+    "repoLabel": "xv6-getscount/user/pipeorder.c",
+    "terminalName": "user-pipeorder",
+    "terminalLabel": "user/pipeorder",
     "showRepoLink": true
   }
 ];
@@ -94522,6 +94626,716 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 4,
         "kind": "penultimate",
         "text": "The card verifies a portable page-walk and cache mechanism, so the construction is load-bearing as an algorithm."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-medeleg-ecall-destination|ISA": {
+    "item": "src-medeleg-ecall-destination",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The card verifies the medeleg bit-9 delegation the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the medeleg bit-9 delegation the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-medeleg-ecall-destination.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the medeleg bit-9 delegation the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-medeleg-ecall-destination|MICROARCH": {
+    "item": "src-medeleg-ecall-destination",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-medeleg-ecall-destination.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-medeleg-ecall-destination|FIRMWARE": {
+    "item": "src-medeleg-ecall-destination",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card proves the trap-delegation control M-mode firmware configures, so the verified property is load-bearing for firmware work.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card proves the trap-delegation control M-mode firmware configures, so the verified property is load-bearing for firmware work."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-medeleg-ecall-destination.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the trap-delegation control M-mode firmware configures, so the property is load-bearing for firmware work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-medeleg-ecall-destination|KERNEL": {
+    "item": "src-medeleg-ecall-destination",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The card runs in M-mode and S-mode with no supervisor kernel loaded, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card runs in M-mode and S-mode with no supervisor kernel loaded, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-medeleg-ecall-destination.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card runs in M-mode and S-mode with no kernel loaded, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-medeleg-ecall-destination|ALGORITHM": {
+    "item": "src-medeleg-ecall-destination",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a hardware delegation bit, not a computational construction, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies a hardware delegation bit, not a computational construction, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-medeleg-ecall-destination.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies a hardware delegation bit, not a computational construction, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-pipeorder|ISA": {
+    "item": "user-pipeorder",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The card verifies xv6 pipe behavior, not a RISC-V instruction, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies xv6 pipe behavior, not a RISC-V instruction, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-pipeorder.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies xv6 pipe behavior, not a RISC-V instruction, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-pipeorder|MICROARCH": {
+    "item": "user-pipeorder",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-pipeorder.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-pipeorder|FIRMWARE": {
+    "item": "user-pipeorder",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card runs in xv6 user space with no firmware involved, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card runs in xv6 user space with no firmware involved, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-pipeorder.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card runs in xv6 user space with no firmware involved, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-pipeorder|KERNEL": {
+    "item": "user-pipeorder",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The card proves the ordered byte-stream the kernel's pipe implementation provides, so the verified property is load-bearing for kernel work.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card proves the ordered byte-stream the kernel's pipe implementation provides, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-pipeorder.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the ordered byte-stream the kernel's pipe implementation provides, so the property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-pipeorder|ALGORITHM": {
+    "item": "user-pipeorder",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies kernel IPC behavior, not a portable construction, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies kernel IPC behavior, not a portable construction, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-pipeorder.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies kernel IPC behavior, not a portable construction, so the slot stays dim."
       },
       {
         "n": 5,
