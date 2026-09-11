@@ -13450,5 +13450,111 @@
   "terminalName": "user-execfail",
   "terminalLabel": "user/execfail",
   "showRepoLink": true
+},
+{
+  "id": "src-menvcfg-stce-write",
+  "title": "menvcfg.STCE reads back exactly as written",
+  "kicker": "the Sstc handoff bit, set and cleared under M-mode",
+  "summary": "src/menvcfg-stce-write is an M-mode bare-metal probe of the menvcfg.STCE control bit. It writes the bit set and cleared and checks the readback carries it exactly, then reports an all-ones WARL probe's legalized readback. A trap vector watches the whole run and records zero traps.",
+  "layers": {
+    "ISA": {
+      "applies": true,
+      "because": "The privileged ISA defines menvcfg.STCE as the bit that hands Sstc timer access to supervisor mode: while set, S-mode may use the Sstc CSRs, and while clear it may not. The proof writes the bit set and cleared in M-mode and the readback carries it exactly, so the machine contract behaves as specified."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The verified claim is a functional register contract, whether the written bit survives the WARL legalization. The log carries no timing or implementation measurement, so the claim is indifferent to the hardware behind the CSR."
+    },
+    "FIRMWARE": {
+      "applies": true,
+      "because": "M-mode firmware owns menvcfg and is the only software that can flip STCE. The proof performs the firmware-level act directly: set the Sstc handoff bit, read it back, clear it, read it back, and restore the boot value."
+    },
+    "KERNEL": {
+      "applies": false,
+      "because": "menvcfg is an M-mode-only CSR, so supervisor kernels can neither read nor write STCE; the handoff is configured entirely above the kernel's privilege, and the verified contract is firmware's act, not anything the kernel sets up."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "A control bit on a machine environment register is a machine configuration contract, not an ISA-independent computation. The set-and-cleared readback pattern is this CSR's specified behavior, not a portable mechanism."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "7 checks of the STCE contract: set and clear read back exactly as written, WARL all-ones legalization reported with STCE surviving, boot value restored exactly, zero traps; 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0xc423e955a4446ba3, FNV-1a over the write/readback bytes, byte-identical across 3 runs"
+    ]
+  ],
+  "terminalOutput": "Checks: 7\nMismatches: 0\nChecksum: 0xc423e955a4446ba3\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 7,
+  "failures": 0,
+  "stressItems": [],
+  "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-stce-write",
+  "repoLabel": "riscv-baremetal-demo/src/menvcfg-stce-write",
+  "terminalName": "src-menvcfg-stce-write",
+  "terminalLabel": "src/menvcfg-stce-write",
+  "showRepoLink": true
+},
+{
+  "id": "user-pipepart",
+  "title": "an xv6 pipe read in short chunks returns exact stream prefixes",
+  "kicker": "64 bytes in, ten chunks out, every prefix exact",
+  "summary": "user/pipepart is a user-space xv6 test that treats the pipe as a byte stream. It writes a known 64-byte pattern in one call, closes the write end, then reads in 7-byte chunks and reassembles the stream, checking each chunk is the exact next prefix of the written bytes.",
+  "layers": {
+    "ISA": {
+      "applies": false,
+      "because": "The verified claim is the pipe's byte-stream behavior, which xv6 implements in portable C above the machine contract; short reads returning exact ordered prefixes hold regardless of the ISA underneath."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The proof checks a functional outcome, chunk byte counts and prefix equality against the written pattern. The log publishes no timing or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA."
+    },
+    "FIRMWARE": {
+      "applies": false,
+      "because": "The test runs as an ordinary xv6 user program and configures nothing at machine level; the verified property is the kernel's pipe read path, which never reaches firmware configuration."
+    },
+    "KERNEL": {
+      "applies": true,
+      "because": "xv6's pipe must present a byte stream with no message boundaries; the proof's ten chunks arriving as exact ordered prefixes of the written bytes is a direct check of that kernel read path."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "The card verifies an OS byte-stream guarantee, not a portable computational construction; the claim is about what xv6's pipe promises on short reads, not an ISA-independent computation."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "9 checks of the byte-stream property: exact 64-byte single write, the ten chunk readbacks each an exact ordered prefix, sticky EOF on the next read, full byte-exact reassembly; 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0xEEB9DFC603EE8AEF, FNV-1a over the captured bytes, independently recomputed on the host to the same value"
+    ]
+  ],
+  "terminalOutput": "Checks: 9\nMismatches: 0\nChecksum: 0xEEB9DFC603EE8AEF\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 9,
+  "failures": 0,
+  "stressItems": [],
+  "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipepart.c",
+  "repoLabel": "xv6-getscount/user/pipepart.c",
+  "terminalName": "user-pipepart",
+  "terminalLabel": "user/pipepart",
+  "showRepoLink": true
 }
 ]

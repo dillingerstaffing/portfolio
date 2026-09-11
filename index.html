@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-133303">
+  <meta name="build-version" content="v20260911-135040">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -14949,6 +14949,112 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoLabel": "xv6-getscount/user/execfail.c",
     "terminalName": "user-execfail",
     "terminalLabel": "user/execfail",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-menvcfg-stce-write",
+    "title": "menvcfg.STCE reads back exactly as written",
+    "kicker": "the Sstc handoff bit, set and cleared under M-mode",
+    "summary": "src/menvcfg-stce-write is an M-mode bare-metal probe of the menvcfg.STCE control bit. It writes the bit set and cleared and checks the readback carries it exactly, then reports an all-ones WARL probe's legalized readback. A trap vector watches the whole run and records zero traps.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines menvcfg.STCE as the bit that hands Sstc timer access to supervisor mode: while set, S-mode may use the Sstc CSRs, and while clear it may not. The proof writes the bit set and cleared in M-mode and the readback carries it exactly, so the machine contract behaves as specified."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is a functional register contract, whether the written bit survives the WARL legalization. The log carries no timing or implementation measurement, so the claim is indifferent to the hardware behind the CSR."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns menvcfg and is the only software that can flip STCE. The proof performs the firmware-level act directly: set the Sstc handoff bit, read it back, clear it, read it back, and restore the boot value."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "menvcfg is an M-mode-only CSR, so supervisor kernels can neither read nor write STCE; the handoff is configured entirely above the kernel's privilege, and the verified contract is firmware's act, not anything the kernel sets up."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "A control bit on a machine environment register is a machine configuration contract, not an ISA-independent computation. The set-and-cleared readback pattern is this CSR's specified behavior, not a portable mechanism."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks of the STCE contract: set and clear read back exactly as written, WARL all-ones legalization reported with STCE surviving, boot value restored exactly, zero traps; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xc423e955a4446ba3, FNV-1a over the write/readback bytes, byte-identical across 3 runs"
+      ]
+    ],
+    "terminalOutput": "Checks: 7\nMismatches: 0\nChecksum: 0xc423e955a4446ba3\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 7,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-stce-write",
+    "repoLabel": "riscv-baremetal-demo/src/menvcfg-stce-write",
+    "terminalName": "src-menvcfg-stce-write",
+    "terminalLabel": "src/menvcfg-stce-write",
+    "showRepoLink": true
+  },
+  {
+    "id": "user-pipepart",
+    "title": "an xv6 pipe read in short chunks returns exact stream prefixes",
+    "kicker": "64 bytes in, ten chunks out, every prefix exact",
+    "summary": "user/pipepart is a user-space xv6 test that treats the pipe as a byte stream. It writes a known 64-byte pattern in one call, closes the write end, then reads in 7-byte chunks and reassembles the stream, checking each chunk is the exact next prefix of the written bytes.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The verified claim is the pipe's byte-stream behavior, which xv6 implements in portable C above the machine contract; short reads returning exact ordered prefixes hold regardless of the ISA underneath."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks a functional outcome, chunk byte counts and prefix equality against the written pattern. The log publishes no timing or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The test runs as an ordinary xv6 user program and configures nothing at machine level; the verified property is the kernel's pipe read path, which never reaches firmware configuration."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "xv6's pipe must present a byte stream with no message boundaries; the proof's ten chunks arriving as exact ordered prefixes of the written bytes is a direct check of that kernel read path."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies an OS byte-stream guarantee, not a portable computational construction; the claim is about what xv6's pipe promises on short reads, not an ISA-independent computation."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks of the byte-stream property: exact 64-byte single write, the ten chunk readbacks each an exact ordered prefix, sticky EOF on the next read, full byte-exact reassembly; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xEEB9DFC603EE8AEF, FNV-1a over the captured bytes, independently recomputed on the host to the same value"
+      ]
+    ],
+    "terminalOutput": "Checks: 9\nMismatches: 0\nChecksum: 0xEEB9DFC603EE8AEF\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 9,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipepart.c",
+    "repoLabel": "xv6-getscount/user/pipepart.c",
+    "terminalName": "user-pipepart",
+    "terminalLabel": "user/pipepart",
     "showRepoLink": true
   }
 ];
@@ -96947,6 +97053,671 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "src-menvcfg-stce-write|ISA": {
+    "item": "src-menvcfg-stce-write",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines menvcfg.STCE as the bit that hands Sstc timer access to supervisor mode: while set, S-mode may use the Sstc CSRs, and while clear it may not. The proof writes the bit set and cleared in M-mode and the readback carries it exactly, so the machine contract behaves as specified.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines menvcfg.STCE as the bit that hands Sstc timer access to supervisor mode: while set, S-mode may use the Sstc CSRs, and while clear it may not. The proof writes the bit set and cleared in M-mode and the readback carries it exactly, so the machine contract behaves as specified."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the STCE write/readback pairs: bit set written and read back as 0xa000000000000000, bit cleared written and read back as 0x2000000000000000, on all 3 QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture specifies menvcfg as the M-mode environment configuration register, with STCE (bit 63) the switch that hands Sstc timer CSRs to supervisor mode.",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv privileged spec, Machine Configuration (menvcfg)",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A CSR bit reads back as written exactly when the implementation honors the specified write/readback contract, and the WARL legalization is itself part of that contract."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The measured pairs show STCE surviving exactly as written while no other boot-set bit vanishes, so the machine contract for menvcfg.STCE behaves as specified."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "src-menvcfg-stce-write|MICROARCH": {
+    "item": "src-menvcfg-stce-write",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is a functional register contract, whether the written bit survives the WARL legalization. The log carries no timing or implementation measurement, so the claim is indifferent to the hardware behind the CSR.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is a functional register contract, whether the written bit survives the WARL legalization. The log carries no timing or implementation measurement, so the claim is indifferent to the hardware behind the CSR."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records only write/readback pairs, a WARL legalization report, and a zero trap count; it carries no cycle counts, timing, or implementation detail.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim is indifferent to the microarchitecture when its verification needs no timing, counter, or implementation measurement, only functional behavior."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The STCE write/readback contract is verified purely as functional behavior, so the microarchitecture behind the CSR carries no part of the claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "src-menvcfg-stce-write|FIRMWARE": {
+    "item": "src-menvcfg-stce-write",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns menvcfg and is the only software that can flip STCE. The proof performs the firmware-level act directly: set the Sstc handoff bit, read it back, clear it, read it back, and restore the boot value.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware owns menvcfg and is the only software that can flip STCE. The proof performs the firmware-level act directly: set the Sstc handoff bit, read it back, clear it, read it back, and restore the boot value."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The probe runs in M-mode, writes menvcfg directly with csrw, and reads it back; the proof log shows the set, clear, WARL, and restore pairs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The test source performs the writes from machine mode and restores the boot value afterward, the same acts M-mode firmware performs when configuring the machine environment.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/msw_main.c",
+          "cite": "test source"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Setting and clearing the Sstc handoff bit is the M-mode firmware act of configuring the machine environment, so the firmware layer carries the card's claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "src-menvcfg-stce-write|KERNEL": {
+    "item": "src-menvcfg-stce-write",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "menvcfg is an M-mode-only CSR, so supervisor kernels can neither read nor write STCE; the handoff is configured entirely above the kernel's privilege, and the verified contract is firmware's act, not anything the kernel sets up.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "menvcfg is an M-mode-only CSR, so supervisor kernels can neither read nor write STCE; the handoff is configured entirely above the kernel's privilege, and the verified contract is firmware's act, not anything the kernel sets up."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows every menvcfg write issued from M-mode; no supervisor-mode software participates, and the trap vector records zero traps.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "menvcfg is an M-mode-only CSR: the privileged spec reserves it to machine mode, so a supervisor kernel cannot read or write STCE.",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv privileged spec, Machine Configuration (menvcfg)",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When a register contract is established entirely above a layer's privilege, the verified property is the higher layer's act, not the lower layer's."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The STCE write/readback contract is established by M-mode software alone; the kernel neither performs nor configures it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "src-menvcfg-stce-write|ALGORITHM": {
+    "item": "src-menvcfg-stce-write",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "A control bit on a machine environment register is a machine configuration contract, not an ISA-independent computation. The set-and-cleared readback pattern is this CSR's specified behavior, not a portable mechanism.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "A control bit on a machine environment register is a machine configuration contract, not an ISA-independent computation. The set-and-cleared readback pattern is this CSR's specified behavior, not a portable mechanism."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof verifies the readback behavior of one machine CSR bit, menvcfg.STCE, on QEMU 8.2.2; the claim names no ISA-independent computation.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce-write/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The algorithm layer carries portable computational mechanisms; a machine configuration contract tied to one CSR's specified behavior is not one."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The set-and-cleared readback pattern is menvcfg's specified behavior, not a portable mechanism, so the algorithm slot stays dim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "user-pipepart|ISA": {
+    "item": "user-pipepart",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The verified claim is the pipe's byte-stream behavior, which xv6 implements in portable C above the machine contract; short reads returning exact ordered prefixes hold regardless of the ISA underneath.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is the pipe's byte-stream behavior, which xv6 implements in portable C above the machine contract; short reads returning exact ordered prefixes hold regardless of the ISA underneath."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows 64 bytes written through one write call and read back as ten exact ordered prefixes; the test is a user-space program.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The test source implements the check in portable user-space C against xv6's pipe syscalls, with no machine-specific code.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipepart.c",
+          "cite": "test source"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A property implemented in portable OS code above the machine contract holds regardless of the ISA underneath, so the ISA slot does not light."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The byte-stream property is xv6's C implementation behaving, not a machine contract exercised, so ISA stays dim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "user-pipepart|MICROARCH": {
+    "item": "user-pipepart",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks a functional outcome, chunk byte counts and prefix equality against the written pattern. The log publishes no timing or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks a functional outcome, chunk byte counts and prefix equality against the written pattern. The log publishes no timing or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records chunk byte counts, prefix equality, and a byte checksum; it carries no timing, counters, or implementation detail.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim is indifferent to the microarchitecture when its verification needs no timing, counter, or implementation measurement, only functional behavior."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The pipe byte-stream property is verified purely as functional behavior, so the microarchitecture behind the ISA carries no part of the claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "user-pipepart|FIRMWARE": {
+    "item": "user-pipepart",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The test runs as an ordinary xv6 user program and configures nothing at machine level; the verified property is the kernel's pipe read path, which never reaches firmware configuration.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The test runs as an ordinary xv6 user program and configures nothing at machine level; the verified property is the kernel's pipe read path, which never reaches firmware configuration."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test runs as an ordinary xv6 user program; the proof log shows only pipe, write, read, and close syscalls.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is the kernel's pipe read path, which never reaches firmware configuration, so the firmware slot stays dim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "user-pipepart|KERNEL": {
+    "item": "user-pipepart",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "xv6's pipe must present a byte stream with no message boundaries; the proof's ten chunks arriving as exact ordered prefixes of the written bytes is a direct check of that kernel read path.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "xv6's pipe must present a byte stream with no message boundaries; the proof's ten chunks arriving as exact ordered prefixes of the written bytes is a direct check of that kernel read path."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows 64 bytes written in one call read back as ten chunks, each an exact ordered prefix of the pattern, with a sticky EOF after the stream drains.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The test source drives xv6's pipe read path through the read syscall in 7-byte chunks and byte-compares the reassembly against the written pattern.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipepart.c",
+          "cite": "test source"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Short reads returning exact ordered prefixes is exactly the kernel's byte-stream guarantee for pipes, so the kernel layer carries the card's claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  "user-pipepart|ALGORITHM": {
+    "item": "user-pipepart",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies an OS byte-stream guarantee, not a portable computational construction; the claim is about what xv6's pipe promises on short reads, not an ISA-independent computation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies an OS byte-stream guarantee, not a portable computational construction; the claim is about what xv6's pipe promises on short reads, not an ISA-independent computation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof verifies xv6's pipe read path delivering a byte stream; the claim names no ISA-independent computation.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+          "cite": "proof log"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The algorithm layer carries portable computational mechanisms; an OS byte-stream guarantee is a system behavior, not a portable computation."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The short-read prefix property is what xv6's pipe promises, not an ISA-independent computational mechanism, so the algorithm slot stays dim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property; the generalization connects it to the layer verdict"
       },
       {
         "from": [
