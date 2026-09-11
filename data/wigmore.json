@@ -105604,6 +105604,433 @@
           "note": "Offset bookkeeping is kernel mechanism, not algorithm."
         }
       ]
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "note": "The measured transitions in (2), the corrections in (3), and the specified contract in (4) establish per (6) that the module observed the architecture's own state machine, giving (5).",
+          "strength": "strong",
+          "to": [
+            5
+          ],
+          "via": [
+            6
+          ]
+        },
+        {
+          "from": [
+            5
+          ],
+          "note": "The confirmed contract observation in (5) plus (7) yields the lit verdict in (1), with the objection in (8) answered by (9).",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            7
+          ]
+        }
+      ],
+      "item": "the-two-bits-that-spare-the-kernel-thirty-two-saves",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters at ISA because the verified behavior is the privileged specification's own contract, section 3.1.6.7: FS, the field in mstatus bits 14:13, reports the floating-point unit's save state, SD at bit 63 is the OR of the dirty states, and Off makes floating-point instructions trap, so this state machine binds every machine-mode supervisor."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sstatus-fs-dirty/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+          },
+          "text": "The module's read sequence under QEMU 8.2.2: boot mstatus 0xa00000000 with FS Off, one csrs to Initial, one fmv.d.x to Dirty with SD lit, a second fmv.d.x sticky at Dirty, csrc restoring the exact boot word, trap counter 0 across three byte-identical runs; 14 checks."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "src/sstatus-fs-dirty/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+          },
+          "text": "The shipped PROOF.md documents the module's three corrections: Off raises an illegal-instruction exception instead of recording, FS lives in mstatus bits 14:13 and not in fcsr, and M-mode reads mstatus directly where sstatus is only the supervisor's view of the same bits."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "source": {
+            "cite": "RISC-V privileged spec, section 3.1.6.7",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "The privileged specification section 3.1.6.7 defines the FS state machine: the design anticipates that most context switches will not need to save or restore the floating-point state, so it provides a fast check via the SD bit, with SD as the summary of the dirty states."
+        },
+        {
+          "kind": "penultimate",
+          "n": 5,
+          "text": "The measured FS transitions match the specification's state machine: Off traps, Initial enables, one FP write dirties, and the summary bit follows."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "A behavior that is both specified by the architecture manual and measured on a machine model is a claim about the machine contract, not about the model it was measured on."
+        },
+        {
+          "kind": "generalization",
+          "n": 7,
+          "text": "The ISA layer lights when the verified claim is the architecture's own contract, confirmed by measurement against the specified behavior."
+        },
+        {
+          "kind": "explanation",
+          "n": 8,
+          "text": "One could object that QEMU 8.2.2 is a model and not silicon, so the measured transitions prove nothing about the machine contract."
+        },
+        {
+          "kind": "refutation",
+          "n": 9,
+          "text": "The contract claim rests on the specification text, not on the model. The measurements confirm the contract is implementable and behaves as specified; the ISA slot argues the specified behavior, which binds every compliant hart."
+        }
+      ],
+      "kind": "article",
+      "probandum": "matters at ISA because the verified behavior is the privileged specification's own contract, section 3.1.6.7: FS, the field in mstatus bits 14:13, reports the floating-point unit's save state, SD at bit 63 is the OR of the dirty states, and Off makes floating-point instructions trap, so this state machine binds every machine-mode supervisor.",
+      "slot": "ISA"
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "note": "The measured sequence in (2) concerns the specified transitions in (3), not any implementation's timing or structure, giving (5) per (6).",
+          "strength": "strong",
+          "to": [
+            5
+          ],
+          "via": [
+            6
+          ]
+        },
+        {
+          "from": [
+            5
+          ],
+          "note": "The implementation-independent claim in (5) plus (7) yields the dim verdict in (1).",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            7
+          ]
+        }
+      ],
+      "item": "the-two-bits-that-spare-the-kernel-thirty-two-saves",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "not at Microarch because the verified contract is an architecturally specified state machine: the Initial-to-Dirty move on a single fmv.d.x and the trap on Off are specified by the privilege manual, so they hold on every compliant hart and vary with no implementation choice."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sstatus-fs-dirty/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+          },
+          "text": "The module measured the FS state transitions: boot word with FS Off, csrs to Initial, fmv.d.x to Dirty with SD lit, sticky on the second write, csrc restoring the boot word, trap counter 0."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V privileged spec, section 3.1.6.7",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "The privilege manual specifies the FS state machine as architecture: Off traps, Initial holds the constant, Clean matches the last context save, Dirty may have changed, and SD summarizes the dirty states."
+        },
+        {
+          "kind": "penultimate",
+          "n": 5,
+          "text": "The verified claim is the specified state machine itself, not a measurement of any implementation's timing or internal structure."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "An architecturally specified state machine holds identically on every compliant hart, whatever its internals."
+        },
+        {
+          "kind": "generalization",
+          "n": 7,
+          "text": "The microarch layer stays dim when the verdict is invariant across implementations, which is exactly what architectural specification means."
+        }
+      ],
+      "kind": "article",
+      "probandum": "not at Microarch because the verified contract is an architecturally specified state machine: the Initial-to-Dirty move on a single fmv.d.x and the trap on Off are specified by the privilege manual, so they hold on every compliant hart and vary with no implementation choice.",
+      "slot": "MICROARCH"
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "note": "The boot-time value in (2) is written by whoever holds M-mode before the supervisor runs, which (3) identifies as firmware, giving (5) per (6).",
+          "strength": "strong",
+          "to": [
+            5
+          ],
+          "via": [
+            6
+          ]
+        },
+        {
+          "from": [
+            5
+          ],
+          "note": "The inherited-value claim in (5) plus (7) yields the lit verdict in (1), with the objection in (8) answered by (9).",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            7
+          ]
+        }
+      ],
+      "item": "the-two-bits-that-spare-the-kernel-thirty-two-saves",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters at Firmware because machine-mode firmware owns mstatus at boot and sets FS before any supervisor runs: the verified sequence opens with the boot word 0xa00000000, FS at Off, and that starting value is firmware's decision, so the field is load-bearing for whoever writes the boot code."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sstatus-fs-dirty/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+          },
+          "text": "The module's verified sequence opens at the boot word 0xa00000000 with FS at Off, the value mstatus carries when machine-mode boot code has not enabled the floating-point unit."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V privileged spec, mstatus definition",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "mstatus is a machine-level CSR; only M-mode software, which at boot is firmware, can write the FS field before any supervisor runs."
+        },
+        {
+          "kind": "penultimate",
+          "n": 5,
+          "text": "The FS value the kernel inherits is set by whoever ran in M-mode at boot."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "Boot-time machine state that a supervisor inherits is firmware's work, and a wrong initial value corrupts the supervisor's discipline before the supervisor runs."
+        },
+        {
+          "kind": "generalization",
+          "n": 7,
+          "text": "The firmware layer lights when the verified property's initial value is written by machine-mode boot code."
+        },
+        {
+          "kind": "explanation",
+          "n": 8,
+          "text": "One could object that FS is a kernel concern and firmware merely passes the value through."
+        },
+        {
+          "kind": "refutation",
+          "n": 9,
+          "text": "The pass-through is the concern: the kernel's whole save and restore discipline reads the value firmware left, so firmware's initial FS is load-bearing for the boot code author."
+        }
+      ],
+      "kind": "article",
+      "probandum": "matters at Firmware because machine-mode firmware owns mstatus at boot and sets FS before any supervisor runs: the verified sequence opens with the boot word 0xa00000000, FS at Off, and that starting value is firmware's decision, so the field is load-bearing for whoever writes the boot code.",
+      "slot": "FIRMWARE"
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "note": "The measured flip in (2), the specified discipline in (3), and the spilled-byte count in (4) establish per (6) that the context switch consumes the verified bits, giving (5).",
+          "strength": "strong",
+          "to": [
+            5
+          ],
+          "via": [
+            6
+          ]
+        },
+        {
+          "from": [
+            5
+          ],
+          "note": "The direct-consumer claim in (5) plus (7) yields the lit verdict in (1).",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            7
+          ]
+        }
+      ],
+      "item": "the-two-bits-that-spare-the-kernel-thirty-two-saves",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters at Kernel because the kernel's context switch is the consumer of the verified bits: the save discipline writes the floating-point state out only when FS reads Dirty and marks it Clean, the restore discipline loads from memory only when Clean, and Initial is restored from the constant instead of memory, so the two bits delete thirty-two register spills on the switches that never needed them."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sstatus-fs-dirty/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+          },
+          "text": "The module measured the exact flip the kernel trusts: one fmv.d.x moves FS from Initial to Dirty, a second leaves it Dirty, csrc restores the boot word, trap counter 0, across three byte-identical runs."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V privileged spec, section 3.1.6.7",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "Section 3.1.6.7 gives the context-switch discipline: save only when Dirty, then mark Clean; restore only when Clean; when Initial, set the registers from the constant value without touching memory."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "source": {
+            "cite": "RISC-V privileged spec, F extension register file",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "A full floating-point context is thirty-two registers plus fcsr: 256 bytes of doubles that the discipline saves and restores only when FS says the state changed."
+        },
+        {
+          "kind": "penultimate",
+          "n": 5,
+          "text": "The kernel's save and restore discipline is a direct consumer of the two bits: it skips thirty-two register stores whenever the receipt says the state did not change."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "A status field exists to be read by the software it was specified for, and the specified reader of FS and SD is the context switch."
+        },
+        {
+          "kind": "generalization",
+          "n": 7,
+          "text": "The kernel layer lights when the verified property is load-bearing for the supervisor's context-switch discipline."
+        }
+      ],
+      "kind": "article",
+      "probandum": "matters at Kernel because the kernel's context switch is the consumer of the verified bits: the save discipline writes the floating-point state out only when FS reads Dirty and marks it Clean, the restore discipline loads from memory only when Clean, and Initial is restored from the constant instead of memory, so the two bits delete thirty-two register spills on the switches that never needed them.",
+      "slot": "KERNEL"
+    },
+    {
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "note": "The readback measurements in (2) record register behavior, and the field requirement in (3) ties the claim to the machine contract, giving (5) per (6).",
+          "strength": "strong",
+          "to": [
+            5
+          ],
+          "via": [
+            6
+          ]
+        },
+        {
+          "from": [
+            5
+          ],
+          "note": "The machine-only claim in (5) plus (7) yields the dim verdict in (1).",
+          "strength": "strong",
+          "to": [
+            1
+          ],
+          "via": [
+            7
+          ]
+        }
+      ],
+      "item": "the-two-bits-that-spare-the-kernel-thirty-two-saves",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "not at Algorithm because the verified claim is a hardware state transition read from mstatus, not a computation: the Initial-to-Dirty move on a real fmv.d.x exists only where a floating-point unit sits behind the FS field, so no portable argument can carry it."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sstatus-fs-dirty/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+          },
+          "text": "The module's measurements are CSR readbacks and trap counts on a machine model: they record what the FS field did, not a computed result."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V privileged spec, section 3.1.6.7",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "The FS transition requires the privileged field itself: a write to a floating-point register on a hart whose mstatus carries the FS state machine."
+        },
+        {
+          "kind": "penultimate",
+          "n": 5,
+          "text": "The claim is about a hardware register's specified transitions, verifiable only where the machine contract is present."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "A property of a machine's control state is not a portable computation; it cannot be re-expressed in C and checked on another target."
+        },
+        {
+          "kind": "generalization",
+          "n": 7,
+          "text": "The algorithm layer stays dim when the verified claim exists only where the machine contract exists."
+        }
+      ],
+      "kind": "article",
+      "probandum": "not at Algorithm because the verified claim is a hardware state transition read from mstatus, not a computation: the Initial-to-Dirty move on a real fmv.d.x exists only where a floating-point unit sits behind the FS field, so no portable argument can carry it.",
+      "slot": "ALGORITHM"
     }
   ]
 }
