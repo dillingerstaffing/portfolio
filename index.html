@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260910-235952">
+  <meta name="build-version" content="v20260911-000120">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -11302,6 +11302,75 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/125-div-by-7-shift-add",
     "repoLabel": "GitHub: systems-lab/lab/125-div-by-7-shift-add",
     "terminalLabel": "Verified div-by-7 test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-stvec-vectored",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The vectored stvec MODE field and the BASE + 4*cause landing rule were executed on a real RISC-V hart under QEMU 8.2.2, with both interrupt landings measured in S-mode."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU emulates the vectored trap dispatch functionally, so no cache, pipeline, or predictor behavior is measured in the proof."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "The M-mode boot code programs mideleg and the PLIC, installs the vectored stvec, arms stimecmp, and drops into S-mode where the 16-entry stub table takes the traps."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises S-mode trap dispatch only."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because the base-plus-4-times-cause rule is a RISC-V privileged-architecture definition, not an ISA-independent computational mechanism."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stvec-vectored/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "Vectored stvec Trap Offsets",
+    "summary": "S-mode vectored stvec over 16 four-byte jal stubs on QEMU 8.2.2: the supervisor timer interrupt lands at BASE+20 with scause 0x8000000000000005 and the supervisor external interrupt at BASE+36 with scause 0x8000000000000009, 2 traps, 0 unexpected, 3 runs byte-identical.",
+    "specRows": [
+      [
+        "CHECKS",
+        "2 trap landings"
+      ],
+      [
+        "MISMATCHES",
+        "0"
+      ],
+      [
+        "TIMER LANDING",
+        "0x80000214 = BASE+20, scause 0x8000000000000005"
+      ],
+      [
+        "EXTERNAL LANDING",
+        "0x80000224 = BASE+36, scause 0x8000000000000009"
+      ],
+      [
+        "RUNS",
+        "3, byte-identical"
+      ],
+      [
+        "RESULT",
+        "PASS x3 runs"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / stvec-vectored",
+    "terminalOutput": "$ make run-stvec-vectored\ntimer trap ............ landing 0x80000214 (BASE+20), scause 0x8000000000000005\nexternal trap ......... landing 0x80000224 (BASE+36), scause 0x8000000000000009\ntraps ................. 2, unexpected 0, M-mode traps 0\nstvec readback ........ 0x80000201 (MODE=1) in both modes\nRESULT: PASS x3 runs (byte-identical)\n\nvectored dispatch, one address per cause",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 2,
+    "failures": 0,
+    "stressItems": 2,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stvec-vectored",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/stvec-vectored",
+    "terminalLabel": "Verified stvec-vectored QEMU output",
     "showRepoLink": true
   }
 ];
