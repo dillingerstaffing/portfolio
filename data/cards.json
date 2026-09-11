@@ -14586,5 +14586,119 @@
     },
     "portability": null,
     "stressItems": 5
+  },
+  {
+    "checks": 9,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-encode/PROOF.md"
+    },
+    "failures": 0,
+    "id": "src-pmp-napot-encode",
+    "kicker": "RISC-V PRIVILEGED",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines the NAPOT encoding: a power-of-two region appears in pmpaddr as a trailing-ones tail, and the pmpcfg A field names the address-matching mode with NAPOT as one of its values. The card's written-vs-readback table is the executable form of that contract, measured on real CSR state."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card checks write/readback outcomes only. Whether the PMP checker decodes the trailing ones with a priority encoder, a comparator mask, or another implementation is invisible to the probe, so the verdict is about the register contract rather than the implementation."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map. The card documents exactly which NAPOT patterns this hart admits on write and that the A field takes NAPOT, which is the contract firmware relies on when laying out regions, and the restore-to-boot step is itself firmware hygiene."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The probe stays in M-mode with every PMP entry unlocked, and the verified outcome, patterns written and read back, is identical whether or not any kernel exists. PMP constrains supervisor access only through locked entries, which this module never programs, so the measured contract is invariant to kernel behavior and a kernel's memory-protection view is untouched by the evidence."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a register contract, not a computation. The NAPOT pattern is the ISA's chosen encoding for regions, but the module writes precomputed patterns and requires the hart to store them; no encoding formula is evaluated against an independent oracle, so the verified claim is about storage, not about an algorithm's result."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/pmp-napot-encode/",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 in-program checks on QEMU 8.2.2: 4 KiB, 64 KiB, and 1 MiB NAPOT patterns written to pmpaddr0 read back bit-exact (0x200009ff, 0x20101fff, 0x2201ffff); pmpcfg0 entry 0 written 0x18 and 0x1f reads back exactly with the A field reading 3 (NAPOT) in both; all three registers restore to boot values exactly; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x7abdfe9a3880db7b, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "stressItems": 9,
+    "summary": "A bare-metal module writes NAPOT region patterns to pmpaddr0 and reads each back: the trailing-ones tail that names the region size survives the round trip exactly. It then programs pmpcfg0 with the address-matching field set to NAPOT and reads the field back as the NAPOT value, also with permission bits set. The boot values of all three registers are restored exactly at the end.",
+    "terminalLabel": "Verified src-pmp-napot-encode QEMU output",
+    "terminalName": "riscv-baremetal-demo / src / pmp-napot-encode",
+    "terminalOutput": "pmp-napot-encode: PMP NAPOT write/readback test\nboot pmpaddr0: write=0x0 readback=0x0\nboot pmpaddr1: write=0x0 readback=0x0\nboot pmpcfg0: write=0x0 readback=0x0\nnapot 4K: write=0x200009ff readback=0x200009ff\nnapot 64K: write=0x20101fff readback=0x20101fff\nnapot 1M: write=0x2201ffff readback=0x2201ffff\npmpcfg0 entry0 A=NAPOT: write=0x18 readback=0x18\npmpcfg0 entry0 NAPOT+RWX: write=0x1f readback=0x1f\nrestore pmpaddr0: write=0x0 readback=0x0\nrestore pmpaddr1: write=0x0 readback=0x0\nrestore pmpcfg0: write=0x0 readback=0x0\nrecord checksum=0x7abdfe9a3880db7b\nRESULT: PASS (checks=9)",
+    "title": "PMP NAPOT region patterns and the address-matching mode read back exactly as written",
+    "verificationEnvironment": "QEMU 8.2.2"
+  },
+  {
+    "checks": 14,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+    },
+    "failures": 0,
+    "id": "src-sstatus-fs-dirty",
+    "kicker": "RISC-V PRIVILEGED",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines mstatus.FS as the hart's record of floating-point state dirtiness, with Off, Initial, Clean, and Dirty states and the rule that an FP write moves the field toward Dirty. The card measures exactly that state machine on real FP writes: Initial to Dirty on one fmv.d.x, sticky on the second, and back to Off on clear."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card reads architectural state only. How the implementation detects an FP write and latches FS, whether in the FP pipeline or at retire, is invisible to the probe; two implementations that set FS to 3 on an fmv.d.x are indistinguishable to every check, so no implementation behavior is measured."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode is firmware's privilege level, and the module runs there: it installs an M-mode trap vector and reads mstatus directly, the word firmware consults when deciding whether floating-point state must be saved across a trap. The measured transitions are the ground truth behind that decision, so the result is load-bearing for firmware context-switch code."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "A supervisor kernel's floating-point policy, lazy restore or eager save, keys off the FS field: it must know the field moves to Dirty on any FP write and stays sticky there. The card documents those transitions on real writes, which is the behavior a kernel's FP-state handling depends on."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "No computation is verified. The card checks a hardware state machine: which FS value the hart reports after each FP write. There is no algorithm whose result is compared against an oracle, so the verified claim is about state, not about a portable computation."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-fs-dirty/",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 in-program checks on QEMU 8.2.2: boot mstatus reads 0xa00000000 with FS=0 (Off); after the enable write FS=1 (Initial) with SD=0 and no other bit moved; one fmv.d.x f1 moves FS to 3 (Dirty) with SD=1 and no other bit moved; a second fmv.d.x f2 keeps FS=3 sticky; the clear restores the boot word exactly; the trap counter stays 0; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x4b39a10748f739ad, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "stressItems": 14,
+    "summary": "A bare-metal module sets mstatus.FS to Initial, executes one fmv.d.x into f1, and reads FS as Dirty with the summary-dirty bit set. A second floating-point write into f2 leaves the field sticky at Dirty. Clearing the field restores the boot mstatus word exactly, and no trap fires anywhere in the sequence.",
+    "terminalLabel": "Verified src-sstatus-fs-dirty QEMU output",
+    "terminalName": "riscv-baremetal-demo / src / sstatus-fs-dirty",
+    "terminalOutput": "sstatus-fs-dirty: FP register write moves mstatus.FS Off->Dirty\nsetup: mtvec=0x800001c8 mie=0x0\nsetup: misa=0x80000000001411ad\nboot    : mstatus=0xa00000000 FS=0 SD=0\ninitial : mstatus=0xa00002000 FS=1 SD=0\nafter f1: mstatus=0x8000000a00006000 FS=3 SD=1\nafter f2: mstatus=0x8000000a00006000 FS=3 SD=1\ncleared : mstatus=0xa00000000 FS=0 SD=0\ntraps: count=0 mcause=0x0 mepc=0x0 mtval=0x0\ntriple FS: before=1 after=3 cleared=0\nchecks=14 mismatches=0\nchecksum=0x4b39a10748f739ad\nRESULT: PASS",
+    "title": "One floating-point register write moves mstatus.FS to Dirty",
+    "verificationEnvironment": "QEMU 8.2.2"
   }
 ]

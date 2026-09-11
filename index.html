@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-173053">
+  <meta name="build-version" content="v20260911-175701">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -16195,6 +16195,120 @@ assert(check == 0x2144DF1C);</code></pre>
     },
     "portability": null,
     "stressItems": 5
+  },
+  {
+    "checks": 9,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-encode/PROOF.md"
+    },
+    "failures": 0,
+    "id": "src-pmp-napot-encode",
+    "kicker": "RISC-V PRIVILEGED",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines the NAPOT encoding: a power-of-two region appears in pmpaddr as a trailing-ones tail, and the pmpcfg A field names the address-matching mode with NAPOT as one of its values. The card's written-vs-readback table is the executable form of that contract, measured on real CSR state."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card checks write/readback outcomes only. Whether the PMP checker decodes the trailing ones with a priority encoder, a comparator mask, or another implementation is invisible to the probe, so the verdict is about the register contract rather than the implementation."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map. The card documents exactly which NAPOT patterns this hart admits on write and that the A field takes NAPOT, which is the contract firmware relies on when laying out regions, and the restore-to-boot step is itself firmware hygiene."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The probe stays in M-mode with every PMP entry unlocked, and the verified outcome, patterns written and read back, is identical whether or not any kernel exists. PMP constrains supervisor access only through locked entries, which this module never programs, so the measured contract is invariant to kernel behavior and a kernel's memory-protection view is untouched by the evidence."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a register contract, not a computation. The NAPOT pattern is the ISA's chosen encoding for regions, but the module writes precomputed patterns and requires the hart to store them; no encoding formula is evaluated against an independent oracle, so the verified claim is about storage, not about an algorithm's result."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/pmp-napot-encode/",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 in-program checks on QEMU 8.2.2: 4 KiB, 64 KiB, and 1 MiB NAPOT patterns written to pmpaddr0 read back bit-exact (0x200009ff, 0x20101fff, 0x2201ffff); pmpcfg0 entry 0 written 0x18 and 0x1f reads back exactly with the A field reading 3 (NAPOT) in both; all three registers restore to boot values exactly; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x7abdfe9a3880db7b, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "stressItems": 9,
+    "summary": "A bare-metal module writes NAPOT region patterns to pmpaddr0 and reads each back: the trailing-ones tail that names the region size survives the round trip exactly. It then programs pmpcfg0 with the address-matching field set to NAPOT and reads the field back as the NAPOT value, also with permission bits set. The boot values of all three registers are restored exactly at the end.",
+    "terminalLabel": "Verified src-pmp-napot-encode QEMU output",
+    "terminalName": "riscv-baremetal-demo / src / pmp-napot-encode",
+    "terminalOutput": "pmp-napot-encode: PMP NAPOT write/readback test\nboot pmpaddr0: write=0x0 readback=0x0\nboot pmpaddr1: write=0x0 readback=0x0\nboot pmpcfg0: write=0x0 readback=0x0\nnapot 4K: write=0x200009ff readback=0x200009ff\nnapot 64K: write=0x20101fff readback=0x20101fff\nnapot 1M: write=0x2201ffff readback=0x2201ffff\npmpcfg0 entry0 A=NAPOT: write=0x18 readback=0x18\npmpcfg0 entry0 NAPOT+RWX: write=0x1f readback=0x1f\nrestore pmpaddr0: write=0x0 readback=0x0\nrestore pmpaddr1: write=0x0 readback=0x0\nrestore pmpcfg0: write=0x0 readback=0x0\nrecord checksum=0x7abdfe9a3880db7b\nRESULT: PASS (checks=9)",
+    "title": "PMP NAPOT region patterns and the address-matching mode read back exactly as written",
+    "verificationEnvironment": "QEMU 8.2.2"
+  },
+  {
+    "checks": 14,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+    },
+    "failures": 0,
+    "id": "src-sstatus-fs-dirty",
+    "kicker": "RISC-V PRIVILEGED",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines mstatus.FS as the hart's record of floating-point state dirtiness, with Off, Initial, Clean, and Dirty states and the rule that an FP write moves the field toward Dirty. The card measures exactly that state machine on real FP writes: Initial to Dirty on one fmv.d.x, sticky on the second, and back to Off on clear."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card reads architectural state only. How the implementation detects an FP write and latches FS, whether in the FP pipeline or at retire, is invisible to the probe; two implementations that set FS to 3 on an fmv.d.x are indistinguishable to every check, so no implementation behavior is measured."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode is firmware's privilege level, and the module runs there: it installs an M-mode trap vector and reads mstatus directly, the word firmware consults when deciding whether floating-point state must be saved across a trap. The measured transitions are the ground truth behind that decision, so the result is load-bearing for firmware context-switch code."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "A supervisor kernel's floating-point policy, lazy restore or eager save, keys off the FS field: it must know the field moves to Dirty on any FP write and stays sticky there. The card documents those transitions on real writes, which is the behavior a kernel's FP-state handling depends on."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "No computation is verified. The card checks a hardware state machine: which FS value the hart reports after each FP write. There is no algorithm whose result is compared against an oracle, so the verified claim is about state, not about a portable computation."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-fs-dirty/",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 in-program checks on QEMU 8.2.2: boot mstatus reads 0xa00000000 with FS=0 (Off); after the enable write FS=1 (Initial) with SD=0 and no other bit moved; one fmv.d.x f1 moves FS to 3 (Dirty) with SD=1 and no other bit moved; a second fmv.d.x f2 keeps FS=3 sticky; the clear restores the boot word exactly; the trap counter stays 0; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x4b39a10748f739ad, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "stressItems": 14,
+    "summary": "A bare-metal module sets mstatus.FS to Initial, executes one fmv.d.x into f1, and reads FS as Dirty with the summary-dirty bit set. A second floating-point write into f2 leaves the field sticky at Dirty. Clearing the field restores the boot mstatus word exactly, and no trap fires anywhere in the sequence.",
+    "terminalLabel": "Verified src-sstatus-fs-dirty QEMU output",
+    "terminalName": "riscv-baremetal-demo / src / sstatus-fs-dirty",
+    "terminalOutput": "sstatus-fs-dirty: FP register write moves mstatus.FS Off->Dirty\nsetup: mtvec=0x800001c8 mie=0x0\nsetup: misa=0x80000000001411ad\nboot    : mstatus=0xa00000000 FS=0 SD=0\ninitial : mstatus=0xa00002000 FS=1 SD=0\nafter f1: mstatus=0x8000000a00006000 FS=3 SD=1\nafter f2: mstatus=0x8000000a00006000 FS=3 SD=1\ncleared : mstatus=0xa00000000 FS=0 SD=0\ntraps: count=0 mcause=0x0 mepc=0x0 mtval=0x0\ntriple FS: before=1 after=3 cleared=0\nchecks=14 mismatches=0\nchecksum=0x4b39a10748f739ad\nRESULT: PASS",
+    "title": "One floating-point register write moves mstatus.FS to Dirty",
+    "verificationEnvironment": "QEMU 8.2.2"
   }
 ];
       const CHIPS_BY_KEY = {
@@ -118236,6 +118350,986 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-pmp-napot-encode|ISA": {
+    "item": "src-pmp-napot-encode",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines the NAPOT encoding: a power-of-two region appears in pmpaddr as a trailing-ones tail, and the pmpcfg A field names the address-matching mode with NAPOT as one of its values. The card's written-vs-readback table is the executable form of that contract, measured on real CSR state.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The privileged ISA defines the NAPOT encoding: a power-of-two region appears in pmpaddr as a trailing-ones tail, and the pmpcfg A field names the address-matching mode with NAPOT as one of its values. The card's written-vs-readback table is the executable form of that contract, measured on real CSR state."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "4 KiB, 64 KiB, and 1 MiB NAPOT patterns (0x200009ff, 0x20101fff, 0x2201ffff) written to pmpaddr0 read back bit-exact; pmpcfg0 entry 0 written 0x18 and 0x1f reads back with the A field (bits 4:3) reading 3; 9 checks, 0 mismatches, checksum 0x7abdfe9a3880db7b byte-identical across 3 QEMU 8.2.2 runs",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-encode/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The module runs in M-mode with no traps expected and none observed; the probe is exactly the CSR write/readback sequence, so the measured behavior is the hart's, not the test harness's",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-encode"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "The privileged specification defines NAPOT as trailing ones in pmpaddr and the A field values including NAPOT=3",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, PMP and FS field definitions",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The hart implements the ISA's NAPOT encoding contract exactly at the probed sizes and entries."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A write/readback probe with no traps measures the hart's register contract; when the contract is the ISA's encoding definition, the result is about the machine contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "ISA lights iff the verified claim depends on the machine contract (instructions, CSRs, traps, memory model)."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the card only shows QEMU's software model agreeing with the spec, not that a real core would; the verdict is about one emulator."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The card's evidence row says so openly: the verified claim is the QEMU 8.2.2 behavior documented by the byte-identical logs, and the ISA verdict is about which contract was under test, not about silicon. The machine contract is what was measured and the emulator scope is disclosed, so the lit verdict stands as scoped."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the lit verdict in (1)."
+      }
+    ]
+  },
+  "src-pmp-napot-encode|MICROARCH": {
+    "item": "src-pmp-napot-encode",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The card checks write/readback outcomes only. Whether the PMP checker decodes the trailing ones with a priority encoder, a comparator mask, or another implementation is invisible to the probe, so the verdict is about the register contract rather than the implementation.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card checks write/readback outcomes only. Whether the PMP checker decodes the trailing ones with a priority encoder, a comparator mask, or another implementation is invisible to the probe, so the verdict is about the register contract rather than the implementation."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "All 9 checks are CSR write/readback comparisons; no timing, no contention, and no pipeline or cache behavior is measured",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-encode/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The three NAPOT sizes decode to different region sizes, but the card never measures the decode step, only the stored pattern",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-encode"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "MICROARCH lights iff the card measures or reasons about implementation behavior (pipelines, caches, predictors, timing, contention).",
+        "source": {
+          "tier": "reference",
+          "cite": "portfolio/CARD_COPY_PRINCIPLES.md (MICROARCH decision test)",
+          "url": "https://github.com/dillingerstaffing/portfolio/blob/main/CARD_COPY_PRINCIPLES.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The card's evidence cannot distinguish two implementations that honor the same CSR contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "Write/readback outcomes are about the register contract; implementation behavior requires a measurement that varies with the implementation."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "MICROARCH lights iff the card measures or reasons about implementation behavior (pipelines, caches, predictors, timing, contention)."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the trailing-ones encoding exists precisely to simplify hardware decode, so the card is about a microarchitectural choice."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The encoding's design rationale is microarchitectural, but the card measures only the contract's observable behavior: patterns in, patterns out. A verdict must follow the card's own evidence, and that evidence contains no implementation measurement, so dim is the honest verdict."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the dim verdict in (1)."
+      }
+    ]
+  },
+  "src-pmp-napot-encode|FIRMWARE": {
+    "item": "src-pmp-napot-encode",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map. The card documents exactly which NAPOT patterns this hart admits on write and that the A field takes NAPOT, which is the contract firmware relies on when laying out regions, and the restore-to-boot step is itself firmware hygiene.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map. The card documents exactly which NAPOT patterns this hart admits on write and that the A field takes NAPOT, which is the contract firmware relies on when laying out regions, and the restore-to-boot step is itself firmware hygiene."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "pmpaddr0 accepted all three NAPOT patterns exactly and pmpcfg0 entry 0 accepted A=3; boot values 0x0 restored and each restore checked",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-encode/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "Unlocked PMP entries (L=0) do not restrict M-mode, so the probe is safe to run from firmware context; the module restores boot state so later boot stages see no change",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-encode"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "The privileged specification assigns PMP configuration to M-mode; only M-mode programs these registers",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, PMP and FS field definitions",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The card's measurements are the ground truth an M-mode boot stage would consult when laying out NAPOT regions on this hart."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "When a card documents the exact behavior of registers that only M-mode firmware programs, the result is load-bearing for firmware work."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "FIRMWARE lights iff the card depends on boot-time machine-mode config (PMP, trap delegation, SBI, misa dispatch); merely running under QEMU does not light it."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the card never boots an OS or hands off to S-mode, so no firmware decision was actually made."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The verdict test is about what the verified property is load-bearing for, not about whether the module boots an OS. PMP layout is a firmware decision and this card is the evidence a firmware author would cite, so lit follows from the relevance map, not from a boot sequence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the lit verdict in (1)."
+      }
+    ]
+  },
+  "src-pmp-napot-encode|KERNEL": {
+    "item": "src-pmp-napot-encode",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The probe stays in M-mode with every PMP entry unlocked, and the verified outcome, patterns written and read back, is identical whether or not any kernel exists. PMP constrains supervisor access only through locked entries, which this module never programs, so the measured contract is invariant to kernel behavior and a kernel's memory-protection view is untouched by the evidence.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The probe stays in M-mode with every PMP entry unlocked, and the verified outcome, patterns written and read back, is identical whether or not any kernel exists. PMP constrains supervisor access only through locked entries, which this module never programs, so the measured contract is invariant to kernel behavior and a kernel's memory-protection view is untouched by the evidence."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Every entry kept L=0 for the whole run; no locked entry programmed, no access fault provoked, 0 traps",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-encode/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The sibling module pmp-napot-size verifies locked deny-region faults; this module deliberately answers only the encoding question",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-encode"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "KERNEL lights iff the card implements or depends on a kernel subsystem and the verification involved it.",
+        "source": {
+          "tier": "reference",
+          "cite": "portfolio/CARD_COPY_PRINCIPLES.md (KERNEL decision test)",
+          "url": "https://github.com/dillingerstaffing/portfolio/blob/main/CARD_COPY_PRINCIPLES.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The card's evidence says nothing about how a supervisor kernel's accesses would be treated."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A probe that never leaves M-mode and never programs a locked entry cannot produce evidence about kernel-visible memory protection."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "KERNEL lights iff the card implements or depends on a kernel subsystem and the verification involved it."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: PMP regions protect kernel memory, so any PMP card matters to the kernel."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "Protection is enforced by locked entries and measured by the pmp-napot-size module; this card measures the encoding contract that firmware programs. Mere vocabulary overlap with kernel concerns never lights a slot per the principles, so dim is honest."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the dim verdict in (1)."
+      }
+    ]
+  },
+  "src-pmp-napot-encode|ALGORITHM": {
+    "item": "src-pmp-napot-encode",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a register contract, not a computation. The NAPOT pattern is the ISA's chosen encoding for regions, but the module writes precomputed patterns and requires the hart to store them; no encoding formula is evaluated against an independent oracle, so the verified claim is about storage, not about an algorithm's result.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card verifies a register contract, not a computation. The NAPOT pattern is the ISA's chosen encoding for regions, but the module writes precomputed patterns and requires the hart to store them; no encoding formula is evaluated against an independent oracle, so the verified claim is about storage, not about an algorithm's result."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The three patterns are precomputed constants written and read back; no independent computation of the encoding is checked",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-encode/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The pmp-napot-size module separately verified the behavioral consequence (locked deny regions trap); this module's claim is the register round trip only",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/pmp-napot-encode/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-encode"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "ALGORITHM lights iff the core verified claim is a pure computational mechanism portable across ISAs.",
+        "source": {
+          "tier": "reference",
+          "cite": "portfolio/CARD_COPY_PRINCIPLES.md (ALGORITHM decision test)",
+          "url": "https://github.com/dillingerstaffing/portfolio/blob/main/CARD_COPY_PRINCIPLES.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The verified property is specific to the RISC-V privileged register encoding and is not portable across ISAs."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A claim about one ISA's register encoding is a contract claim; an algorithm claim requires a computation whose result is independent of the ISA."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "ALGORITHM lights iff the core verified claim is a pure computational mechanism portable across ISAs."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the trailing-ones encoding is a clever bit trick, a computational mechanism in spirit."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The trick is in the ISA's encoding choice, which the card takes as given; the card verifies storage of the pattern, not the trick. The verdict follows the verified claim, and the verified claim is the contract, so dim stands."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the dim verdict in (1)."
+      }
+    ]
+  },
+  "src-sstatus-fs-dirty|ISA": {
+    "item": "src-sstatus-fs-dirty",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines mstatus.FS as the hart's record of floating-point state dirtiness, with Off, Initial, Clean, and Dirty states and the rule that an FP write moves the field toward Dirty. The card measures exactly that state machine on real FP writes: Initial to Dirty on one fmv.d.x, sticky on the second, and back to Off on clear.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The privileged ISA defines mstatus.FS as the hart's record of floating-point state dirtiness, with Off, Initial, Clean, and Dirty states and the rule that an FP write moves the field toward Dirty. The card measures exactly that state machine on real FP writes: Initial to Dirty on one fmv.d.x, sticky on the second, and back to Off on clear."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "FS read triple before/after/cleared = 1/3/0: after csrs FS=1 SD=0; after one fmv.d.x f1 FS=3 SD=1; after fmv.d.x f2 FS stays 3; after csrc the full mstatus word equals the boot baseline 0xa00000000; trap counter 0; 14 checks, 0 mismatches, checksum 0x4b39a10748f739ad byte-identical across 3 QEMU 8.2.2 runs",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "Writing f1 from FS=Off raises illegal-instruction instead of transitioning, so the module sets FS=Initial first; the counting trap handler measured 0 traps, confirming no exception fired anywhere",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-dirty"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "The privileged specification defines the FS field states and requires the hart to set FS to Dirty on a floating-point state change",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, PMP and FS field definitions",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The hart implements the ISA's FS dirty-tracking state machine exactly as specified."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A trap-free sequence of real FP writes with a readback after each step measures the hart's FS behavior; when the ISA names the states, the result is about the machine contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "ISA lights iff the verified claim depends on the machine contract (instructions, CSRs, traps, memory model)."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the backlog gloss said sstatus.FS and csrw fcsr, and the module reads mstatus with csrc instead; the card tests a corrected claim, not the original one."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The corrections are documented in the proof log as hardware-required, and the verified claim is the corrected, honest one: mstatus.FS (the same physical bits sstatus.FS aliases) moves from Initial to Dirty on a real FP write. The verdict follows the verified claim, which is the ISA's state machine, so lit stands."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the lit verdict in (1)."
+      }
+    ]
+  },
+  "src-sstatus-fs-dirty|MICROARCH": {
+    "item": "src-sstatus-fs-dirty",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The card reads architectural state only. How the implementation detects an FP write and latches FS, whether in the FP pipeline or at retire, is invisible to the probe; two implementations that set FS to 3 on an fmv.d.x are indistinguishable to every check, so no implementation behavior is measured.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card reads architectural state only. How the implementation detects an FP write and latches FS, whether in the FP pipeline or at retire, is invisible to the probe; two implementations that set FS to 3 on an fmv.d.x are indistinguishable to every check, so no implementation behavior is measured."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "All checks are mstatus readback comparisons around real FP writes; no timing or pipeline measurement is taken",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "SD read 1 exactly when FS=3, matching the spec's OR-reduction definition; the card observes the architectural definition, not the implementation's wiring",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-dirty"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "MICROARCH lights iff the card measures or reasons about implementation behavior (pipelines, caches, predictors, timing, contention).",
+        "source": {
+          "tier": "reference",
+          "cite": "portfolio/CARD_COPY_PRINCIPLES.md (MICROARCH decision test)",
+          "url": "https://github.com/dillingerstaffing/portfolio/blob/main/CARD_COPY_PRINCIPLES.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The card's evidence cannot distinguish implementations that honor the same FS contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "Architectural-state readbacks are about the register contract; implementation behavior requires a measurement that varies with the implementation."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "MICROARCH lights iff the card measures or reasons about implementation behavior (pipelines, caches, predictors, timing, contention)."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: dirty-tracking exists so implementations can skip FP save/restore, a microarchitectural optimization, so the card is about it."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The optimization's existence is background; the card measures the contract that makes the optimization legal, not the optimization. The verdict must follow the card's evidence, which contains no implementation measurement, so dim is honest."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the dim verdict in (1)."
+      }
+    ]
+  },
+  "src-sstatus-fs-dirty|FIRMWARE": {
+    "item": "src-sstatus-fs-dirty",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode is firmware's privilege level, and the module runs there: it installs an M-mode trap vector and reads mstatus directly, the word firmware consults when deciding whether floating-point state must be saved across a trap. The measured transitions are the ground truth behind that decision, so the result is load-bearing for firmware context-switch code.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "M-mode is firmware's privilege level, and the module runs there: it installs an M-mode trap vector and reads mstatus directly, the word firmware consults when deciding whether floating-point state must be saved across a trap. The measured transitions are the ground truth behind that decision, so the result is load-bearing for firmware context-switch code."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The read triple 1/3/0 with SD following FS, and the exact boot-word restore, are the transitions a context-switch routine keys off",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The module installs its own M-mode trap handler and keeps mie=0, the firmware-context conditions under which FS is read in practice",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-dirty"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "The privileged specification makes FS the indicator machine-mode code consults before saving floating-point state",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, PMP and FS field definitions",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "A firmware author writing lazy or eager FP save/restore on this hart would cite this card's measurements as the field's behavior."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "When a card documents the exact behavior of a status field that firmware reads to make save/restore decisions, the result is load-bearing for firmware work."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "FIRMWARE lights iff the card depends on boot-time machine-mode config (PMP, trap delegation, SBI, misa dispatch); merely running under QEMU does not light it."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the card does not configure PMP, delegation, SBI, or misa, the decision test's listed firmware triggers."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The test's list names examples of boot-time machine-mode config; the card depends on machine-mode execution itself (it installs an M-mode trap vector and reads mstatus, state only M-mode sees) and measures the field firmware consults at that level. The relevance map lights FIRMWARE because the verified property is load-bearing for firmware context-switch work, not because a listed register was programmed."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the lit verdict in (1)."
+      }
+    ]
+  },
+  "src-sstatus-fs-dirty|KERNEL": {
+    "item": "src-sstatus-fs-dirty",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "A supervisor kernel's floating-point policy, lazy restore or eager save, keys off the FS field: it must know the field moves to Dirty on any FP write and stays sticky there. The card documents those transitions on real writes, which is the behavior a kernel's FP-state handling depends on.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "A supervisor kernel's floating-point policy, lazy restore or eager save, keys off the FS field: it must know the field moves to Dirty on any FP write and stays sticky there. The card documents those transitions on real writes, which is the behavior a kernel's FP-state handling depends on."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "FS=3 after one fmv.d.x, sticky after the second, exact restore to the boot word; SD=1 exactly when FS=3",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The illegal-instruction on an FP write with FS=Off is kernel-relevant: a kernel must enable FS before any FP use, or the first FP instruction traps",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-dirty"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "Kernels use FS to avoid saving floating-point state they never touched; the specification defines the field for exactly this purpose",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, PMP and FS field definitions",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The card documents the exact FS behavior a kernel's floating-point policy must be written against."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "When a card measures the exact behavior of a status field that kernel subsystems read to make policy decisions, the result is load-bearing for kernel work."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "KERNEL lights iff the card implements or depends on a kernel subsystem and the verification involved it."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the module runs in M-mode with no supervisor kernel present, so no kernel subsystem was involved in the verification."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "The FS transitions on an FP write are privilege-independent: the same fmv.d.x moves FS the same way in S-mode, which is where a kernel executes it. The verified property is exactly the input a kernel's FP policy consumes, and the relevance map lights KERNEL because the property is load-bearing there, not because a kernel binary ran."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the lit verdict in (1)."
+      }
+    ]
+  },
+  "src-sstatus-fs-dirty|ALGORITHM": {
+    "item": "src-sstatus-fs-dirty",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "No computation is verified. The card checks a hardware state machine: which FS value the hart reports after each FP write. There is no algorithm whose result is compared against an oracle, so the verified claim is about state, not about a portable computation.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No computation is verified. The card checks a hardware state machine: which FS value the hart reports after each FP write. There is no algorithm whose result is compared against an oracle, so the verified claim is about state, not about a portable computation."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Every check compares an mstatus readback against an expected FS value; no computed result is verified against an independent implementation",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-dirty/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The checksum covers the logged measurement words, not a computed output",
+        "source": {
+          "tier": "lab",
+          "cite": "riscv-baremetal-demo/src/sstatus-fs-dirty/",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-dirty"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "ALGORITHM lights iff the core verified claim is a pure computational mechanism portable across ISAs.",
+        "source": {
+          "tier": "reference",
+          "cite": "portfolio/CARD_COPY_PRINCIPLES.md (ALGORITHM decision test)",
+          "url": "https://github.com/dillingerstaffing/portfolio/blob/main/CARD_COPY_PRINCIPLES.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The verified claim is a state-machine transition table, not a computational mechanism."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A claim about which value a status field takes is a contract/state claim; an algorithm claim requires verifying a computed result."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "ALGORITHM lights iff the core verified claim is a pure computational mechanism portable across ISAs."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "Objection: the FS state machine is itself a kind of algorithm the hart runs."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "Every hardware state machine would then be an algorithm, which would make the slot meaningless. The taxonomy means a pure computational mechanism portable across ISAs, and the FS transitions are a RISC-V-specific contract, so dim is the honest verdict."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured outcomes in (2), the probe conditions in (3), and the cited definition in (4) establish the intermediate claim per (6), giving (5)."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate claim in (5) plus the decision test in (7) yields the dim verdict in (1)."
       }
     ]
   }
