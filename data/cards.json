@@ -12506,5 +12506,127 @@
     "repoLabel": "GitHub: systems-lab/lab/149-pte-permission-and",
     "terminalLabel": "Verified lab-149-pte-permission-and Host output",
     "showRepoLink": true
+  },
+  {
+    "id": "lab-126-mul-lo16-nomul",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The lab computes the low 16 bits of a 16 by 16 product by shift-add and proves the result against the C multiply operator truncated to 16 bits, over all 4,294,967,296 input pairs. The RISC-V ISA has no 16-bit multiply, and the proof executes no instruction and asserts no instruction behavior: the multiply operator is a test oracle, not a claimed contract, and the ISA decision record rejects hardware treatment for this card. The identity proved is true of integers before any ISA enters the picture."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The programmatic disassembly scan checks only which mnemonics the -2 object contains (mul, imul, mulw, madd, msub, smull, umull, fmul), and fails the build if any appears: its verdict is that the compiler never re-forms the multiply the lab was asked not to use. That is a check on the generated code, not a measurement of timing, so pipeline, cache, and predictor behavior cannot change the scan verdict or any checked product."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The shift-add construction is proved by value comparison against the C multiply; the proof writes no CSR, delegates no trap, and configures no machine state. The claim that the low 16 bits of a product need only the low 16 bits of each factor is an arithmetic identity, unchanged by any boot configuration."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The verified claim relates two 16-bit inputs to their truncated product through one identity: shift-add over the set bits of the multiplier. The test harness calls the function and compares outputs; that path uses no scheduler, no driver, and no syscall, and none of those could change what the arithmetic yields."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The portable construction: the low 16 bits of a product depend only on the low 16 bits of each factor, so adding the multiplicand shifted by each set bit position of the multiplier, in a 32-bit accumulator truncated at the end, computes exactly the truncated product. Proved over all 4,294,967,296 input pairs with identical checksums across -0, -2, and ASan+UBSan builds, and the -2 object holds only test, jump, move, shift, add, subtract, compare, and return instructions, so the construction itself does the work. That identity travels to every ISA."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/126-mul-lo16-nomul/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "C / SYSTEMS",
+    "title": "Low 16 Bits of a Multiply, Shifts and Adds Only",
+    "summary": "Low 16 bits of a 16 by 16 multiply computed by adding the multiplicand shifted left by each set bit position of the multiplier, which works because the low 16 bits of a product depend only on the low 16 bits of each factor. The disassembly proves the compiler never quietly re-forms the multiply it was asked not to use.",
+    "specRows": [
+      [
+        "METHOD",
+        "shift-add over the set bits of the multiplier, no multiply operator"
+      ],
+      [
+        "CORRECTNESS",
+        "4,294,967,296 inputs checked against the native 16-bit multiply, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9fad8276d9322325, identical across -0, -2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "127.744 ns/value at -2"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 126-mul-lo16-nomul",
+    "terminalOutput": "$ make run (3 runs)\ndifferential ............ 4294967296 checks, 0 mismatches\nchecksum ................ 0x9fad8276d9322325 (identical -0/-2/ASan+UBSan)\nthroughput .............. 127.744 ns/value at -2\nRESULT: PASS (3/3 runs)\n\nshift-add over set bits, 0 mismatches",
+    "verificationEnvironment": "Host",
+    "checks": 4294967296,
+    "failures": 0,
+    "stressItems": 4294967296,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/126-mul-lo16-nomul",
+    "repoLabel": "GitHub: systems-lab/lab/126-mul-lo16-nomul",
+    "terminalLabel": "Verified low-16 multiply test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-128-mul-lo32-nomul",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The lab rebuilds the low 32 bits of a 64 by 64 product from 16-bit half-word schoolbook partial products and proves the reconstruction against the C multiply operator truncated to 32 bits, over 17,777,216 inputs. No RISC-V multiply was executed or compared against under QEMU: the C operator is the oracle, and the ISA decision record rejects hardware treatment for this card for that reason. The schoolbook identity proved is true of integers before any ISA enters the picture."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The programmatic disassembly scan checks only which mnemonics the -2 object contains, and fails the build if any multiply-class mnemonic appears (gcc emitted the shift-add loops branchless with bit-test and conditional-move); its verdict is about the generated code, not a measurement of timing. Pipeline, cache, and predictor behavior cannot change the scan verdict or any reconstructed product."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The schoolbook reconstruction is proved by value comparison against the C multiply; the proof writes no CSR, delegates no trap, and configures no machine state. The low 32 bits of a product depend only on the low 32 bits of each operand, an arithmetic identity unchanged by any boot configuration."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The verified claim relates two 64-bit inputs to their truncated product through one identity: the half-word schoolbook expansion keeping only the terms that reach the low 32 bits. The test harness calls the function and compares outputs; that path uses no scheduler, no driver, and no syscall, and none of those could change what the arithmetic yields."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The portable construction: split each operand's low 32 bits into 16-bit halves, evaluate the schoolbook partial products, and keep only the terms reaching the low 32 bits, since the high-by-high term vanishes modulo 2 to the 32; each 16 by 16 partial product is itself a shift-add. Proved over 17,777,216 inputs with identical checksums across -0, -2, and ASan+UBSan builds, and the -2 object contains no multiply-class mnemonic, so the expansion itself does the work. That identity travels to every ISA."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/128-mul-lo32-nomul/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "C / SYSTEMS",
+    "title": "Low 32 Bits of a 64x64 Multiply, Half-Word Schoolbook",
+    "summary": "Low 32 bits of a 64-bit by 64-bit product from the 16-bit half-word schoolbook expansion: only the partial products reaching the low 32 bits are kept, since the high-by-high term vanishes modulo 2 to the 32, and each 16 by 16 partial product is itself a shift-add. The disassembly proves the compiler never quietly re-forms the multiply it was asked not to use.",
+    "specRows": [
+      [
+        "METHOD",
+        "16-bit half-word schoolbook partial products, no multiply operator"
+      ],
+      [
+        "CORRECTNESS",
+        "17,777,216 inputs checked against the native 32-bit multiply, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "7c8e5c077c4d942c, identical across -0, -2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "47.232 ns/value at -2"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 128-mul-lo32-nomul",
+    "terminalOutput": "$ make run (3 runs)\ndifferential ............ 17777216 checks, 0 mismatches\nchecksum ................ 7c8e5c077c4d942c (identical -0/-2/ASan+UBSan)\nthroughput .............. 47.232 ns/value at -2\nRESULT: PASS (3/3 runs)\n\nhalf-word schoolbook, 0 mismatches",
+    "verificationEnvironment": "Host",
+    "checks": 17777216,
+    "failures": 0,
+    "stressItems": 17777216,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/128-mul-lo32-nomul",
+    "repoLabel": "GitHub: systems-lab/lab/128-mul-lo32-nomul",
+    "terminalLabel": "Verified low-32 multiply test output",
+    "showRepoLink": true
   }
 ]
