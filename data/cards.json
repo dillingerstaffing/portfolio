@@ -15383,5 +15383,119 @@
     },
     "portability": null,
     "stressItems": null
+  },
+  {
+    "id": "src-stvec-vectored-mode",
+    "kicker": "Vectored mode routes interrupts to BASE+4*cause; exceptions stay at BASE",
+    "title": "stvec vectored trap addressing (corrected)",
+    "summary": "M-mode program proving that stvec MODE=1 enters exceptions at the single BASE address and dispatches interrupts to BASE plus 4 times the cause, with slot signatures distinguishing cause 2 and 1.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "M-mode stvec write and readback are CSR behaviors defined by the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test records entry slots, not pipeline or cache internals."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Delegation via medeleg bit 2 and mideleg bit 1 selects which traps arrive in S-mode."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs in M/S without an OS; no scheduler or virtual memory is involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is trap entry addressing, not a software algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stvec-vectored-mode/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 checks on QEMU 8.2.2: illegal-instruction and ecall both entered BASE with matching scause (0x2 and 0x9); delegated SSIP entered BASE+4 with scause 0x8000000000000001; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xa1b2c3d4e5f60789, over slot signatures, scause, sepc pairs, and trap counts, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode dropping to S-mode on the virt board"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/stvec-vectored-mode",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 14,
+    "failures": 0
+  },
+  {
+    "id": "lab-155-sv39-nonleaf-ppn-ignored",
+    "kicker": "Premise corrected: PPN is used for next-level; G/RSW are ignored for verdict",
+    "title": "Sv39 non-leaf PTE decode, ignore rule",
+    "summary": "Host program proving that Sv39 non-leaf verdict ignores G and RSW while using PPN as the next-level pointer, differential-tested 12M times.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Sv39 PTE formats and the reserved-for-SW/must-ignore classes are defined by the ISA."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test models walker classification, not cache or pipeline behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The verdict does not depend on SBI or boot-time setup."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No OS code is involved; the module models walking in isolation."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "A deterministic decode of pte, is_leaf, and level produces DESCEND (with next PPN) or LEAF/FAULT without depending on ignored bits."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/155-sv39-nonleaf-ppn-ignored/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "12,359,296 differential checks on Host: pte_step matches the divmod oracle on exhaustive and random cases with 0 mismatches; 294,912 G/RSW invariance trials, 0 violations; 64,449 leaf phys cross-checks, 0 mismatches; 1,069 descend PPN cross-checks, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "11.026 ns/step, best of 5 reps at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "642afcdb30902952, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host, native execution"
+      ]
+    ],
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab",
+    "repoLabel": "dillingerstaffing/systems-lab lab/155-sv39-nonleaf-ppn-ignored",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 12359296,
+    "failures": 0
   }
 ]
