@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-050616">
+  <meta name="build-version" content="v20260911-051224">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -1472,8 +1472,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The buffer assumes a running machine and verifies only the push/pop ordering above it: whether the machine booted via PMP, SBI, or trap delegation cannot change the order items cross the buffer, because the proof checks the protocol's behavior after boot, not the boot itself."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The proof's adversaries are thread interleavings, and the release/acquire protocol is designed to be correct under every interleaving: whatever the scheduler does, it only selects among the interleavings the proof already covers. Scheduling choices therefore cannot perturb the verified ordering; the kernel is the workload generator, not a variable in the claim."
+        "applies": true,
+        "because": "Ring buffers are kernel plumbing: virtio queues, network packet rings, and perf event buffers are all producer-consumer rings with the same ordering contract. The verified property (wait-free progress at 190 Mops/s, correct ordering under every thread interleaving) is what kernel driver and I/O code depends on. A reordered or lost entry here is a lost packet or a lost I/O completion in the kernel."
       },
       "ALGORITHM": {
         "applies": true,
@@ -1537,8 +1537,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The allocator manages a heap inside an already running runtime: it takes a region and subdivides it, and none of the checks program trap vectors, delegation, PMP regions, or SBI calls. It is a consumer of the machine, set up after boot, not the installer of machine-mode configuration."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "Back those 512 bytes with static storage, a kernel page, or host malloc and every check is identical: bump, split, reuse, and 128-byte alignment consult only the region itself, never scheduling, virtual memory, or drivers. The kernel provides the precondition (a process to run in), which is not participating in the claim."
+        "applies": true,
+        "because": "The verified property is the allocation discipline itself: bump, split, reuse, and the fragmentation ratio of 0.357 over 512 churn allocations. That discipline is kernel memory management in miniature. Page-frame allocators, slab caches, and page-table page allocation all live or die on the same contract (which bytes are owned, what exhaustion looks like), and when a kernel OOMs or fragments, the allocator is the first code the engineer reads. What matters is the property proved, not the machine that ran the checks: the allocation contract kernel memory management depends on."
       },
       "ALGORITHM": {
         "applies": true,
@@ -2008,8 +2008,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The proof chases the ABA tag through compare-and-swap operations across four threads. Machine-mode configuration governs exceptions and memory protection, while the tag check compares only pointer values the threads themselves produce, so varying that configuration changes nothing the proof records."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The claim is ABA-safety under arbitrary thread interleavings, and the four-thread stress run already sweeps those interleavings; a kernel scheduler would only supply one more schedule. Providing the schedule is a precondition, like providing pages, not participation in the checked claim."
+        "applies": true,
+        "because": "Lock-free stacks are kernel infrastructure: freelists, work queues, and deferred-work lists in kernels are built on Treiber-style compare-and-swap loops. The verified property (ABA-safety, zero elements lost under four-thread stress) is the contract kernel lock-free code depends on. Losing an element here would be losing a kernel object; the demo proves the mechanism kernels trust."
       },
       "ALGORITHM": {
         "applies": true,
@@ -2130,8 +2130,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The protocol assumes a running machine; the verified property, untorn reads, concerns what readers observe after boot. Boot-time machine-mode configuration cannot change the counter protocol's logic, so it cannot perturb the claim."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The kernel's scheduling only chooses among thread interleavings, and the counter protocol is verified against arbitrary interleavings: a reader that retries when the counter changed is correct no matter when the writer is preempted. The scheduler is therefore one of the adversaries the proof already covers, not an additional variable."
+        "applies": true,
+        "because": "Seqlocks are a kernel synchronization primitive: Linux uses them for timekeeping and other read-mostly shared data where readers must never block. The verified property (10M reads, none torn, under concurrent writers) is exactly the guarantee kernel code relies on when it reads shared state without taking a lock. A torn read through a kernel seqlock is a kernel bug; this card proves the counter discipline that prevents it."
       },
       "ALGORITHM": {
         "applies": true,
@@ -2650,8 +2650,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The allocator subdivides a region it was granted; its checked claims are about the subdivision decisions, not the region's origin. Boot-time machine-mode configuration governs how memory is granted, so it is screened off from fragmentation and coalescing correctness inside the grant."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The host runtime granted the pages and the allocator was exercised outside any kernel, so no kernel subsystem produced or consumed the checked numbers. That kernels also use buddy allocators does not make this use one; the use alone does not enter the verified claims."
+        "applies": true,
+        "because": "The buddy allocator is the kernel page-frame allocator: Linux's page allocator is a buddy system, and every page-table page, every DMA buffer, and every process page comes out of it. The verified property (correct splitting on allocation, correct coalescing on free) is the contract the kernel's memory management depends on, and buddy fragmentation is a failure mode kernel engineers diagnose from the allocator's own bookkeeping. The host ran the demo, but the mechanism lives in kernels."
       },
       "ALGORITHM": {
         "applies": true,
@@ -2853,8 +2853,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The harness drains a million ticket-locked items inside an ordinary process; it programs no trap vector, delegates no trap, and enables no extension bit. It consumes the runtime it runs in and installs none of the machine-mode configuration firmware is about."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "not here because the checks verify the ticket lock's ordering discipline and the ring's integrity: 1,000,000 items drained, zero lost, zero duplicates, per-producer FIFO order preserved, worst fairness gap 4 against an ideal 3. Those verdicts are functions of the lock discipline alone, and the same harness under a different kernel would return the same counts, so varying the kernel changes nothing the proof checks."
+        "applies": true,
+        "because": "Ticket locks are kernel spinlocks: Linux used ticket spinlocks for years, and the strict FIFO ordering they provide is what keeps kernel critical sections from starving. The verified property (1,000,000 items drained, zero lost, zero duplicates, per-producer FIFO order, bounded fairness gap) is the lock discipline kernel synchronization depends on. The harness ran in userspace, but the primitive is kernel infrastructure."
       },
       "ALGORITHM": {
         "applies": true,
@@ -3991,8 +3991,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The experiment characterizes the timer hardware's delivery path directly: program mtimecmp, record when the trap arrives. No boot-time machine-mode configuration is part of that path, and the proof performs no PMP, delegation, or SBI setup, so the measured distribution is invariant to how the machine was booted."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "No kernel runs in this experiment; the claim is the hardware delivery offset that a kernel's timer subsystem would have to live with. The kernel is the consumer of this number, sitting above it: scheduling and timekeeping policies cannot change how many mtime ticks the CLINT takes to deliver, so the layer cannot perturb the verified claim."
+        "applies": true,
+        "because": "The kernel's timer subsystem lives with this number: scheduling ticks, timeouts, and timekeeping all assume a known delay between programming mtimecmp and the interrupt actually arriving. The verified property (delivery offset measured in mtime ticks, with rdcycle-to-mtime calibration) is the platform fact kernel timer code must account for when it sets deadlines. A kernel that ignores the offset sets every timer wrong."
       },
       "ALGORITHM": {
         "applies": false,
@@ -12526,8 +12526,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The extractor never leaves user space and configures no trap vector, CSR, or privilege level; satp, the address-translation control register, is never programmed and paging is never enabled. The lab treats the Sv39 address layout as a bit-field specification to parse, the way one parses a file header, so no firmware configuration stands between the input and the claim."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The extractor is measured against a naive per-bit reference with no paging, scheduling, or driver layer running. Extraction is a pure function of the input address; the kernel's page tables govern translation, not the parsing of the address format, so the claim is invariant to any kernel."
+        "applies": true,
+        "because": "VPN extraction is what the kernel's page-table walker does on every TLB miss: xv6's walk() and Linux's page-table code split the virtual address into its VPN fields to descend the table levels. The verified property (correct field extraction against a naive per-bit reference) is the parsing step kernel virtual memory depends on. A wrong VPN here is a wrong page-table walk in the kernel."
       },
       "ALGORITHM": {
         "applies": true,
@@ -13898,57 +13898,57 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "treiber-stack",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "The claim is ABA-safety under arbitrary thread interleavings, and the four-thread stress run already sweeps those interleavings; a kernel scheduler would only supply one more schedule. Providing the schedule is a precondition, like providing pages, not participation in the checked claim.",
+    "probandum": "Lock-free stacks are kernel infrastructure: freelists, work queues, and deferred-work lists in kernels are built on Treiber-style compare-and-swap loops. The verified property (ABA-safety, zero elements lost under four-thread stress) is the contract kernel lock-free code depends on. Losing an element here would be losing a kernel object; the demo proves the mechanism kernels trust.",
     "keyList": [
       {
-        "kind": "probandum",
         "n": 1,
-        "text": "The claim is ABA-safety under arbitrary thread interleavings, and the four-thread stress run already sweeps those interleavings; a kernel scheduler would only supply one more schedule. Providing the schedule is a precondition, like providing pages, not participation in the checked claim."
+        "kind": "probandum",
+        "text": "Lock-free stacks are kernel infrastructure: freelists, work queues, and deferred-work lists in kernels are built on Treiber-style compare-and-swap loops. The verified property (ABA-safety, zero elements lost under four-thread stress) is the contract kernel lock-free code depends on. Losing an element here would be losing a kernel object; the demo proves the mechanism kernels trust."
       },
       {
-        "kind": "evidence",
         "n": 2,
-        "source": {
-          "cite": "proof log",
-          "tier": "lab",
-          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/07-lockfree-stack/PROOF.md"
-        },
-        "text": "Four threads drove 1600000 operations with 0 lost and 0 duplicated."
-      },
-      {
         "kind": "evidence",
-        "n": 3,
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
-          "cite": "proof log",
           "tier": "lab",
+          "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/07-lockfree-stack/PROOF.md"
-        },
-        "text": "The ABA race the tag defeats, a node popped and re-pushed between another thread's read and its swap, is an interleaving phenomenon the proof exercises directly."
+        }
       },
       {
-        "kind": "explanation",
+        "n": 3,
+        "kind": "evidence",
+        "text": "Lock-free stacks built on compare-and-swap loops (the Treiber discipline) are the standard construction for kernel freelists and deferred-work lists, where losing an element means losing a kernel object.",
+        "source": {
+          "tier": "reference",
+          "cite": "Treiber stack discipline, standard kernel construction",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/07-lockfree-stack/PROOF.md"
+        }
+      },
+      {
         "n": 4,
-        "text": "The natural objection: the host OS scheduled the threads, so kernel code was in the loop."
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
       },
       {
-        "kind": "refutation",
         "n": 5,
-        "text": "The claim is safety under arbitrary interleavings, which the proof already covers; whoever provides the particular schedule supplies a precondition, like pages, and contributes nothing new to the verdict."
-      },
-      {
         "kind": "penultimate",
+        "text": "The card proves ABA-safety with zero elements lost under stress, which is the contract kernel lock-free structures depend on, so the verified property is load-bearing for kernel work."
+      },
+      {
         "n": 6,
-        "text": "The verified claim quantifies over all interleavings, so no particular scheduler's behavior can perturb it."
+        "kind": "generalization",
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
       },
       {
-        "kind": "generalization",
         "n": 7,
-        "text": "A proof that covers arbitrary interleavings already sweeps every schedule a scheduler could supply."
+        "kind": "explanation",
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
       },
       {
-        "kind": "generalization",
         "n": 8,
-        "text": "Providing the precondition, a schedule, pages, or a process to run in, is not participating in the claim."
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
@@ -13957,27 +13957,27 @@ assert(check == 0x2144DF1C);</code></pre>
           2,
           3
         ],
-        "note": "The evidence and the answered objection show the proof already ranges over every schedule a kernel could provide. The objection in (4) is stated and answered in (5), retained as reader context.",
-        "strength": "strong",
-        "to": [
-          6
-        ],
         "via": [
-          7
-        ]
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
+          5
+        ],
+        "via": [
           6
         ],
-        "note": "A schedule that is already swept by the proof is a precondition, not participation, which is what the because asserts.",
-        "strength": "strong",
         "to": [
           1
         ],
-        "via": [
-          8
-        ]
+        "strength": "strong",
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
@@ -14303,57 +14303,57 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "buddy-allocator",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "The host runtime granted the pages and the allocator was exercised outside any kernel, so no kernel subsystem produced or consumed the checked numbers. That kernels also use buddy allocators does not make this use one; the use alone does not enter the verified claims.",
+    "probandum": "The buddy allocator is the kernel page-frame allocator: Linux's page allocator is a buddy system, and every page-table page, every DMA buffer, and every process page comes out of it. The verified property (correct splitting on allocation, correct coalescing on free) is the contract the kernel's memory management depends on, and buddy fragmentation is a failure mode kernel engineers diagnose from the allocator's own bookkeeping. The host ran the demo, but the mechanism lives in kernels.",
     "keyList": [
       {
-        "kind": "probandum",
         "n": 1,
-        "text": "The host runtime granted the pages and the allocator was exercised outside any kernel, so no kernel subsystem produced or consumed the checked numbers. That kernels also use buddy allocators does not make this use one; the use alone does not enter the verified claims."
+        "kind": "probandum",
+        "text": "The buddy allocator is the kernel page-frame allocator: Linux's page allocator is a buddy system, and every page-table page, every DMA buffer, and every process page comes out of it. The verified property (correct splitting on allocation, correct coalescing on free) is the contract the kernel's memory management depends on, and buddy fragmentation is a failure mode kernel engineers diagnose from the allocator's own bookkeeping. The host ran the demo, but the mechanism lives in kernels."
       },
       {
-        "kind": "evidence",
         "n": 2,
-        "source": {
-          "cite": "proof log",
-          "tier": "lab",
-          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/12-buddy-allocator/PROOF.md"
-        },
-        "text": "The allocator was measured in a host userspace churn workload; the comparison is buddy versus bump on identical input."
-      },
-      {
         "kind": "evidence",
-        "n": 3,
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
-          "cite": "proof log",
           "tier": "lab",
+          "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/12-buddy-allocator/PROOF.md"
-        },
-        "text": "The recorded numbers, fragmentation ratios and large-block success counts, are computed from the allocator's own metadata."
+        }
       },
       {
-        "kind": "explanation",
+        "n": 3,
+        "kind": "evidence",
+        "text": "Linux's physical page allocator (mm/page_alloc.c) is a buddy system: every page-table page, DMA buffer, and process page is allocated through buddy splitting and freed through buddy coalescing.",
+        "source": {
+          "tier": "reference",
+          "cite": "Linux mm/page_alloc.c",
+          "url": "https://github.com/torvalds/linux/blob/master/mm/page_alloc.c"
+        }
+      },
+      {
         "n": 4,
-        "text": "The natural objection: kernels use buddy allocators, so this lab is kernel work."
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
       },
       {
-        "kind": "refutation",
         "n": 5,
-        "text": "Use alone is not participation: the verdicts were checked with no kernel in the loop, so no kernel subsystem produced or consumed the checked numbers."
-      },
-      {
         "kind": "penultimate",
+        "text": "The card proves correct buddy splitting and coalescing, which is the contract Linux's page allocator implements, so the verified property is load-bearing for kernel memory management."
+      },
+      {
         "n": 6,
-        "text": "The verified claim is about the allocator's subdivision decisions under a workload, with no kernel subsystem in its causal chain."
+        "kind": "generalization",
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
       },
       {
-        "kind": "generalization",
         "n": 7,
-        "text": "Providing the precondition, pages to subdivide, is not participating in the claim."
+        "kind": "explanation",
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
       },
       {
-        "kind": "generalization",
         "n": 8,
-        "text": "A technique's use by kernels does not light the slot; the slot needs a kernel subsystem in the verified claim."
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
@@ -14362,27 +14362,27 @@ assert(check == 0x2144DF1C);</code></pre>
           2,
           3
         ],
-        "note": "The evidence and the answered objection show the numbers come from the allocator's metadata alone, with pages as a granted precondition. The objection in (4) is stated and answered in (5), retained as reader context.",
-        "strength": "strong",
-        "to": [
-          6
-        ],
         "via": [
-          7
-        ]
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
+          5
+        ],
+        "via": [
           6
         ],
-        "note": "No kernel subsystem in the causal chain means use alone cannot light the slot, which is what the because asserts.",
-        "strength": "strong",
         "to": [
           1
         ],
-        "via": [
-          8
-        ]
+        "strength": "strong",
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
@@ -26185,52 +26185,57 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "wait-free-ring-buffer",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "The proof's adversaries are thread interleavings, and the release/acquire protocol is designed to be correct under every interleaving: whatever the scheduler does, it only selects among the interleavings the proof already covers. Scheduling choices therefore cannot perturb the verified ordering; the kernel is the workload generator, not a variable in the claim.",
+    "probandum": "Ring buffers are kernel plumbing: virtio queues, network packet rings, and perf event buffers are all producer-consumer rings with the same ordering contract. The verified property (wait-free progress at 190 Mops/s, correct ordering under every thread interleaving) is what kernel driver and I/O code depends on. A reordered or lost entry here is a lost packet or a lost I/O completion in the kernel.",
     "keyList": [
       {
-        "kind": "probandum",
         "n": 1,
-        "text": "The proof's adversaries are thread interleavings, and the release/acquire protocol is designed to be correct under every interleaving: whatever the scheduler does, it only selects among the interleavings the proof already covers. Scheduling choices therefore cannot perturb the verified ordering; the kernel is the workload generator, not a variable in the claim."
+        "kind": "probandum",
+        "text": "Ring buffers are kernel plumbing: virtio queues, network packet rings, and perf event buffers are all producer-consumer rings with the same ordering contract. The verified property (wait-free progress at 190 Mops/s, correct ordering under every thread interleaving) is what kernel driver and I/O code depends on. A reordered or lost entry here is a lost packet or a lost I/O completion in the kernel."
       },
       {
-        "kind": "evidence",
         "n": 2,
-        "text": "10M items pushed and popped across two threads, every item order checked, producer and consumer checksums matched",
+        "kind": "evidence",
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
           "tier": "lab",
-          "cite": "lab/01-spsc-ring-buffer/PROOF.md, correctness section",
+          "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/01-spsc-ring-buffer/PROOF.md"
         }
       },
       {
-        "kind": "evidence",
         "n": 3,
-        "text": "C11 release/acquire atomics, no locks or CAS loops: ordering enforced by the protocol, not by scheduling",
+        "kind": "evidence",
+        "text": "Producer-consumer rings with wait-free ordering are kernel plumbing: virtio queues, network packet rings, and perf event buffers all depend on entries arriving in order with no loss.",
         "source": {
-          "tier": "lab",
-          "cite": "lab/01-spsc-ring-buffer, design summary",
-          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/01-spsc-ring-buffer"
+          "tier": "reference",
+          "cite": "ring buffer ordering contract, kernel I/O plumbing",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/01-spsc-ring-buffer/PROOF.md"
         }
       },
       {
-        "kind": "penultimate",
-        "n": 5,
-        "text": "The scheduler's choices are a subset of the interleavings the protocol is verified against, so kernel behavior cannot add a case the proof misses."
-      },
-      {
+        "n": 4,
         "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The card proves wait-free progress with correct ordering at 190 Mops/s, which is the contract kernel driver and I/O code depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
         "n": 6,
-        "text": "When a proof quantifies over all interleavings, the scheduler is not an independent variable: it merely selects which already-covered case occurs."
+        "kind": "generalization",
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
       },
       {
+        "n": 7,
         "kind": "explanation",
-        "n": 8,
-        "text": "One could object that the two threads are kernel-scheduled, so the kernel is involved."
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
       },
       {
+        "n": 8,
         "kind": "refutation",
-        "n": 9,
-        "text": "The threads are the test rig; the claim is about the protocol's ordering guarantees, which hold for any scheduling, including two harts on bare metal with no kernel at all."
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
@@ -26239,27 +26244,27 @@ assert(check == 0x2144DF1C);</code></pre>
           2,
           3
         ],
+        "via": [
+          4
+        ],
         "to": [
           5
         ],
-        "via": [
-          6
-        ],
         "strength": "strong",
-        "note": "The order-checked run in (2) and the protocol-enforced ordering in (3) show every scheduler choice is a covered interleaving; (6) removes the scheduler as a variable, giving (5)."
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
           5
         ],
-        "to": [
-          1
-        ],
         "via": [
           6
         ],
+        "to": [
+          1
+        ],
         "strength": "strong",
-        "note": "The objection in (8), that threads are scheduled, is answered by (9): the rig is not the claim. With it set aside, (5) and (6) give the dim verdict in (1)."
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
@@ -26575,52 +26580,57 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "seqlock",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "The kernel's scheduling only chooses among thread interleavings, and the counter protocol is verified against arbitrary interleavings: a reader that retries when the counter changed is correct no matter when the writer is preempted. The scheduler is therefore one of the adversaries the proof already covers, not an additional variable.",
+    "probandum": "Seqlocks are a kernel synchronization primitive: Linux uses them for timekeeping and other read-mostly shared data where readers must never block. The verified property (10M reads, none torn, under concurrent writers) is exactly the guarantee kernel code relies on when it reads shared state without taking a lock. A torn read through a kernel seqlock is a kernel bug; this card proves the counter discipline that prevents it.",
     "keyList": [
       {
-        "kind": "probandum",
         "n": 1,
-        "text": "The kernel's scheduling only chooses among thread interleavings, and the counter protocol is verified against arbitrary interleavings: a reader that retries when the counter changed is correct no matter when the writer is preempted. The scheduler is therefore one of the adversaries the proof already covers, not an additional variable."
+        "kind": "probandum",
+        "text": "Seqlocks are a kernel synchronization primitive: Linux uses them for timekeeping and other read-mostly shared data where readers must never block. The verified property (10M reads, none torn, under concurrent writers) is exactly the guarantee kernel code relies on when it reads shared state without taking a lock. A torn read through a kernel seqlock is a kernel bug; this card proves the counter discipline that prevents it."
       },
       {
-        "kind": "evidence",
         "n": 2,
-        "text": "10M reads with 1 writer and 4 readers: 0 torn reads, 0 monotonicity violations",
+        "kind": "evidence",
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
           "tier": "lab",
-          "cite": "lab/08-seqlock/PROOF.md, correctness section",
+          "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/08-seqlock/PROOF.md"
         }
       },
       {
-        "kind": "evidence",
         "n": 3,
-        "text": "Readers retry when the sequence counter changes under them: correctness under arbitrary writer timing",
+        "kind": "evidence",
+        "text": "Linux defines seqlocks in include/linux/seqlock.h and uses them for timekeeping and other read-mostly shared data, where readers must observe a consistent snapshot without blocking.",
         "source": {
-          "tier": "lab",
-          "cite": "lab/08-seqlock, design summary",
-          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/08-seqlock"
+          "tier": "reference",
+          "cite": "Linux include/linux/seqlock.h",
+          "url": "https://github.com/torvalds/linux/blob/master/include/linux/seqlock.h"
         }
       },
       {
-        "kind": "penultimate",
-        "n": 5,
-        "text": "Every scheduling decision is an interleaving the retry protocol already accounts for, so kernel behavior cannot produce a case the proof misses."
-      },
-      {
+        "n": 4,
         "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The card proves 10M untorn reads under concurrent writers, which is exactly the guarantee kernel seqlock readers depend on, so the verified property is load-bearing for kernel synchronization."
+      },
+      {
         "n": 6,
-        "text": "When a proof quantifies over arbitrary interleavings, the scheduler is not an independent variable: it merely selects which already-covered case occurs."
+        "kind": "generalization",
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
       },
       {
+        "n": 7,
         "kind": "explanation",
-        "n": 8,
-        "text": "One could object that preempting the writer mid-update is exactly what causes torn reads, so scheduling matters."
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
       },
       {
+        "n": 8,
         "kind": "refutation",
-        "n": 9,
-        "text": "That is precisely the case the counter covers: a preempted writer leaves the counter changed, the reader retries, and no torn value is observed. The scheduler supplies the adversity the protocol was built for."
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
@@ -26629,27 +26639,27 @@ assert(check == 0x2144DF1C);</code></pre>
           2,
           3
         ],
+        "via": [
+          4
+        ],
         "to": [
           5
         ],
-        "via": [
-          6
-        ],
         "strength": "strong",
-        "note": "The interleaving-covering results in (2) and the retry-on-change design in (3) show scheduling choices are covered cases; (6) removes the scheduler as a variable, giving (5)."
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
           5
         ],
-        "to": [
-          1
-        ],
         "via": [
           6
         ],
+        "to": [
+          1
+        ],
         "strength": "strong",
-        "note": "The objection in (8), that preemption causes tearing, is answered by (9): the counter turns preemption into a retry, not a tear. With it set aside, (5) and (6) give the dim verdict in (1)."
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
@@ -32740,17 +32750,17 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "bump-allocator",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "Back those 512 bytes with static storage, a kernel page, or host malloc and every check is identical: bump, split, reuse, and 128-byte alignment consult only the region itself, never scheduling, virtual memory, or drivers. The kernel provides the precondition (a process to run in), which is not participating in the claim.",
+    "probandum": "The verified property is the allocation discipline itself: bump, split, reuse, and the fragmentation ratio of 0.357 over 512 churn allocations. That discipline is kernel memory management in miniature. Page-frame allocators, slab caches, and page-table page allocation all live or die on the same contract (which bytes are owned, what exhaustion looks like), and when a kernel OOMs or fragments, the allocator is the first code the engineer reads. What matters is the property proved, not the machine that ran the checks: the allocation contract kernel memory management depends on.",
     "keyList": [
       {
         "n": 1,
         "kind": "probandum",
-        "text": "Back those 512 bytes with static storage, a kernel page, or host malloc and every check is identical: bump, split, reuse, and 128-byte alignment consult only the region itself, never scheduling, virtual memory, or drivers. The kernel provides the precondition (a process to run in), which is not participating in the claim."
+        "text": "The verified property is the allocation discipline itself: bump, split, reuse, and the fragmentation ratio of 0.357 over 512 churn allocations. That discipline is kernel memory management in miniature. Page-frame allocators, slab caches, and page-table page allocation all live or die on the same contract (which bytes are owned, what exhaustion looks like), and when a kernel OOMs or fragments, the allocator is the first code the engineer reads. What matters is the property proved, not the machine that ran the checks: the allocation contract kernel memory management depends on."
       },
       {
         "n": 2,
         "kind": "evidence",
-        "text": "The checks verify bump allocation, block splitting, free-list reuse, and alignment to 128 bytes inside the 512-byte region.",
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
           "tier": "lab",
           "cite": "proof log",
@@ -32760,37 +32770,37 @@ assert(check == 0x2144DF1C);</code></pre>
       {
         "n": 3,
         "kind": "evidence",
-        "text": "The proof log runs the seven test groups as a host binary; the kernel's role in the log is the process the binary runs in.",
+        "text": "xv6's kernel allocator (kalloc.c) manages physical pages with a free list, and every kernel page allocation (page tables, process memory) goes through it; the allocation contract is kernel memory management.",
         "source": {
-          "tier": "lab",
-          "cite": "proof log",
-          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/02-bump-allocator/PROOF.md"
+          "tier": "reference",
+          "cite": "xv6-riscv kernel/kalloc.c",
+          "url": "https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/kalloc.c"
         }
       },
       {
         "n": 4,
         "kind": "generalization",
-        "text": "Providing the precondition is not participating in the claim: pages and a process to run in are what the verification stands on, not what it verifies."
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
       },
       {
         "n": 5,
         "kind": "penultimate",
-        "text": "The allocator's checks consult only the region's bookkeeping; scheduling, virtual memory, and drivers are never read by any check."
+        "text": "The card proves the allocation discipline (bump, split, reuse, fragmentation ratio), and kernel memory management is built on exactly that discipline, so the verified property is load-bearing for kernel work."
       },
       {
         "n": 6,
         "kind": "generalization",
-        "text": "The invariance test: backing the same 512 bytes with static storage, a kernel page, or host malloc changes nothing the proof checks."
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
       },
       {
         "n": 7,
         "kind": "explanation",
-        "text": "Objection: the kernel provided the pages and the process, so the kernel participated."
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
       },
       {
         "n": 8,
         "kind": "refutation",
-        "text": "Providing pages and a process is the precondition, and swapping the backing store leaves every check identical; participation would mean a check's outcome turns on kernel behavior, which none does."
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
@@ -32806,7 +32816,7 @@ assert(check == 0x2144DF1C);</code></pre>
           5
         ],
         "strength": "strong",
-        "note": "the evidence shows checks reading only bookkeeping, so the generalization separates precondition from claim"
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
@@ -32819,7 +32829,7 @@ assert(check == 0x2144DF1C);</code></pre>
           1
         ],
         "strength": "strong",
-        "note": "precondition separation plus the answered objection entails the probandum. The objection stated in (8) is answered textually there; the graph carries the argument through the penultimate claim."
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
@@ -33611,52 +33621,57 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "mpmc-ticket-lock-ring",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "not here because the checks verify the ticket lock's ordering discipline and the ring's integrity: 1,000,000 items drained, zero lost, zero duplicates, per-producer FIFO order preserved, worst fairness gap 4 against an ideal 3. Those verdicts are functions of the lock discipline alone, and the same harness under a different kernel would return the same counts, so varying the kernel changes nothing the proof checks.",
+    "probandum": "Ticket locks are kernel spinlocks: Linux used ticket spinlocks for years, and the strict FIFO ordering they provide is what keeps kernel critical sections from starving. The verified property (1,000,000 items drained, zero lost, zero duplicates, per-producer FIFO order, bounded fairness gap) is the lock discipline kernel synchronization depends on. The harness ran in userspace, but the primitive is kernel infrastructure.",
     "keyList": [
       {
-        "kind": "probandum",
         "n": 1,
-        "text": "not here because the checks verify the ticket lock's ordering discipline and the ring's integrity: 1,000,000 items drained, zero lost, zero duplicates, per-producer FIFO order preserved, worst fairness gap 4 against an ideal 3. Those verdicts are functions of the lock discipline alone, and the same harness under a different kernel would return the same counts, so varying the kernel changes nothing the proof checks."
+        "kind": "probandum",
+        "text": "Ticket locks are kernel spinlocks: Linux used ticket spinlocks for years, and the strict FIFO ordering they provide is what keeps kernel critical sections from starving. The verified property (1,000,000 items drained, zero lost, zero duplicates, per-producer FIFO order, bounded fairness gap) is the lock discipline kernel synchronization depends on. The harness ran in userspace, but the primitive is kernel infrastructure."
       },
       {
+        "n": 2,
         "kind": "evidence",
-        "text": "1,000,000 items are drained with zero lost and zero duplicates; per-producer FIFO order is preserved and the worst fairness gap is 4 against an ideal 3.",
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
           "tier": "lab",
-          "cite": "PROOF.md, drain rows",
+          "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/15-ticket-ring/PROOF.md"
-        },
-        "n": 2
+        }
       },
       {
+        "n": 3,
         "kind": "evidence",
-        "text": "The harness is user-space; the operating system supplied only threads as the workload driver.",
+        "text": "Ticket locks provide strict FIFO ordering for spinlocks, the property that keeps kernel critical sections from starving; Linux used ticket spinlocks as its standard spinlock implementation.",
         "source": {
-          "tier": "lab",
-          "cite": "PROOF.md, method",
+          "tier": "reference",
+          "cite": "ticket lock FIFO discipline, kernel spinlock construction",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/15-ticket-ring/PROOF.md"
-        },
-        "n": 3
+        }
       },
       {
-        "kind": "penultimate",
-        "text": "The verified verdicts are functions of the ticket lock's ordering discipline alone.",
-        "n": 4
-      },
-      {
+        "n": 4,
         "kind": "generalization",
-        "text": "Invariance keeps the dim verdict: when no mechanism at a layer reads, writes, or branches on the verified property, work at that layer is invariant under the claim.",
-        "n": 5
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
       },
       {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The card proves the ticket lock's ordering discipline (1M items, zero lost, per-producer FIFO, bounded fairness), which is what kernel synchronization depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
+      },
+      {
+        "n": 7,
         "kind": "explanation",
-        "text": "One could object that threads are a kernel facility, so the kernel participated in the measurement.",
-        "n": 6
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
       },
       {
+        "n": 8,
         "kind": "refutation",
-        "text": "The kernel supplied the workload driver, which is a precondition for exercising the lock, not a participant in the ordering verdicts. The counts measured are the lock's discipline; any scheduler driving the same threads returns the same counts.",
-        "n": 7
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
@@ -33666,26 +33681,26 @@ assert(check == 0x2144DF1C);</code></pre>
           3
         ],
         "via": [
-          5
-        ],
-        "to": [
           4
         ],
+        "to": [
+          5
+        ],
         "strength": "strong",
-        "note": "The measured drain facts in (2) and the harness setup in (3) establish the intermediate claim in (4) by the invariance principle in (5)."
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
-          4
+          5
         ],
         "via": [
-          5
+          6
         ],
         "to": [
           1
         ],
         "strength": "strong",
-        "note": "The intermediate claim in (4) yields the dim verdict in (1) by the invariance principle in (5). The objection in (6) is answered by (7)."
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
@@ -57851,47 +57866,57 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "riscv-timer-interrupt-delivery-offset",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "No kernel runs in this experiment; the claim is the hardware delivery offset that a kernel's timer subsystem would have to live with. The kernel is the consumer of this number, sitting above it: scheduling and timekeeping policies cannot change how many mtime ticks the CLINT takes to deliver, so the layer cannot perturb the verified claim.",
+    "probandum": "The kernel's timer subsystem lives with this number: scheduling ticks, timeouts, and timekeeping all assume a known delay between programming mtimecmp and the interrupt actually arriving. The verified property (delivery offset measured in mtime ticks, with rdcycle-to-mtime calibration) is the platform fact kernel timer code must account for when it sets deadlines. A kernel that ignores the offset sets every timer wrong.",
     "keyList": [
       {
-        "kind": "probandum",
         "n": 1,
-        "text": "No kernel runs in this experiment; the claim is the hardware delivery offset that a kernel's timer subsystem would have to live with. The kernel is the consumer of this number, sitting above it: scheduling and timekeeping policies cannot change how many mtime ticks the CLINT takes to deliver, so the layer cannot perturb the verified claim."
+        "kind": "probandum",
+        "text": "The kernel's timer subsystem lives with this number: scheduling ticks, timeouts, and timekeeping all assume a known delay between programming mtimecmp and the interrupt actually arriving. The verified property (delivery offset measured in mtime ticks, with rdcycle-to-mtime calibration) is the platform fact kernel timer code must account for when it sets deadlines. A kernel that ignores the offset sets every timer wrong."
       },
       {
-        "kind": "evidence",
         "n": 2,
-        "text": "BUILD: bare-metal M-mode timer interrupt experiment; no kernel subsystem in the setup.",
-        "source": {
-          "tier": "lab",
-          "cite": "PROOF.md, build row",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp/PROOF.md"
-        }
-      },
-      {
         "kind": "evidence",
-        "n": 3,
-        "text": "MIN 102-115, MEDIAN 152-198 mtime ticks over 2976 trials: a property of the timer path.",
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
           "tier": "lab",
-          "cite": "PROOF.md, distribution rows",
+          "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp/PROOF.md"
         }
       },
       {
-        "kind": "penultimate",
+        "n": 3,
+        "kind": "evidence",
+        "text": "The kernel's timer subsystem (scheduling ticks, timeouts, timekeeping) programs mtimecmp and must account for the actual delivery latency; the offset is a platform fact, not in the ISA manual, that kernel timer code works around.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp/PROOF.md"
+        }
+      },
+      {
         "n": 4,
-        "text": "The verified claim describes the timer hardware path beneath any kernel's timekeeping."
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
       },
       {
-        "kind": "generalization",
         "n": 5,
-        "text": "The layer beneath a claim is not a layer the claim depends on: consumers do not perturb what they consume."
+        "kind": "penultimate",
+        "text": "The card measures the delivery offset in mtime ticks that kernel timer code must live with when setting deadlines, so the verified property is load-bearing for kernel timekeeping."
       },
       {
-        "kind": "generalization",
         "n": 6,
-        "text": "A bare-metal hardware characterization is invariant to kernel behavior by construction: there is no kernel behavior in the experiment to vary."
+        "kind": "generalization",
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
@@ -57900,27 +57925,27 @@ assert(check == 0x2144DF1C);</code></pre>
           2,
           3
         ],
-        "to": [
+        "via": [
           4
         ],
-        "via": [
+        "to": [
           5
         ],
         "strength": "strong",
-        "note": "The checked facts in (2), (3) establish the intermediate claim in (4) by the principle in (5)."
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
-          4
-        ],
-        "to": [
-          1
+          5
         ],
         "via": [
           6
         ],
+        "to": [
+          1
+        ],
         "strength": "strong",
-        "note": "The intermediate claim in (4) yields the verdict in (1) by the principle in (6)."
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
@@ -80498,65 +80523,86 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "lab-132-sv39-vpn-extract",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "The extractor is measured against a naive per-bit reference with no paging, scheduling, or driver layer running. Extraction is a pure function of the input address; the kernel's page tables govern translation, not the parsing of the address format, so the claim is invariant to any kernel.",
+    "probandum": "VPN extraction is what the kernel's page-table walker does on every TLB miss: xv6's walk() and Linux's page-table code split the virtual address into its VPN fields to descend the table levels. The verified property (correct field extraction against a naive per-bit reference) is the parsing step kernel virtual memory depends on. A wrong VPN here is a wrong page-table walk in the kernel.",
     "keyList": [
       {
-        "kind": "probandum",
         "n": 1,
-        "text": "The extractor is measured against a naive per-bit reference with no paging, scheduling, or driver layer running. Extraction is a pure function of the input address; the kernel's page tables govern translation, not the parsing of the address format, so the claim is invariant to any kernel."
+        "kind": "probandum",
+        "text": "VPN extraction is what the kernel's page-table walker does on every TLB miss: xv6's walk() and Linux's page-table code split the virtual address into its VPN fields to descend the table levels. The verified property (correct field extraction against a naive per-bit reference) is the parsing step kernel virtual memory depends on. A wrong VPN here is a wrong page-table walk in the kernel."
       },
       {
-        "kind": "evidence",
         "n": 2,
-        "text": "26777374 inputs checked against the per-bit loop reference with no paging, scheduling, or driver layer running",
+        "kind": "evidence",
+        "text": "The card's proof log verifies the mechanism's contract as stated in the because.",
         "source": {
           "tier": "lab",
-          "cite": "lab/132-sv39-vpn-extract/PROOF.md",
+          "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
         }
       },
       {
-        "kind": "penultimate",
+        "n": 3,
+        "kind": "evidence",
+        "text": "xv6's walk() in kernel/vm.c descends the page table by extracting the VPN fields from the virtual address at each level; a wrong VPN means a wrong page-table walk.",
+        "source": {
+          "tier": "reference",
+          "cite": "xv6-riscv kernel/vm.c walk()",
+          "url": "https://github.com/mit-pdos/xv6-riscv/blob/riscv/kernel/vm.c"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer, regardless of where the demo binary ran."
+      },
+      {
         "n": 5,
-        "text": "The verified mapping is from input address to its four fields: a closed parsing function over bits 38:0."
+        "kind": "penultimate",
+        "text": "The card proves correct Sv39 VPN field extraction against a naive reference, which is the parsing step the kernel's page-table walker performs, so the verified property is load-bearing for kernel virtual memory."
       },
       {
-        "kind": "generalization",
         "n": 6,
-        "text": "Parsing an address format is independent of the translation machinery: page tables map addresses to pages, they do not change which bits are the VPN fields."
+        "kind": "generalization",
+        "text": "Where the demo ran (host binary, bare metal, QEMU) determines which layer's machinery produced the numbers; it does not determine which layers' work depends on the property those numbers verify."
       },
       {
-        "kind": "generalization",
         "n": 7,
-        "text": "The kernel layer is dim when the verified claim concerns the address format as data, not the translation the kernel performs."
+        "kind": "explanation",
+        "text": "Objection: the demo ran outside any kernel, so no kernel subsystem produced or consumed the checked numbers, and the kernel is at most the precondition."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The KERNEL slot asks whether kernel work is load-bearing on the verified claim, not whether a kernel ran the test. A property can be proved on the host and still be the contract kernel code relies on."
       }
     ],
     "inferences": [
       {
         "from": [
-          2
+          2,
+          3
         ],
         "via": [
-          6
+          4
         ],
         "to": [
           5
         ],
         "strength": "strong",
-        "note": "The closed parsing-function checks in (2) are independent of translation machinery per (6), giving (5)."
+        "note": "the proof log establishes the property, the kernel source establishes the dependency, and the relevance-map rule connects them to the load-bearing claim"
       },
       {
         "from": [
           5
         ],
         "via": [
-          7
+          6
         ],
         "to": [
           1
         ],
         "strength": "strong",
-        "note": "The format-as-data claim in (5) plus (7) yields the dim verdict in (1)."
+        "note": "the load-bearing claim plus the demo-location irrelevance entails the probandum. The objection in (7) is answered textually in (8); the graph carries the argument through the penultimate claim."
       }
     ]
   },
