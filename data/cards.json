@@ -12628,5 +12628,66 @@
     "repoLabel": "GitHub: systems-lab/lab/128-mul-lo32-nomul",
     "terminalLabel": "Verified low-32 multiply test output",
     "showRepoLink": true
+  },
+  {
+    "id": "lab-146-va-canonical-check",
+    "kicker": "RISC-V ISA",
+    "title": "Sv39 canonical addresses, sign-extension identity, Host",
+    "summary": "An Sv39 virtual address is canonical exactly when bits 63:39 all equal bit 38. The check implements this sign-extension identity from scratch and is verified against a per-bit reference over directed sign-boundary rows plus random values.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines Sv39 canonicality as the sign-extension identity on the top 25 bits. The proof checks the from-scratch implementation against a per-bit reference over 30000171 cases, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks address-validity outcomes against the sign-extension identity: 30000171 checks, 0 mismatches. Whether an address is canonical is determined by its bits, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the address-validity rule directly; no M-mode firmware configuration is exercised. Canonicality is a property of the address format, not of boot-time setup."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Kernels validate user addresses before dereferencing them and rely on the canonicality rule to reject bad pointers. The verified property (bits 63:39 equal bit 38) is the validity check the kernel's address validation depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure computational construction: a sign-extension identity over a fixed bit range. The same identity check appears in portable code wherever a packed field's validity reduces to its sign bit."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-va-canonical-check/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "30000171 checks on Host: from-scratch canonicality check against a per-bit reference over directed sign-boundary rows plus random values, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "2.138 ns per value at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "e08a833fc82c218c, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 146-va-canonical-check",
+    "terminalOutput": "$ make && ./va-canonical-check\n30000171 checks, 0 mismatches, checksum=e08a833fc82c218c\n\nSv39 canonical addresses: PASS",
+    "verificationEnvironment": "Host",
+    "checks": 30000171,
+    "failures": 0,
+    "stressItems": 30000171,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/146-va-canonical-check",
+    "repoLabel": "GitHub: systems-lab/lab/146-va-canonical-check",
+    "terminalLabel": "Verified lab-146-va-canonical-check Host output",
+    "showRepoLink": true
   }
 ]

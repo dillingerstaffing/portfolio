@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-084549">
+  <meta name="build-version" content="v20260911-090055">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -14025,6 +14025,67 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/128-mul-lo32-nomul",
     "repoLabel": "GitHub: systems-lab/lab/128-mul-lo32-nomul",
     "terminalLabel": "Verified low-32 multiply test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-146-va-canonical-check",
+    "kicker": "RISC-V ISA",
+    "title": "Sv39 canonical addresses, sign-extension identity, Host",
+    "summary": "An Sv39 virtual address is canonical exactly when bits 63:39 all equal bit 38. The check implements this sign-extension identity from scratch and is verified against a per-bit reference over directed sign-boundary rows plus random values.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines Sv39 canonicality as the sign-extension identity on the top 25 bits. The proof checks the from-scratch implementation against a per-bit reference over 30000171 cases, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks address-validity outcomes against the sign-extension identity: 30000171 checks, 0 mismatches. Whether an address is canonical is determined by its bits, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the address-validity rule directly; no M-mode firmware configuration is exercised. Canonicality is a property of the address format, not of boot-time setup."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Kernels validate user addresses before dereferencing them and rely on the canonicality rule to reject bad pointers. The verified property (bits 63:39 equal bit 38) is the validity check the kernel's address validation depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure computational construction: a sign-extension identity over a fixed bit range. The same identity check appears in portable code wherever a packed field's validity reduces to its sign bit."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-va-canonical-check/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "30000171 checks on Host: from-scratch canonicality check against a per-bit reference over directed sign-boundary rows plus random values, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "2.138 ns per value at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "e08a833fc82c218c, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 146-va-canonical-check",
+    "terminalOutput": "$ make && ./va-canonical-check\n30000171 checks, 0 mismatches, checksum=e08a833fc82c218c\n\nSv39 canonical addresses: PASS",
+    "verificationEnvironment": "Host",
+    "checks": 30000171,
+    "failures": 0,
+    "stressItems": 30000171,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/146-va-canonical-check",
+    "repoLabel": "GitHub: systems-lab/lab/146-va-canonical-check",
+    "terminalLabel": "Verified lab-146-va-canonical-check Host output",
     "showRepoLink": true
   }
 ];
@@ -90778,6 +90839,361 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The refutation answers the oracle-uses-multiply objection, and the second principle gives the lit verdict."
+      }
+    ]
+  },
+  "lab-146-va-canonical-check|ISA": {
+    "item": "lab-146-va-canonical-check",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The ISA defines Sv39 canonicality as the sign-extension identity on the top 25 bits. The proof checks the from-scratch implementation against a per-bit reference over 30000171 cases, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The ISA defines Sv39 canonicality as the sign-extension identity on the top 25 bits. The proof checks the from-scratch implementation against a per-bit reference over 30000171 cases, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 30000171 checks on Host: from-scratch canonicality check against a per-bit reference over directed sign-boundary rows plus random values, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-va-canonical-check/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the sign-extension identity the ISA defines for Sv39, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-va-canonical-check|MICROARCH": {
+    "item": "lab-146-va-canonical-check",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks address-validity outcomes against the sign-extension identity: 30000171 checks, 0 mismatches. Whether an address is canonical is determined by its bits, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks address-validity outcomes against the sign-extension identity: 30000171 checks, 0 mismatches. Whether an address is canonical is determined by its bits, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records address-validity outcomes only: 30000171 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-va-canonical-check/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-va-canonical-check|FIRMWARE": {
+    "item": "lab-146-va-canonical-check",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies the address-validity rule directly; no M-mode firmware configuration is exercised. Canonicality is a property of the address format, not of boot-time setup.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the address-validity rule directly; no M-mode firmware configuration is exercised. Canonicality is a property of the address format, not of boot-time setup."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the test checking the address-validity rule directly; no M-mode firmware configuration is exercised.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-va-canonical-check/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Canonicality is a property of the address format, not of boot-time setup, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-va-canonical-check|KERNEL": {
+    "item": "lab-146-va-canonical-check",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Kernels validate user addresses before dereferencing them and rely on the canonicality rule to reject bad pointers. The verified property (bits 63:39 equal bit 38) is the validity check the kernel's address validation depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Kernels validate user addresses before dereferencing them and rely on the canonicality rule to reject bad pointers. The verified property (bits 63:39 equal bit 38) is the validity check the kernel's address validation depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the validity check the kernel's address validation uses to reject bad pointers.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-va-canonical-check/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the validity check the kernel depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-va-canonical-check|ALGORITHM": {
+    "item": "lab-146-va-canonical-check",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure computational construction: a sign-extension identity over a fixed bit range. The same identity check appears in portable code wherever a packed field's validity reduces to its sign bit.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure computational construction: a sign-extension identity over a fixed bit range. The same identity check appears in portable code wherever a packed field's validity reduces to its sign bit."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the mechanism as a sign-extension identity over a fixed bit range, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-va-canonical-check/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
       }
     ]
   }
