@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-154552">
+  <meta name="build-version" content="v20260911-160854">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -948,6 +948,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-alarm-that-will-not-leave-its-room/">The Alarm That Will Not Leave Its Room</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-mtie-gate/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-alarm-that-will-not-leave-its-room|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the enable/pending split and the WARL delegation behavior are the privileged architecture's own contracts: interrupt i is taken only when mstatus.MIE, mie[i], and mip[i] are all set, and mideleg is write-any-read-legal, so the machine may legally refuse the bit-7 write; the modules verified both with real CSR reads and writes: mip 0x80 stayed silent under mie 0x0, mcause read 0x8000000000000007 under mie 0x80, and every mideleg bit-7 write read back 0x1444 with the bit dropped.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-alarm-that-will-not-leave-its-room|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because both modules' verdicts are contract rules about register state, identical on every conforming implementation: no timing, pipeline, or cache behavior was measured, and none could change whether the trap fires or whether the delegation bit takes.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-alarm-that-will-not-leave-its-room|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because mie.MTIE and mideleg are writable only in M-mode, so every action under test belongs to firmware: the 64-bit arming write, the handler's all-ones disarm, the mideleg write probes, and the drop-to-S-mode observation are all M-mode operations, and on this machine the decision to hear the alarm, and the discovery that it cannot be delegated, sits in firmware's hands.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-alarm-that-will-not-leave-its-room|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the machine timer interrupt can never reach S-mode on this machine: mideleg bit 7 is read-only zero, so the armed timer trapped in M-mode with zero S-mode arrivals; a supervisor kernel's behavior is invariant under this bit, and its own timer arrives through the supervisor interrupt path, which the modules never programmed.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-alarm-that-will-not-leave-its-room|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the enable gate and the WARL refusal are the architecture's privilege mechanism, not a portable technique: with no M-mode enable register and no delegable-bit contract the claim has nothing to mean, and nothing in the verified behavior travels to another machine.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 12:15 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Light a fuse. On a bare-metal RISC-V machine running M-mode firmware, one 64-bit MMIO write of mtime + 5000 ticks lands in the CLINT's mtimecmp register for hart 0 at 0x02004000. The board's mtime runs at 10 MHz, so 5000 ticks is exactly 500 microseconds: a half-millisecond fuse, lit in software. Set mstatus.MIE, the master interrupt switch, but write zero to mie, the register with one enable bit per interrupt source. Poll mip, the pending register. Bit 7, MTIP, reads set: the CLINT, the core-local interruptor, lifted it when the running clock crossed the compare. Two million reads of the cycle counter roll by, a window in which an enabled interrupt would have fired within a handful of instructions, and the trap count stays zero. The fuse burned, the alarm rang, and the hart did not move. Then set bit 7 of mie, the MTIE enable. Exactly one trap fires. mcause reads 0x8000000000000007: the top bit says interrupt, the low bits say code 7, machine timer interrupt. The handler's first duty is to write mtimecmp to all ones, lifting the compare above the running clock so the alarm cannot refire. The second quiet window confirms it: the trap count stays exactly one. Three runs, byte-identical transcripts.</p>
+          <p>Why does the enable bit exist at all? The obvious machine needs only one: the pending bit says the alarm wants attention, so take it. The break is who writes what. The CLINT sets MTIP when the clock crosses the compare; no code writes that bit, the hardware raises it and only a disarm clears it. Firmware writes MTIE: that is the running code deciding, per source, whether it may be interrupted right now. Without the split, arming the timer would be taking it: the write that sets the deadline would guarantee a trap at the deadline, with no way to leave the alarm pending while the work in flight finishes. And the split is what makes the handler's discipline load-bearing rather than polite: clear the source first, then leave. With the gate still open and the source uncleared, the trap would refire the instant the handler returns. Phase C, the trap count staying exactly one after the all-ones write, is the test that the disarm actually disarmed.</p>
+          <p>Then the module's sibling asked the next question, and the answer is the better half of the story. If MTIP is just bit 7 of the pending register, can the alarm be handed down to S-mode, where a kernel would receive it? The backlog item assumed yes: set bit 7 of mideleg, the machine interrupt delegation register, and the timer interrupt should arrive in supervisor mode. The measurement said no. mideleg is a WARL register, write any value and read back a legal one, and on this machine bit 7 is read-only zero: writes of 0x0, 0x80, and 0x14c4 all read back 0x1444, the bit dropped every time, matching the earlier mideleg-warl module's published delegable mask. The module dropped the hart to S-mode anyway and armed the timer 500 ticks out. Exactly one trap, in M-mode, mcause 0x8000000000000007, zero S-mode arrivals. On QEMU 8.2.2's virt board, the machine timer interrupt has no other room to go to. The honest scope: this is the emulator's CSR model, not silicon; real silicon publishes its own delegable set.</p>
+          <p>The checks that carry the argument, verbatim from the two modules:</p>
+<pre><code>check(trap_count == 0, "trap fired while mie.MTIE was clear");
+check(mie == MIE_MTIE, "mie readback != 0x80 after csrs mie, 0x80");
+check((rd_bit7 &amp; MIDELEG_MTIP_BIT) == 0, "mideleg bit 7 took on readback");
+check(s_regs[0] == 0, "an S-mode trap fired: the interrupt was delegated");</code></pre>
+          <p>Twenty checks per module, zero failures. Three runs of the gate module on QEMU 8.2.2 produced byte-identical transcripts, checksummed identically. That is what a tight test looks like: the expected outputs are small integers, a trap count of 0 or 1, a cause code, a register readback, so there is nowhere for nondeterminism to hide.</p>
+          <p>The module's notes hide a debugging gem worth stealing. The first routing build armed the timer 500 ticks out, 50 microseconds at the board's 10 MHz mtime, then printed its arm line before reading the armed value back. One UART line at 115200 baud takes about seven milliseconds, 139 timer expiries, so the readback measured history, not the arm. The fix reads the armed value immediately after the arm write, before any slow output. On bare metal, ordering a measurement around slow I/O is the experiment's design, not its plumbing. One sentence to carry away: a pending interrupt is a fact, an enabled interrupt is a permission, and some doors are not doors at all; measure which kind you are standing in front of before you try to walk through it.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-mtie-gate" target="_blank" rel="noopener">src/mie-mtie-gate</a>, <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-mtip-route" target="_blank" rel="noopener">src/mideleg-mtip-route</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-bell-and-the-switch/">The Bell and the Switch</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-bell-and-the-switch|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the trap rule (an interrupt fires only when the global MIE, the per-source mie bit, and the per-source mip bit are all set) is the privileged architecture's own contract, and the module verified it with real register reads: mie at 0x0 held the hart silent under a pending MSIP, and mie at 0x8 delivered exactly one trap with mcause reading the machine-software-interrupt code.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-bell-and-the-switch|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the gate's verdict is a contract rule about register state, identical on every conforming implementation: no timing, pipeline, or cache behavior was measured, and none could change whether the trap fires.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-bell-and-the-switch|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because mie.MSIE is writable only in M-mode, so the arming decision belongs to firmware: the module's phase-B write is the firmware action under test, and this gate sits in firmware's hands on every RISC-V system.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-bell-and-the-switch|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because a supervisor kernel cannot write mie.MSIE, so its behavior is invariant under this bit: its own enable is sstatus.SIE, and its inter-processor interrupts arrive as supervisor software interrupts through firmware's sbi_send_ipi regardless of the M-mode gate.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-bell-and-the-switch|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the enable/pending split is the architecture's privilege mechanism, not a portable technique: with no M-mode enable register the claim has nothing to mean, and nothing in the verified behavior travels to another machine.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 11:06 EDT</time></p>
@@ -113960,6 +113981,501 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alarm-that-will-not-leave-its-room|ISA": {
+    "item": "the-alarm-that-will-not-leave-its-room",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the enable/pending split and the WARL delegation behavior are the privileged architecture's own contracts: interrupt i is taken only when mstatus.MIE, mie[i], and mip[i] are all set, and mideleg is write-any-read-legal, so the machine may legally refuse the bit-7 write; the modules verified both with real CSR reads and writes: mip 0x80 stayed silent under mie 0x0, mcause read 0x8000000000000007 under mie 0x80, and every mideleg bit-7 write read back 0x1444 with the bit dropped.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the enable/pending split and the WARL delegation behavior are the privileged architecture's own contracts: interrupt i is taken only when mstatus.MIE, mie[i], and mip[i] are all set, and mideleg is write-any-read-legal, so the machine may legally refuse the bit-7 write; the modules verified both with real CSR reads and writes: mip 0x80 stayed silent under mie 0x0, mcause read 0x8000000000000007 under mie 0x80, and every mideleg bit-7 write read back 0x1444 with the bit dropped."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "With mie at 0x0 the hart stayed silent across the two-million-cycle window under a pending MTIP; with mie at 0x80 exactly one trap fired and mcause read the machine-timer-interrupt code. Twenty checks, zero failures, byte-identical transcripts across three runs on QEMU 8.2.2.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-mtie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture states the trap rule: interrupt i is taken when mstatus.MIE is set and both mie[i] and mip[i] are set; mideleg is defined as a WARL register, so an implementation may ignore writes to bits it does not implement.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, machine interrupt control",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The post demonstrates the rule from both sides, silent gate then open gate, using real CSR reads and writes on the hart, and publishes the mideleg write/readback triple as the measured delegation verdict.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alarm That Will Not Leave Its Room, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alarm-that-will-not-leave-its-room/"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The measured register behavior matches the specified contract in both directions: silence when the enable is clear, one trap when it is set, and legal refusal of the delegation write."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A CSR predicate verified by direct read and write on the hart tests the specification itself, not an analogy of it."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "A layer lights when the verified property is the layer's own contract made measurable: if the specification defines the bits and the lab reads them back, the ISA is load-bearing."
+      },
+      {
+        "n": 8,
+        "kind": "explanation",
+        "text": "A reader might think this is a QEMU quirk worth no layer verdict because the emulator, not silicon, refused the delegation."
+      },
+      {
+        "n": 9,
+        "kind": "refutation",
+        "text": "The trap rule and WARL legality are specification contracts, so the measured behavior is conformance evidence on any implementation; the post scopes the mideleg verdict to QEMU's CSR model honestly, but the enable/pending predicate it verifies is the spec's own text. The WARL refusal is legal behavior by the book, not a quirk.",
+        "refutes": 8
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alarm-that-will-not-leave-its-room|MICROARCH": {
+    "item": "the-alarm-that-will-not-leave-its-room",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because both modules' verdicts are contract rules about register state, identical on every conforming implementation: no timing, pipeline, or cache behavior was measured, and none could change whether the trap fires or whether the delegation bit takes.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because both modules' verdicts are contract rules about register state, identical on every conforming implementation: no timing, pipeline, or cache behavior was measured, and none could change whether the trap fires or whether the delegation bit takes."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The modules' checks assert trap counts, cause codes, and register readbacks; the proof logs record no pipeline, cache, or predictor measurement.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-mtie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The trap rule is a predicate over CSR state; the privileged architecture defines no timing or microarchitectural condition in it, and WARL legality is a property of the register model, not of any implementation's internals.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, machine interrupt control",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The post frames both results as contract rules verified by register reads, and never appeals to how fast or through which pipeline the trap travels.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alarm That Will Not Leave Its Room, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alarm-that-will-not-leave-its-room/"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Whether the trap fires and whether the delegation write takes are decided entirely by register predicates; no microarchitectural behavior can change either verdict."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A predicate over register state whose truth the specification fixes admits no implementation freedom in its outcome."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant under everything that layer varies: if no pipeline, cache, or predictor behavior could change the outcome, the microarchitecture is not load-bearing."
+      },
+      {
+        "n": 8,
+        "kind": "explanation",
+        "text": "A reader might think the microarchitecture matters because the experiment's fuse is measured in ticks of a 10 MHz clock and the UART timing story is about one line of output outlasting the arm."
+      },
+      {
+        "n": 9,
+        "kind": "refutation",
+        "text": "The clock rate sets the experiment's schedule, not its verdict: the gate would fire or stay silent identically at any mtime frequency, and the UART story is about measurement ordering around slow I/O, not about pipeline or cache behavior. Ticks are not microarchitecture.",
+        "refutes": 8
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alarm-that-will-not-leave-its-room|FIRMWARE": {
+    "item": "the-alarm-that-will-not-leave-its-room",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because mie.MTIE and mideleg are writable only in M-mode, so every action under test belongs to firmware: the 64-bit arming write, the handler's all-ones disarm, the mideleg write probes, and the drop-to-S-mode observation are all M-mode operations, and on this machine the decision to hear the alarm, and the discovery that it cannot be delegated, sits in firmware's hands.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because mie.MTIE and mideleg are writable only in M-mode, so every action under test belongs to firmware: the 64-bit arming write, the handler's all-ones disarm, the mideleg write probes, and the drop-to-S-mode observation are all M-mode operations, and on this machine the decision to hear the alarm, and the discovery that it cannot be delegated, sits in firmware's hands."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The arming write to the CLINT mtimecmp register, the MTIE enable write, the handler's all-ones disarm, and the mideleg write triple all execute in M-mode; the modules drop to S-mode only to observe where the trap lands.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-mtie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged specification reserves mie, mip, mideleg, and the CLINT mtimecmp region for M-mode access; a supervisor program cannot write the enable gate or the delegation register.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, machine interrupt control",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The post presents the arming, the handler, and the delegation probe as the firmware actions they are, and scopes the delegation finding to the emulator's CSR model.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alarm That Will Not Leave Its Room, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alarm-that-will-not-leave-its-room/"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Every measured action is an M-mode CSR or MMIO operation, so the gate's verdict and the delegation verdict are firmware's own behavior under test."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A mechanism whose control registers are writable only in M-mode can only be exercised, and its contract only verified, by firmware."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "A layer lights when the verified property is load-bearing for work at that layer: firmware owns the enable bit, so firmware is where the arming decision and its measured consequences live."
+      },
+      {
+        "n": 8,
+        "kind": "explanation",
+        "text": "A reader might think firmware is only the setup and the real subject is the interrupt mechanism, which belongs to the ISA layer alone."
+      },
+      {
+        "n": 9,
+        "kind": "refutation",
+        "text": "The ISA defines the contract, but only firmware can act on it: no other privilege mode can write mie.MTIE or mideleg, so the experiment that verifies the contract is necessarily a firmware program. The layers record different things: the contract at ISA, the actor at Firmware.",
+        "refutes": 8
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alarm-that-will-not-leave-its-room|KERNEL": {
+    "item": "the-alarm-that-will-not-leave-its-room",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because the machine timer interrupt can never reach S-mode on this machine: mideleg bit 7 is read-only zero, so the armed timer trapped in M-mode with zero S-mode arrivals; a supervisor kernel's behavior is invariant under this bit, and its own timer arrives through the supervisor interrupt path, which the modules never programmed.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because the machine timer interrupt can never reach S-mode on this machine: mideleg bit 7 is read-only zero, so the armed timer trapped in M-mode with zero S-mode arrivals; a supervisor kernel's behavior is invariant under this bit, and its own timer arrives through the supervisor interrupt path, which the modules never programmed."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The routing module's S-mode phase recorded zero S-mode trap arrivals against exactly one M-mode trap; the gate module programmed no S-mode source at all, with medeleg read back as zero.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-mtie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "With mideleg bit 7 read-only zero, the machine timer interrupt is not delegable on this machine, so it can never be delivered as a supervisor interrupt; the supervisor timer path is a separate interrupt bit with its own enable.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, machine interrupt control",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The post treats the S-mode phase as the observation of a closed door: the hart sits in S-mode and the alarm still arrives in M-mode.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alarm That Will Not Leave Its Room, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alarm-that-will-not-leave-its-room/"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "No S-mode software could receive this interrupt on this machine, and none was exercised except as the witness to its absence."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "An interrupt that the privilege architecture refuses to deliver to a mode is invisible to every program running in that mode."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant under everything that layer varies: if supervisor code cannot receive the interrupt regardless of what it writes, the kernel is not load-bearing."
+      },
+      {
+        "n": 8,
+        "kind": "explanation",
+        "text": "A reader might think the kernel matters because the module deliberately runs in S-mode and counts S-mode traps."
+      },
+      {
+        "n": 9,
+        "kind": "refutation",
+        "text": "The S-mode phase is the control group, not the subject: it runs in S-mode precisely to prove the trap never arrives there. Counting zero arrivals is evidence of absence, and the layer that absence is about is the one that cannot receive, which is exactly why it stays dim.",
+        "refutes": 8
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-alarm-that-will-not-leave-its-room|ALGORITHM": {
+    "item": "the-alarm-that-will-not-leave-its-room",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the enable gate and the WARL refusal are the architecture's privilege mechanism, not a portable technique: with no M-mode enable register and no delegable-bit contract the claim has nothing to mean, and nothing in the verified behavior travels to another machine.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the enable gate and the WARL refusal are the architecture's privilege mechanism, not a portable technique: with no M-mode enable register and no delegable-bit contract the claim has nothing to mean, and nothing in the verified behavior travels to another machine."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every check asserts a RISC-V CSR or CLINT register value; the modules contain no portable computation whose correctness survives without those registers.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-mtie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "mie, mip, and mideleg exist only in the RISC-V privileged architecture; the enable/pending split is a property of that privilege model, not of any algorithm.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V privileged specification, machine interrupt control",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The post never presents the gate as a reusable pattern; its takeaway is about pending versus permission in this architecture's own terms.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Alarm That Will Not Leave Its Room, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-alarm-that-will-not-leave-its-room/"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Remove the privileged registers and the claim dissolves; the verified behavior is inseparable from the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "A property that can only be stated in one architecture's register names is not an algorithm."
+      },
+      {
+        "n": 7,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property cannot travel: if the mechanism has no meaning without the registers that define it, the algorithm layer is not load-bearing."
+      },
+      {
+        "n": 8,
+        "kind": "explanation",
+        "text": "A reader might think the pending-versus-permission idea is a portable algorithm because the one-sentence takeaway sounds like a general principle."
+      },
+      {
+        "n": 9,
+        "kind": "refutation",
+        "text": "The takeaway is a principle about interrupt architectures, but the verified property is this architecture's register behavior: the lab proves what mie and mideleg do here, not a technique anyone could reimplement. Principles travel; the verified claims stay.",
+        "refutes": 8
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."
       }
     ]
   }
