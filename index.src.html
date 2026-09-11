@@ -932,6 +932,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Page That Was Never There</h3>
+          <!-- LAYER-STRIP:the-page-that-was-never-there -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 07:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Ask the operating system a question most programs never ask: how much memory can I actually have? The sbrkoom test asks it the blunt way: call sbrk(4096), the system call that moves the heap's break one page at a time, until the kernel says no. On a 128 megabyte QEMU machine the answer came back as a measured number: 32,468 pages, 132,988,928 bytes, about 126.8 megabytes. The break started at 0x4000 and stopped at 0x7ED8000, exactly 32,468 pages later, and a second sbrk(4096) still returned -1, so the ceiling is stable, not a hiccup.</p>
+          <p>Here is why the kernel cannot lie about this number. The test used the eager path, which is also the default: sbrk(n) calls sys_sbrk(n, SBRK_EAGER). The syscall calls growproc, growproc calls uvmalloc, and uvmalloc calls kalloc once per page, mapping each physical frame into the page table before the break moves. The -1 you finally see is kalloc finding its free list empty. No policy is consulted and no limit is configured anywhere; the pool of physical pages is literally exhausted. The machine holds 128 megabytes, the test drank 132,988,928 bytes of it, and the roughly 1.2 megabytes left over are the kernel, its page tables, and everything else alive at boot.</p>
+          <p>The obvious alternative is the one most programs live with: ask malloc and trust the number. On a stock Linux box that number can be fiction. The default overcommit mode is heuristic: the kernel approves the mapping and only discovers the shortage when you touch the pages, and then the OOM killer picks a victim and shoots it. The figure malloc hands you is a promise; the truth arrives later, as a dead process. My xv6 tree even ships the lazy twin of that design: sbrklazy moves the break without allocating a thing. The test pinned only the eager ceiling, and the eager one is the honest one: every page paid for in physical frames before the break moves, so the number it reports is measured, not promised.</p>
+          <p>The loop is the whole argument, six lines, taken verbatim from the test:</p>
+          <pre><code>  for (;;) {
+    p = sbrk(PAGESZ);
+    if (p == (char *)-1)
+      break;
+    pages++;
+  }</code></pre>
+          <p>p counts the pages the kernel agreed to, and the loop stops at the first -1, the kernel's only way of saying the free list is empty. Five checks guard the arithmetic: the refusal happened, the final break equals the starting break plus pages times 4096, a second request still fails, the heap end is page-aligned, and the size accounting is consistent. Five checks, zero mismatches, one checksum to recheck the numbers against. One sentence to carry away: a process's growth ceiling is not a configured limit but a measured fact, the exact point where the kernel's page pool runs dry, and in the eager design the kernel tells you the truth at that moment because it already paid for everything it gave you.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkoom.c" target="_blank" rel="noopener">user/sbrkoom.c</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Multiply With No Multiply</h3>
           <!-- LAYER-STRIP:the-multiply-with-no-multiply -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 06:10 EDT</time></p>

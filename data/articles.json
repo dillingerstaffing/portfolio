@@ -1,5 +1,42 @@
 [
   {
+    "title": "The Page That Was Never There",
+    "date": "2026-09-11",
+    "paragraphs": [
+      "Ask the operating system a question most programs never ask: how much memory can I actually have? The sbrkoom test asks it the blunt way: call sbrk(4096), the system call that moves the heap's break one page at a time, until the kernel says no. On a 128 megabyte QEMU machine the answer came back as a measured number: 32,468 pages, 132,988,928 bytes, about 126.8 megabytes. The break started at 0x4000 and stopped at 0x7ED8000, exactly 32,468 pages later, and a second sbrk(4096) still returned -1, so the ceiling is stable, not a hiccup.",
+      "Here is why the kernel cannot lie about this number. The test used the eager path, which is also the default: sbrk(n) calls sys_sbrk(n, SBRK_EAGER). The syscall calls growproc, growproc calls uvmalloc, and uvmalloc calls kalloc once per page, mapping each physical frame into the page table before the break moves. The -1 you finally see is kalloc finding its free list empty. No policy is consulted and no limit is configured anywhere; the pool of physical pages is literally exhausted. The machine holds 128 megabytes, the test drank 132,988,928 bytes of it, and the roughly 1.2 megabytes left over are the kernel, its page tables, and everything else alive at boot.",
+      "The obvious alternative is the one most programs live with: ask malloc and trust the number. On a stock Linux box that number can be fiction. The default overcommit mode is heuristic: the kernel approves the mapping and only discovers the shortage when you touch the pages, and then the OOM killer picks a victim and shoots it. The figure malloc hands you is a promise; the truth arrives later, as a dead process. My xv6 tree even ships the lazy twin of that design: sbrklazy moves the break without allocating a thing. The test pinned only the eager ceiling, and the eager one is the honest one: every page paid for in physical frames before the break moves, so the number it reports is measured, not promised.",
+      "The loop is the whole argument, six lines, taken verbatim from the test. p counts the pages the kernel agreed to, and the loop stops at the first -1, the kernel's only way of saying the free list is empty. Five checks guard the arithmetic: the refusal happened, the final break equals the starting break plus pages times 4096, a second request still fails, the heap end is page-aligned, and the size accounting is consistent. Five checks, zero mismatches, one checksum to recheck the numbers against. One sentence to carry away: a process's growth ceiling is not a configured limit but a measured fact, the exact point where the kernel's page pool runs dry, and in the eager design the kernel tells you the truth at that moment because it already paid for everything it gave you."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkoom.c",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because the claim is the kernel's growth ceiling, a count of drained page frames: the five checks would give the same verdict on any machine whose kernel refuses growth at its limit, so no machine-contract behavior is what the test proves"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at MICROARCH because where the ceiling sits is set by the pool size and the allocator's arithmetic, not by the implementation behind the kernel: the test counts pages, and the count is indifferent to the core underneath"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the test runs in user space and the refusal originates in the kernel's page allocator: no machine-mode code or boot configuration decides the number the loop discovers"
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the growth ceiling is kernel memory management made measurable: sys_sbrk calls growproc, growproc calls uvmalloc, uvmalloc calls kalloc once per page, and the -1 the loop finally sees is kalloc's empty free list reported up the whole chain"
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because grow-until-refusal plus recheck is a portable capacity-finding protocol: grow while the allocator succeeds, confirm the boundary arithmetic, confirm the refusal is stable; it ports to any allocator with a hard failure signal"
+      }
+    }
+  },
+  {
     "title": "The Multiply With No Multiply",
     "date": "2026-09-11",
     "paragraphs": [
