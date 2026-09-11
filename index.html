@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-001059">
+  <meta name="build-version" content="v20260911-001354">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -11395,6 +11395,136 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stvec-vectored",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/stvec-vectored",
     "terminalLabel": "Verified stvec-vectored QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-110-bitperm-inverse",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the 4,524,321-check bench runs in a host user-space process against software, never a RISC-V instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the permutation/inverse construction is verified as pure integer arithmetic, with no cache, pipeline, or predictor behavior in the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the bench runs in a host user-space process, with no M-mode boot code running."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the 4,524,321 checks prove the permutation construction in isolation, with no scheduler, VM, driver, or syscall path running."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The 8-bit permutation with its explicit inverse (Q as the exact index-reversal of P) is pure computational mechanism, portable to every ISA."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/110-bitperm-inverse/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "Bit Permutation and Its Explicit Inverse",
+    "summary": "8-bit permutation P=[2,5,0,7,1,6,3,4] with its explicit inverse Q=[2,4,0,6,7,1,5,3] from the shift/mask identities, the inverse derived as the exact index-reversal of the permutation mapping. 4,524,321 differential checks, 0 mismatches, checksum identical across three builds, inv(perm(x)) == x and perm(inv(x)) == x on every case.",
+    "specRows": [
+      [
+        "CHECKS",
+        "4,524,321 differential"
+      ],
+      [
+        "MISMATCHES",
+        "0"
+      ],
+      [
+        "CHECKSUM",
+        "FNV-1a f62cbb51d7116999 across -O0/-O2/ASan+UBSan"
+      ],
+      [
+        "THROUGHPUT",
+        "39.464 ns/value at -O2"
+      ],
+      [
+        "RESULT",
+        "PASS"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 110-bitperm-inverse",
+    "terminalOutput": "$ make run\\ndifferential ............ 4524321 checks\\nmismatches .............. 0\\nchecksum ................ f62cbb51d7116999\\nbuilds .................. -O0, -O2, ASan+UBSan IDENTICAL\\nthroughput .............. 39.464 ns/value at -O2\\nRESULT: PASS\\n\\nbit permutation with explicit inverse, 0 mismatches",
+    "verificationEnvironment": "Host",
+    "checks": 4524321,
+    "failures": 0,
+    "stressItems": 4524321,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/110-bitperm-inverse",
+    "repoLabel": "GitHub: systems-lab/lab/110-bitperm-inverse",
+    "terminalLabel": "Verified bit-permutation test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-sepc-warl",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The sepc CSR's WARL software-write behavior is executed under QEMU 8.2.2 on a real RISC-V hart: all-ones and zero writes both read back exactly, proving all 64 bits are software-writable."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU emulates the CSR write/readback functionally; no cache, pipeline, or predictor behavior is measured in the proof."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "The bare-metal M-mode program writes the sepc CSR directly and fires a deliberate M-mode ecall, showing trap entry leaves sepc untouched while mepc carries the trap pc."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises CSR behavior only, with no OS kernel code."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The write/readback probe pattern (all-ones then zero, comparing readbacks to written values) is a pure verification mechanism, portable to every RISC-V hart."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sepc-warl/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "sepc Software-Write Probe",
+    "summary": "M-mode WARL probe on QEMU 8.2.2: all-ones and zero software writes to sepc both read back exactly, so all 64 bits are software-writable on this hart. A deliberate M-mode ecall then shows trap entry leaves sepc untouched while mepc carries the trap pc.",
+    "specRows": [
+      [
+        "CHECKS",
+        "14"
+      ],
+      [
+        "MISMATCHES",
+        "0"
+      ],
+      [
+        "WRITE/READBACK",
+        "all-ones and zero, exact"
+      ],
+      [
+        "TRAP ENTRY",
+        "sepc untouched, mepc = trap pc"
+      ],
+      [
+        "RESULT",
+        "PASS x3 runs"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sepc-warl",
+    "terminalOutput": "$ make run-sepc-warl\\nchecks .................. 14\\nmismatches .............. 0\\nwrite all-ones .......... readback exact\\nwrite zero .............. readback exact\\ntrap entry .............. sepc untouched\\nRESULT: PASS x3 runs\\n\\nsepc WARL probe, 0 mismatches",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 14,
+    "failures": 0,
+    "stressItems": 14,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sepc-warl",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sepc-warl",
+    "terminalLabel": "Verified sepc-warl QEMU output",
     "showRepoLink": true
   }
 ];
