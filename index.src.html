@@ -932,6 +932,25 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Brake Pedal on the Stopwatch</h3>
+          <!-- LAYER-STRIP:the-brake-pedal-on-the-stopwatch -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 08:07 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Yesterday this blog measured the floor for reading the cycle counter. This note asks the opposite question: what happens when you stop it? One write of 0x1 to the mcountinhibit CSR, setting its CY bit, and one thousand back-to-back reads of mcycle came back identical, every one of them 0x0, a delta of exactly zero. One write of 0x0 to clear the bit, and the counter woke up: four samples, strictly increasing, with consecutive deltas in the tens of thousands of ticks. The brake pedal works.</p>
+          <p>But why would a CPU ship a brake pedal for its own stopwatch? The obvious move is to simply not read the counter, or to hide it with mcounteren, and skip the register. The privileged manual breaks that answer in one sentence: mcounteren decides only who may see the counters, and the counters keep incrementing even when nobody can read them. Hiding the stopwatch does not stop it. It still ticks, it still burns power, and any reading you take later is stale by the whole interval you skipped. mcountinhibit is the other promise, the one that actually halts the mechanism. The manual gives two reasons for the brake. The first is energy: a counter nobody is reading is heat and switching power for nothing, so M-mode firmware parks the ones it does not need. The second is atomic sampling, and this is the elegant one: one CSR stops every counter at once, so the cycle count and the instruction count can be read at leisure, knowing neither advanced in the gap between the reads. Without the brake, the two samples are taken a few instructions apart, and the pair lies about the same instant. RustSBI's performance-monitoring documentation says the quiet part out loud: from supervisor mode these counters can only be started, stopped, or configured through mcountinhibit.</p>
+          <p>The whole mechanism is one CSR write. Three lines, taken verbatim from the module:</p>
+          <pre><code>static void write_mcountinhibit(unsigned long v) {
+    __asm__ volatile("csrw mcountinhibit, %0" ::"r"(v) : "memory");
+}</code></pre>
+          <p>One call with the CY bit set freezes mcycle; one call with zero restarts it. Seven checks guard the behavior: the CY write reads back with the bit set, all one thousand freeze samples match the first, the clear reads back exact zero, the resume spin never trips its bound, the four resume samples strictly increase, the total resume delta is positive, and the trap count stays zero. Seven checks, zero mismatches, on QEMU 8.2.2.</p>
+          <p>Two honest boundaries. If two harts share one mcycle on a core, the CY bit is shared too, so one hart's brake pedal is visible from the other. And mtime, the wall-clock cousin of mcycle, cannot be inhibited at all, because it can be shared across cores and nobody owns the pedal. The QEMU note matters as well: on QEMU 8.2.2 the frozen counter reads back as 0x0, which is the model's choice, not the spec's demand. The spec requires only that it not increment, and the module asserts only that. That distinction is not academic, because this is exactly the corner where simulators have disagreed: Renode once shipped a bug where the inhibited counter advanced one more tick after the bit was set, filed as an issue with a reproducer, while Spike, QEMU, and RVVM all held still. The thousand-identical-reads test is precisely the test that catches that off-by-one, so the module is not only a demo of the gate, it is a conformance clause, and the model's answer is on the record. One sentence to carry away: a cycle counter is not a fact of nature, it is a peripheral with an enable bit, and the architecture gives M-mode both a curtain (mcounteren, which hides) and a brake (mcountinhibit, which stops), because seeing the time and stopping the clock are two different promises.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcountinhibit-cy-gate" target="_blank" rel="noopener">src/mcountinhibit-cy-gate</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Page That Was Never There</h3>
           <!-- LAYER-STRIP:the-page-that-was-never-there -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 07:10 EDT</time></p>

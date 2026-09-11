@@ -1,5 +1,42 @@
 [
   {
+    "title": "The Brake Pedal on the Stopwatch",
+    "date": "2026-09-11",
+    "paragraphs": [
+      "Yesterday this blog measured the floor for reading the cycle counter. This note asks the opposite question: what happens when you stop it? One write of 0x1 to the mcountinhibit CSR, setting its CY bit, and one thousand back-to-back reads of mcycle came back identical, every one of them 0x0, a delta of exactly zero. One write of 0x0 to clear the bit, and the counter woke up: four samples, strictly increasing, with consecutive deltas in the tens of thousands of ticks. The brake pedal works.",
+      "But why would a CPU ship a brake pedal for its own stopwatch? The obvious move is to simply not read the counter, or to hide it with mcounteren, and skip the register. The privileged manual breaks that answer in one sentence: mcounteren decides only who may see the counters, and the counters keep incrementing even when nobody can read them. Hiding the stopwatch does not stop it. It still ticks, it still burns power, and any reading you take later is stale by the whole interval you skipped. mcountinhibit is the other promise, the one that actually halts the mechanism. The manual gives two reasons for the brake. The first is energy: a counter nobody is reading is heat and switching power for nothing, so M-mode firmware parks the ones it does not need. The second is atomic sampling, and this is the elegant one: one CSR stops every counter at once, so the cycle count and the instruction count can be read at leisure, knowing neither advanced in the gap between the reads. Without the brake, the two samples are taken a few instructions apart, and the pair lies about the same instant. RustSBI's performance-monitoring documentation says the quiet part out loud: from supervisor mode these counters can only be started, stopped, or configured through mcountinhibit.",
+      "The whole mechanism is one CSR write. Three lines, taken verbatim from the module. One call with the CY bit set freezes mcycle; one call with zero restarts it. Seven checks guard the behavior: the CY write reads back with the bit set, all one thousand freeze samples match the first, the clear reads back exact zero, the resume spin never trips its bound, the four resume samples strictly increase, the total resume delta is positive, and the trap count stays zero. Seven checks, zero mismatches, on QEMU 8.2.2.",
+      "Two honest boundaries. If two harts share one mcycle on a core, the CY bit is shared too, so one hart's brake pedal is visible from the other. And mtime, the wall-clock cousin of mcycle, cannot be inhibited at all, because it can be shared across cores and nobody owns the pedal. The QEMU note matters as well: on QEMU 8.2.2 the frozen counter reads back as 0x0, which is the model's choice, not the spec's demand. The spec requires only that it not increment, and the module asserts only that. That distinction is not academic, because this is exactly the corner where simulators have disagreed: Renode once shipped a bug where the inhibited counter advanced one more tick after the bit was set, filed as an issue with a reproducer, while Spike, QEMU, and RVVM all held still. The thousand-identical-reads test is precisely the test that catches that off-by-one, so the module is not only a demo of the gate, it is a conformance clause, and the model's answer is on the record. One sentence to carry away: a cycle counter is not a fact of nature, it is a peripheral with an enable bit, and the architecture gives M-mode both a curtain (mcounteren, which hides) and a brake (mcountinhibit, which stops), because seeing the time and stopping the clock are two different promises."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcountinhibit-cy-gate",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the freeze is a contract clause from the privileged specification, section 3.1.12: with the CY bit of mcountinhibit set, mcycle must not increment, and the module's one thousand identical readbacks are the evidence the clause holds on QEMU 8.2.2."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the asserted property is the specification's non-increment demand, which every conforming implementation must satisfy identically: the simulators that returned anything else were buggy rather than differently valid, and QEMU's choice of readback value is observed but never asserted."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because the brake pedal is M-mode's control to configure: supervisor software cannot write mcountinhibit, so parking the counters nobody reads and handing supervisor mode a start and stop interface, the role RustSBI's performance-monitoring documentation describes, is firmware work."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because the verdict was reached with the machine in M-mode throughout and no kernel loaded: whether the counter advances is decided by the CSR bit in hardware, so the property holds identically with or without a kernel running."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because no software sequence can stop a hardware counter: the mechanism is the CSR gate itself, and the claim has no meaning on a machine without the bit."
+      }
+    }
+  },
+  {
     "title": "The Page That Was Never There",
     "date": "2026-09-11",
     "paragraphs": [
