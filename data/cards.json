@@ -12217,5 +12217,62 @@
     "repoLabel": "GitHub: xv6-getscount/user/forkisolation.c",
     "terminalLabel": "Verified forkisolation QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-sie-stie-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "sie.STIE gates S-mode timer delivery, QEMU",
+    "summary": "sie.STIE is the S-mode per-interrupt enable for the supervisor timer interrupt, independent of the global SIE gate. With STIE clear and SIE set, a pended STIP stays pending with zero traps; with STIE set, it traps exactly once with scause=0x8000000000000005.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sie.STIE as the S-mode enable bit for the supervisor timer interrupt, gating delivery independently of sstatus.SIE. The proof verifies this exact contract on QEMU 8.2.2: STIE clear with SIE set yields 0 traps and STIP pending, STIE set yields exactly 1 trap with scause=0x8000000000000005, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap counts and scause against the enable-bit rule: 18 checks, 0 mismatches. Whether the hart traps is determined by the STIE, SIE, and STIP bits, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "M-mode delegation via mideleg is setup for the test, not the property under test. The verified gate (STIE clear = no trap, STIE set = one trap) is exercised entirely in S-mode; the S-mode owns the sie register."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program sie to enable or mask individual interrupt sources at runtime. The verified property (STIE clear holds the timer pending, STIE set delivers it) is the per-interrupt enable the kernel's interrupt management depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: per-interrupt enable ANDed with the pending bit and the global enable selects trap vs pending. The same enable-gated event pattern appears in portable code wherever a per-source mask guards a shared event loop."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 in-program checks on QEMU 8.2.2: STIE clear with SIE set yields 0 traps and STIP pending, STIE set yields exactly 1 trap with scause=0x8000000000000005, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xf9ecc89d6da3d570, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sie-stie-gate",
+    "terminalOutput": "$ make sie-stie-gate.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel sie-stie-gate.elf\nSTIE=0 SIE=1: STIP=1 traps=0\nSTIE=1 SIE=1: trap scause=0x8000000000000005\nchecks=18 mismatches=0 checksum=0xf9ecc89d6da3d570\n\nsie.STIE gates S-mode timer delivery: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": 18,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sie-stie-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sie-stie-gate",
+    "terminalLabel": "Verified src-sie-stie-gate QEMU output",
+    "showRepoLink": true
   }
 ]

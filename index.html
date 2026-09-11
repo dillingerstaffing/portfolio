@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-075855">
+  <meta name="build-version" content="v20260911-080238">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -13593,6 +13593,63 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
     "repoLabel": "GitHub: xv6-getscount/user/forkisolation.c",
     "terminalLabel": "Verified forkisolation QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-sie-stie-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "sie.STIE gates S-mode timer delivery, QEMU",
+    "summary": "sie.STIE is the S-mode per-interrupt enable for the supervisor timer interrupt, independent of the global SIE gate. With STIE clear and SIE set, a pended STIP stays pending with zero traps; with STIE set, it traps exactly once with scause=0x8000000000000005.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sie.STIE as the S-mode enable bit for the supervisor timer interrupt, gating delivery independently of sstatus.SIE. The proof verifies this exact contract on QEMU 8.2.2: STIE clear with SIE set yields 0 traps and STIP pending, STIE set yields exactly 1 trap with scause=0x8000000000000005, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap counts and scause against the enable-bit rule: 18 checks, 0 mismatches. Whether the hart traps is determined by the STIE, SIE, and STIP bits, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "M-mode delegation via mideleg is setup for the test, not the property under test. The verified gate (STIE clear = no trap, STIE set = one trap) is exercised entirely in S-mode; the S-mode owns the sie register."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program sie to enable or mask individual interrupt sources at runtime. The verified property (STIE clear holds the timer pending, STIE set delivers it) is the per-interrupt enable the kernel's interrupt management depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: per-interrupt enable ANDed with the pending bit and the global enable selects trap vs pending. The same enable-gated event pattern appears in portable code wherever a per-source mask guards a shared event loop."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 in-program checks on QEMU 8.2.2: STIE clear with SIE set yields 0 traps and STIP pending, STIE set yields exactly 1 trap with scause=0x8000000000000005, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xf9ecc89d6da3d570, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sie-stie-gate",
+    "terminalOutput": "$ make sie-stie-gate.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel sie-stie-gate.elf\nSTIE=0 SIE=1: STIP=1 traps=0\nSTIE=1 SIE=1: trap scause=0x8000000000000005\nchecks=18 mismatches=0 checksum=0xf9ecc89d6da3d570\n\nsie.STIE gates S-mode timer delivery: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": 18,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sie-stie-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sie-stie-gate",
+    "terminalLabel": "Verified src-sie-stie-gate QEMU output",
     "showRepoLink": true
   }
 ];
@@ -87586,6 +87643,361 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "repo",
           "url": "https://github.com/dillingerstaffing/xv6-getscount"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sie-stie-gate|ISA": {
+    "item": "src-sie-stie-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines sie.STIE as the S-mode enable bit for the supervisor timer interrupt, gating delivery independently of sstatus.SIE. The proof verifies this exact contract on QEMU 8.2.2: STIE clear with SIE set yields 0 traps and STIP pending, STIE set yields exactly 1 trap with scause=0x8000000000000005, 18 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines sie.STIE as the S-mode enable bit for the supervisor timer interrupt, gating delivery independently of sstatus.SIE. The proof verifies this exact contract on QEMU 8.2.2: STIE clear with SIE set yields 0 traps and STIP pending, STIE set yields exactly 1 trap with scause=0x8000000000000005, 18 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 18 in-program checks on QEMU 8.2.2: STIE clear with SIE set yields 0 traps and STIP pending, STIE set yields exactly 1 trap with scause=0x8000000000000005, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the STIE enable rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sie-stie-gate|MICROARCH": {
+    "item": "src-sie-stie-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks trap counts and scause against the enable-bit rule: 18 checks, 0 mismatches. Whether the hart traps is determined by the STIE, SIE, and STIP bits, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks trap counts and scause against the enable-bit rule: 18 checks, 0 mismatches. Whether the hart traps is determined by the STIE, SIE, and STIP bits, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records trap counts and scause only: 18 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sie-stie-gate|FIRMWARE": {
+    "item": "src-sie-stie-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode delegation via mideleg is setup for the test, not the property under test. The verified gate (STIE clear = no trap, STIE set = one trap) is exercised entirely in S-mode; the S-mode owns the sie register.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode delegation via mideleg is setup for the test, not the property under test. The verified gate (STIE clear = no trap, STIE set = one trap) is exercised entirely in S-mode; the S-mode owns the sie register."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows M-mode delegation as test setup; the gate is exercised entirely in S-mode, which owns the sie register.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is exercised by S-mode itself, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sie-stie-gate|KERNEL": {
+    "item": "src-sie-stie-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels program sie to enable or mask individual interrupt sources at runtime. The verified property (STIE clear holds the timer pending, STIE set delivers it) is the per-interrupt enable the kernel's interrupt management depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels program sie to enable or mask individual interrupt sources at runtime. The verified property (STIE clear holds the timer pending, STIE set delivers it) is the per-interrupt enable the kernel's interrupt management depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the per-interrupt enable the kernel's interrupt management toggles at runtime.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the enable gate the kernel's interrupt management depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sie-stie-gate|ALGORITHM": {
+    "item": "src-sie-stie-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure gating rule: per-interrupt enable ANDed with the pending bit and the global enable selects trap vs pending. The same enable-gated event pattern appears in portable code wherever a per-source mask guards a shared event loop.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure gating rule: per-interrupt enable ANDed with the pending bit and the global enable selects trap vs pending. The same enable-gated event pattern appears in portable code wherever a per-source mask guards a shared event loop."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the gate as per-source enable ANDed with pending and global enable, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
         }
       },
       {
