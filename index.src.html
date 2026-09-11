@@ -948,6 +948,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bell and the Switch</h3>
+          <!-- LAYER-STRIP:the-bell-and-the-switch -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 11:06 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Boot a bare-metal RISC-V machine in M-mode (machine mode, the most privileged; firmware runs here). Set mstatus.MIE, the master interrupt switch, and write zero to mie, the register with one enable bit per interrupt source. Now ring the bell: write 1 to the CLINT's msip register for hart 0. The CLINT, the core-local interruptor that raises software interrupts, lifts the MSIP bit, bit 3 of the pending register mip. Read mip: 0x8. Then wait. Two million reads of the cycle counter roll by, a window in which an enabled interrupt would have fired within a handful of instructions, and the trap count stays zero, mip still 0x8. The bell is ringing and the hart does not move. One more write: set bit 3 of mie, the MSIE enable. Exactly one trap fires. mcause reads 0x8000000000000003: the top bit says interrupt, the 3 says machine software interrupt. The handler clears the CLINT's msip, and the world goes quiet: the window after shows no re-delivery.</p>
+          <p>Why two bits for one interrupt? The obvious machine needs only one: the pending bit says the interrupt wants attention, so take it. The break is who writes what. The CLINT sets MSIP when someone writes its msip register: that is the outside world talking. Firmware writes MSIE: that is the hart deciding, per source, whether it may be interrupted right now. Without the split, a handler could never keep the timer interrupt armed while it services a software interrupt, because arming would be taking. And the split is what makes a level-triggered source safe: the pending bit stays set until the handler clears the source, so with the gate already open the trap would refire the instant the handler returns. The discipline that follows is to clear the source first, then leave. This is not a convention. A public bug report against an open-source RISC-V core's testbench described its MSIP stuck high from reset, so the first time firmware opened the gate the hart took a machine software interrupt nobody had rung for. Hardware logic, not habit.</p>
+          <p>The trap rule, from the privileged architecture's own text: interrupt i is taken when mstatus.MIE is set and both mie[i] and mip[i] are set. Three bits, one decision. mie is the enable half, written by the running code; mip is the pending half, written by the world, here by a 32-bit MMIO write to the CLINT at 0x02000000. The test checked the contract from both directions. With MIE set and mie at 0x0, a pending MSIP must never trap; setting mie bit 3 while MSIP is still pending must deliver the interrupt at the next instruction boundary. The machine timer was disarmed at startup, its compare register set to all ones, so the software interrupt was the only source that could ever fire; MIE stayed set for the whole run, so mie.MSIE was the only gating variable.</p>
+          <p>The four checks that carry the argument, verbatim from the module:</p>
+          <pre><code>check(trap_count == 0, "trap fired while mie.MSIE was clear");
+check(mie == MIE_MSIE, "mie readback != 0x8 after csrs mie, 8");
+check(last_mcause == MCAUSE_MSI, "trap mcause != 0x8000000000000003");
+check(trap_count == 1, "trap_count != 1 after phase-B enable");</code></pre>
+          <p>Twenty checks in all, zero failures. Three runs on QEMU 8.2.2 produced byte-identical transcripts, checksummed identically. That is what a tight test looks like: the expected outputs are small integers, a trap count of 0 or 1, a cause code, a readback, so there is nowhere for nondeterminism to hide.</p>
+          <p>The same shape repeats one privilege level down, with the pen in a different hand. M-mode firmware owns mie.MSIE; a supervisor kernel cannot touch it. So its inter-processor interrupts arrive as supervisor software interrupts instead, raised through firmware's sbi_send_ipi. Linux's RISC-V interrupt handling dispatches software interrupts to handle_ipi(), the IPI handler. Two worlds, same pattern: someone else's firmware owns the enable bit, so your level gets the pending bit plus a polite ask. Two honest boundaries: this ran on QEMU 8.2.2's model of a hart, not on silicon, so it proves the contract as the emulator implements it; and the mepc readback in the proof log is this exact binary's resume address, a measurement, not a claim about other builds. One sentence to carry away: an interrupt is not a request, it is a request plus a permission, and the permission is the half you get to write.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-msie-gate" target="_blank" rel="noopener">src/mie-msie-gate</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Bit That Reroutes a Trap</h3>
           <!-- LAYER-STRIP:the-bit-that-reroutes-a-trap -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 10:05 EDT</time></p>
