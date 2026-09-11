@@ -11160,5 +11160,131 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/lrsc-store-invalidate",
     "terminalLabel": "Run log",
     "showRepoLink": true
+  },
+  {
+    "id": "src-medeleg-ecall",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "medeleg bit 9: supervisor ecall delegation",
+    "summary": "M-mode writes medeleg bit 9, drops to S-mode, and executes ecall. With the bit set, the trap lands in the S-mode handler with scause at 9 and sepc at the ecall, while the M-mode handler sees zero traps. With the bit cleared, the same ecall traps to M-mode with mcause 9, proving the bit is what moves the trap.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because medeleg is the privileged ISA's own routing table for synchronous exceptions, and the proof executes the bit-9 write and reads the routing back as trap landings in both handler modes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because delegation is a functional routing contract in QEMU, with no pipeline, cache, or predictor behavior measured"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because trap delegation is configured by M-mode boot firmware before any supervisor code runs, and the proof exercises the exact write and readback that configuration consists of"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the S-mode handler is a bare-metal probe with no scheduling, paging, or driver subsystem running"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because moving an ecall between handlers is a register-routed control transfer, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "17 trap-landing, cause-code, and handler-mode checks across both delegation states, 0 mismatches, PASS across 3 byte-identical runs"
+      ],
+      [
+        "DELEGATED",
+        "scause 0x9 in the S-mode handler, sepc at the ecall, 0 M-mode traps"
+      ],
+      [
+        "UNDELEGATED",
+        "mcause 9 in the M-mode handler, mepc at the ecall, S-mode trap count unchanged"
+      ],
+      [
+        "BOOT VALUE",
+        "medeleg 0x0, bit-9 write 0x200 reads back 0x200"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / medeleg-ecall",
+    "terminalOutput": "$ qemu-system-riscv64 -machine virt -nographic -bios none -kernel medeleg-ecall.elf\nboot: medeleg=0x0\nprobe: csrw medeleg, 0x200; readback=0x200\nphase 1 results:\n  scause  = 0x9\n  sepc    = 0x800003ec\n  S-mode traps  = 1\n  sstatus.SPP   = 1\n  M-mode traps  = 0\nphase 2 results:\n  mcause (ecall) = 0x9\n  mepc (ecall)   = 0x80000694\n  M-mode traps  = 2\nchecksum (FNV-1a over verdict values) = 0x024788976af70a1b\nchecks=17 mismatches=0\nRESULT: PASS\n\nmedeleg bit 9: S-mode ecall lands in S-mode when delegated",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": 17,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-ecall",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/medeleg-ecall",
+    "terminalLabel": "Verified medeleg-ecall QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-132-sv39-vpn-extract",
+    "kicker": "RISC-V VIRTUAL MEMORY",
+    "title": "Sv39 address field extraction",
+    "summary": "An Sv39 address is three 9-bit VPN fields above a 12-bit page offset by construction. vpn_extract pulls each field with one shift and one mask, page_offset takes the low 12 bits, and recombine puts the four fields back; extract-then-recombine returns the input on every case. A canonical-address row feeds real sign-extended 64-bit addresses and gets identical results, because extraction only reads bits 38:0.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because the 9-9-9-12 field split is the privileged ISA's own Sv39 address contract, and the proof checks the exact bit boundaries the specification fixes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the proof never leaves user space and configures no trap vector, CSR, or privilege level"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the lab measures the extractor against a naive per-bit reference with no paging, scheduling, or driver layer running"
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "the shift and mask identities are identical on every ISA, and the differential checks against the independent per-bit reference are the value"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "26,777,374 inputs checked against a per-bit loop reference, recombine(extract(va)) equal to va on every case, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "117 directed edges plus all-ones and all-zeros, 39 canonical-address cases, the full 24-bit sweep, and 10,000,000 fixed-seed random 39-bit values"
+      ],
+      [
+        "CHECKSUM",
+        "0x262f6db6f6303175, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "3.460 ns/value at -O2, best of 5, checksum-sinked so the loop survives the optimizer"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 132-sv39-vpn-extract",
+    "terminalOutput": "$ make run\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o test_vpn_extract test_vpn_extract.c vpn_extract.c\n./test_vpn_extract\nchecks=26777374 mismatches=0 checksum=262f6db6f6303175\n\n$ make bench\nrep 3: 34595127 ns total, 3.460 ns/value\nbest=3.460 ns/value\n\nvpn_extract: recombine(extract(va)) == va on 26,777,374 cases",
+    "verificationEnvironment": "Host",
+    "checks": 26777374,
+    "failures": 0,
+    "stressItems": 26777374,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/132-sv39-vpn-extract",
+    "repoLabel": "GitHub: systems-lab/lab/132-sv39-vpn-extract",
+    "terminalLabel": "Verified lab-132-sv39-vpn-extract host output",
+    "showRepoLink": true
   }
 ]

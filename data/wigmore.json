@@ -45391,6 +45391,856 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "src-medeleg-ecall",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "matters because medeleg is the privileged ISA's own routing table for synchronous exceptions, and the proof executes the bit-9 write and reads the routing back as trap landings in both handler modes",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters because medeleg is the privileged ISA's own routing table for synchronous exceptions, and the proof executes the bit-9 write and reads the routing back as trap landings in both handler modes"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Boot medeleg reads 0x0; writing 0x200 reads back 0x200, so bit 9 is writable and the write sticks. With the bit set, an S-mode ecall lands in the S-mode handler with scause 0x9, sepc at the ecall site, and 0 M-mode traps; with the bit cleared the identical ecall traps to M-mode with mcause 9. 17 checks, 0 mismatches, byte-identical across 3 QEMU 8.2.2 runs.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The privileged ISA manual defines medeleg as the exception delegation register: when bit i is set, an exception with cause code i is delegated to the next lower privilege mode instead of trapping to M-mode.",
+          "source": {
+            "cite": "riscv-isa-manual, Privileged Architecture, Machine Trap Setup",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The bit-9 write demonstrably re-routes the trap: identical ecalls land in different handlers as the bit changes."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A routing register's contract is proven by the trap landings it produces, not by its readback alone; both phases together show the bit is the cause."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The two phases differ only in bit 9 and land in different handlers, twice observed per run."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "The specification names bit 9 for supervisor ecall delegation and the measured landings match that rule."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Measured landings under both bit states are the delegation contract executing."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-ecall",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "not here because delegation is a functional routing contract in QEMU, with no pipeline, cache, or predictor behavior measured",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because delegation is a functional routing contract in QEMU, with no pipeline, cache, or predictor behavior measured"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof records only trap landings, cause codes, sepc values, and handler-mode counters; it contains no cycle counts, no pipeline stalls, and no cache or predictor measurements.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "All 3 runs are byte-identical UART transcripts, consistent with QEMU's functional delegation model: the same bit state always routes the same way.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "Nothing in the proof varies with or observes implementation internals."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A functional register contract is proven by its landings; byte-identical runs argue routing, not timing."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measured data contains no implementation-behavior signal at all."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "Deterministic transcripts confirm functional, not timed, behavior."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Absence of any microarchitectural measurement keeps the slot dim."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-ecall",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "matters because trap delegation is configured by M-mode boot firmware before any supervisor code runs, and the proof exercises the exact write and readback that configuration consists of",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters because trap delegation is configured by M-mode boot firmware before any supervisor code runs, and the proof exercises the exact write and readback that configuration consists of"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The M-mode program writes medeleg bit 9, verifies the 0x200 readback, and restores 0x0 afterward; the routing change takes effect only from that privileged write.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The privileged ISA manual places medeleg in M-mode: only machine-mode software can configure which exceptions are delegated to supervisor mode.",
+          "source": {
+            "cite": "riscv-isa-manual, Privileged Architecture, Machine Trap Setup",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The write that changes routing is a privileged configuration act; supervisor code cannot perform it."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Configuration that only M-mode can perform is firmware's domain, whether it runs at boot or inside a probe."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The routing change is caused by the privileged write, not by anything the S-mode payload does."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "The specification assigns the delegation register to M-mode."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "A privileged-only configuration act is exactly what the firmware layer covers."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-ecall",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "not here because the S-mode handler is a bare-metal probe with no scheduling, paging, or driver subsystem running",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because the S-mode handler is a bare-metal probe with no scheduling, paging, or driver subsystem running"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The S-mode code is a one-instruction ecall payload plus a trap handler that records scause and sepc; it does no scheduling, no paging, and no device I/O.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "satp is untouched and the address space stays identity-mapped; no virtual memory, syscall, or driver layer is exercised.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The S-mode handler is a probe, not a kernel: it measures the routing, it does not manage resources."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Running at S-mode does not make code a kernel; a card lights the kernel layer only when verification involved a kernel subsystem."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The handler's only job is recording cause and address."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "No kernel subsystem appears anywhere in the measurement path."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "A probe handler is not a kernel subsystem, so the slot stays dim."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-ecall",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "not here because moving an ecall between handlers is a register-routed control transfer, not an ISA-independent computational mechanism",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because moving an ecall between handlers is a register-routed control transfer, not an ISA-independent computational mechanism"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified claim is that writing one CSR bit re-routes a hardware trap; there is no computed value and no portable C counterpart to compare against an instruction.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The privileged ISA manual describes delegation as a register-to-trap-routing rule, a machine-contract behavior rather than a mathematical function of the bit.",
+          "source": {
+            "cite": "riscv-isa-manual, Privileged Architecture, Machine Trap Setup",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The mechanism cannot be stated without the CSR and the trap hardware, so it is not ISA-independent."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Algorithmic claims are operations identical across ISAs; control routing tied to one ISA's registers fails that test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "There is nothing to compute, only something to route."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "The specification frames delegation as contract, not computation."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "A register-routed transfer is not a portable computational mechanism."
+        }
+      ]
+    },
+    {
+      "item": "lab-132-sv39-vpn-extract",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "matters because the 9-9-9-12 field split is the privileged ISA's own Sv39 address contract, and the proof checks the exact bit boundaries the specification fixes",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters because the 9-9-9-12 field split is the privileged ISA's own Sv39 address contract, and the proof checks the exact bit boundaries the specification fixes"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "26,777,374 inputs (117 directed edges, all-ones and all-zeros rows, 39 canonical-address cases, the full 24-bit sweep, 10,000,000 fixed-seed random 39-bit values); recombine(extract(va)) equals va on every case, 0 mismatches; the canonical-address row feeds bit-38 sign-extended addresses unmasked and reads identical fields.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The privileged ISA manual defines the Sv39 virtual address as VPN[2] in bits 38:30, VPN[1] in 29:21, VPN[0] in 20:12, and the page offset in 11:0.",
+          "source": {
+            "cite": "riscv-isa-manual, Privileged Architecture, Sv39",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The extracted fields land exactly on the specification's bit boundaries; the recombine identity holds because the four masks are disjoint and cover bits 38:0."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "An address format is a contract: fields are where the specification puts them, and a correct extractor must respect those boundaries."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "Every case checks the recombine identity against the specification's boundaries."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "The specification fixes the field positions the extractor must honor."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Measured boundary agreement is the Sv39 address contract executing."
+        }
+      ]
+    },
+    {
+      "item": "lab-132-sv39-vpn-extract",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "not here because the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof ran natively on a host machine and records only outputs and a checksum; no pipeline, cache, or predictor behavior was measured.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "FNV-1a 262f6db6f6303175 is byte-identical across -O0, -O2, and ASan+UBSan builds, which argues functional correctness, not implementation behavior.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "Nothing in the proof observes how the host executed the shifts and masks."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Identical checksums across optimization levels prove the same answers, not the same execution."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The data contains no implementation-behavior signal."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "Cross-build checksums argue output stability, not timing."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "No measured microarchitecture keeps the slot dim."
+        }
+      ]
+    },
+    {
+      "item": "lab-132-sv39-vpn-extract",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "not here because the proof never leaves user space and configures no trap vector, CSR, or privilege level",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because the proof never leaves user space and configures no trap vector, CSR, or privilege level"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The lab is a user-space C program; it configures no trap vector, writes no CSR, and changes no privilege level.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "Its oracle is a per-bit loop reference, a pure software construction, not firmware behavior.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "No firmware action could change or validate the extracted fields."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Firmware configures machine-mode state; a user-space field extractor has none to configure."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The proof never leaves user space."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "The oracle is software, not machine configuration."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "No privilege state involved keeps the slot dim."
+        }
+      ]
+    },
+    {
+      "item": "lab-132-sv39-vpn-extract",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "not here because the lab measures the extractor against a naive per-bit reference with no paging, scheduling, or driver layer running",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because the lab measures the extractor against a naive per-bit reference with no paging, scheduling, or driver layer running"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof measures the extractor against a naive per-bit reference; no page table is walked, no TLB is consulted, and no kernel code runs.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "satp, ASIDs, and page-table entries are absent from the module; the lab knows only integers and fields.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The kernel relevance is future use, not present measurement."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A card lights the kernel layer only when verification involved a kernel subsystem; use without involvement does not count."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measurement path contains no paging or kernel code."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "The module's world is integers, not page tables."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Uninvolved kernel value stays dim."
+        }
+      ]
+    },
+    {
+      "item": "lab-132-sv39-vpn-extract",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "the shift and mask identities are identical on every ISA, and the differential checks against the independent per-bit reference are the value",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "the shift and mask identities are identical on every ISA, and the differential checks against the independent per-bit reference are the value"
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The shift and mask identities are pure arithmetic on integers: each field is the address shifted right by twelve plus nine times the field index, keeping the low nine bits. The differential proof compares against a structurally different per-bit oracle over 26,777,374 cases with 0 mismatches.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The recombine identity follows from mask disjointness, a mathematical fact independent of any ISA.",
+          "source": {
+            "cite": "proof log",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The verified claim is the field decomposition itself, which would compute identically on any machine."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Pure computational mechanisms are portable by definition; the differential proof is the value, and the ISA only names the field layout."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The oracle differs structurally from the implementation, ruling out shared bugs."
+        },
+        {
+          "from": [
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "normal",
+          "note": "Disjoint masks are a mathematical guarantee, not an ISA feature."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The mechanism travels across ISAs unchanged."
+        }
+      ]
     }
   ]
 }
