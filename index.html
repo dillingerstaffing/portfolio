@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-215129">
+  <meta name="build-version" content="v20260911-221604">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -17167,6 +17167,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "",
     "terminalLabel": "",
     "checks": 12359296,
+    "failures": 0
+  },
+  {
+    "id": "src-stval-ecall-capture",
+    "kicker": "U-mode ecall traps record stval 0; scause 0x8",
+    "title": "stval on environment call, zero capture",
+    "summary": "M-mode program delegating U-mode ecalls to S-mode, verifying the handler records scause 0x8 with stval 0, since the spec defines stval content only for address faults.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged architecture defines stval content for address faults but not for environment calls, so the expected zero is the machine contract's silence."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test records trap CSR values, not pipeline or cache internals."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Delegation via medeleg bit 8 selects that U-mode ecalls arrive in S-mode, which is machine-mode firmware's configuration."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal without an OS; no scheduler or virtual memory is involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is trap CSR capture behavior, not a software algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-ecall-capture/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "8 checks on QEMU 8.2.2: S-mode ecall handler records scause 0x8 with stval 0x0 across 3 runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x6d35f7bd48b0629d, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with medeleg bit 8"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/stval-ecall-capture",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 8,
+    "failures": 0
+  },
+  {
+    "id": "lab-137-satp-mode-validate",
+    "kicker": "RV64 satp MODE admits 0, 8, 9, 10; 16-case table",
+    "title": "satp MODE legality validator, RV64",
+    "summary": "Host program implementing satp_mode_legal_rv64 from the spec table, returning 1 for defined schemes (Bare, Sv39, Sv48, Sv57) and 0 otherwise.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "RV64 satp MODE values and their defined translation schemes come from the privileged architecture's Table 114."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test validates a 16-case table in software; no cache or pipeline behavior is involved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The verdict is pure table lookup; no SBI or boot-time setup is needed."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No OS code is involved; the module validates the table in isolation."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "A deterministic 16-case lookup maps each 4-bit MODE to legal or illegal, a portable computational mechanism."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "22 checks on Host: satp_mode_legal_rv64 matches the hand-transcribed spec-table oracle over all 16 4-bit values, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "2.151 ns/validate at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "7eedb40a7904b74b, identical across builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host, native execution"
+      ]
+    ],
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab",
+    "repoLabel": "dillingerstaffing/systems-lab lab/137-satp-mode-validate",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 22,
     "failures": 0
   }
 ];
@@ -125350,6 +125464,629 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 4,
         "kind": "generalization",
         "text": "A verified claim about a deterministic input-to-output mapping engages ALGORITHM, because the mechanism is portable reasoning about bits, not a machine-specific behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-stval-ecall-capture|ISA": {
+    "item": "src-stval-ecall-capture",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged architecture defines stval content for address faults but not for environment calls, so the expected zero is the machine contract's silence.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged architecture defines stval content for address faults but not for environment calls, so the expected zero is the machine contract's silence."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "8 checks, 0 mismatches: S-mode ecall handler records scause 0x8 with stval 0x0 across 3 QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-ecall-capture/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture defines stval content for instruction, load, store address-misaligned and access and page faults; environment calls have no faulting address to report.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The observed zero matches the contract's defined silence for ecalls."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim that depends on what the machine contract specifies (and leaves unspecified) engages the ISA layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-stval-ecall-capture|MICROARCH": {
+    "item": "src-stval-ecall-capture",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The test records trap CSR values, not pipeline or cache internals.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The test records trap CSR values, not pipeline or cache internals."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records scause and stval CSR values on traps; no pipeline, cache, or predictor state was measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-ecall-capture/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The measurement surface is CSR values only."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at MICROARCH when the verification records architectural state and varies no implementation detail."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-stval-ecall-capture|FIRMWARE": {
+    "item": "src-stval-ecall-capture",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Delegation via medeleg bit 8 selects that U-mode ecalls arrive in S-mode, which is machine-mode firmware's configuration.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Delegation via medeleg bit 8 selects that U-mode ecalls arrive in S-mode, which is machine-mode firmware's configuration."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module sets medeleg bit 8 in M-mode so U-mode ecalls trap to S-mode; the proof log shows the delegation and the S-mode arrival.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-ecall-capture/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture assigns trap delegation to machine-mode software through medeleg.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Delegation configuration is machine-mode firmware's job."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim about trap delegation engages FIRMWARE, because medeleg is programmed by machine-mode software."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-stval-ecall-capture|KERNEL": {
+    "item": "src-stval-ecall-capture",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The module runs bare metal without an OS; no scheduler or virtual memory is involved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The module runs bare metal without an OS; no scheduler or virtual memory is involved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module runs bare metal in M-mode and S-mode with no operating system present.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-ecall-capture/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "With no OS, the property cannot be load-bearing for kernel work."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at KERNEL when no kernel mechanisms are involved."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-stval-ecall-capture|ALGORITHM": {
+    "item": "src-stval-ecall-capture",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The property is trap CSR capture behavior, not a software algorithm.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The property is trap CSR capture behavior, not a software algorithm."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verified property is which value the hart writes to stval on an ecall trap, a hardware capture behavior.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-ecall-capture/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "CSR capture on traps is machine behavior, not a computational mechanism."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at ALGORITHM when the property is hardware behavior rather than portable computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-137-satp-mode-validate|ISA": {
+    "item": "lab-137-satp-mode-validate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "RV64 satp MODE values and their defined translation schemes come from the privileged architecture's Table 114.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "RV64 satp MODE values and their defined translation schemes come from the privileged architecture's Table 114."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "22 checks, 0 mismatches: satp_mode_legal_rv64 matches the hand-transcribed spec-table oracle over all 16 4-bit MODE values.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture Table 114 defines the RV64 satp MODE values: 0 Bare, 8 Sv39, 9 Sv48, 10 Sv57.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The validator's table is the ISA's table."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim that reproduces the ISA's defined table engages the ISA layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-137-satp-mode-validate|MICROARCH": {
+    "item": "lab-137-satp-mode-validate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The test validates a 16-case table in software; no cache or pipeline behavior is involved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The test validates a 16-case table in software; no cache or pipeline behavior is involved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module is a host-side 16-case table lookup; no cache, TLB, or pipeline behavior was measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verification is pure software table lookup."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at MICROARCH when the verification is a software table check with no hardware involvement."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-137-satp-mode-validate|FIRMWARE": {
+    "item": "lab-137-satp-mode-validate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The verdict is pure table lookup; no SBI or boot-time setup is needed.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verdict is pure table lookup; no SBI or boot-time setup is needed."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verdict comes from table lookup alone; no SBI call or boot setup appears in the proof log.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The property needs no firmware."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at FIRMWARE when the verification needs no boot or SBI services."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-137-satp-mode-validate|KERNEL": {
+    "item": "lab-137-satp-mode-validate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "No OS code is involved; the module validates the table in isolation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "No OS code is involved; the module validates the table in isolation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module validates the MODE table in isolation on the host; no OS code is involved.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "With no OS, the table cannot be load-bearing for kernel work."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at KERNEL when the verification involves no kernel mechanisms."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-137-satp-mode-validate|ALGORITHM": {
+    "item": "lab-137-satp-mode-validate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "A deterministic 16-case lookup maps each 4-bit MODE to legal or illegal, a portable computational mechanism.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "A deterministic 16-case lookup maps each 4-bit MODE to legal or illegal, a portable computational mechanism."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The function maps each 4-bit MODE to legal (1) or illegal (0) deterministically; 22 checks confirm the mapping.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The mapping is a pure function of its input."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A verified claim about a deterministic input-to-output mapping engages ALGORITHM."
       }
     ],
     "inferences": [

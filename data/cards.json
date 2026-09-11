@@ -15497,5 +15497,119 @@
     "terminalLabel": "",
     "checks": 12359296,
     "failures": 0
+  },
+  {
+    "id": "src-stval-ecall-capture",
+    "kicker": "U-mode ecall traps record stval 0; scause 0x8",
+    "title": "stval on environment call, zero capture",
+    "summary": "M-mode program delegating U-mode ecalls to S-mode, verifying the handler records scause 0x8 with stval 0, since the spec defines stval content only for address faults.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged architecture defines stval content for address faults but not for environment calls, so the expected zero is the machine contract's silence."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test records trap CSR values, not pipeline or cache internals."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Delegation via medeleg bit 8 selects that U-mode ecalls arrive in S-mode, which is machine-mode firmware's configuration."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal without an OS; no scheduler or virtual memory is involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is trap CSR capture behavior, not a software algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-ecall-capture/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "8 checks on QEMU 8.2.2: S-mode ecall handler records scause 0x8 with stval 0x0 across 3 runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x6d35f7bd48b0629d, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with medeleg bit 8"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/stval-ecall-capture",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 8,
+    "failures": 0
+  },
+  {
+    "id": "lab-137-satp-mode-validate",
+    "kicker": "RV64 satp MODE admits 0, 8, 9, 10; 16-case table",
+    "title": "satp MODE legality validator, RV64",
+    "summary": "Host program implementing satp_mode_legal_rv64 from the spec table, returning 1 for defined schemes (Bare, Sv39, Sv48, Sv57) and 0 otherwise.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "RV64 satp MODE values and their defined translation schemes come from the privileged architecture's Table 114."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test validates a 16-case table in software; no cache or pipeline behavior is involved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The verdict is pure table lookup; no SBI or boot-time setup is needed."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No OS code is involved; the module validates the table in isolation."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "A deterministic 16-case lookup maps each 4-bit MODE to legal or illegal, a portable computational mechanism."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "22 checks on Host: satp_mode_legal_rv64 matches the hand-transcribed spec-table oracle over all 16 4-bit values, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "2.151 ns/validate at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "7eedb40a7904b74b, identical across builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host, native execution"
+      ]
+    ],
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab",
+    "repoLabel": "dillingerstaffing/systems-lab lab/137-satp-mode-validate",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 22,
+    "failures": 0
   }
 ]
