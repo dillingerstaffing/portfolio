@@ -15776,5 +15776,115 @@
     "terminalLabel": "",
     "checks": 19,
     "failures": 0
+  },
+  {
+    "id": "user-sbrk-grow",
+    "kicker": "XV6",
+    "title": "Successive sbrk grows accumulate on the break",
+    "summary": "An xv6 user-space test records the break, grows it twice in a row, and checks each growth returns the previous break while the final reading equals the start plus both increments; a canary written across the whole grown region reads back byte-exact, proving both new pages are usable.",
+    "checks": 4,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/sbrkgrow.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4 checks on QEMU 8.2.2: sbrk(4096) returns the old break b, sbrk(2048) returns b+4096, sbrk(0) reads b+6144, and a canary across all 6144 new bytes reads back byte-exact; measured b=0x4000, r1=0x4000, r2=0x5000, c=0x5800, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x96FFFE6F5707C46D, the FNV-1a fold of the break readbacks and canary result, independently recomputed on the host to the same value, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, no kernel changes"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / sbrkgrow",
+    "terminalLabel": "Verified xv6 sbrk QEMU output",
+    "terminalOutput": "$ sbrkgrow\ncheck 1: sbrk(4096) returned old break 0x4000\ncheck 2: sbrk(2048) returned 0x5000 == 0x4000+4096, additive\ncheck 3: sbrk(0) reads 0x5800 == 0x4000+6144, sum of grows\ncheck 4: 6144-byte canary write/readback byte-exact\nchecksum: 0x96FFFE6F5707C46D\nsbrk-grow values: b=0x4000 r1=0x4000 r2=0x5000 c=0x5800\nchecks: 4 mismatches: 0\nPASS: two positive sbrk grows accumulate additively (4096 then 2048 shifts the break by 6144), whole region usable\n$",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the verified contract is xv6's break bookkeeping, not the machine contract: the module asserts break addresses and a canary readback, which would behave identically on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts break addresses and byte-exact readbacks across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the verified property is the sbrk growth contract: sys_sbrk must advance the break by exactly each requested increment, and the module checks two successive grows accumulate to b+6144 with both new pages writable."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim depends on xv6's growproc behavior, not a portable mechanism: it states what this kernel does with successive grows, not a computation another ISA could share."
+      }
+    }
+  },
+  {
+    "id": "src-fflags-uf-underflow",
+    "kicker": "fflags UF bit sets on underflowing fmul.d; others stay 0",
+    "title": "fflags UF (underflow) accrual on fmul.d",
+    "summary": "M-mode program clearing fcsr.fflags, executing fmul.d on two tiny doubles whose product underflows, and verifying the UF bit sets alongside NX with no other accrued flag moving, then clearing back to zero.",
+    "checks": 15,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/fflags-uf-underflow",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-uf-underflow/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "15 checks on QEMU 8.2.2: fmul.d on two tiny doubles sets fflags UF and NX with no other flag moving, clear restores zero, across 3 byte-identical runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x694ad22729ed2d16, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with FS enabled"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / fflags-uf-underflow",
+    "terminalLabel": "",
+    "terminalOutput": "",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The F extension defines the accrued exception flags including UF for underflow, so the observed set is the machine contract in action."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is hardware flag accrual on an underflowing operation, not a software algorithm."
+      }
+    }
   }
 ]

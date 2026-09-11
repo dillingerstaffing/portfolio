@@ -109591,6 +109591,650 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "user-sbrk-grow",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Not at ISA because the verified contract is xv6's break bookkeeping, not the machine contract: the module asserts break addresses and a canary readback, which would behave identically on any RISC-V implementation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ISA because the verified contract is xv6's break bookkeeping, not the machine contract: the module asserts break addresses and a canary readback, which would behave identically on any RISC-V implementation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The test asserts sbrk(0) readings and a 6144-byte canary readback across 3 byte-identical QEMU 8.2.2 runs, 0 mismatches; none of the checks names an instruction, CSR, trap, or memory-model rule.",
+          "source": {
+            "tier": "lab",
+            "cite": "xv6-getscount PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The verdicts depend only on xv6's sys_sbrk and growproc behavior, not on the machine contract."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at ISA when the verified property would behave identically on any implementation of the machine contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-sbrk-grow",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof asserts break addresses and byte-exact readbacks across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the proof asserts break addresses and byte-exact readbacks across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "No check measures time: the assertions are break addresses (b, b+4096, b+6144) and a byte-exact canary readback, with the FNV-1a checksum identical across 3 runs.",
+          "source": {
+            "tier": "lab",
+            "cite": "xv6-getscount PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The property is which bytes the pages hold and where the break sits, not how fast anything ran."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at MICROARCH when no timing is measured and the property is a value invariant, not a performance behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-sbrk-grow",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The test is an xv6 user program running under the shell; its only syscalls are sbrk and the write and exit calls used for reporting, per the xv6-getscount PROOF.md.",
+          "source": {
+            "tier": "lab",
+            "cite": "xv6-getscount PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "With no machine-mode register or boot-time setup involved, the property cannot be load-bearing for firmware work."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at FIRMWARE when no boot-time machine-mode software takes part in the verified behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-sbrk-grow",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because the verified property is the sbrk growth contract: sys_sbrk must advance the break by exactly each requested increment, and the module checks two successive grows accumulate to b+6144 with both new pages writable.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at KERNEL because the verified property is the sbrk growth contract: sys_sbrk must advance the break by exactly each requested increment, and the module checks two successive grows accumulate to b+6144 with both new pages writable."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "sbrk(4096) returned the old break b, sbrk(2048) returned b+4096, sbrk(0) read b+6144, and the 6144-byte canary read back byte-exact, 0 mismatches across 3 byte-identical QEMU 8.2.2 runs.",
+          "source": {
+            "tier": "lab",
+            "cite": "xv6-getscount PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The checks exercise the kernel's sys_sbrk and growproc path, the same path every xv6 heap growth takes.",
+          "source": {
+            "tier": "reference",
+            "cite": "kernel/proc.c sys_sbrk",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/proc.c"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The construction verifies the kernel's growth contract on successive calls, the property every heap grower depends on."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The KERNEL layer lights when the verified property is a contract of the operating system's own mechanisms."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2, 3) establishes the penultimate claim in (4) per the generalization in (5)."
+        },
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (4) established, the generalization in (5) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-sbrk-grow",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the claim depends on xv6's growproc behavior, not a portable mechanism: it states what this kernel does with successive grows, not a computation another ISA could share.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because the claim depends on xv6's growproc behavior, not a portable mechanism: it states what this kernel does with successive grows, not a computation another ISA could share."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The assertions are about xv6 break addresses and the xv6 heap; the module ships no portable construction, per the xv6-getscount PROOF.md.",
+          "source": {
+            "tier": "lab",
+            "cite": "xv6-getscount PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The property is kernel-specific behavior, not a computation with a portable form."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at ALGORITHM when the verified property has no portable construction and lives in one kernel's behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-uf-underflow",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "The F extension defines the accrued exception flags including UF for underflow, so the observed set is the machine contract in action.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The F extension defines the accrued exception flags including UF for underflow, so the observed set is the machine contract in action."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Clearing fcsr.fflags then executing fmul.d on two tiny doubles set fcsr to 0x3 (NX and UF), with OF, DZ, and NV clear, across 3 byte-identical QEMU 8.2.2 runs; clearing again restored 0x0.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/fflags-uf-underflow/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-uf-underflow/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V ISA manual's F extension defines the fflags accrued exception flags and their accrual on inexact and underflowing operations.",
+          "source": {
+            "tier": "spec",
+            "cite": "riscv-spec.pdf, F extension",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The observed flag set is exactly the accrual the machine contract specifies for an underflowing multiply."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The ISA layer lights when the verified claim is the machine contract observed in action."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2, 3) establishes the penultimate claim in (4) per the generalization in (5)."
+        },
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (4) established, the generalization in (5) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-uf-underflow",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module's assertions are fcsr read triples (before, after, cleared); no timing is measured and no memory hierarchy behavior is probed, per the module PROOF.md.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/fflags-uf-underflow/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-uf-underflow/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Flag accrual is a CSR write by the hart, independent of implementation timing or structure."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at MICROARCH when the verified property is a CSR behavior with no timing or structural component."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-uf-underflow",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module sets mstatus.FS to Initial and clears fcsr.fflags from M-mode before the multiply, per the module PROOF.md; a lower privilege cannot enable its own floating-point state.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/fflags-uf-underflow/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-uf-underflow/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The floating-point state the test exercises is established by machine-mode software."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "The FIRMWARE layer lights when the verified behavior depends on machine-mode setup."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-uf-underflow",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "The module runs bare metal with no operating system; no kernel mechanisms are involved.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module runs bare metal in M-mode with no operating system present, per the module PROOF.md.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/fflags-uf-underflow/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-uf-underflow/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "With no OS, the property cannot be load-bearing for kernel work."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at KERNEL when no kernel mechanisms are involved."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-uf-underflow",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "The property is hardware flag accrual on an underflowing operation, not a software algorithm.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The property is hardware flag accrual on an underflowing operation, not a software algorithm."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The test executes a real fmul.d and reads the hart's accrued flags; no software construction computes the result, per the module PROOF.md.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/fflags-uf-underflow/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-uf-underflow/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "There is no software mechanism here to be portable: the claim is about what the hart records."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at ALGORITHM when the verified property is a hardware behavior with no software construction."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2,) establishes the penultimate claim in (3) per the generalization in (4)."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With (3) established, the generalization in (4) yields the probandum in (1)."
+        }
+      ]
     }
   ]
 }
