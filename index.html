@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-080412">
+  <meta name="build-version" content="v20260911-081425">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -13671,6 +13671,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sie-stie-gate",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sie-stie-gate",
     "terminalLabel": "Verified src-sie-stie-gate QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-cy-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "scounteren.CY gates U-mode rdcycle, QEMU",
+    "summary": "scounteren.CY is the S-mode gate on U-mode reads of the cycle counter. With CY clear, a U-mode rdcycle traps as an illegal instruction with scause=0x2 and sepc at the rdcycle site; with CY set, reads return strictly increasing samples.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines scounteren.CY as the S-mode-controlled gate on U-mode rdcycle: CY clear raises an illegal-instruction exception, CY set permits the read. The proof verifies this exact contract on QEMU 8.2.2: CY clear traps with scause=0x2, CY set returns advancing counts, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap-vs-read outcomes against the CY rule: 18 checks, 0 mismatches. Whether U-mode rdcycle traps is determined by the scounteren.CY bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode-controlled gate directly; no M-mode firmware configuration is exercised. scounteren is writable by S-mode, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program scounteren to grant or deny user-space access to counters. The verified property (CY clear traps, CY set advances) is the counter-access gate the kernel's performance-monitoring and timing paths depend on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit selects trap vs advancing read. The same bit-gated resource pattern appears in portable code wherever a flag enables access to a privileged resource."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-cy-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 in-program checks on QEMU 8.2.2: CY clear traps U-mode rdcycle with scause=0x2, CY set returns strictly increasing samples, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9756843e0befd207, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode and U-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-cy-gate",
+    "terminalOutput": "$ make scounteren-cy-gate.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel scounteren-cy-gate.elf\nCY=0: U-mode rdcycle -> trap scause=0x2\nCY=1: U-mode rdcycle -> advancing counts\nchecks=18 mismatches=0 checksum=0x9756843e0befd207\n\nscounteren.CY gates U-mode rdcycle: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": 18,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-cy-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-cy-gate",
+    "terminalLabel": "Verified src-scounteren-cy-gate QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-sstatus-mxr",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "sstatus.MXR makes X-only pages readable, QEMU",
+    "summary": "sstatus.MXR makes execute-only pages readable to S-mode loads. With MXR=0 a load from an X-only page faults with scause=0xd; with MXR=1 the same load returns the canary.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sstatus.MXR as making execute-only pages readable to S-mode loads. The proof verifies this exact contract on QEMU 8.2.2: MXR=0 load faults with scause=0xd and stval=0x40000000, MXR=1 returns the canary, 31 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks fault/access outcomes against the MXR rule: 31 checks, 0 mismatches. Whether the load faults is determined by the MXR bit and the page's X-only flag, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The MXR bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels set MXR when they must read execute-only mappings (e.g. inspecting code pages) and clear it otherwise. The verified property (MXR=0 faults, MXR=1 reads) is the access gate the kernel's code-inspection paths depend on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit ORed with the page's read permission selects fault vs access. The same bit-relaxed permission pattern appears in portable code wherever a flag widens access to a protected region."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "31 in-program checks on QEMU 8.2.2: MXR=0 load from X-only page faults with scause=0xd, MXR=1 returns the canary, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x99a7c23e47a279ba, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sstatus-mxr",
+    "terminalOutput": "$ make sstatus-mxr.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel sstatus-mxr.elf\nMXR=0: load from 0x40000000 -> fault scause=0xd\nMXR=1: load from 0x40000000 -> canary\nchecks=31 mismatches=0 checksum=0x99a7c23e47a279ba\n\nsstatus.MXR makes X-only pages readable: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 31,
+    "failures": 0,
+    "stressItems": 31,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-mxr",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-mxr",
+    "terminalLabel": "Verified src-sstatus-mxr QEMU output",
     "showRepoLink": true
   }
 ];
@@ -88019,6 +88133,716 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-cy-gate|ISA": {
+    "item": "src-scounteren-cy-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines scounteren.CY as the S-mode-controlled gate on U-mode rdcycle: CY clear raises an illegal-instruction exception, CY set permits the read. The proof verifies this exact contract on QEMU 8.2.2: CY clear traps with scause=0x2, CY set returns advancing counts, 18 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines scounteren.CY as the S-mode-controlled gate on U-mode rdcycle: CY clear raises an illegal-instruction exception, CY set permits the read. The proof verifies this exact contract on QEMU 8.2.2: CY clear traps with scause=0x2, CY set returns advancing counts, 18 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 18 in-program checks on QEMU 8.2.2: CY clear traps U-mode rdcycle with scause=0x2, CY set returns strictly increasing samples, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the CY enable rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-cy-gate|MICROARCH": {
+    "item": "src-scounteren-cy-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks trap-vs-read outcomes against the CY rule: 18 checks, 0 mismatches. Whether U-mode rdcycle traps is determined by the scounteren.CY bit, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks trap-vs-read outcomes against the CY rule: 18 checks, 0 mismatches. Whether U-mode rdcycle traps is determined by the scounteren.CY bit, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records trap counts and cycle samples only: 18 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-cy-gate|FIRMWARE": {
+    "item": "src-scounteren-cy-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies the S-mode-controlled gate directly; no M-mode firmware configuration is exercised. scounteren is writable by S-mode, so the control belongs to the supervisor, not to machine-mode firmware.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the S-mode-controlled gate directly; no M-mode firmware configuration is exercised. scounteren is writable by S-mode, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the test exercising the S-mode-controlled scounteren register directly; no M-mode firmware configuration is exercised.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is exercised by S-mode itself, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-cy-gate|KERNEL": {
+    "item": "src-scounteren-cy-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels program scounteren to grant or deny user-space access to counters. The verified property (CY clear traps, CY set advances) is the counter-access gate the kernel's performance-monitoring and timing paths depend on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels program scounteren to grant or deny user-space access to counters. The verified property (CY clear traps, CY set advances) is the counter-access gate the kernel's performance-monitoring and timing paths depend on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the counter-access gate the kernel's performance-monitoring and timing paths program at runtime.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the counter-access gate the kernel depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-cy-gate|ALGORITHM": {
+    "item": "src-scounteren-cy-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure gating rule: one control bit selects trap vs advancing read. The same bit-gated resource pattern appears in portable code wherever a flag enables access to a privileged resource.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure gating rule: one control bit selects trap vs advancing read. The same bit-gated resource pattern appears in portable code wherever a flag enables access to a privileged resource."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the gate as one control bit selecting trap vs advancing read, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-mxr|ISA": {
+    "item": "src-sstatus-mxr",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines sstatus.MXR as making execute-only pages readable to S-mode loads. The proof verifies this exact contract on QEMU 8.2.2: MXR=0 load faults with scause=0xd and stval=0x40000000, MXR=1 returns the canary, 31 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines sstatus.MXR as making execute-only pages readable to S-mode loads. The proof verifies this exact contract on QEMU 8.2.2: MXR=0 load faults with scause=0xd and stval=0x40000000, MXR=1 returns the canary, 31 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 31 in-program checks on QEMU 8.2.2: MXR=0 load faults with scause=0xd and stval=0x40000000, MXR=1 returns the canary, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the MXR access rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-mxr|MICROARCH": {
+    "item": "src-sstatus-mxr",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks fault/access outcomes against the MXR rule: 31 checks, 0 mismatches. Whether the load faults is determined by the MXR bit and the page's X-only flag, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks fault/access outcomes against the MXR rule: 31 checks, 0 mismatches. Whether the load faults is determined by the MXR bit and the page's X-only flag, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records fault/access outcomes only: 31 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-mxr|FIRMWARE": {
+    "item": "src-sstatus-mxr",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The MXR bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The MXR bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the test exercising the S-mode MXR bit directly; no M-mode firmware configuration is exercised.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is exercised by S-mode itself, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-mxr|KERNEL": {
+    "item": "src-sstatus-mxr",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels set MXR when they must read execute-only mappings (e.g. inspecting code pages) and clear it otherwise. The verified property (MXR=0 faults, MXR=1 reads) is the access gate the kernel's code-inspection paths depend on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels set MXR when they must read execute-only mappings (e.g. inspecting code pages) and clear it otherwise. The verified property (MXR=0 faults, MXR=1 reads) is the access gate the kernel's code-inspection paths depend on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the access gate the kernel's code-inspection paths toggle when reading execute-only mappings.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the access gate the kernel depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-mxr|ALGORITHM": {
+    "item": "src-sstatus-mxr",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure gating rule: one control bit ORed with the page's read permission selects fault vs access. The same bit-relaxed permission pattern appears in portable code wherever a flag widens access to a protected region.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure gating rule: one control bit ORed with the page's read permission selects fault vs access. The same bit-relaxed permission pattern appears in portable code wherever a flag widens access to a protected region."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the gate as one control bit ORed with the page's read permission, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
         }
       },
       {

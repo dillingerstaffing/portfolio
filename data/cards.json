@@ -12274,5 +12274,119 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sie-stie-gate",
     "terminalLabel": "Verified src-sie-stie-gate QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-cy-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "scounteren.CY gates U-mode rdcycle, QEMU",
+    "summary": "scounteren.CY is the S-mode gate on U-mode reads of the cycle counter. With CY clear, a U-mode rdcycle traps as an illegal instruction with scause=0x2 and sepc at the rdcycle site; with CY set, reads return strictly increasing samples.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines scounteren.CY as the S-mode-controlled gate on U-mode rdcycle: CY clear raises an illegal-instruction exception, CY set permits the read. The proof verifies this exact contract on QEMU 8.2.2: CY clear traps with scause=0x2, CY set returns advancing counts, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap-vs-read outcomes against the CY rule: 18 checks, 0 mismatches. Whether U-mode rdcycle traps is determined by the scounteren.CY bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode-controlled gate directly; no M-mode firmware configuration is exercised. scounteren is writable by S-mode, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program scounteren to grant or deny user-space access to counters. The verified property (CY clear traps, CY set advances) is the counter-access gate the kernel's performance-monitoring and timing paths depend on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit selects trap vs advancing read. The same bit-gated resource pattern appears in portable code wherever a flag enables access to a privileged resource."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-cy-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 in-program checks on QEMU 8.2.2: CY clear traps U-mode rdcycle with scause=0x2, CY set returns strictly increasing samples, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9756843e0befd207, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode and U-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-cy-gate",
+    "terminalOutput": "$ make scounteren-cy-gate.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel scounteren-cy-gate.elf\nCY=0: U-mode rdcycle -> trap scause=0x2\nCY=1: U-mode rdcycle -> advancing counts\nchecks=18 mismatches=0 checksum=0x9756843e0befd207\n\nscounteren.CY gates U-mode rdcycle: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": 18,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-cy-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-cy-gate",
+    "terminalLabel": "Verified src-scounteren-cy-gate QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-sstatus-mxr",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "sstatus.MXR makes X-only pages readable, QEMU",
+    "summary": "sstatus.MXR makes execute-only pages readable to S-mode loads. With MXR=0 a load from an X-only page faults with scause=0xd; with MXR=1 the same load returns the canary.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sstatus.MXR as making execute-only pages readable to S-mode loads. The proof verifies this exact contract on QEMU 8.2.2: MXR=0 load faults with scause=0xd and stval=0x40000000, MXR=1 returns the canary, 31 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks fault/access outcomes against the MXR rule: 31 checks, 0 mismatches. Whether the load faults is determined by the MXR bit and the page's X-only flag, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The MXR bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels set MXR when they must read execute-only mappings (e.g. inspecting code pages) and clear it otherwise. The verified property (MXR=0 faults, MXR=1 reads) is the access gate the kernel's code-inspection paths depend on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit ORed with the page's read permission selects fault vs access. The same bit-relaxed permission pattern appears in portable code wherever a flag widens access to a protected region."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "31 in-program checks on QEMU 8.2.2: MXR=0 load from X-only page faults with scause=0xd, MXR=1 returns the canary, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x99a7c23e47a279ba, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sstatus-mxr",
+    "terminalOutput": "$ make sstatus-mxr.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel sstatus-mxr.elf\nMXR=0: load from 0x40000000 -> fault scause=0xd\nMXR=1: load from 0x40000000 -> canary\nchecks=31 mismatches=0 checksum=0x99a7c23e47a279ba\n\nsstatus.MXR makes X-only pages readable: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 31,
+    "failures": 0,
+    "stressItems": 31,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-mxr",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-mxr",
+    "terminalLabel": "Verified src-sstatus-mxr QEMU output",
+    "showRepoLink": true
   }
 ]
