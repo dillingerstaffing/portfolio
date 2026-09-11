@@ -12803,5 +12803,119 @@
   "repoLabel": "GitHub: xv6-getscount/user/sbrkoom.c",
   "terminalLabel": "Verified sbrkoom QEMU output",
   "showRepoLink": true
-}
+},
+{
+    "id": "src-mideleg-ssip-route",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mideleg bit 1 routes SSI to S-mode, QEMU",
+    "summary": "mideleg bit 1 alone routes the supervisor software interrupt to S-mode. The program sets selective delegation, drops to S-mode, and shows a pended SSIP traps exactly once with scause 0x8000000000000001 while the CLINT msip stays silent.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines mideleg as the M-mode delegation control for interrupts. The proof sets bit 1, verifies the readback, and shows the delegated interrupt traps in S-mode with the expected scause, 17 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks delegation outcomes against the ISA contract: 17 checks, 0 mismatches. Whether an interrupt is delegated is determined by the mideleg bits, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mideleg and decides which interrupts reach S-mode. The verified property (bit 1 routes SSI selectively) is the delegation contract firmware configures at boot."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels receive inter-processor interrupts through the delegated SSI path. The proof shows the S-mode trap entry with scause 0x8000000000000001, the exact entry point the kernel's IPI handler depends on."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware delegation control, not a computational construction. No portable algorithm is exercised; the mechanism is the mideleg bit itself."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-ssip-route/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 checks on QEMU 8.2.2: selective mideleg bit 1 delegation with S-mode trap verification, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "n/a, byte-identical logs across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mideleg-ssip-route",
+    "terminalOutput": "$ make run\n17 checks, 0 mismatches\n\nmideleg SSIP routing: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": 17,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-ssip-route",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mideleg-ssip-route",
+    "terminalLabel": "Verified src-mideleg-ssip-route QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-ir-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "scounteren.IR gates U-mode instret, QEMU",
+    "summary": "scounteren.IR gates U-mode reads of the retired-instruction counter. With IR clear a U-mode rdinstret traps with scause 0x2; with IR set the same read succeeds and returns strictly increasing samples.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines scounteren.IR as the U-mode enable for the instret counter. The proof drops to U-mode, shows the trap with IR clear and the working read with IR set, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks gating outcomes against the ISA contract: 18 checks, 0 mismatches. Whether U-mode can read instret is determined by the scounteren bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode to U-mode gating control directly; no M-mode firmware configuration beyond the privilege drops is exercised. The gate is the scounteren CSR itself."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels configure scounteren to control what user programs can measure. The verified property (IR clear traps, IR set reads) is the enforcement mechanism the kernel uses to gate user-space performance counters."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware enable gate, not a computational construction. No portable algorithm is exercised; the mechanism is the scounteren bit itself."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-ir-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 checks on QEMU 8.2.2: U-mode rdinstret gating via scounteren.IR with trap and read verification, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9756843e0befd207, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-ir-gate",
+    "terminalOutput": "$ make run\n18 checks, 0 mismatches, checksum=0x9756843e0befd207\n\nscounteren IR gate: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": 18,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-ir-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-ir-gate",
+    "terminalLabel": "Verified src-scounteren-ir-gate QEMU output",
+    "showRepoLink": true
+  }
 ]

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-093829">
+  <meta name="build-version" content="v20260911-100222">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -14221,6 +14221,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
     "repoLabel": "GitHub: xv6-getscount/user/sbrkoom.c",
     "terminalLabel": "Verified sbrkoom QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mideleg-ssip-route",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mideleg bit 1 routes SSI to S-mode, QEMU",
+    "summary": "mideleg bit 1 alone routes the supervisor software interrupt to S-mode. The program sets selective delegation, drops to S-mode, and shows a pended SSIP traps exactly once with scause 0x8000000000000001 while the CLINT msip stays silent.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines mideleg as the M-mode delegation control for interrupts. The proof sets bit 1, verifies the readback, and shows the delegated interrupt traps in S-mode with the expected scause, 17 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks delegation outcomes against the ISA contract: 17 checks, 0 mismatches. Whether an interrupt is delegated is determined by the mideleg bits, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mideleg and decides which interrupts reach S-mode. The verified property (bit 1 routes SSI selectively) is the delegation contract firmware configures at boot."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels receive inter-processor interrupts through the delegated SSI path. The proof shows the S-mode trap entry with scause 0x8000000000000001, the exact entry point the kernel's IPI handler depends on."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware delegation control, not a computational construction. No portable algorithm is exercised; the mechanism is the mideleg bit itself."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-ssip-route/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 checks on QEMU 8.2.2: selective mideleg bit 1 delegation with S-mode trap verification, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "n/a, byte-identical logs across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mideleg-ssip-route",
+    "terminalOutput": "$ make run\n17 checks, 0 mismatches\n\nmideleg SSIP routing: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": 17,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-ssip-route",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mideleg-ssip-route",
+    "terminalLabel": "Verified src-mideleg-ssip-route QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-ir-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "scounteren.IR gates U-mode instret, QEMU",
+    "summary": "scounteren.IR gates U-mode reads of the retired-instruction counter. With IR clear a U-mode rdinstret traps with scause 0x2; with IR set the same read succeeds and returns strictly increasing samples.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines scounteren.IR as the U-mode enable for the instret counter. The proof drops to U-mode, shows the trap with IR clear and the working read with IR set, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks gating outcomes against the ISA contract: 18 checks, 0 mismatches. Whether U-mode can read instret is determined by the scounteren bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode to U-mode gating control directly; no M-mode firmware configuration beyond the privilege drops is exercised. The gate is the scounteren CSR itself."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels configure scounteren to control what user programs can measure. The verified property (IR clear traps, IR set reads) is the enforcement mechanism the kernel uses to gate user-space performance counters."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware enable gate, not a computational construction. No portable algorithm is exercised; the mechanism is the scounteren bit itself."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-ir-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 checks on QEMU 8.2.2: U-mode rdinstret gating via scounteren.IR with trap and read verification, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9756843e0befd207, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-ir-gate",
+    "terminalOutput": "$ make run\n18 checks, 0 mismatches, checksum=0x9756843e0befd207\n\nscounteren IR gate: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": 18,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-ir-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-ir-gate",
+    "terminalLabel": "Verified src-scounteren-ir-gate QEMU output",
     "showRepoLink": true
   }
 ];
@@ -92001,6 +92115,716 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 4,
         "kind": "penultimate",
         "text": "The grow-while-it-succeeds, refuse-past-the-limit construction is a pure computational pattern, independent of the kernel; it travels wherever a capacity must be found empirically."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mideleg-ssip-route|ISA": {
+    "item": "src-mideleg-ssip-route",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The ISA defines mideleg as the M-mode delegation control for interrupts. The proof sets bit 1, verifies the readback, and shows the delegated interrupt traps in S-mode with the expected scause, 17 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The ISA defines mideleg as the M-mode delegation control for interrupts. The proof sets bit 1, verifies the readback, and shows the delegated interrupt traps in S-mode with the expected scause, 17 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mideleg-ssip-route.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-ssip-route/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the mideleg delegation control the ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mideleg-ssip-route|MICROARCH": {
+    "item": "src-mideleg-ssip-route",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks delegation outcomes against the ISA contract: 17 checks, 0 mismatches. Whether an interrupt is delegated is determined by the mideleg bits, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks delegation outcomes against the ISA contract: 17 checks, 0 mismatches. Whether an interrupt is delegated is determined by the mideleg bits, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mideleg-ssip-route.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-ssip-route/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mideleg-ssip-route|FIRMWARE": {
+    "item": "src-mideleg-ssip-route",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns mideleg and decides which interrupts reach S-mode. The verified property (bit 1 routes SSI selectively) is the delegation contract firmware configures at boot.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware owns mideleg and decides which interrupts reach S-mode. The verified property (bit 1 routes SSI selectively) is the delegation contract firmware configures at boot."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mideleg-ssip-route.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-ssip-route/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the delegation contract M-mode firmware configures, so the verified property is load-bearing for firmware work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mideleg-ssip-route|KERNEL": {
+    "item": "src-mideleg-ssip-route",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels receive inter-processor interrupts through the delegated SSI path. The proof shows the S-mode trap entry with scause 0x8000000000000001, the exact entry point the kernel's IPI handler depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels receive inter-processor interrupts through the delegated SSI path. The proof shows the S-mode trap entry with scause 0x8000000000000001, the exact entry point the kernel's IPI handler depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mideleg-ssip-route.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-ssip-route/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the S-mode entry path the kernel's IPI handler depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mideleg-ssip-route|ALGORITHM": {
+    "item": "src-mideleg-ssip-route",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a hardware delegation control, not a computational construction. No portable algorithm is exercised; the mechanism is the mideleg bit itself.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies a hardware delegation control, not a computational construction. No portable algorithm is exercised; the mechanism is the mideleg bit itself."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mideleg-ssip-route.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-ssip-route/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies a hardware control, not a computational construction, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-ir-gate|ISA": {
+    "item": "src-scounteren-ir-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The ISA defines scounteren.IR as the U-mode enable for the instret counter. The proof drops to U-mode, shows the trap with IR clear and the working read with IR set, 18 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The ISA defines scounteren.IR as the U-mode enable for the instret counter. The proof drops to U-mode, shows the trap with IR clear and the working read with IR set, 18 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-scounteren-ir-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the scounteren.IR enable the ISA defines for U-mode, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-ir-gate|MICROARCH": {
+    "item": "src-scounteren-ir-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks gating outcomes against the ISA contract: 18 checks, 0 mismatches. Whether U-mode can read instret is determined by the scounteren bit, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks gating outcomes against the ISA contract: 18 checks, 0 mismatches. Whether U-mode can read instret is determined by the scounteren bit, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-scounteren-ir-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-ir-gate|FIRMWARE": {
+    "item": "src-scounteren-ir-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies the S-mode to U-mode gating control directly; no M-mode firmware configuration beyond the privilege drops is exercised. The gate is the scounteren CSR itself.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the S-mode to U-mode gating control directly; no M-mode firmware configuration beyond the privilege drops is exercised. The gate is the scounteren CSR itself."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-scounteren-ir-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the S-mode to U-mode gate directly with no M-mode firmware configuration exercised, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-ir-gate|KERNEL": {
+    "item": "src-scounteren-ir-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels configure scounteren to control what user programs can measure. The verified property (IR clear traps, IR set reads) is the enforcement mechanism the kernel uses to gate user-space performance counters.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels configure scounteren to control what user programs can measure. The verified property (IR clear traps, IR set reads) is the enforcement mechanism the kernel uses to gate user-space performance counters."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-scounteren-ir-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the enforcement mechanism the kernel uses to gate user-space counters, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-ir-gate|ALGORITHM": {
+    "item": "src-scounteren-ir-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a hardware enable gate, not a computational construction. No portable algorithm is exercised; the mechanism is the scounteren bit itself.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies a hardware enable gate, not a computational construction. No portable algorithm is exercised; the mechanism is the scounteren bit itself."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-scounteren-ir-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies a hardware enable gate, not a computational construction, so the slot stays dim."
       },
       {
         "n": 5,
