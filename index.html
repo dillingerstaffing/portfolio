@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-070602">
+  <meta name="build-version" content="v20260911-071131">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -13308,6 +13308,124 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sip-stip-write",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sip-stip-write",
     "terminalLabel": "Verified src-sip-stip-write QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-136-pte-to-phys-addr",
+    "kicker": "RISC-V ISA",
+    "title": "Sv39 physical address from PPN, Host",
+    "summary": "The Sv39 physical address is one shift and one OR: (PPN << 12) | page_offset. A from-scratch function forms it from a leaf PTE's page number and offset, checked against a per-bit oracle.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines the Sv39 physical address as PPN shifted left 12 ORed with the 12-bit page offset, forming a 56-bit address. The proof verifies this exact formation rule on the host: 60,331,824 differential checks against a per-bit oracle, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks address formation against arithmetic, not against a memory system: 60,331,824 checks, 0 mismatches. The shift-and-OR rule is determined by the ISA's address format, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies pure address arithmetic on the host; no firmware runs and no machine-mode configuration is exercised. Firmware uses physical addresses but the formation rule itself is ISA arithmetic."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The kernel's page-table walker forms physical addresses from PTEs on every TLB refill path. The verified property (correct formation across all PPN lanes) is the arithmetic the kernel's address translation depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure computational construction: one shift and one OR over decoded fields. The same field-pack pattern appears in portable code wherever bit fields are assembled into addresses or packed words."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "60,331,824 differential checks on Host: phys_addr_from_ppn(ppn, offset) matches per-bit oracle on every PPN lane plus random values, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "4.275 ns per conversion, best of 5 reps at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "235e187d99433244, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host, native execution"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 136-pte-to-phys-addr",
+    "terminalOutput": "$ make && ./test_pte_to_phys\nchecks=60331824 mismatches=0 checksum=235e187d99433244\n4.275 ns per conversion (best of 5 reps at -O2)\n\nSv39 physical address formation: PASS",
+    "verificationEnvironment": "Host",
+    "checks": 60331824,
+    "failures": 0,
+    "stressItems": 60331824,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/136-pte-to-phys-addr",
+    "repoLabel": "GitHub: systems-lab/lab/136-pte-to-phys-addr",
+    "terminalLabel": "Verified lab-136-pte-to-phys-addr Host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-sstatus-sum",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "sstatus.SUM gates S-mode U-page access, QEMU",
+    "summary": "sstatus.SUM is the S-mode gate on U-page access. With SUM=0 a load from a U-page faults; with SUM=1 the same load reads the canary. The gate is one control bit selecting fault vs access.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sstatus.SUM as the permit-supervisor-user-memory-access control: SUM=0 faults S-mode access to U-pages, SUM=1 allows it. The proof verifies this exact contract on QEMU 8.2.2: SUM=0 load faults with scause=0xd, SUM=1 reads the canary, 31 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks fault/access outcomes against the SUM rule: 31 checks, 0 mismatches. Whether the hart faults is determined by the SUM control bit and the page's U flag, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The SUM bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels set SUM when they must touch user pages (copy_to_user paths) and clear it otherwise. The verified property (SUM=0 faults, SUM=1 accesses) is the access gate the kernel's user-memory routines depend on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit ANDed with the page's user flag selects fault vs access. The same bit-gated permission pattern appears in portable code wherever a flag enables access to a protected region."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "31 in-program checks on QEMU 8.2.2: SUM=0 load from U-page faults with scause=0xd, SUM=1 reads canary 0xc0decafe5ca1ab1e, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x196010adc8b6fa27, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sstatus-sum",
+    "terminalOutput": "$ make sstatus-sum.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel sstatus-sum.elf\nSUM=0: load from 0x40000000 -> fault scause=0xd\nSUM=1: load from 0x40000000 -> 0xc0decafe5ca1ab1e\nchecks=31 mismatches=0 checksum=0x196010adc8b6fa27\n\nsstatus.SUM gates S-mode U-page access: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 31,
+    "failures": 0,
+    "stressItems": 31,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-sum",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-sum",
+    "terminalLabel": "Verified src-sstatus-sum QEMU output",
     "showRepoLink": true
   }
 ];
@@ -85504,6 +85622,716 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-stip-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-136-pte-to-phys-addr|ISA": {
+    "item": "lab-136-pte-to-phys-addr",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The ISA defines the Sv39 physical address as PPN shifted left 12 ORed with the 12-bit page offset, forming a 56-bit address. The proof verifies this exact formation rule on the host: 60,331,824 differential checks against a per-bit oracle, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The ISA defines the Sv39 physical address as PPN shifted left 12 ORed with the 12-bit page offset, forming a 56-bit address. The proof verifies this exact formation rule on the host: 60,331,824 differential checks against a per-bit oracle, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 60,331,824 differential checks on Host: phys_addr_from_ppn matches the per-bit oracle on every PPN lane, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the address-formation rule the ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-136-pte-to-phys-addr|MICROARCH": {
+    "item": "lab-136-pte-to-phys-addr",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks address formation against arithmetic, not against a memory system: 60,331,824 checks, 0 mismatches. The shift-and-OR rule is determined by the ISA's address format, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks address formation against arithmetic, not against a memory system: 60,331,824 checks, 0 mismatches. The shift-and-OR rule is determined by the ISA's address format, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records arithmetic outcomes only: 60,331,824 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-136-pte-to-phys-addr|FIRMWARE": {
+    "item": "lab-136-pte-to-phys-addr",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies pure address arithmetic on the host; no firmware runs and no machine-mode configuration is exercised. Firmware uses physical addresses but the formation rule itself is ISA arithmetic.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies pure address arithmetic on the host; no firmware runs and no machine-mode configuration is exercised. Firmware uses physical addresses but the formation rule itself is ISA arithmetic."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows a host program with no firmware involvement.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is pure ISA arithmetic with no firmware configuration, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-136-pte-to-phys-addr|KERNEL": {
+    "item": "lab-136-pte-to-phys-addr",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The kernel's page-table walker forms physical addresses from PTEs on every TLB refill path. The verified property (correct formation across all PPN lanes) is the arithmetic the kernel's address translation depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The kernel's page-table walker forms physical addresses from PTEs on every TLB refill path. The verified property (correct formation across all PPN lanes) is the arithmetic the kernel's address translation depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the formation rule the kernel's page walker applies on every translation.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the arithmetic the kernel's address translation depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-136-pte-to-phys-addr|ALGORITHM": {
+    "item": "lab-136-pte-to-phys-addr",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure computational construction: one shift and one OR over decoded fields. The same field-pack pattern appears in portable code wherever bit fields are assembled into addresses or packed words.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure computational construction: one shift and one OR over decoded fields. The same field-pack pattern appears in portable code wherever bit fields are assembled into addresses or packed words."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the formation as one shift and one OR, no ISA-specific operations beyond the field layout.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-sum|ISA": {
+    "item": "src-sstatus-sum",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines sstatus.SUM as the permit-supervisor-user-memory-access control: SUM=0 faults S-mode access to U-pages, SUM=1 allows it. The proof verifies this exact contract on QEMU 8.2.2: SUM=0 load faults with scause=0xd, SUM=1 reads the canary, 31 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines sstatus.SUM as the permit-supervisor-user-memory-access control: SUM=0 faults S-mode access to U-pages, SUM=1 allows it. The proof verifies this exact contract on QEMU 8.2.2: SUM=0 load faults with scause=0xd, SUM=1 reads the canary, 31 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 31 in-program checks on QEMU 8.2.2: SUM=0 faults with scause=0xd, SUM=1 reads the canary, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the SUM access rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-sum|MICROARCH": {
+    "item": "src-sstatus-sum",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks fault/access outcomes against the SUM rule: 31 checks, 0 mismatches. Whether the hart faults is determined by the SUM control bit and the page's U flag, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks fault/access outcomes against the SUM rule: 31 checks, 0 mismatches. Whether the hart faults is determined by the SUM control bit and the page's U flag, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records fault/access outcomes only: 31 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-sum|FIRMWARE": {
+    "item": "src-sstatus-sum",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The SUM bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The SUM bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the SUM bit written by S-mode itself with no M-mode involvement.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The control belongs to the supervisor rather than to machine-mode firmware, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-sum|KERNEL": {
+    "item": "src-sstatus-sum",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels set SUM when they must touch user pages (copy_to_user paths) and clear it otherwise. The verified property (SUM=0 faults, SUM=1 accesses) is the access gate the kernel's user-memory routines depend on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels set SUM when they must touch user pages (copy_to_user paths) and clear it otherwise. The verified property (SUM=0 faults, SUM=1 accesses) is the access gate the kernel's user-memory routines depend on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the gate the kernel's copy_to_user paths toggle.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the access gate the kernel's user-memory routines depend on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-sstatus-sum|ALGORITHM": {
+    "item": "src-sstatus-sum",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure gating rule: one control bit ANDed with the page's user flag selects fault vs access. The same bit-gated permission pattern appears in portable code wherever a flag enables access to a protected region.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure gating rule: one control bit ANDed with the page's user flag selects fault vs access. The same bit-gated permission pattern appears in portable code wherever a flag enables access to a protected region."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the gate as a bit ANDed with the page flag, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
         }
       },
       {

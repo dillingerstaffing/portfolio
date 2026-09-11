@@ -11932,5 +11932,123 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sip-stip-write",
     "terminalLabel": "Verified src-sip-stip-write QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "lab-136-pte-to-phys-addr",
+    "kicker": "RISC-V ISA",
+    "title": "Sv39 physical address from PPN, Host",
+    "summary": "The Sv39 physical address is one shift and one OR: (PPN << 12) | page_offset. A from-scratch function forms it from a leaf PTE's page number and offset, checked against a per-bit oracle.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines the Sv39 physical address as PPN shifted left 12 ORed with the 12-bit page offset, forming a 56-bit address. The proof verifies this exact formation rule on the host: 60,331,824 differential checks against a per-bit oracle, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks address formation against arithmetic, not against a memory system: 60,331,824 checks, 0 mismatches. The shift-and-OR rule is determined by the ISA's address format, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies pure address arithmetic on the host; no firmware runs and no machine-mode configuration is exercised. Firmware uses physical addresses but the formation rule itself is ISA arithmetic."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The kernel's page-table walker forms physical addresses from PTEs on every TLB refill path. The verified property (correct formation across all PPN lanes) is the arithmetic the kernel's address translation depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure computational construction: one shift and one OR over decoded fields. The same field-pack pattern appears in portable code wherever bit fields are assembled into addresses or packed words."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "60,331,824 differential checks on Host: phys_addr_from_ppn(ppn, offset) matches per-bit oracle on every PPN lane plus random values, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "4.275 ns per conversion, best of 5 reps at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "235e187d99433244, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host, native execution"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 136-pte-to-phys-addr",
+    "terminalOutput": "$ make && ./test_pte_to_phys\nchecks=60331824 mismatches=0 checksum=235e187d99433244\n4.275 ns per conversion (best of 5 reps at -O2)\n\nSv39 physical address formation: PASS",
+    "verificationEnvironment": "Host",
+    "checks": 60331824,
+    "failures": 0,
+    "stressItems": 60331824,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/136-pte-to-phys-addr",
+    "repoLabel": "GitHub: systems-lab/lab/136-pte-to-phys-addr",
+    "terminalLabel": "Verified lab-136-pte-to-phys-addr Host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-sstatus-sum",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "sstatus.SUM gates S-mode U-page access, QEMU",
+    "summary": "sstatus.SUM is the S-mode gate on U-page access. With SUM=0 a load from a U-page faults; with SUM=1 the same load reads the canary. The gate is one control bit selecting fault vs access.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sstatus.SUM as the permit-supervisor-user-memory-access control: SUM=0 faults S-mode access to U-pages, SUM=1 allows it. The proof verifies this exact contract on QEMU 8.2.2: SUM=0 load faults with scause=0xd, SUM=1 reads the canary, 31 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks fault/access outcomes against the SUM rule: 31 checks, 0 mismatches. Whether the hart faults is determined by the SUM control bit and the page's U flag, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the S-mode access rule directly; no M-mode firmware configuration is exercised. The SUM bit is written by S-mode itself, so the control belongs to the supervisor, not to machine-mode firmware."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels set SUM when they must touch user pages (copy_to_user paths) and clear it otherwise. The verified property (SUM=0 faults, SUM=1 accesses) is the access gate the kernel's user-memory routines depend on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit ANDed with the page's user flag selects fault vs access. The same bit-gated permission pattern appears in portable code wherever a flag enables access to a protected region."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "31 in-program checks on QEMU 8.2.2: SUM=0 load from U-page faults with scause=0xd, SUM=1 reads canary 0xc0decafe5ca1ab1e, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x196010adc8b6fa27, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sstatus-sum",
+    "terminalOutput": "$ make sstatus-sum.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel sstatus-sum.elf\nSUM=0: load from 0x40000000 -> fault scause=0xd\nSUM=1: load from 0x40000000 -> 0xc0decafe5ca1ab1e\nchecks=31 mismatches=0 checksum=0x196010adc8b6fa27\n\nsstatus.SUM gates S-mode U-page access: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 31,
+    "failures": 0,
+    "stressItems": 31,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-sum",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-sum",
+    "terminalLabel": "Verified src-sstatus-sum QEMU output",
+    "showRepoLink": true
   }
 ]
