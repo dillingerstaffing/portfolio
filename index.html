@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-081425">
+  <meta name="build-version" content="v20260911-082644">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -13785,6 +13785,124 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-mxr",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-mxr",
     "terminalLabel": "Verified src-sstatus-mxr QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-amo-add-atomicity",
+    "kicker": "RISC-V ISA",
+    "title": "amoadd.w read-modify-write, single hart, QEMU",
+    "summary": "amoadd.w performs an atomic read-modify-write: it returns the old value and stores old plus the operand. On a single hart, 10000 increments with per-iteration old-value verification show the read-modify-write is indivisible.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines amoadd.w as an atomic read-modify-write returning the old value. The proof verifies this exact contract on QEMU 8.2.2: 10000 increments with per-iteration old-value checks, 30324 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks old-value readbacks and final values against the atomicity rule: 30324 checks, 0 mismatches. Whether each increment is indivisible is determined by the instruction's semantics, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the instruction's read-modify-write contract directly; no M-mode firmware configuration is exercised. Atomicity is a property of the instruction, not of boot-time setup."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Kernels build locks, reference counts, and lock-free structures on atomic read-modify-write. The verified property (old value returned, sum accumulated indivisibly) is the primitive the kernel's synchronization depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure computational construction: read-modify-write as one indivisible step. The same atomic-update pattern appears in portable code wherever a shared counter must advance without lost updates."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/amo-add-atomicity/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "30324 in-program checks on QEMU 8.2.2: 10000 amoadd.w increments with per-iteration old-value verification, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x6214dda909b820e0, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / amo-add-atomicity",
+    "terminalOutput": "$ make amo-add-atomicity.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel amo-add-atomicity.elf\n10000 amoadd.w: old values 0..9999, final 10000\nchecks=30324 mismatches=0 checksum=0x6214dda909b820e0\n\namoadd.w read-modify-write: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 30324,
+    "failures": 0,
+    "stressItems": 30324,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/amo-add-atomicity",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/amo-add-atomicity",
+    "terminalLabel": "Verified src-amo-add-atomicity QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-149-pte-permission-and",
+    "kicker": "RISC-V ISA",
+    "title": "Sv39 permission decided at the leaf, Host",
+    "summary": "Sv39 permission is decided at the terminating leaf: reserved 010/110 encodings fault, non-leaf entries must be pure pointers, and U/SUM gating applies. walk_permits is checked against an independent oracle over all level-bit, access, and mode combinations.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines the Sv39 permission rule: the leaf's R/W/X bits decide, reserved encodings fault, non-leaves must be pointers. The proof checks walk_permits against an independent oracle over 34402 cases, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks permission outcomes against the spec rule: 34402 checks, 0 mismatches. Whether an access is permitted is determined by the PTE bits and the walk rule, not by TLB or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card verifies the page-table permission rule directly; no M-mode firmware configuration is exercised. The rule is a property of the address-translation contract, not of boot-time setup."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Kernels build page tables and rely on the leaf-permission rule to enforce isolation. The verified property (reserved encodings fault, leaf decides, U/SUM gating) is the permission contract the kernel's memory management depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure computational construction: a multi-level walk with a permission decision at the terminating level. The same walk-and-decide pattern appears in portable code wherever nested tables gate access."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/149-pte-permission-and/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "34402 checks on Host: walk_permits checked against an independent oracle over all level-bit, access, and mode combinations, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "12.058 ns per check at -O2"
+      ],
+      [
+        "CHECKSUM",
+        "6266f98fc9acd43b, identical across runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 149-pte-permission-and",
+    "terminalOutput": "$ make && ./pte-permission-and\n34402 checks, 0 mismatches, checksum=6266f98fc9acd43b\n\nSv39 permission decided at the leaf: PASS",
+    "verificationEnvironment": "Host",
+    "checks": 34402,
+    "failures": 0,
+    "stressItems": 34402,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/149-pte-permission-and",
+    "repoLabel": "GitHub: systems-lab/lab/149-pte-permission-and",
+    "terminalLabel": "Verified lab-149-pte-permission-and Host output",
     "showRepoLink": true
   }
 ];
@@ -88843,6 +88961,716 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-mxr/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-amo-add-atomicity|ISA": {
+    "item": "src-amo-add-atomicity",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The ISA defines amoadd.w as an atomic read-modify-write returning the old value. The proof verifies this exact contract on QEMU 8.2.2: 10000 increments with per-iteration old-value checks, 30324 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The ISA defines amoadd.w as an atomic read-modify-write returning the old value. The proof verifies this exact contract on QEMU 8.2.2: 10000 increments with per-iteration old-value checks, 30324 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 30324 in-program checks on QEMU 8.2.2: 10000 amoadd.w increments with per-iteration old-value verification, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/amo-add-atomicity/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the atomic read-modify-write rule the ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-amo-add-atomicity|MICROARCH": {
+    "item": "src-amo-add-atomicity",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks old-value readbacks and final values against the atomicity rule: 30324 checks, 0 mismatches. Whether each increment is indivisible is determined by the instruction's semantics, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks old-value readbacks and final values against the atomicity rule: 30324 checks, 0 mismatches. Whether each increment is indivisible is determined by the instruction's semantics, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records old-value readbacks and final values only: 30324 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/amo-add-atomicity/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-amo-add-atomicity|FIRMWARE": {
+    "item": "src-amo-add-atomicity",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies the instruction's read-modify-write contract directly; no M-mode firmware configuration is exercised. Atomicity is a property of the instruction, not of boot-time setup.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the instruction's read-modify-write contract directly; no M-mode firmware configuration is exercised. Atomicity is a property of the instruction, not of boot-time setup."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the test exercising the instruction directly; no M-mode firmware configuration is exercised.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/amo-add-atomicity/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Atomicity is a property of the instruction, not of boot-time setup, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-amo-add-atomicity|KERNEL": {
+    "item": "src-amo-add-atomicity",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Kernels build locks, reference counts, and lock-free structures on atomic read-modify-write. The verified property (old value returned, sum accumulated indivisibly) is the primitive the kernel's synchronization depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Kernels build locks, reference counts, and lock-free structures on atomic read-modify-write. The verified property (old value returned, sum accumulated indivisibly) is the primitive the kernel's synchronization depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the atomic primitive the kernel's locks, reference counts, and lock-free structures build on.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/amo-add-atomicity/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the synchronization primitive the kernel depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-amo-add-atomicity|ALGORITHM": {
+    "item": "src-amo-add-atomicity",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure computational construction: read-modify-write as one indivisible step. The same atomic-update pattern appears in portable code wherever a shared counter must advance without lost updates.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure computational construction: read-modify-write as one indivisible step. The same atomic-update pattern appears in portable code wherever a shared counter must advance without lost updates."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the mechanism as read-modify-write in one indivisible step, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/amo-add-atomicity/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-149-pte-permission-and|ISA": {
+    "item": "lab-149-pte-permission-and",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The ISA defines the Sv39 permission rule: the leaf's R/W/X bits decide, reserved encodings fault, non-leaves must be pointers. The proof checks walk_permits against an independent oracle over 34402 cases, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The ISA defines the Sv39 permission rule: the leaf's R/W/X bits decide, reserved encodings fault, non-leaves must be pointers. The proof checks walk_permits against an independent oracle over 34402 cases, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 34402 checks on Host: walk_permits against an independent oracle over all level-bit, access, and mode combinations, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/149-pte-permission-and/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the leaf-permission rule the ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-149-pte-permission-and|MICROARCH": {
+    "item": "lab-149-pte-permission-and",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks permission outcomes against the spec rule: 34402 checks, 0 mismatches. Whether an access is permitted is determined by the PTE bits and the walk rule, not by TLB or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks permission outcomes against the spec rule: 34402 checks, 0 mismatches. Whether an access is permitted is determined by the PTE bits and the walk rule, not by TLB or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records permission outcomes only: 34402 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/149-pte-permission-and/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-149-pte-permission-and|FIRMWARE": {
+    "item": "lab-149-pte-permission-and",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card verifies the page-table permission rule directly; no M-mode firmware configuration is exercised. The rule is a property of the address-translation contract, not of boot-time setup.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the page-table permission rule directly; no M-mode firmware configuration is exercised. The rule is a property of the address-translation contract, not of boot-time setup."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the test checking the page-table permission rule directly; no M-mode firmware configuration is exercised.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/149-pte-permission-and/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The rule is a property of the address-translation contract, not of boot-time setup, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-149-pte-permission-and|KERNEL": {
+    "item": "lab-149-pte-permission-and",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Kernels build page tables and rely on the leaf-permission rule to enforce isolation. The verified property (reserved encodings fault, leaf decides, U/SUM gating) is the permission contract the kernel's memory management depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Kernels build page tables and rely on the leaf-permission rule to enforce isolation. The verified property (reserved encodings fault, leaf decides, U/SUM gating) is the permission contract the kernel's memory management depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the permission contract the kernel's page-table management relies on for isolation.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/149-pte-permission-and/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the permission contract the kernel depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-149-pte-permission-and|ALGORITHM": {
+    "item": "lab-149-pte-permission-and",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure computational construction: a multi-level walk with a permission decision at the terminating level. The same walk-and-decide pattern appears in portable code wherever nested tables gate access.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure computational construction: a multi-level walk with a permission decision at the terminating level. The same walk-and-decide pattern appears in portable code wherever nested tables gate access."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the mechanism as a multi-level walk with a permission decision at the terminating level, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/149-pte-permission-and/PROOF.md"
         }
       },
       {
