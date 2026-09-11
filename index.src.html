@@ -1508,21 +1508,28 @@ assert(check == 0x2144DF1C);</code></pre>
         if (!project.portability) return '';
         const p = project.portability;
         const specRef = p.specRef ? `<a class="spec-ref" href="${(p.specUrl || '').replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(p.specRef)} <span aria-hidden="true">↗</span></a>` : '';
-        const chips = (p.whereNeeded || [])
-          .map((key) => {
-            const chip = CHIPS_BY_KEY[key];
-            if (!chip) return esc(key);
-            const url = chip.source && chip.source.url;
-            const tip = chip.source && chip.source.doc
-              ? `${chip.name}: ${chip.source.doc}${chip.source.page ? ', p.' + chip.source.page : ''}`
-              : chip.name;
-            if (!url) return esc(chip.name);
-            return `<a class="chip-link" href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" title="${esc(tip).replace(/"/g, '&quot;')}">${esc(chip.name)} <span aria-hidden="true">↗</span></a>`;
+        const chipLink = (key) => {
+          const chip = CHIPS_BY_KEY[key];
+          if (!chip) return esc(key);
+          const url = chip.source && chip.source.url;
+          const tip = chip.source && chip.source.doc
+            ? `${chip.name}: ${chip.source.doc}${chip.source.page ? ', p.' + chip.source.page : ''}`
+            : chip.name;
+          if (!url) return esc(chip.name);
+          return `<a class="chip-link" href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" title="${esc(tip).replace(/"/g, '&quot;')}">${esc(chip.name)} <span aria-hidden="true">↗</span></a>`;
+        };
+        const chips = (p.whereNeeded || []).map(chipLink).join(', ');
+        const withChips = Object.keys(CHIPS_BY_KEY)
+          .filter((key) => {
+            const chip = CHIPS_BY_KEY[key] || {};
+            return (chip.extensions || []).includes(p.extension) || String(chip.isaString || '').includes(p.extension);
           })
+          .map(chipLink)
           .join(', ');
         const rows = [
-          ['HARDWARE', `${esc(p.instruction)} (${esc(p.extension)}) — the popcount instruction: counts the set bits in a register in a single instruction${specRef}`],
+          ['HARDWARE', `${esc(p.instruction)} (${esc(p.extension)}) — ${esc(p.instructionWhat || 'the hardware instruction this C substitutes for')}${specRef}`],
           ['EQUIVALENT C', 'Portable C implementation, checked against the hardware instruction'],
+          ...(withChips ? [[`WITH ${esc(p.instruction)}`, withChips]] : []),
           [`WITHOUT ${esc(p.instruction || 'this instruction')}`, chips],
           ['COST', esc(p.costNote)]
         ];

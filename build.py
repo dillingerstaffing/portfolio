@@ -40,6 +40,7 @@ LAYERS = ("ISA", "MICROARCH", "FIRMWARE", "KERNEL", "ALGORITHM")
 # only warns (warn() never fails the build, fail() does).
 LAYERS_REQUIRED = ("ISA", "FIRMWARE", "KERNEL", "ALGORITHM")
 PORTABILITY_FIELDS = ("instruction", "extension", "specRef", "specUrl", "whereNeeded", "costNote")
+PORTABILITY_OPTIONAL_FIELDS = ("instructionWhat",)
 WIGMORE_KINDS = ("probandum", "penultimate", "evidence", "generalization",
                  "explanation", "refutation")
 WIGMORE_TIERS = ("lab", "spec", "vendor", "reference", "community")
@@ -150,11 +151,13 @@ def check_layers(layers, where):
 def check_portability(p, where, chip_keys):
     if p is None:
         return
-    if not isinstance(p, dict) or set(p.keys()) != set(PORTABILITY_FIELDS):
-        fail(f"{where}: portability must have exactly {PORTABILITY_FIELDS}")
+    if not isinstance(p, dict) or not set(PORTABILITY_FIELDS) <= set(p.keys()) <= set(PORTABILITY_FIELDS + PORTABILITY_OPTIONAL_FIELDS):
+        fail(f"{where}: portability must have exactly {PORTABILITY_FIELDS} plus optionally {PORTABILITY_OPTIONAL_FIELDS}")
     for f in ("instruction", "extension", "specRef", "costNote"):
         if not isinstance(p[f], str) or not p[f].strip():
             fail(f"{where}: portability.{f} must be a non-empty string")
+    if "instructionWhat" in p and (not isinstance(p["instructionWhat"], str) or not p["instructionWhat"].strip()):
+        fail(f"{where}: portability.instructionWhat must be a non-empty string")
     if not isinstance(p["whereNeeded"], list) or not p["whereNeeded"]:
         fail(f"{where}: portability.whereNeeded must be a non-empty list")
     for key in p["whereNeeded"]:

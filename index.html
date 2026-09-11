@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-000518">
+  <meta name="build-version" content="v20260911-001059">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -2909,6 +2909,7 @@ assert(check == 0x2144DF1C);</code></pre>
     "portability": {
       "instruction": "cpop",
       "extension": "Zbb",
+      "instructionWhat": "counts the set bits in a register in a single instruction",
       "specRef": "riscv-isa-manual, chapter 'Bit Manipulation Extensions', Zbb / Count population (section number TBD)",
       "whereNeeded": [
         "esp32-c6",
@@ -3643,6 +3644,7 @@ assert(check == 0x2144DF1C);</code></pre>
     "portability": {
       "instruction": "cpop",
       "extension": "Zbb",
+      "instructionWhat": "counts the set bits in a register in a single instruction",
       "specRef": "riscv-isa-manual, chapter 'Bit Manipulation Extensions', Zbb / Count population (section number TBD)",
       "whereNeeded": [
         "esp32-c6",
@@ -7341,6 +7343,7 @@ assert(check == 0x2144DF1C);</code></pre>
     "portability": {
       "instruction": "cpop",
       "extension": "Zbb",
+      "instructionWhat": "counts the set bits in a register in a single instruction",
       "specRef": "riscv-isa-manual, chapter 'Bit Manipulation Extensions', Zbb Extension for Basic Bit Manipulation / Count population (section number TBD)",
       "whereNeeded": [
         "esp32-c6",
@@ -11547,6 +11550,41 @@ assert(check == 0x2144DF1C);</code></pre>
       "url": "https://occ-oss-prod.oss-cn-hangzhou.aliyuncs.com/resource//1737721869472/%E7%8E%84%E9%93%81C910%E4%B8%8EC920R1S6%E7%94%A8%E6%88%B7%E6%89%8B%E5%86%8C%28xrvm%29_20250124.pdf"
     },
     "notes": "Exact sentence from section 18.1.2.2: \"C910/C920 支持的指令集架构为 RV64GC，对应的 MISA 寄存器复位值为 0x800000000094112d。\" (The instruction set architecture supported by C910/C920 is RV64GC; the MISA register reset value is 0x800000000094112d.) Document: 玄铁 C910 与 C920 R1S6 用户手册（xrvm）, Revision 06, dated 2025-01-24 (date from filename). Hosted on T-Head's own Open Chip Community OSS (occ-oss-prod). RV64GC as documented omits Zba, Zbb, Zbs, and Zbc."
+  },
+  "spacemit-k1": {
+    "key": "spacemit-k1",
+    "name": "SpacemiT K1",
+    "isaString": "RV64GCVB, RVA22",
+    "absentExtensions": [],
+    "extensions": [
+      "Zbb"
+    ],
+    "source": {
+      "vendor": "SpacemiT",
+      "docTitle": "Key Stone K1 Datasheet",
+      "version": "V7.1 (2026-08-31)",
+      "section": "2.1 CPU Subsystem, SpacemiT X60 RISC-V Core features (Zbb enumerated)",
+      "url": "https://github.com/spacemit-com/docs-chip/blob/HEAD/en/key_stone/k1/k1_docs/k1_ds.md"
+    },
+    "notes": "X60 core documents RVA22 with Zbb enumerated alongside Zba, Zbc, Zbs in the core feature list. Ships in Banana Pi BPI-F3, Milk-V Jupiter, SpacemiT MUSE."
+  },
+  "eswin-eic7700x": {
+    "key": "eswin-eic7700x",
+    "name": "ESWIN EIC7700X",
+    "isaString": "RV64GC_Zba_Zbb_Sscofpmf",
+    "absentExtensions": [],
+    "extensions": [
+      "Zba",
+      "Zbb"
+    ],
+    "source": {
+      "vendor": "Beijing ESWIN Computing Technology Co., Ltd.",
+      "docTitle": "EIC7700X SOC Manual",
+      "version": "Public Release Rev 1.1 (2024-07-05)",
+      "section": "3.3.1.2 Feature, Table 3-3 MCPU feature summary; Table 3-4 RISC-V Specification Compliance (Zbb 1.0 Ratified)",
+      "url": "https://sifive.cdn.prismic.io/sifive/Z4ej5JbqstJ99fE6_EIC7700XSOC_Manual_V1p1_20250114.pdf"
+    },
+    "notes": "Each core supports Basic Bit Manipulation (Zbb) per section 3.3.1.2. Ships in SiFive HiFive Premier P550, PINE64 StarPro64."
   }
 };
       // Formal Wigmore argument analyses, keyed "item|slot". Only slots with
@@ -12180,21 +12218,28 @@ assert(check == 0x2144DF1C);</code></pre>
         if (!project.portability) return '';
         const p = project.portability;
         const specRef = p.specRef ? `<a class="spec-ref" href="${(p.specUrl || '').replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(p.specRef)} <span aria-hidden="true">↗</span></a>` : '';
-        const chips = (p.whereNeeded || [])
-          .map((key) => {
-            const chip = CHIPS_BY_KEY[key];
-            if (!chip) return esc(key);
-            const url = chip.source && chip.source.url;
-            const tip = chip.source && chip.source.doc
-              ? `${chip.name}: ${chip.source.doc}${chip.source.page ? ', p.' + chip.source.page : ''}`
-              : chip.name;
-            if (!url) return esc(chip.name);
-            return `<a class="chip-link" href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" title="${esc(tip).replace(/"/g, '&quot;')}">${esc(chip.name)} <span aria-hidden="true">↗</span></a>`;
+        const chipLink = (key) => {
+          const chip = CHIPS_BY_KEY[key];
+          if (!chip) return esc(key);
+          const url = chip.source && chip.source.url;
+          const tip = chip.source && chip.source.doc
+            ? `${chip.name}: ${chip.source.doc}${chip.source.page ? ', p.' + chip.source.page : ''}`
+            : chip.name;
+          if (!url) return esc(chip.name);
+          return `<a class="chip-link" href="${url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener" title="${esc(tip).replace(/"/g, '&quot;')}">${esc(chip.name)} <span aria-hidden="true">↗</span></a>`;
+        };
+        const chips = (p.whereNeeded || []).map(chipLink).join(', ');
+        const withChips = Object.keys(CHIPS_BY_KEY)
+          .filter((key) => {
+            const chip = CHIPS_BY_KEY[key] || {};
+            return (chip.extensions || []).includes(p.extension) || String(chip.isaString || '').includes(p.extension);
           })
+          .map(chipLink)
           .join(', ');
         const rows = [
-          ['HARDWARE', `${esc(p.instruction)} (${esc(p.extension)}) — the popcount instruction: counts the set bits in a register in a single instruction${specRef}`],
+          ['HARDWARE', `${esc(p.instruction)} (${esc(p.extension)}) — ${esc(p.instructionWhat || 'the hardware instruction this C substitutes for')}${specRef}`],
           ['EQUIVALENT C', 'Portable C implementation, checked against the hardware instruction'],
+          ...(withChips ? [[`WITH ${esc(p.instruction)}`, withChips]] : []),
           [`WITHOUT ${esc(p.instruction || 'this instruction')}`, chips],
           ['COST', esc(p.costNote)]
         ];
