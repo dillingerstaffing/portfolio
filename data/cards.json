@@ -129,8 +129,8 @@
         "because": "not here because the buffer is built from C11 release/acquire atomics, no RISC-V instruction is the point"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "matters here because the design isolates head and tail on separate cache lines so the two threads never fight over the same cache traffic, and the verified 190.4 Mops/s throughput is a timing claim about that implementation"
       },
       "FIRMWARE": {
         "applies": false,
@@ -202,8 +202,8 @@
         "because": "not here because it manages a heap inside an existing runtime, it does no boot-time setup"
       },
       "KERNEL": {
-        "applies": true,
-        "because": "a kernel's physical memory management starts with allocator primitives like this free-list bump allocator"
+        "applies": false,
+        "because": "not here because the allocator ran as a plain userspace heap library on the host, and the verification exercised no scheduling, virtual memory, driver, or syscall path"
       },
       "ALGORITHM": {
         "applies": true,
@@ -401,8 +401,8 @@
         "because": "saves x1-x31 plus mepc on every CLINT tick and returns via mret, so the trap contract is the mechanism"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "matters here because the card's headline claims are cycle timing: minimum 13.6 us interrupt latency and 17.3 us context-switch cost, stamped with rdcycle and cross-checked against mtime, even though QEMU is not silicon"
       },
       "FIRMWARE": {
         "applies": false,
@@ -470,8 +470,8 @@
         "because": "gives a builder the primitives to bring a second hart online: observed hart IDs, provably disjoint 4 KiB stack slices, an amoswap spinlock for shared UART output, and rdcycle-stamped bring-up latency"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "matters here because bring-up latency was measured with rdcycle at 1,595,175 cycles on one run and 3,554,055 on another, so the card makes a cycle-timing claim about the implementation"
       },
       "FIRMWARE": {
         "applies": true,
@@ -852,8 +852,8 @@
         "because": "measures RISC-V switch cost in cycles on QEMU and sizes the emitted RV64 .text, both machine-contract measurements"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "matters here because the card compares measured switch cost in cycles across -O0 and -O2 builds on QEMU, a timing claim about the implementation even though no reliable ranking was claimed"
       },
       "FIRMWARE": {
         "applies": false,
@@ -1047,16 +1047,16 @@
         "because": "programs the ns16550a divisor latch and stamps bit time with rdcycle against mtime, all machine-contract behavior"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "stamps actual bit time with rdcycle calibrated against the 10 MHz mtime and characterizes host-latency inflation at short divisors, a claim about the emulator and host timing path, not silicon"
       },
       "FIRMWARE": {
         "applies": false,
         "because": "not here because it measures an already-programmed device, it performs no boot-time configuration"
       },
       "KERNEL": {
-        "applies": true,
-        "because": "teaches the discipline a serial-driver author needs: program the divisor latch, measure actual bit time in loopback, and land divisor 96 within about 0.4% of nominal"
+        "applies": false,
+        "because": "not here because it is a bare-metal UART program measured on QEMU virt with no kernel running, so no scheduler, VM, or driver subsystem was verified"
       },
       "ALGORITHM": {
         "applies": false,
@@ -1116,8 +1116,8 @@
         "because": "not here because the loop is portable C confirmed branchless in disassembly, no RISC-V instruction is compared"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "measures cycles per lookup at n=16384 and n=1048576 and attributes the crossover to loads missing cache, reasoning about the host memory hierarchy"
       },
       "FIRMWARE": {
         "applies": false,
@@ -1177,8 +1177,8 @@
     "id": "memcpy-alignment-fundamentals",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "the body is built so every access is aligned, the property the ISA's memory-access rules demand"
+        "applies": false,
+        "because": "not here because the aligned-safe construction was verified only on a host CPU against libc memcpy and never touches a RISC-V instruction, CSR, or trap; alignment safety here is portable practice, not a machine-contract dependency"
       },
       "MICROARCH": {
         "applies": false,
@@ -1315,8 +1315,8 @@
         "because": "not here because it manages a heap inside an existing runtime, it does no boot-time setup"
       },
       "KERNEL": {
-        "applies": true,
-        "because": "is the classic kernel physical-page allocator design, and the measured 0.789 vs 0.357 fragmentation trade-off against a bump allocator tells a kernel builder exactly what coalescing costs"
+        "applies": false,
+        "because": "not here because the allocator was measured in a host userspace churn workload with no kernel running; kernels use buddy allocators, but that alone does not light this slot"
       },
       "ALGORITHM": {
         "applies": true,
@@ -1442,7 +1442,7 @@
       },
       "KERNEL": {
         "applies": true,
-        "because": "S-mode trap handling is where an OS kernel's scheduler and page-fault handler live, so the delegation serves the kernel"
+        "because": "the preemptive scheduler itself runs in S-mode on the delegated supervisor timer interrupt, and the verification counted its exact 200 ticks and 200 switches per trial"
       },
       "ALGORITHM": {
         "applies": false,
@@ -1812,7 +1812,7 @@
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "the routines implement exactly what the rev8 instruction does, so the instruction is the comparison target"
+        "because": "the shift, OR, and mask swaps implement the byte reversal the rev8 instruction specifies, checked against compiler builtins and involution, with no rev8 ever executed"
       },
       "MICROARCH": {
         "applies": false,
@@ -1905,12 +1905,12 @@
         "because": "executes wfi against a CLINT-programmed wakeup and measures to the first instruction after mret, all machine-contract behavior"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "measures the halted-vcpu wakeup cost against a spinning hart across 800 interleaved trials per run, a claim about the QEMU-and-host timing path, not silicon power states"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "a WFI-based idle is the firmware's lowest-power wait state, and its wakeup cost is the firmware's budget"
+        "applies": false,
+        "because": "not here because it is a timer-latency experiment that arms the CLINT and runs trials; it configures no PMP region, delegates no trap, and makes no SBI call"
       },
       "KERNEL": {
         "applies": false,
@@ -2238,8 +2238,8 @@
     "id": "ctz-debruijn-multiply",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "the de Bruijn construction implements exactly what the ctz instruction provides, so the instruction is the comparison target"
+        "applies": false,
+        "because": "not here because the proof ran on a host machine against the compiler's own ctz builtin, so no RISC-V ctz instruction ever executed and the claim never touches the machine contract."
       },
       "MICROARCH": {
         "applies": false,
@@ -2397,8 +2397,8 @@
     "id": "hamming-distance-64",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "the distance is defined as popcount(a xor b), and the popcount is exactly what cpop provides, so the instruction is the comparison target"
+        "applies": false,
+        "because": "not here because the 10,000,073-case proof ran on a host machine against a naive bit loop, so no RISC-V cpop instruction ever executed and the claim never touches the machine contract."
       },
       "MICROARCH": {
         "applies": false,
@@ -2496,7 +2496,7 @@
       },
       "MICROARCH": {
         "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "because": "not here because the claim and complete cycle counts are incidental readings from functional emulation on QEMU, not a claim about pipeline, cache, or predictor behavior."
       },
       "FIRMWARE": {
         "applies": false,
@@ -2568,8 +2568,8 @@
     "id": "floor-log2-bit-identities",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "floor(log2(x)) is 63 minus the leading-zero count, which is exactly what clz provides, so the instruction is the comparison target"
+        "applies": false,
+        "because": "not here because the proof ran on a host machine against the compiler's clz builtin with no hardware clz anywhere in the implementation, so no RISC-V clz instruction ever executed."
       },
       "MICROARCH": {
         "applies": false,
@@ -2666,8 +2666,8 @@
         "because": "programs CLINT mtimecmp and measures trap delivery in mtime ticks over 2,976 trials, all machine-contract behavior"
       },
       "MICROARCH": {
-        "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "applies": true,
+        "because": "matters here because the card's whole claim is a measured cycle-timing distribution, the trap-delivery offset in mtime ticks across 2,976 trials with rdcycle-to-mtime calibration, taken on QEMU 8.2.2 so the numbers describe the emulated machine rather than silicon."
       },
       "FIRMWARE": {
         "applies": false,
@@ -2824,8 +2824,8 @@
     "id": "bit-reversal-swar",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "the group-swap construction implements exactly what the brev8 instruction provides, so the instruction is the comparison target"
+        "applies": false,
+        "because": "not here because the proof ran on a host machine against a naive bit loop, so no RISC-V brev8 instruction ever executed and the claim never touches the machine contract."
       },
       "MICROARCH": {
         "applies": false,
@@ -2914,8 +2914,8 @@
     "id": "ffs64-fls64-debruijn",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "ffs64 is the trailing-zero position, which is exactly what ctz provides, so the instruction is the comparison target"
+        "applies": false,
+        "because": "not here because the proof ran on a host machine against the compiler's bit-scan builtins with no bit-scan instructions in the object, so no RISC-V ctz-class instruction ever executed."
       },
       "MICROARCH": {
         "applies": false,
@@ -3158,12 +3158,12 @@
     "id": "branchless-minmax-32-bit",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "the routines implement exactly what the min/max instructions provide, so the instruction is the comparison target"
+        "applies": false,
+        "because": "not here because the proof ran on a host machine against the ternary-operator reference, so no RISC-V min instruction ever executed and the claim never touches the machine contract."
       },
       "MICROARCH": {
         "applies": false,
-        "because": "the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+        "because": "not here because the no-branch disassembly is a static code-shape observation and the 3.650 ns/pair figure is a bare timing number, with no predictor behavior measured."
       },
       "FIRMWARE": {
         "applies": false,
@@ -3699,7 +3699,7 @@
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "the shift/OR identity implements exactly what the ror/rol instructions provide, so the instruction is the comparison target"
+        "because": "the shift/OR construction implements exactly the rotation the Zbb ror instruction specifies, so the ISA layer records that specification correspondence, with no instruction executed on the host"
       },
       "MICROARCH": {
         "applies": false,
@@ -4721,8 +4721,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": false,
-        "because": "not here because it measures delivery latency, it performs no boot-time configuration"
+        "applies": true,
+        "because": "the test runs as bare-metal M-mode with -bios none and installs its own trap handler and interrupt enables, which is boot-time machine-mode setup"
       },
       "KERNEL": {
         "applies": false,
@@ -4933,7 +4933,7 @@
       },
       "MICROARCH": {
         "applies": false,
-        "because": "the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+        "because": "the lab verified the compiled code has no conditional jump or cmov, which is a code-shape check, and recorded only a host throughput number, so no pipeline, cache, or predictor behavior was measured"
       },
       "FIRMWARE": {
         "applies": false,
@@ -4998,7 +4998,7 @@
       },
       "MICROARCH": {
         "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "because": "not here because the card gates on counter positivity and monotonicity, not exact tick counts, and under QEMU the counter samples host ticks rather than guest cycles, so the timing data cannot ground any implementation claim"
       },
       "FIRMWARE": {
         "applies": false,
@@ -5638,8 +5638,8 @@
     "id": "bit-rotate-add",
     "layers": {
       "ISA": {
-        "applies": true,
-        "because": "matters because The shift-modulo rotate identity computes exactly what rol rotates in hardware, composed with a wrapping add."
+        "applies": false,
+        "because": "not here because the 64,000,000 checks compare the shift-modulo rotate against an independent per-bit software reference, never against rol, so no verified claim depends on the machine contract"
       },
       "MICROARCH": {
         "applies": false,
@@ -5809,8 +5809,8 @@
         "because": "not here because the lab runs its 1,000,000 differential cases with no tables and no library calls on the host, touching no boot, PMP, or M-mode mechanism."
       },
       "KERNEL": {
-        "applies": true,
-        "because": "matters because serial drivers, network stacks, and filesystems validate CRC checksums on incoming frames and blocks with exactly this math."
+        "applies": false,
+        "because": "not here because the 1,000,000-case differential proof runs in host user space against an independent reference; kernels use CRC checksums, but no scheduler, driver, filesystem, network, or syscall path ran in this test."
       },
       "ALGORITHM": {
         "applies": true,
@@ -5940,7 +5940,7 @@
       },
       "MICROARCH": {
         "applies": false,
-        "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
+        "because": "not here because the attempt histogram ran on QEMU's functional model with a single hart and no contention, so the all-first-attempt result reflects the emulated reservation contract, not pipeline, cache, or predictor behavior."
       },
       "FIRMWARE": {
         "applies": false,
@@ -5997,7 +5997,7 @@
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "matters because The shift-xor identity builds the exact GF(2) product the lab compares against clmul."
+        "because": "matters because the shift-xor identity computes the exact GF(2) product that the Zbc clmul instruction specifies, verified against two independent software references over 4,295,967,296 inputs; the clmul instruction itself was never executed."
       },
       "MICROARCH": {
         "applies": false,
@@ -6156,7 +6156,7 @@
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "matters because The 256-entry byte table built from the one-bit identity computes exactly what cpop counts in hardware."
+        "because": "matters because the 256-entry byte table computes the population count that the Zbb cpop instruction specifies, checked against the compiler builtin over 1,065,792 inputs; the cpop instruction itself was never executed."
       },
       "MICROARCH": {
         "applies": false,
@@ -6242,7 +6242,7 @@
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "matters because The 256-entry table plus byte-scan identity computes exactly what clz counts in hardware."
+        "because": "matters because the 256-entry table plus byte-scan identity computes the leading-zero count that the Zbb clz instruction specifies, checked against the compiler builtin over 1,065,866 inputs; the clz instruction itself was never executed."
       },
       "MICROARCH": {
         "applies": false,
@@ -6365,12 +6365,12 @@
         "Bit-by-bit restoring identity, no floating point or division"
       ],
       [
-        "CHECKS",
-        "4,294,967,296 values, 0 mismatches"
+        "CORRECTNESS",
+        "4,294,967,296 values checked against a naive binary-search reference, 0 mismatches"
       ],
       [
         "CHECKSUM",
-        "f0bc609332350325 (exhaustive 2^32, fnv1a)"
+        "f0bc609332350325 (FNV-1a over the exhaustive 2^32 input stream)"
       ],
       [
         "BENCHMARK",
@@ -6706,7 +6706,7 @@
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "matters because The clo(x) = clz(~x) identity means the lab's output must equal clz of the inverted word, executed in hardware."
+        "because": "matters because the clo(x) = clz(~x) identity ties the lab's output to the leading-zero count the Zbb clz instruction specifies for the inverted word, checked against a naive bit-scan reference over 10,065,619 inputs; no clz instruction was executed."
       },
       "MICROARCH": {
         "applies": false,
@@ -6808,7 +6808,7 @@
       },
       "FIRMWARE": {
         "applies": true,
-        "because": "matters because PMP regions are laid out by boot-time firmware before any lock bit is set, and this measurement documents the exact matching rule it depends on."
+        "because": "matters because the exact boundary and lock-bit results depend on boot-time M-mode PMP setup: the probe, running as the boot payload with no firmware present, programs pmpcfg0 to 0x880f with two TOR entries and the lock bit set, which is the firmware programming interface exercised directly."
       },
       "KERNEL": {
         "applies": false,
@@ -7132,8 +7132,8 @@
         "because": "not here because the 256/256 table re-derivation and the catalogue check value 0x29B1 for 123456789 are proved in a host user-space bench, with no M-mode boot or trap configuration running."
       },
       "KERNEL": {
-        "applies": true,
-        "because": "matters because serial drivers, network stacks, and filesystems validate CRC checksums on incoming frames and blocks with exactly this math."
+        "applies": false,
+        "because": "not here because the 1,000,256-message differential proof and the 0x29B1 catalogue check value ran in a host user-space bench, with no scheduler, driver, network-stack, or filesystem code involved."
       },
       "ALGORITHM": {
         "applies": true,
@@ -7270,8 +7270,8 @@
         "because": "not here because the residue verification is a user-space differential test against the lab/04 oracle, with no boot-time M-mode setup code and no trap delegation."
       },
       "KERNEL": {
-        "applies": true,
-        "because": "matters because serial drivers, network stacks, and filesystems validate CRC checksums on incoming frames and blocks with exactly this math."
+        "applies": false,
+        "because": "not here because the 1,000,000-buffer residue verification against the lab/04 oracle ran in a host user-space bench, with no driver, network-stack, or filesystem path involved."
       },
       "ALGORITHM": {
         "applies": true,
@@ -7400,8 +7400,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because interrupt enables are gated by firmware before handoff, and this measurement documents the exact enable/pending behavior it configures."
+        "applies": false,
+        "because": "not here because the probe writes the CLINT msip register and reads back mip directly in M-mode, depending on no PMP region, trap-delegation default, SBI call, or other boot-time firmware setup."
       },
       "KERNEL": {
         "applies": false,
@@ -7465,8 +7465,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because interrupt enables are gated by firmware before handoff, and this measurement documents the exact enable/pending behavior it configures."
+        "applies": false,
+        "because": "not here because the probe sets the mie MSIE bit and observes the trap gate itself, depending on no firmware-programmed interrupt enable, delegation default, or boot-time setup."
       },
       "KERNEL": {
         "applies": false,
@@ -7515,7 +7515,7 @@
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "matters because the popcount of (x ^ (x-1)) shifted right by one computes exactly what the ctz instruction counts in hardware."
+        "because": "matters because the hand-rolled identity computes the trailing-zero count the Zbb ctz instruction specifies, verified on the host against a shift-loop reference rather than against the instruction itself."
       },
       "MICROARCH": {
         "applies": false,
@@ -7608,8 +7608,8 @@
         "because": "not here because the shift/OR fill-cascade proof over 1M splitmix64 values runs in user space with no M-mode setup."
       },
       "KERNEL": {
-        "applies": true,
-        "because": "matters because buddy-style page allocators round every request size up to a power of two with exactly this smear."
+        "applies": false,
+        "because": "not here because the fill-cascade proof over 194 contract rows, exhaustive 16-bit inputs, and 1,000,000 random values ran in user space, with no allocator, scheduler, or other kernel subsystem involved."
       },
       "ALGORITHM": {
         "applies": true,
@@ -7673,8 +7673,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because interrupt enables are gated by firmware before handoff, and this measurement documents the exact enable/pending behavior it configures."
+        "applies": false,
+        "because": "not here because the probe drives the mstatus MIE gate against a pending CLINT interrupt it created itself, depending on no firmware-programmed enable or boot-time delegation default."
       },
       "KERNEL": {
         "applies": false,
@@ -8128,8 +8128,8 @@
         "because": "not here because the probe programs stvec MODE=00 directly and records the S-mode ecall trap itself, with no boot-time firmware setup code in between."
       },
       "KERNEL": {
-        "applies": true,
-        "because": "matters because the S-mode trap vector is the kernel's trap entry point, and this probe programs exactly that entry."
+        "applies": false,
+        "because": "not here because the probe programs stvec MODE=00 itself and records the S-mode ecall trap as machine-contract behavior, with no scheduler, virtual-memory manager, driver, or syscall path running."
       },
       "ALGORITHM": {
         "applies": false,
@@ -8487,8 +8487,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because PMP regions are laid out by boot-time firmware before any lock bit is set, and this measurement documents the exact matching rule it depends on."
+        "applies": false,
+        "because": "not here because the probe lays out its own 4 KiB and 64 KiB PMP deny regions in its own M-mode code and measures the machine-contract matching rule, with no dependence on external boot-time firmware configuration."
       },
       "KERNEL": {
         "applies": false,
@@ -8932,8 +8932,8 @@
         "because": "not here because the probe drops into S-mode and measures the satp ASID write/readback mask directly, with no M-mode firmware performing the trap delegation or handoff."
       },
       "KERNEL": {
-        "applies": true,
-        "because": "matters because ASID-tagged TLB management is the kernel's virtual-memory concern, and this probe runs the satp contract from S-mode."
+        "applies": false,
+        "because": "not here because the probe measures the satp ASID write and readback mask as machine-contract behavior, with no kernel virtual-memory subsystem running; real kernels consume the guarantee, but the claim is about the register contract itself."
       },
       "ALGORITHM": {
         "applies": false,
@@ -9058,8 +9058,8 @@
         "because": "not here because the probe issues the faulting load and store to 0xffffffffc0000000 to measure the mcause/mtval/mepc records themselves, writing no boot-time firmware setup."
       },
       "KERNEL": {
-        "applies": true,
-        "because": "matters because kernel page-fault and fault handlers read mtval to find the faulting address, and this probe documents the exact record."
+        "applies": false,
+        "because": "not here because the load and store probes run in M-mode bare-metal with no kernel present; kernel fault handlers read mtval, but that use does not make this a kernel claim."
       },
       "ALGORITHM": {
         "applies": false,
@@ -9172,8 +9172,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because extension detection is boot-time firmware reading misa, and this measurement documents the exact readback contract it can rely on."
+        "applies": false,
+        "because": "not here because the write-all-ones readback of misa 0x80000000001411ad was measured bare-metal in M-mode with no firmware setup; firmware reads this value for extension detection, but this claim does not depend on that firmware."
       },
       "KERNEL": {
         "applies": false,
@@ -9226,7 +9226,7 @@
       },
       "MICROARCH": {
         "applies": false,
-        "because": "the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+        "because": "not here because the proof verified the branchless structure directly (0 conditional jumps in the -O2 object) plus differential output; no predictor, cache, or cycle-timing claim was measured."
       },
       "FIRMWARE": {
         "applies": false,
@@ -9408,8 +9408,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because the machine timer is armed by boot-time firmware, and this measurement documents the exact one-shot and disarm behavior it programs."
+        "applies": false,
+        "because": "not here because the one-shot arming, delivery, and all-ones disarm were measured by the bare-metal probe itself, with no boot-time firmware setup; firmware programs the timer later, but this claim does not depend on it."
       },
       "KERNEL": {
         "applies": false,
@@ -9534,8 +9534,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because interrupt enables are gated by firmware before handoff, and this measurement documents the exact enable/pending behavior it configures."
+        "applies": false,
+        "because": "not here because the STIE-only zero-trap and MTIE-plus-STIE single-trap measurements were taken by the standalone M-mode probe itself; firmware gates enables before handoff, but this claim does not depend on that firmware."
       },
       "KERNEL": {
         "applies": false,
@@ -9596,7 +9596,7 @@
       },
       "MICROARCH": {
         "applies": false,
-        "because": "the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+        "because": "not here because the proof verified the branchless structure directly (0 jumps in the -O2 object) plus differential output against the comparison reference; no predictor, cache, or cycle-timing claim was measured."
       },
       "FIRMWARE": {
         "applies": false,
@@ -9778,8 +9778,8 @@
         "because": "the QEMU run verified functional behavior only and recorded no pipeline, cache, or predictor behavior"
       },
       "FIRMWARE": {
-        "applies": true,
-        "because": "matters because trap handlers read mcause to dispatch, and firmware that writes mcause must know whether the write sticks."
+        "applies": false,
+        "because": "not here because the all-ones, zero, and trap-overwrite measurements were taken by the standalone M-mode probe itself; firmware trap dispatch reads mcause, but this claim does not depend on any firmware setup."
       },
       "KERNEL": {
         "applies": false,
@@ -10136,8 +10136,8 @@
         "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises trap routing only, with no OS kernel code."
       },
       "ALGORITHM": {
-        "applies": true,
-        "because": "Selective interrupt routing through the mideleg bit mask (bit 9 delegated, all other bits preserved) is a pure bitmask mechanism, portable to every RISC-V hart with H or S mode."
+        "applies": false,
+        "because": "not here because the routing claim is about the mideleg CSR and the RISC-V privileged trap model, which is machine contract, not an ISA-independent computational mechanism"
       }
     },
     "evidence": {
@@ -10372,8 +10372,8 @@
         "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises CSR behavior only, with no OS kernel code."
       },
       "ALGORITHM": {
-        "applies": true,
-        "because": "The write/readback probe pattern (all-ones then zero, comparing readbacks to written values) is a pure verification mechanism, portable to every RISC-V hart."
+        "applies": false,
+        "because": "not here because the claim is that all 64 bits of the sepc CSR are software-writable, a RISC-V machine-contract fact, not an ISA-independent computational mechanism"
       }
     },
     "evidence": {
@@ -10443,24 +10443,16 @@
     "summary": "Cond_neg uses the two's-complement identity to negate when f=1 and pass through when f=0, with the expression expressed using only bitwise and addition operators.",
     "specRows": [
       [
-        "CHECKS",
-        "10,131,084 differential"
-      ],
-      [
-        "MISMATCHES",
-        "0"
+        "CORRECTNESS",
+        "10,131,084 inputs checked against the plain if/else reference, 0 mismatches"
       ],
       [
         "CHECKSUM",
-        "FNV-1a 1743a170968927e0 across -O0/-O2/ASan+UBSan"
+        "1743a170968927e0 (FNV-1a), identical across -O0, -O2, and ASan+UBSan builds"
       ],
       [
-        "THROUGHPUT",
+        "BENCHMARK",
         "4.37 ns/value at -O2"
-      ],
-      [
-        "VERDICT",
-        "PASS"
       ]
     ],
     "terminalName": "systems-lab / lab / 121-cond-neg",
@@ -10494,8 +10486,8 @@
         "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises scause trap reporting only, with no OS kernel code."
       },
       "ALGORITHM": {
-        "applies": true,
-        "because": "The INTERRUPT-bit probe pattern (comparing bit 63 across an interrupt and an exception) is a pure verification mechanism, portable to every RISC-V hart."
+        "applies": false,
+        "because": "not here because the claim is that scause bit 63 separates interrupts from exceptions, a RISC-V machine-contract fact, not an ISA-independent computational mechanism"
       }
     },
     "evidence": {
@@ -10508,12 +10500,8 @@
     "summary": "The scause INTERRUPT bit distinguishes async interrupts from sync exceptions on a real hart: a supervisor timer interrupt traps with bit 63 set while a supervisor load page fault traps with bit 63 clear, each with the expected cause code.",
     "specRows": [
       [
-        "CHECKS",
-        "18"
-      ],
-      [
-        "MISMATCHES",
-        "0"
+        "CORRECTNESS",
+        "18 trap probes matched their expected scause values, 0 mismatches"
       ],
       [
         "TIMER SCAUSE",
@@ -10522,10 +10510,6 @@
       [
         "FAULT SCAUSE",
         "0x000000000000000d, bit 63 clear"
-      ],
-      [
-        "VERDICT",
-        "PASS x3 runs"
       ]
     ],
     "terminalName": "riscv-baremetal-demo / src / scause-bit",

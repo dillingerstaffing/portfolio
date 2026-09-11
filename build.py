@@ -382,7 +382,9 @@ def run_copy_gate(cards, articles):
     # Card copy OK-state gate (CARD_COPY_PRINCIPLES.md): banned spec labels,
     # no stat-dumping in summaries/excerpts, instructionWhat required on
     # portability blocks. A run whose cards fail this ships no site change.
-    banned_labels = {"DIFF TEST", "TIMED LOAD", "RESULT", "WHERE NEEDED"}
+    banned_labels = {"DIFF TEST", "TIMED LOAD", "RESULT", "WHERE NEEDED",
+                       "CHECKS", "MISMATCHES", "VERDICT", "THROUGHPUT",
+                       "MEASURED", "SPEED"}
     stat_patterns = [
         re.compile(r"\d{1,3}(,\d{3})+"),  # comma-formatted thousands
         re.compile(r"ns/value", re.I),
