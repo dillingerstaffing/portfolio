@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-201346" />
+  <meta name="build-version" content="v20260911-205109" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The Twelve Bits the Walk Never Touches &middot; Blog &middot; Chris Dillinger</title>
@@ -842,11 +842,35 @@
           .forEach((m) => m.setAttribute('aria-expanded', 'false'));
       }
 
+      /* Keep an open panel fully inside the viewport. The rendered box is
+         the truth: measure after reveal and nudge back on screen if any
+         edge spills, so a font swap, late layout, or zoom can never clip
+         the source-button text inside. */
+      function reseat(panel) {
+        if (!panel || !panel.isConnected) return;
+        const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+        const r = panel.getBoundingClientRect();
+        let dx = 0, dy = 0;
+        if (r.right > vw - M) dx = (vw - M) - r.right;
+        else if (r.left < M) dx = M - r.left;
+        if (r.bottom > vh - M) dy = (vh - M) - r.bottom;
+        else if (r.top < M) dy = M - r.top;
+        if (dx || dy) {
+          panel.style.left = `${(parseFloat(panel.style.left) || r.left) + dx}px`;
+          panel.style.top = `${(parseFloat(panel.style.top) || r.top) + dy}px`;
+        }
+      }
+
       function place(panel, anchorRect, mode) {
         panel.style.visibility = 'hidden';
         document.body.appendChild(panel);
-        const pw = panel.offsetWidth, ph = panel.offsetHeight;
         const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+        /* Panel width is fixed by CSS (min(340px, 100vw - 32px)): derive it
+           from the live viewport. A pre-paint offsetWidth read can disagree
+           with the rendered box and let the panel spill past the viewport
+           edge, clipping the source-button text inside. */
+        const pw = Math.min(340, vw - 32);
+        const ph = panel.offsetHeight;
         let x, y;
         if (mode === 'side') {
           const roomRight = vw - anchorRect.right - M, roomLeft = anchorRect.left - M;
@@ -864,6 +888,7 @@
         panel.style.top = `${y}px`;
         panel.style.visibility = '';
         panel.classList.add('wig-in');
+        reseat(panel);
       }
 
       function termButton(a, n) {
@@ -962,7 +987,7 @@
           // Touch: drill in, one panel at a time, with a back button.
           drillStack.push(l1.innerHTML);
           const detail = nodePanel(a, n, { back: true });
-          if (detail) { l1.innerHTML = detail.innerHTML; }
+          if (detail) { l1.innerHTML = detail.innerHTML; reseat(l1); }
         }
       }
 
