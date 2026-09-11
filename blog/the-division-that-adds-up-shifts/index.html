@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-205109" />
+  <meta name="build-version" content="v20260911-205620" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The Division That Adds Up Shifts &middot; Blog &middot; Chris Dillinger</title>
@@ -864,6 +864,14 @@ while ((x - t) &gt;= 7u) {
         }
       }
 
+      // Seat now, then once more after the entrance animation settles, so
+      // a late font or layout shift can never leave the panel stranded
+      // half off screen with its source-button text clipped.
+      function keepOnScreen(panel) {
+        reseat(panel);
+        requestAnimationFrame(() => reseat(panel));
+      }
+
       function place(panel, anchorRect, mode) {
         panel.style.visibility = 'hidden';
         document.body.appendChild(panel);
@@ -891,7 +899,7 @@ while ((x - t) &gt;= 7u) {
         panel.style.top = `${y}px`;
         panel.style.visibility = '';
         panel.classList.add('wig-in');
-        reseat(panel);
+        keepOnScreen(panel);
       }
 
       function termButton(a, n) {
@@ -990,7 +998,7 @@ while ((x - t) &gt;= 7u) {
           // Touch: drill in, one panel at a time, with a back button.
           drillStack.push(l1.innerHTML);
           const detail = nodePanel(a, n, { back: true });
-          if (detail) { l1.innerHTML = detail.innerHTML; reseat(l1); }
+          if (detail) { l1.innerHTML = detail.innerHTML; keepOnScreen(l1); }
         }
       }
 
