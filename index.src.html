@@ -932,6 +932,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Ten Fields in One Word</h3>
+          <!-- LAYER-STRIP:the-ten-fields-in-one-word -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 02:06 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones, and the top field reads back 0x80000. A valid, readable, writable page at physical page 0x80000. Every page fault your kernel will ever handle starts with exactly this parsing step: xv6's walk() reads each level's entry to pull out the page number and check the permission bits. A misdecoded entry is a wrong mapping or a missed fault, so the parsing gets its own proof, small and focused, nothing else.</p>
+          <p>The obvious way to parse a fixed bit layout in C is a struct with bitfields, one named field per entry part, widths in the declaration. The honest reason not to is that C leaves bitfield layout implementation-defined. The compiler is free to pack the fields in an order you did not ask for, so the struct expresses a hope, not a contract. The lab decodes with shift-and-mask identities instead: one shift and one mask per field, every boundary explicit in the source. Shifting right by k moves bit k into position 0; masking with a run of ones keeps exactly the field width and clears everything above. The mechanism is portable to every ISA; only the boundaries come from the RISC-V contract.</p>
+          <p>The layout is the privileged specification's own: 44 bits of physical page number in bits 53:10, two bits reserved for supervisor software in 9:8, then the eight flags, dirty, accessed, global, user, execute, write, read, valid. The ten field masks are disjoint and cover bits 53:0 with no overlap and no gaps, so the fields partition the word, and shifting each field back to its position and ORing restores the entry exactly. That partition is the whole invariant: encode(decode(pte)) equals pte, and the test checks it on every one of the 4.3 billion cases.</p>
+          <p>The code is the insight here:</p>
+          <pre><code>f.v   = (uint8_t)(pte &amp; 1ULL);            /* bit 0: valid */
+f.rsw = (uint8_t)((pte &gt;&gt; 8) &amp; 3ULL);     /* bits 9:8: supervisor software */
+f.ppn = (pte &gt;&gt; 10) &amp; 0xFFFFFFFFFFFULL;   /* bits 53:10: physical page number */</code></pre>
+          <p>Three of the ten fields; the other seven follow the same identity. The flag order, valid up through user, matches xv6's kernel/riscv.h bit for bit, so the layout the lab checks is the layout a real kernel reads.</p>
+          <p>The best part is the promise about the bits the decoder never touches. Bits 63:54 are reserved for future use: decode never reads them, and encode always leaves them clear. That is checked, not assumed. Every directed edge value goes through twice, once bare and once with those top ten bits set, and the decoded fields must come out identical. 108 checks just for the promise that the future stays invisible.</p>
+          <p>The full count: 4,304,967,566 cases, more than 4.3 billion, zero mismatches. Every 32-bit word that exists, ten million fixed-seed 64-bit randoms, 162 directed edges, and the reserved-bits row. The oracle is deliberately built nothing like the implementation: one loop per field, each field assembled bit by bit through a pointer table, no helper code shared with the thing it tests. A second, independently written per-bit Python reference cross-checked 200,162 more values, also zero mismatches, and the checksum of every decoded output is e3c4316e414a6146. One honest caveat on speed: three timing runs on this noisy VM gave 25.782, 9.626, and 11.195 nanoseconds per decode, so the 9.626 number is the best observed, not a promise. One sentence to carry away: a page-table entry is a fixed bit contract from the privileged specification, and this test proved the decoder agrees with it on more than four billion cases without a single mismatch.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/133-sv39-pte-decode" target="_blank" rel="noopener">lab/133-sv39-pte-decode</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Bit That Remembers Who Called</h3>
           <!-- LAYER-STRIP:the-bit-that-remembers-who-called -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 01:06 EDT</time></p>
