@@ -99265,6 +99265,693 @@
           "note": "3 plus 5 yields the verdict in (1)."
         }
       ]
+    },
+  {
+      "item": "src-mcounteren-cy-gate",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Matters at ISA because mcounteren is the privileged architecture's counter-enable CSR; the module verifies bit 0 (CY) gates S-mode rdcycle per the spec's counter access rule.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at ISA because mcounteren is the privileged architecture's counter-enable CSR; the module verifies bit 0 (CY) gates S-mode rdcycle per the spec's counter access rule."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "With mcounteren=0x0, S-mode rdcycle traps with scause=0x2 and sepc at the fault site; with mcounteren=0x1, the read succeeds with strictly increasing samples; 15 checks, 0 mismatches",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-cy-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-gate"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "RISC-V privileged spec defines mcounteren as the counter-enable register gating S-mode access to cycle, time, and instret",
+          "source": {
+            "tier": "spec",
+            "cite": "riscv-privileged spec mcounteren",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The trap-with-CY-clear and read-with-CY-set pair proves the gate is the architectural mcounteren contract."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A CSR bit that turns a counter read into a trap is the architecture's access-control contract, verified by observing both directions."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The ISA layer lights when the verified claim is the privileged architecture's own CSR gating rule."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "4 plus 6 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-cy-gate",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the verified claim is the architectural gating contract; the trap vs read behavior is defined by the CSR, not by pipeline or timing.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at MICROARCH because the verified claim is the architectural gating contract; the trap vs read behavior is defined by the CSR, not by pipeline or timing."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The checks assert trap vs read behavior and sepc values; no pipeline, cache, or timing property is measured",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-cy-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-gate"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The gate is a CSR contract; microarchitectural details do not affect whether the trap fires."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "Whether rdcycle traps or reads is determined by the CSR bit, not by implementation choices."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The MICROARCH slot stays dim when the verified claim is indifferent to microarchitectural implementation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-cy-gate",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Matters at FIRMWARE because machine-mode firmware owns mcounteren; setting or clearing CY is the firmware's mechanism for granting or denying S-mode access to the cycle counter.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at FIRMWARE because machine-mode firmware owns mcounteren; setting or clearing CY is the firmware's mechanism for granting or denying S-mode access to the cycle counter."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The module runs in M-mode, writes mcounteren=0x0 then 0x1, and drops to S-mode to observe the effect; only M-mode can write the CSR",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-cy-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-gate"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The M-mode writes to mcounteren are the firmware acts that open and shut the S-mode counter gate."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "Only M-mode firmware can write mcounteren; the S-mode visibility of counters is firmware's policy decision."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The FIRMWARE layer lights when the verified mechanism is performed by machine-mode software."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-cy-gate",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because a supervisor kernel's timekeeping depends on whether rdcycle traps or reads; the module proves both directions of the gate.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at KERNEL because a supervisor kernel's timekeeping depends on whether rdcycle traps or reads; the module proves both directions of the gate."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Gated read: scause=0x2, sepc at the rdcycle site, dest sentinel intact; enabled read: strictly increasing samples with deltas +7515, +7485, +7080",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-cy-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-gate"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The trap leaves the destination untouched and the enabled read advances, which is exactly what kernel timekeeping code relies on."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A kernel that reads the cycle counter must know whether the read traps; the sentinel-intact check proves the trap leaves no partial state."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The KERNEL layer lights when the verified property determines how supervisor software observes time."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-cy-gate",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the card verifies a hardware CSR gating contract, not a portable computational mechanism.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ALGORITHM because the card verifies a hardware CSR gating contract, not a portable computational mechanism."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The 15 checks assert CSR readbacks, trap records, and counter samples; no computed function with a portable equivalent is verified",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-cy-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-gate"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "There is no algorithm here to be portable; the claim is about what the hart's CSR model guarantees."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A CSR access gate has no portable software equivalent; there is no algorithm to port."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ALGORITHM slot stays dim when the card verifies hardware behavior rather than a computation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-execpresfd",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Not at ISA because the test exercises exec and pipe system calls; it checks kernel file-table semantics across exec, not the machine contract.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ISA because the test exercises exec and pipe system calls; it checks kernel file-table semantics across exec, not the machine contract."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The 5 checks assert fd numbers, byte counts, and data integrity; no instruction, CSR, or trap behavior is asserted",
+          "source": {
+            "tier": "lab",
+            "cite": "user/execpresfd PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Fd survival across exec is a kernel software contract, independent of the underlying instruction set."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A user-space test asserting only OS-level exec and pipe behavior does not engage the instruction set."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ISA slot stays dim when the verified claim concerns kernel data structures rather than the machine contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-execpresfd",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the verified claim is about the kernel's file descriptor preservation; no microarchitectural property is measured.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at MICROARCH because the verified claim is about the kernel's file descriptor preservation; no microarchitectural property is measured."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The PROOF entry describes fd passing through argv and byte-exact pipe writes; the checks observe data, not hardware counters",
+          "source": {
+            "tier": "lab",
+            "cite": "user/execpresfd PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The fd surviving exec is a software invariant of the file table; no microarchitectural feature bears on it."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A property determined by kernel file-table management across exec, observed through pipe I/O, is indifferent to microarchitecture."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The MICROARCH slot stays dim when the verified claim concerns software state preservation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-execpresfd",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Not at FIRMWARE because the test is a user program exercising exec; firmware never manages file descriptors.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at FIRMWARE because the test is a user program exercising exec; firmware never manages file descriptors."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The test builds two UPROGS user programs run from the xv6 shell; no firmware interface is exercised",
+          "source": {
+            "tier": "lab",
+            "cite": "user/execpresfd PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Firmware's job ends at boot; file descriptors are created and preserved entirely by the xv6 kernel."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "File descriptors are an operating-system abstraction with no firmware counterpart."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The FIRMWARE slot stays dim when the verified property belongs to a software layer firmware never touches."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-execpresfd",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because exec's fd preservation is the kernel's contract: the address space is replaced but the file table survives, verified here with 64 bytes through fd 4 after exec.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at KERNEL because exec's fd preservation is the kernel's contract: the address space is replaced but the file table survives, verified here with 64 bytes through fd 4 after exec."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Helper saw fd 4 (matches passed 4), wrote 64 bytes; 64 bytes received byte-exact; checksum 0x286D4B6114E61FC3 independently recomputed on host; 5 checks, 0 mismatches",
+          "source": {
+            "tier": "lab",
+            "cite": "user/execpresfd PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The runner passes the fd number as an argv string; the helper parses it back and writes through it as a new program image, proving the fd table outlives the address space",
+          "source": {
+            "tier": "lab",
+            "cite": "user/execpresfd.c",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/execpresfd.c"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The 64 byte-exact bytes written by a new program image through fd 4 prove the file table survived exec."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "Exec replacing the image while the fd table persists is the kernel's contract; byte-exact data through the post-exec fd is the direct observation."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The KERNEL layer lights when the verified property is the operating system's own exec semantics."
+        },
+        {
+          "kind": "explanation",
+          "n": 7,
+          "text": "One could object that the fd number 4 might be a coincidence. The helper parses argv[1] back to the integer and writes through that fd; the parent receives exactly the 64-byte pattern, so the fd is genuinely the same open file description, not a fresh one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-execpresfd",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the card verifies a kernel exec invariant, not a computational construction with a portable form.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ALGORITHM because the card verifies a kernel exec invariant, not a computational construction with a portable form."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The 5 checks assert fd behavior and data integrity across exec; no computed function, no portable implementation",
+          "source": {
+            "tier": "lab",
+            "cite": "user/execpresfd PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "There is no algorithm here to be portable; the claim is about what the kernel's exec guarantees."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A kernel exec invariant observed through I/O is not a portable computational mechanism."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ALGORITHM slot stays dim when the card verifies operating-system semantics rather than a computation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
     }
   ]
 }

@@ -14240,5 +14240,119 @@
     },
     "portability": null,
     "stressItems": 5
+  },
+{
+    "id": "src-mcounteren-cy-gate",
+    "title": "mcounteren.CY gates S-mode rdcycle both ways",
+    "kicker": "RISCV",
+    "summary": "A bare-metal module verifies that mcounteren bit 0 (CY) gates S-mode reads of the cycle counter in both directions. With CY clear, an S-mode rdcycle raises an illegal-instruction trap; with CY set, the same read succeeds and samples strictly advance.",
+    "checks": 15,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mcounteren-cy-gate/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-gate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "15 checks on QEMU 8.2.2: gated rdcycle traps with scause 2 and sepc at the fault site; enabled rdcycle reads with strictly increasing samples; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x4d74f3e95211308e, byte-identical across 3 runs; FNV-1a over the fifteen verdict-relevant values"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2 virt, single hart"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mcounteren-cy-gate",
+    "terminalLabel": "Verified mcounteren-cy-gate QEMU output",
+    "terminalOutput": "boot: mcounteren=0x0\nprobe: mcounteren write 0x7 readback 0x7\ngate: mcounteren write 0x0 readback 0x0\nsetup: medeleg=0x4\nphase A: S-mode rdcycle at 0x80000288 with mcounteren=0x0 -> trap, scause=0x2, sepc=0x80000288, trap count 1, dest sentinel intact\nphase B: S-mode ecall at 0x800003d2 -> mcause=0x9, mepc=0x800003d2, M-mode trap count 1, mcounteren=0x1\nphase C: S-mode rdcycle with CY set -> no new trap, samples strictly increasing (deltas +7515, +7485, +7080)\nchecksum: 0x4d74f3e95211308e\nchecks: 15 mismatches: 0\nPASS: mcounteren.CY gates S-mode rdcycle both ways",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because mcounteren is the privileged architecture's counter-enable CSR; the module verifies bit 0 (CY) gates S-mode rdcycle per the spec's counter access rule."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is the architectural gating contract; the trap vs read behavior is defined by the CSR, not by pipeline or timing."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because machine-mode firmware owns mcounteren; setting or clearing CY is the firmware's mechanism for granting or denying S-mode access to the cycle counter."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor kernel's timekeeping depends on whether rdcycle traps or reads; the module proves both directions of the gate."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware CSR gating contract, not a portable computational mechanism."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "user-execpresfd",
+    "title": "xv6 open pipe fd survives exec byte-exact",
+    "kicker": "XV6",
+    "summary": "A user-space test proves exec replaces the address space while keeping open file descriptors. A helper program, running as a new image after exec, writes 64 bytes through fd 4 passed as an argv string; the parent receives all 64 bytes byte-exact.",
+    "checks": 5,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/execpresfd.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "5 checks on QEMU 8.2.2: 64-byte expectation built; write-end fd is 4; helper saw fd 4 and wrote 64 bytes; 64 bytes received; byte-exact match; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x286D4B6114E61FC3, independently recomputed on host to same value; byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / execpresfd",
+    "terminalLabel": "Verified execpresfd QEMU output",
+    "terminalOutput": "xv6 kernel is booting\n\nhart 2 starting\nhart 1 starting\ninit: starting sh\n$ execpresfd\ncheck 1: expectation built (64 bytes), formula pinned at bytes 0 and 63\ncheck 2: write-end fd is 4, distinct from stdout\ncheck 3: helper saw fd 4 (matches passed 4), wrote 64 bytes\ncheck 4: received 64 bytes on the data pipe\ncheck 5: 64 bytes byte-exact against the expectation\ncapture hex:\n0b 30 55 7a 9f c4 e9 0e 33 58 7d a2 c7 ec 11 36\n5b 80 a5 ca ef 14 39 5e 83 a8 cd f2 17 3c 61 86\nab d0 f5 1a 3f 64 89 ae d3 f8 1d 42 67 8c b1 d6\nfb 20 45 6a 8f b4 d9 fe 23 48 6d 92 b7 dc 01 26\nchecksum: 0x286D4B6114E61FC3\nfd passed: 4, bytes received: 64, bytes expected: 64\nchecks: 5 mismatches: 0\nPASS: open fd 4 survived exec, 64-byte pattern intact\n$",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the test exercises exec and pipe system calls; it checks kernel file-table semantics across exec, not the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is about the kernel's file descriptor preservation; no microarchitectural property is measured."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test is a user program exercising exec; firmware never manages file descriptors."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because exec's fd preservation is the kernel's contract: the address space is replaced but the file table survives, verified here with 64 bytes through fd 4 after exec."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a kernel exec invariant, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
   }
 ]
