@@ -11468,5 +11468,127 @@
     "repoLabel": "GitHub: systems-lab/lab/134-satp-ppn-extract",
     "terminalLabel": "Verified lab-134-satp-ppn-extract host output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-mip-pending-no-trap",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "mip shows the pending bit while the interrupt gate stays off",
+    "summary": "M-mode clears the MIE gate, sets the CLINT software-interrupt pending bit for hart 0, and reads mip back: the MSIP bit is set and no trap fires over a 100k-cycle window. Clearing the bit drops MSIP again. The pending register reports state the enable gate does not deliver.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because mip is the privileged ISA's pending-state register: the proof reads MSIP set in mip while the global enable is off, showing the pending register reports state independently of the delivery gate"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models the pending bit functionally, so no pipeline, interrupt-latency, or delivery hardware behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware decides whether to act on a pended interrupt it chose not to take: the proof is the firmware-level read of the pending bit with the gate off, the exact information a polling handler needs"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because supervisor kernels read sip, not mip, to dispatch delegated interrupts; the M-mode pending register is firmware's to read, and the supervisor interrupt path never enters the proof's recorded checks, so varying this M-mode behavior changes nothing the kernel's dispatch code does"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because reading a pending CSR bit and counting traps is a direct CSR observation, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "17 checks on mip MSIP readbacks and the trap count, 0 mismatches, PASS in 3 runs"
+      ],
+      [
+        "MSIP-SET",
+        "msip write drives mip 0x80 to 0x88, MSIP stays 1 across the 100,000-cycle window with 0 traps"
+      ],
+      [
+        "MSIP-CLEAR",
+        "msip clear returns mip to 0x80, both enables still clear at end of run"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mip-pending-no-trap",
+    "terminalOutput": "$ make run-mip-pending-no-trap\nmip-pending-no-trap: mip reflects a pended interrupt with MIE clear\nboot: mie.MSIE=0 mstatus.MIE=0 mip=0x80\nset: msip-readback=1 mip=0x88 (mip.MSIP=1)\nwindow: cycles=100050 mip=0x88 traps=0\nclear: msip-readback=0 mip=0x80 (mip.MSIP=0)\nchecks: 17 mismatches: 0\ndigest: 0xc1860c1ec97b7184\nRESULT: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mip-pending-no-trap",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mip-pending-no-trap",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-135-pte-permission-check",
+    "kicker": "RISC-V VIRTUAL MEMORY",
+    "title": "Sv39 leaf-PTE permission rules as a boolean check",
+    "summary": "A from-scratch function decides whether a load, store, or execute access faults, given a leaf PTE's R, W, X, and U bits and the privilege mode: W set without R always faults, the U bit must match the mode, and each access needs its own grant bit. Every combination of flags, access type, and mode is checked against a separately written encoding of the spec's rule table.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because the R/W/X/U encodings and the fault rules are the Sv39 privileged ISA's own contract: the proof checks the implementation against the manual's rule table on every one of the 96 flag, access-type, and mode combinations"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the proof checks the permission rule table on the host, not a page-table walk; no TLB, walk, or fault-delivery hardware behavior is measured"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware builds the page tables: writing a PTE with W set and R clear bakes in a guaranteed fault, and the proof pins exactly which encodings are legal before any table is built"
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters because the kernel's page-fault path and its permission changes live by these rules: the checked function is the rule the kernel applies when it decides whether an access faults"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because the check transcribes the ISA's rule table into boolean logic; outside Sv39 the same code means nothing, so there is no ISA-independent mechanism to argue"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "Host"
+      ],
+      [
+        "CORRECTNESS",
+        "96 combinations of R/W/X/U flags, access type, and mode checked against the spec rule table, 0 mismatches"
+      ],
+      [
+        "SPEC",
+        "rules from the privileged manual sections 4.3.1, 4.3.2 step 3, and 4.4, at MXR=0 and SUM=0"
+      ],
+      [
+        "RESERVED",
+        "W=1 with R=0 faults on every access in both the check and the reference"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 135-pte-permission-check",
+    "terminalOutput": "$ ./test_pte_permits\nchecks=96 mismatches=0 checksum=efd3419afd2b56cb\n$ ./test_pte_permits_o0\nchecks=96 mismatches=0 checksum=efd3419afd2b56cb\n$ ./test_pte_permits_asan\nchecks=96 mismatches=0 checksum=efd3419afd2b56cb\nRESULT: PASS",
+    "verificationEnvironment": "Host",
+    "checks": 96,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/135-pte-permission-check",
+    "repoLabel": "GitHub: systems-lab/lab/135-pte-permission-check",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
   }
 ]

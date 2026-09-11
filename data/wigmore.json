@@ -69217,6 +69217,711 @@
           "note": "the penultimate claim entails the probandum. The objection in (5) is answered textually in (6); the graph carries the argument through the penultimate claim."
         }
       ]
+    },
+    {
+      "item": "src-mip-pending-no-trap",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "matters because mip is the privileged ISA's pending-state register: the proof reads MSIP set in mip while the global enable is off, showing the pending register reports state independently of the delivery gate",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters because mip is the privileged ISA's pending-state register: the proof reads MSIP set in mip while the global enable is off, showing the pending register reports state independently of the delivery gate"
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "With mstatus.MIE and mie.MSIE both clear, setting CLINT msip for hart 0 drives the mip readback from 0x80 to 0x88, MSIP set.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, bench run logs",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The mip readback stays 0x88 across a 100,000-mcycle polling window with the trap counter at 0, and clearing msip returns the readback to 0x80.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, bench run logs",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The verified claim is that the mip pending register reports the asserted state while the interrupt delivery gate is off."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A pending register's contract is what the privileged specification states it reports; reading the register's bits against the asserted source state engages the machine contract directly."
+        },
+        {
+          "kind": "explanation",
+          "n": 6,
+          "text": "One could object that reading a bit that was just written proves nothing about the hardware."
+        },
+        {
+          "kind": "refutation",
+          "n": 7,
+          "text": "The bit read is mip's MSIP, driven by the CLINT msip source through the hart's interrupt logic, not the write itself; the proof's checks require the readback to track the source across set, window, and clear, in 3 byte-identical runs."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measured set-and-hold facts in (2) and (3) establish the intermediate claim in (4) by the principle in (5)."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The intermediate claim in (4) yields the lit verdict in (1) by the principle in (5). The objection in (6) is answered by (7)."
+        }
+      ]
+    },
+    {
+      "item": "src-mip-pending-no-trap",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "not here because QEMU models the pending bit functionally, so no pipeline, interrupt-latency, or delivery hardware behavior is measured in the proof",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "not here because QEMU models the pending bit functionally, so no pipeline, interrupt-latency, or delivery hardware behavior is measured in the proof"
+        },
+        {
+          "kind": "penultimate",
+          "n": 2,
+          "text": "The proof records CSR readbacks, window cycle counts, and the trap count only; it publishes no pipeline, latency, or interrupt-delivery hardware measurements."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "text": "The proof log contains only the mip, mstatus, and mie readbacks, the window cycle counts, and the trap count; no microarchitectural measurement appears in the recorded output.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, recorded scope",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "src-mip-pending-no-trap",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "matters because M-mode firmware decides whether to act on a pended interrupt it chose not to take: the proof is the firmware-level read of the pending bit with the gate off, the exact information a polling handler needs",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters because M-mode firmware decides whether to act on a pended interrupt it chose not to take: the proof is the firmware-level read of the pending bit with the gate off, the exact information a polling handler needs"
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The program runs in M-mode with both enables clear and reads mip directly after asserting the CLINT msip source.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, M-mode program",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The handler it installs counts entries and never fires, so the firmware's only view of the pended interrupt is the mip readback.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, trap handler",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The verified claim is the firmware-level observation: mip reports the pended interrupt while delivery stays off."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "Firmware's interrupt decisions rest on the CSR state the firmware itself can read; a proof that reads that state in the firmware's privilege mode engages the firmware contract."
+        },
+        {
+          "kind": "explanation",
+          "n": 6,
+          "text": "One could object that firmware would simply take the interrupt rather than poll the pending bit."
+        },
+        {
+          "kind": "refutation",
+          "n": 7,
+          "text": "Whether firmware takes or polls is its choice; the proof pins the state it can observe in either case, and the zero-trap window shows the pending bit is readable without any delivery at all."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measured firmware-mode read facts in (2) and (3) establish the intermediate claim in (4) by the principle in (5)."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The intermediate claim in (4) yields the lit verdict in (1) by the principle in (5). The objection in (6) is answered by (7)."
+        }
+      ]
+    },
+    {
+      "item": "src-mip-pending-no-trap",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "not here because supervisor kernels read sip, not mip, to dispatch delegated interrupts; the M-mode pending register is firmware's to read, and the supervisor interrupt path never enters the proof's recorded checks, so varying this M-mode behavior changes nothing the kernel's dispatch code does",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "not here because supervisor kernels read sip, not mip, to dispatch delegated interrupts; the M-mode pending register is firmware's to read, and the supervisor interrupt path never enters the proof's recorded checks, so varying this M-mode behavior changes nothing the kernel's dispatch code does"
+        },
+        {
+          "kind": "penultimate",
+          "n": 2,
+          "text": "The verified property is the M-mode mip pending register with the M-mode enables clear; the proof records no supervisor-mode observation and no kernel dispatch behavior."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A layer lights only when the verified property is load-bearing for work at that layer; where the property lives entirely in a register a kernel never reads, the negative claim holds."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "text": "The proof runs entirely in M-mode and reads mip; sip and the supervisor interrupt path appear nowhere in the recorded checks.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, recorded checks",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "src-mip-pending-no-trap",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "not here because reading a pending CSR bit and counting traps is a direct CSR observation, not an ISA-independent computational mechanism",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "not here because reading a pending CSR bit and counting traps is a direct CSR observation, not an ISA-independent computational mechanism"
+        },
+        {
+          "kind": "penultimate",
+          "n": 2,
+          "text": "The proof's mechanism is reading mip and counting trap entries; it computes nothing that could be restated independently of the CSR hardware."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "An algorithm is an ISA-independent computational mechanism; a direct register observation carries no such mechanism, so the slot stays dim."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "text": "The proof log's check values are mip readbacks and the trap count; no computation beyond the FNV-1a check digest appears.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, check values",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-pending-no-trap/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "lab-135-pte-permission-check",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "matters because the R/W/X/U encodings and the fault rules are the Sv39 privileged ISA's own contract: the proof checks the implementation against the manual's rule table on every one of the 96 flag, access-type, and mode combinations",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters because the R/W/X/U encodings and the fault rules are the Sv39 privileged ISA's own contract: the proof checks the implementation against the manual's rule table on every one of the 96 flag, access-type, and mode combinations"
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The check and the reference agree on all 96 combinations of the 16 R/W/X/U flag values, the 3 access types, and the 2 privilege modes, with 0 mismatches.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, full_run.log",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "Reserved encodings, W set with R clear, fault on every access in both references, matching the manual's rule that such a PTE always raises a page fault.",
+          "source": {
+            "tier": "spec",
+            "cite": "riscv-spec.pdf section 4.3.2 step 3, reserved W=1,R=0",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The verified claim is the implementation's agreement with the privileged specification's permission rule table."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A permission rule table stated by the privileged specification is the machine contract; checking an implementation against an independent encoding of that table engages the contract directly."
+        },
+        {
+          "kind": "explanation",
+          "n": 6,
+          "text": "One could object that a host-side C function proves nothing about real address translation."
+        },
+        {
+          "kind": "refutation",
+          "n": 7,
+          "text": "The claim is about the rule table, not the walker: the boolean composition the hardware applies when a leaf PTE is found. The proof pins that composition; the walk is explicitly out of scope in both the check and the card."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measured agreement facts in (2) and (3) establish the intermediate claim in (4) by the principle in (5)."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The intermediate claim in (4) yields the lit verdict in (1) by the principle in (5). The objection in (6) is answered by (7)."
+        }
+      ]
+    },
+    {
+      "item": "lab-135-pte-permission-check",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "not here because the proof checks the permission rule table on the host, not a page-table walk; no TLB, walk, or fault-delivery hardware behavior is measured",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "not here because the proof checks the permission rule table on the host, not a page-table walk; no TLB, walk, or fault-delivery hardware behavior is measured"
+        },
+        {
+          "kind": "penultimate",
+          "n": 2,
+          "text": "The proof records boolean verdicts against the rule table only; it publishes no walk, TLB, or fault-delivery measurements."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "text": "The proof log contains only the 96 check verdicts and checksums; no page-table walk or hardware behavior appears in the recorded output.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, recorded scope",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "lab-135-pte-permission-check",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "matters because M-mode firmware builds the page tables: writing a PTE with W set and R clear bakes in a guaranteed fault, and the proof pins exactly which encodings are legal before any table is built",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters because M-mode firmware builds the page tables: writing a PTE with W set and R clear bakes in a guaranteed fault, and the proof pins exactly which encodings are legal before any table is built"
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The reserved-encoding rule, W set with R clear always faults, is checked in both references on every reserved row.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, reserved-encoding rows",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The U-bit rule pins which mode may touch the page, the exact legality firmware must establish when it writes each leaf PTE.",
+          "source": {
+            "tier": "spec",
+            "cite": "riscv-spec.pdf section 4.3.1, U-bit rule at SUM=0",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The verified claim is the legality of every leaf-PTE encoding, the contract firmware must satisfy when building tables."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "Firmware's page-table construction is correct only if every PTE it writes is legal under the privileged encoding rules; a proof of those rules engages the firmware's construction contract."
+        },
+        {
+          "kind": "explanation",
+          "n": 6,
+          "text": "One could object that firmware could rely on the hardware to fault rather than pre-checking legality."
+        },
+        {
+          "kind": "refutation",
+          "n": 7,
+          "text": "A fault on a reserved encoding is a bug in the table, not a feature; firmware that writes illegal PTEs has built a broken address space. The proof gives firmware the legality table before any table exists."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measured legality facts in (2) and (3) establish the intermediate claim in (4) by the principle in (5)."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The intermediate claim in (4) yields the lit verdict in (1) by the principle in (5). The objection in (6) is answered by (7)."
+        }
+      ]
+    },
+    {
+      "item": "lab-135-pte-permission-check",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "matters because the kernel's page-fault path and its permission changes live by these rules: the checked function is the rule the kernel applies when it decides whether an access faults",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "matters because the kernel's page-fault path and its permission changes live by these rules: the checked function is the rule the kernel applies when it decides whether an access faults"
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The grant rule, load needs R, store needs W, execute needs X, is the rule the kernel's fault handler inverts when it reports why an access faulted.",
+          "source": {
+            "tier": "spec",
+            "cite": "riscv-spec.pdf section 4.3.1, R/W/X fault rules",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The U-bit rule at SUM=0, supervisor faults on user pages, is the rule the kernel relies on for user/kernel isolation.",
+          "source": {
+            "tier": "spec",
+            "cite": "riscv-spec.pdf section 4.3.1, U-bit rule at SUM=0",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The verified claim is the permission rule table the kernel applies in its fault path and its protection changes."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A kernel's memory management is correct only if it applies the privileged permission rules exactly; a proof of those rules engages the kernel's own decision procedure."
+        },
+        {
+          "kind": "explanation",
+          "n": 6,
+          "text": "One could object that real kernels use the hardware walker, not a software check."
+        },
+        {
+          "kind": "refutation",
+          "n": 7,
+          "text": "The hardware applies the same table; the kernel's fault handler must interpret the same R/W/X/U and mode combination to decide the fault's cause and the fix. The checked rule is the kernel's rule, not the walker's."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measured rule facts in (2) and (3) establish the intermediate claim in (4) by the principle in (5)."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The intermediate claim in (4) yields the lit verdict in (1) by the principle in (5). The objection in (6) is answered by (7)."
+        }
+      ]
+    },
+    {
+      "item": "lab-135-pte-permission-check",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "not here because the check transcribes the ISA's rule table into boolean logic; outside Sv39 the same code means nothing, so there is no ISA-independent mechanism to argue",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "not here because the check transcribes the ISA's rule table into boolean logic; outside Sv39 the same code means nothing, so there is no ISA-independent mechanism to argue"
+        },
+        {
+          "kind": "penultimate",
+          "n": 2,
+          "text": "The function's rules are the Sv39 permission encodings and the SUM=0 privilege model; it computes no general mechanism beyond that table."
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "An algorithm is an ISA-independent computational mechanism; a transcription of one ISA's rule table is the opposite of ISA-independent."
+        },
+        {
+          "kind": "evidence",
+          "n": 4,
+          "text": "The proof's check names the manual's sections and the Sv39 PTE bit positions; nothing in the recorded scope generalizes beyond that encoding.",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, scope statement",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
