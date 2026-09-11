@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-150650" />
+  <meta name="build-version" content="v20260911-150953" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The Bit That Reroutes a Trap &middot; Blog &middot; Chris Dillinger</title>
@@ -798,7 +798,7 @@
 <article class="research-note">
         <div>
           <h3>The Bit That Reroutes a Trap</h3>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">matters at ISA because the bit itself is the machine contract: the privileged architecture defines medeleg, assigns cause 9 to a supervisor environment call, and says a set bit 9 routes that trap to S-mode. The module checked the contract's exact shape: identical ecall, two destinations, one bit.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH</div><p class="layer-because">not at Microarch because the destination flip is a contract property, identical on every conforming implementation: no pipeline, cache, or branch-predictor behavior was measured or asserted, and none could change which handler the trap lands in.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE</div><p class="layer-because">matters at Firmware because firmware is the layer that holds the pen: medeleg is only writable in M-mode, so the decision to delegate is firmware policy, and the module's phase-two setup (write 0x200, read back bit 9 set) is the firmware action under test.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters at Kernel because the delegated trap is the kernel's syscall path: with the bit set, a supervisor kernel fields its own environment calls directly instead of receiving them forwarded down from M-mode, which is the hot path the delegation exists to shorten.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM</div><p class="layer-because">not at Algorithm because the mechanism is the architecture's privilege rule, not a portable technique: a trap destination switch has no meaning on a machine without M-mode, S-mode, and a delegation register, and nothing in the verified behavior travels.</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-bit-that-reroutes-a-trap|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the bit itself is the machine contract: the privileged architecture defines medeleg, assigns cause 9 to a supervisor environment call, and says a set bit 9 routes that trap to S-mode. The module checked the contract's exact shape: identical ecall, two destinations, one bit.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-bit-that-reroutes-a-trap|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the destination flip is a contract property, identical on every conforming implementation: no pipeline, cache, or branch-predictor behavior was measured or asserted, and none could change which handler the trap lands in.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-bit-that-reroutes-a-trap|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because firmware is the layer that holds the pen: medeleg is only writable in M-mode, so the decision to delegate is firmware policy, and the module's phase-two setup (write 0x200, read back bit 9 set) is the firmware action under test.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-bit-that-reroutes-a-trap|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the delegated trap is the kernel's syscall path: with the bit set, a supervisor kernel fields its own environment calls directly instead of receiving them forwarded down from M-mode, which is the hot path the delegation exists to shorten.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-bit-that-reroutes-a-trap|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the mechanism is the architecture's privilege rule, not a portable technique: a trap destination switch has no meaning on a machine without M-mode, S-mode, and a delegation register, and nothing in the verified behavior travels.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 10:05 EDT</time></p>
         </div>
         <div class="research-body">
@@ -818,5 +818,235 @@ check(s_regs[2] == SCAUSE_S_ECALL,
       </article>
   </main>
   <footer class="post-foot"><a href="/portfolio/#blog">&larr; All field notes</a></footer>
-</body>
+  <script>window.__WIGMORE__ = {"the-bit-that-reroutes-a-trap|ISA": {"item": "the-bit-that-reroutes-a-trap", "kind": "article", "slot": "ISA", "probandum": "matters at ISA because the bit itself is the machine contract: the privileged architecture defines medeleg, assigns cause 9 to a supervisor environment call, and says a set bit 9 routes that trap to S-mode. The module checked the contract's exact shape: identical ecall, two destinations, one bit.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at ISA because the bit itself is the machine contract: the privileged architecture defines medeleg, assigns cause 9 to a supervisor environment call, and says a set bit 9 routes that trap to S-mode. The module checked the contract's exact shape: identical ecall, two destinations, one bit."}, {"n": 2, "kind": "evidence", "text": "Phase one wrote 0 to medeleg and the ecall landed in the M-mode handler with mcause 9; phase two wrote 0x200 and the identical ecall landed in the S-mode handler with scause 9. Fourteen checks, zero failures, byte-identical checksums across three QEMU 8.2.2 runs.", "source": {"tier": "lab", "cite": "src/medeleg-ecall-destination/PROOF.md", "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"}}, {"n": 3, "kind": "evidence", "text": "The privileged architecture defines medeleg with one bit per trap cause and assigns cause 9 to environment calls from S-mode; a set bit delegates that trap to S-mode.", "source": {"tier": "spec", "cite": "RISC-V privileged specification, trap delegation", "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"}}, {"n": 4, "kind": "evidence", "text": "The post walks the mechanism step by step: privilege modes, cause registers, and the delegation bit, checking the contract from both sides.", "source": {"tier": "reference", "cite": "The Bit That Reroutes a Trap, mechanism walk", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/"}}, {"n": 5, "kind": "penultimate", "text": "The module verified the delegation contract's exact shape: one bit in medeleg flips the destination of an identical supervisor ecall."}, {"n": 6, "kind": "generalization", "text": "A register bit whose meaning the specification assigns is the machine contract in miniature."}, {"n": 7, "kind": "generalization", "text": "The ISA layer lights when the verified property is a clause of the machine contract, stated by the specification and checked on the hart."}, {"n": 8, "kind": "explanation", "text": "One could object that delegation is firmware policy, since firmware chooses whether to set the bit, making this a firmware claim rather than an ISA one."}, {"n": 9, "kind": "refutation", "text": "Policy chooses the bit's value; the ISA defines what the bit means. The probandum is about the meaning, the routing rule itself, which holds on every conforming hart regardless of which policy any firmware adopts.", "refutes": 8}], "inferences": [{"from": [2, 3, 4], "via": [6], "to": [5], "strength": "strong", "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."}, {"from": [5], "via": [7], "to": [1], "strength": "strong", "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."}]}, "the-bit-that-reroutes-a-trap|MICROARCH": {"item": "the-bit-that-reroutes-a-trap", "kind": "article", "slot": "MICROARCH", "probandum": "not at Microarch because the destination flip is a contract property, identical on every conforming implementation: no pipeline, cache, or branch-predictor behavior was measured or asserted, and none could change which handler the trap lands in.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Microarch because the destination flip is a contract property, identical on every conforming implementation: no pipeline, cache, or branch-predictor behavior was measured or asserted, and none could change which handler the trap lands in."}, {"n": 2, "kind": "evidence", "text": "The fourteen checks assert trap counts per mode, cause codes, and resume addresses; no pipeline, cache, or predictor measurement appears.", "source": {"tier": "lab", "cite": "src/medeleg-ecall-destination/PROOF.md", "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"}}, {"n": 3, "kind": "evidence", "text": "Trap delegation is a predicate over medeleg and the trap cause; the architecture states no microarchitectural condition on the destination.", "source": {"tier": "spec", "cite": "RISC-V privileged specification, trap delegation", "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"}}, {"n": 4, "kind": "evidence", "text": "The post asserts the destination flip as a contract property and names QEMU's model explicitly, disclaiming silicon measurement.", "source": {"tier": "reference", "cite": "The Bit That Reroutes a Trap, honest boundaries", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/"}}, {"n": 5, "kind": "penultimate", "text": "Which handler receives the trap is decided by the medeleg bit and the cause code alone; microarchitectural choices cannot reroute it."}, {"n": 6, "kind": "generalization", "text": "A routing predicate the specification fixes over architectural state admits no implementation freedom in its outcome."}, {"n": 7, "kind": "generalization", "text": "A layer stays dim when the verified property is invariant under everything that layer varies."}, {"n": 8, "kind": "explanation", "text": "A reader might think the microarchitecture matters because real harts take traps through different pipeline mechanisms, and timing could reveal which handler ran."}, {"n": 9, "kind": "refutation", "text": "How the trap travels may vary, but where it lands may not: every conforming implementation must deliver a delegated cause-9 trap to the S-mode handler. Timing side channels observe the outcome; they do not change the routing rule.", "refutes": 8}], "inferences": [{"from": [2, 3, 4], "via": [6], "to": [5], "strength": "strong", "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."}, {"from": [5], "via": [7], "to": [1], "strength": "strong", "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."}]}, "the-bit-that-reroutes-a-trap|FIRMWARE": {"item": "the-bit-that-reroutes-a-trap", "kind": "article", "slot": "FIRMWARE", "probandum": "matters at Firmware because firmware is the layer that holds the pen: medeleg is only writable in M-mode, so the decision to delegate is firmware policy, and the module's phase-two setup (write 0x200, read back bit 9 set) is the firmware action under test.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at Firmware because firmware is the layer that holds the pen: medeleg is only writable in M-mode, so the decision to delegate is firmware policy, and the module's phase-two setup (write 0x200, read back bit 9 set) is the firmware action under test."}, {"n": 2, "kind": "evidence", "text": "Phase two wrote 0x200 to medeleg from M-mode and read back bit 9 set; that write is the delegation setup the module tests.", "source": {"tier": "lab", "cite": "src/medeleg-ecall-destination/PROOF.md", "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"}}, {"n": 3, "kind": "evidence", "text": "medeleg is a machine-level CSR, writable only in M-mode.", "source": {"tier": "spec", "cite": "RISC-V privileged specification, machine trap delegation registers", "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"}}, {"n": 4, "kind": "evidence", "text": "The post says firmware holds the pen: setting the bit is how the firmware gets out of the way of the kernel's syscall path.", "source": {"tier": "reference", "cite": "The Bit That Reroutes a Trap, firmware policy", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/"}}, {"n": 5, "kind": "penultimate", "text": "The delegation decision the module exercises is an M-mode-only write, which is firmware policy on every RISC-V system."}, {"n": 6, "kind": "generalization", "text": "A CSR writable only in M-mode is firmware's configuration surface."}, {"n": 7, "kind": "generalization", "text": "The Firmware layer lights when the verified property is configured or decided by M-mode software."}, {"n": 8, "kind": "explanation", "text": "One could object that any M-mode program, including a test harness, can write medeleg, so the write is not specifically firmware work."}, {"n": 9, "kind": "refutation", "text": "On a deployed system the M-mode program that owns the boot and the trap policy is the firmware; the harness stands in for it because the privilege, not the program's name, is what the architecture gates. The decision to delegate is firmware policy wherever it runs.", "refutes": 8}], "inferences": [{"from": [2, 3, 4], "via": [6], "to": [5], "strength": "strong", "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."}, {"from": [5], "via": [7], "to": [1], "strength": "strong", "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."}]}, "the-bit-that-reroutes-a-trap|KERNEL": {"item": "the-bit-that-reroutes-a-trap", "kind": "article", "slot": "KERNEL", "probandum": "matters at Kernel because the delegated trap is the kernel's syscall path: with the bit set, a supervisor kernel fields its own environment calls directly instead of receiving them forwarded down from M-mode, which is the hot path the delegation exists to shorten.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at Kernel because the delegated trap is the kernel's syscall path: with the bit set, a supervisor kernel fields its own environment calls directly instead of receiving them forwarded down from M-mode, which is the hot path the delegation exists to shorten."}, {"n": 2, "kind": "evidence", "text": "With bit 9 set, the ecall executed in S-mode was caught by the S-mode handler with scause 9 and sepc at the ecall; the M-mode handler never fired.", "source": {"tier": "lab", "cite": "src/medeleg-ecall-destination/PROOF.md", "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"}}, {"n": 3, "kind": "evidence", "text": "The privileged architecture routes a delegated cause-9 trap to S-mode, where the supervisor's trap handler runs.", "source": {"tier": "spec", "cite": "RISC-V privileged specification, trap delegation", "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"}}, {"n": 4, "kind": "evidence", "text": "The post argues the bit exists because of who pays for every trap: system calls are the kernel's hottest path, and delegation lets the kernel field them directly.", "source": {"tier": "reference", "cite": "The Bit That Reroutes a Trap, syscall-path argument", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/"}}, {"n": 5, "kind": "penultimate", "text": "The delegated trap is the kernel's own environment-call receive path: with the bit set the kernel's handler runs first, with it clear the trap takes the long way through M-mode."}, {"n": 6, "kind": "generalization", "text": "A trap path that a kernel's handler dispatches on is kernel-relevant: the kernel is the consumer of the delegated contract."}, {"n": 7, "kind": "generalization", "text": "The Kernel layer lights when the verified property is load-bearing for kernel work, even when the proof exercises it from M-mode."}, {"n": 8, "kind": "explanation", "text": "One could object that the kernel never writes medeleg, so the bit belongs to firmware and the kernel merely receives what it is given."}, {"n": 9, "kind": "refutation", "text": "Receiving is the point: the kernel's trap entry is written around the contract that delegated ecalls arrive in S-mode with scause 9. If the bit were clear, the kernel's syscall path would have to change to accept forwarded traps from M-mode; the property shapes kernel code, so the layer lights.", "refutes": 8}], "inferences": [{"from": [2, 3, 4], "via": [6], "to": [5], "strength": "strong", "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."}, {"from": [5], "via": [7], "to": [1], "strength": "strong", "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."}]}, "the-bit-that-reroutes-a-trap|ALGORITHM": {"item": "the-bit-that-reroutes-a-trap", "kind": "article", "slot": "ALGORITHM", "probandum": "not at Algorithm because the mechanism is the architecture's privilege rule, not a portable technique: a trap destination switch has no meaning on a machine without M-mode, S-mode, and a delegation register, and nothing in the verified behavior travels.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Algorithm because the mechanism is the architecture's privilege rule, not a portable technique: a trap destination switch has no meaning on a machine without M-mode, S-mode, and a delegation register, and nothing in the verified behavior travels."}, {"n": 2, "kind": "evidence", "text": "Every check names medeleg, mcause, scause, mepc, sepc: without the privileged CSRs the checks cannot be stated.", "source": {"tier": "lab", "cite": "src/medeleg-ecall-destination/PROOF.md", "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md"}}, {"n": 3, "kind": "evidence", "text": "Delegation, privilege modes, and cause codes are defined by the RISC-V privileged architecture.", "source": {"tier": "spec", "cite": "RISC-V privileged specification, privilege modes", "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"}}, {"n": 4, "kind": "evidence", "text": "The post presents the result as the architecture's privilege rule, with honest boundaries naming what the QEMU model proves.", "source": {"tier": "reference", "cite": "The Bit That Reroutes a Trap, honest boundaries", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/"}}, {"n": 5, "kind": "penultimate", "text": "The verified behavior is a routing rule between architectural privilege modes; on a machine without them there is no destination to switch."}, {"n": 6, "kind": "generalization", "text": "A claim that cannot be stated without one architecture's privilege registers is not a portable computational mechanism."}, {"n": 7, "kind": "generalization", "text": "The Algorithm layer lights for portable computational mechanisms; an architecture's privilege rule does not qualify."}, {"n": 8, "kind": "explanation", "text": "A reader might see a portable dispatch pattern: one flag choosing between two handlers is a common software technique."}, {"n": 9, "kind": "refutation", "text": "Flag-dispatched handlers are portable; this claim is not. The module proved that this bit in this register reroutes this trap between these privilege modes, a statement with no content once the architecture is removed.", "refutes": 8}], "inferences": [{"from": [2, 3, 4], "via": [6], "to": [5], "strength": "strong", "note": "The measured result, the specified rule, and the post's own demonstration establish per the domain warrant that the intermediate conclusion holds."}, {"from": [5], "via": [7], "to": [1], "strength": "strong", "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."}]}};</script>
+  <script>
+(() => {
+      const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      const WIGMORE = window.__WIGMORE__ || {};
+      const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
+      const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
+      let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
+      let intentT = 0, graceT = 0;
+      const clearTimers = () => { clearTimeout(intentT); clearTimeout(graceT); };
+      const short = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+      // Local HTML escaper: this IIFE cannot see the app IIFE's block-scoped
+      // helpers, so everything it needs is defined here or on window.
+      const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      function closeAll() {
+        clearTimers();
+        if (l1) { l1.remove(); l1 = null; }
+        if (l2) { l2.remove(); l2 = null; }
+        l1Key = null; pinned = false; drillStack = [];
+        document.querySelectorAll('.why-marker[aria-expanded="true"]')
+          .forEach((m) => m.setAttribute('aria-expanded', 'false'));
+      }
+
+      function place(panel, anchorRect, mode) {
+        panel.style.visibility = 'hidden';
+        document.body.appendChild(panel);
+        const pw = panel.offsetWidth, ph = panel.offsetHeight;
+        const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+        let x, y;
+        if (mode === 'side') {
+          const roomRight = vw - anchorRect.right - M, roomLeft = anchorRect.left - M;
+          x = roomRight >= pw || roomRight >= roomLeft
+            ? anchorRect.right + M : anchorRect.left - M - pw;
+          y = anchorRect.top;
+        } else {
+          x = Math.min(Math.max(anchorRect.left, M), vw - pw - M);
+          const below = anchorRect.bottom + M, above = anchorRect.top - M - ph;
+          y = (below + ph <= vh || below <= above) ? below : Math.max(M, above);
+        }
+        x = Math.min(Math.max(x, M), Math.max(M, vw - pw - M));
+        y = Math.min(Math.max(y, M), Math.max(M, vh - ph - M));
+        panel.style.left = `${x}px`;
+        panel.style.top = `${y}px`;
+        panel.style.visibility = '';
+        panel.classList.add('wig-in');
+      }
+
+      function termButton(a, n) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return esc(`(${n})`);
+        return `<button class="wig-term" type="button" data-node="${n}">(${n}) ${esc(node.text)}</button>`;
+      }
+
+      function nodePanel(a, n, opts) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return null;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', node.text);
+        let body = `<div class="wig-tip-head"><span>${KIND_LABEL[node.kind] || node.kind} (${node.n})</span></div>`
+          + `<div class="wig-tip-verdict">${esc(node.text)}</div>`;
+        if (node.kind === 'evidence' && node.source) {
+          body += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">source</span>`
+            + `<span class="wig-tip-v"><a class="wig-tip-src" href="${node.source.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(TIER_LABEL[node.source.tier] || node.source.tier)}: ${esc(node.source.cite || '')} <span aria-hidden="true">↗</span></a></span></div></div>`;
+        }
+        if (node.kind === 'refutation' && node.refutes) {
+          body += `<div class="wig-tip-foot">answers objection (${node.refutes})</div>`;
+        }
+        if (node.kind === 'generalization') {
+          body += `<div class="wig-tip-foot">warrant: stated explicitly, the license for the inference above it.</div>`;
+        }
+        if (opts && opts.back) {
+          body += `<button class="wig-tip-back" type="button">← back to argument</button>`;
+        }
+        el.innerHTML = body;
+        return el;
+      }
+
+      function l1Panel(a, slotName, applies) {
+        const title = applies ? `why the ${slotName} layer matters` : `why the ${slotName} layer does not apply`;
+        const ev = a.keyList.filter((e) => e.kind === 'evidence');
+        const via = a.keyList.filter((e) => e.kind === 'generalization');
+        const pens = a.keyList.filter((e) => e.kind === 'penultimate');
+        const objs = a.keyList.filter((e) => e.kind === 'explanation');
+        let html = `<div class="wig-tip-head"><span>${esc(title)}</span></div>`
+          + `<div class="wig-tip-verdict">${esc(a.probandum)}</div>`;
+        if (ev.length || via.length) {
+          html += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">support</span><span class="wig-tip-v">`
+            + ev.map((e) => `<span class="num">(${e.n})</span> ${termButton(a, e.n)}`).join('<br>')
+            + (via.length ? `<br><span class="num">via</span> ` + via.map((e) => termButton(a, e.n)).join(' · ') : '')
+            + `</span></div></div>`;
+        }
+        if (pens.length) {
+          html += `<div class="wig-tip-rows">` + pens.map((e) =>
+            `<div class="wig-tip-row"><span class="wig-tip-k">therefore</span><span class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}</span></div>`
+          ).join('') + `</div>`;
+        }
+        if (objs.length) {
+          html += `<div class="wig-tip-obj"><span class="wig-tip-k">objection</span>` + objs.map((e) => {
+            const ref = a.keyList.find((r) => r.kind === 'refutation' && r.refutes === e.n);
+            return `<div class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}`
+              + (ref ? `<br><span class="wig-tip-answered">answered ${termButton(a, ref.n)}</span>`
+                     : `<br><span class="wig-tip-answered">no answer recorded</span>`) + `</div>`;
+          }).join('') + `</div>`;
+        }
+        html += `<div class="wig-tip-foot">${a.keyList.length} numbered claims · hover or tap an underlined claim for its evidence</div>`;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', title);
+        el.innerHTML = html;
+        return el;
+      }
+
+      function openL1(marker) {
+        const key = marker.getAttribute('data-wigmore');
+        const a = WIGMORE[key];
+        if (!a) return;
+        closeAll();
+        const slotName = key.split('|')[1] || '';
+        const slotEl = marker.closest('.layer-slot');
+        const slotApplies = slotEl ? slotEl.classList.contains('lit') : false;
+        l1 = l1Panel(a, slotName, slotApplies);
+        l1.dataset.wigKey = key;
+        marker.setAttribute('aria-expanded', 'true');
+        place(l1, marker.getBoundingClientRect(), 'below');
+        l1Key = key;
+      }
+
+      function openL2(termBtn) {
+        const key = l1 ? l1.dataset.wigKey : null;
+        const a = key ? WIGMORE[key] : null;
+        const n = parseInt(termBtn.getAttribute('data-node'), 10);
+        if (!a || !n) return;
+        if (FINE) {
+          if (l2) l2.remove();
+          l2 = nodePanel(a, n, null);
+          if (l2) place(l2, termBtn.getBoundingClientRect(), 'side');
+        } else {
+          // Touch: drill in, one panel at a time, with a back button.
+          drillStack.push(l1.innerHTML);
+          const detail = nodePanel(a, n, { back: true });
+          if (detail) { l1.innerHTML = detail.innerHTML; }
+        }
+      }
+
+      function drillBack() {
+        if (!drillStack.length || !l1) return;
+        l1.innerHTML = drillStack.pop();
+      }
+
+      document.addEventListener('click', (event) => {
+        const back = event.target.closest('.wig-tip-back');
+        if (back && l1 && l1.contains(back)) { drillBack(); return; }
+        const term = event.target.closest('.wig-term');
+        if (term && l1 && l1.contains(term)) {
+          if (!FINE) openL2(term);
+          else { pinned = true; openL2(term); }
+          return;
+        }
+        const marker = event.target.closest('.why-marker');
+        if (marker) {
+          const key = marker.getAttribute('data-wigmore');
+          if (l1Key === key && l1) {
+            // Second click/tap on the open marker: desktop pins a
+            // hover-opened panel, otherwise everything closes.
+            if (!FINE || pinned) { closeAll(); return; }
+            pinned = true;
+            return;
+          }
+          closeAll();
+          if (FINE) pinned = true;
+          openL1(marker);
+          return;
+        }
+        if ((l1 && !l1.contains(event.target)) && (!l2 || !l2.contains(event.target))) {
+          closeAll();
+        }
+      });
+
+      if (FINE) {
+        document.addEventListener('mouseover', (event) => {
+          const term = event.target.closest('.wig-term');
+          if (term && l1 && l1.contains(term) && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => openL2(term), 250);
+            return;
+          }
+          const marker = event.target.closest('.why-marker');
+          if (marker && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => { if (!pinned) openL1(marker); }, 350);
+          }
+        });
+        document.addEventListener('mouseout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || to.closest('.why-marker'));
+          if (!inStack && !pinned) {
+            clearTimers();
+            graceT = setTimeout(closeAll, 250);
+          }
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key !== 'Escape') return;
+          if (l2) { l2.remove(); l2 = null; return; }
+          if (l1) closeAll();
+        });
+        document.addEventListener('focusin', (event) => {
+          const marker = event.target.closest('.why-marker');
+          if (marker) { clearTimers(); openL1(marker); }
+        });
+        document.addEventListener('focusout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || (to.closest && to.closest('.why-marker')));
+          if (!inStack && !pinned) closeAll();
+        });
+      } else {
+        // Touch contract: tap toggles, outside tap closes, ESC not needed.
+        document.addEventListener('touchstart', (event) => {
+          const t = event.target;
+          if (t.closest('.why-marker') || (l1 && l1.contains(t))) return;
+          closeAll();
+        }, { passive: true });
+      }
+      window.addEventListener('scroll', () => { if (l1 || l2) closeAll(); }, { passive: true });
+      window.addEventListener('resize', () => { if (l1 || l2) closeAll(); });
+    })();
+  </script></body>
 </html>

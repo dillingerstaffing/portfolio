@@ -435,7 +435,7 @@ def run_copy_gate(cards, articles):
     print(f"copy gate: OK ({len(cards)} cards, {len(articles)} articles)")
 
 
-def run_why_quality_gate(cards, decisions, wigmore_by_slot):
+def run_why_quality_gate(cards, decisions, wigmore_by_slot, articles):
     # WHY reasoning standard (from Chris 2026-09-11): every layer because
     # must be a card-specific argument, never a checklist. The setup is never
     # the argument. These frames are the known checklist patterns; a run
@@ -472,6 +472,24 @@ def run_why_quality_gate(cards, decisions, wigmore_by_slot):
                 errors.append(f"{cid}/{layer}: no wigmore analysis")
             elif analysis.get("probandum") != because:
                 errors.append(f"{cid}/{layer}: because != analysis probandum")
+    # Articles carry the same argument standard as cards: every article slot
+    # needs a Wigmore analysis whose probandum is the slot's because.
+    for a in articles:
+        slug = a.get("slug", "?")
+        for layer in LAYERS:
+            slot = (a.get("layers") or {}).get(layer) or {}
+            because = slot.get("because", "")
+            for pat in checklist:
+                if pat.search(because):
+                    errors.append(f"article {slug}/{layer}: checklist phrasing "
+                                  f"{pat.pattern!r}")
+                    break
+            key = (slug, layer)
+            analysis = wigmore_by_slot.get(key)
+            if analysis is None:
+                errors.append(f"article {slug}/{layer}: no wigmore analysis")
+            elif analysis.get("probandum") != because:
+                errors.append(f"article {slug}/{layer}: because != analysis probandum")
     # isa-decisions.json is authoritative for specification correspondence:
     # every accepted instruction mapping must have its card's ISA slot lit.
     accepted = {d["cardId"] for d in decisions if d["decision"] == "accepted"}
@@ -484,7 +502,7 @@ def run_why_quality_gate(cards, decisions, wigmore_by_slot):
                               f"mapping but the ISA slot is dim")
     if errors:
         fail("why gate: layer arguments below standard:\n  " + "\n  ".join(errors))
-    print(f"why gate: OK ({len(cards)} cards, "
+    print(f"why gate: OK ({len(cards)} cards, {len(articles)} articles, "
           f"{len(wigmore_by_slot)} slot arguments)")
 
 
@@ -506,11 +524,14 @@ def slugify(title):
     return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
 
 
-def article_strip_html(article):
+def article_strip_html(article, wigmore_by_slot):
     # Mirrors the layerStripHTML() renderer in index.src.html, but baked at
     # build time. because strings are validated plain text; escape anyway.
     # One proof-log link per article, on the strip caption; per-slot evidence
     # links were removed as redundant.
+    # The why-marker buttons mirror the card renderer's argument affordance:
+    # one consistent spot per slot header, wired to the same tooltip IIFE
+    # the main page uses (per-post pages embed that IIFE too).
     ev = article.get("evidence") or {}
     proof_html = ""
     if ev:
@@ -523,12 +544,19 @@ def article_strip_html(article):
     slots = []
     for name in LAYERS:
         if name not in article["layers"]:
-            continue  # pilot: only the pilot card carries MICROARCH so far
+            continue
         slot = article["layers"][name]
         cls = "layer-slot lit" if slot["applies"] else "layer-slot dim"
         because = html.escape(slot["because"], quote=False)
+        wig_key = f"{article['slug']}|{name}"
+        why = ""
+        if (article["slug"], name) in wigmore_by_slot:
+            verb = "matters" if slot["applies"] else "does not apply"
+            why = (f'<button class="why-marker" type="button" data-wigmore="{wig_key}"'
+                   f' aria-expanded="false"'
+                   f' aria-label="Show why the {name} layer {verb}">why</button>')
         slots.append(
-            f'<div class="{cls}"><div class="layer-name">{name}</div>'
+            f'<div class="{cls}"><div class="layer-name">{name}{why}</div>'
             f'<p class="layer-because">{because}</p></div>'
         )
     return ('<div class="layer-strip">'
@@ -608,7 +636,45 @@ def write_sitemap(articles):
     (HERE / "sitemap.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def per_post_html(article, block, desc, css, font_links, stamp):
+def extract_wigmore_tooltip(template):
+    # Reuse the main page's Wigmore tooltip renderer verbatim on per-post
+    # pages so the WHY interaction is identical in both places. The renderer
+    # is a self-contained IIFE that reads its data from window.__WIGMORE__,
+    # which each per-post page sets to its own article's analyses.
+    marker = ("const FINE = window.matchMedia('(hover: hover) and "
+              "(pointer: fine)').matches;")
+    mi = template.find(marker)
+    if mi < 0:
+        fail("wigmore tooltip marker not found in template")
+    start = template.rfind("(() => {", 0, mi)
+    if start < 0:
+        fail("wigmore tooltip IIFE start not found")
+    end_marker = "\n    })();"
+    end = template.find(end_marker, mi)
+    if end < 0:
+        fail("wigmore tooltip IIFE end not found")
+    iife = template[start:end + len(end_marker)]
+    if iife.count("{") != iife.count("}"):
+        fail("wigmore tooltip IIFE has unbalanced braces")
+    for probe in ("function openL1", "function l1Panel",
+                  "window.__WIGMORE__",
+                  "document.addEventListener('keydown'",
+                  "window.addEventListener('scroll'"):
+        if probe not in iife:
+            fail(f"wigmore tooltip IIFE missing {probe!r}")
+    with tempfile.NamedTemporaryFile("w", suffix=".js",
+                                     delete=False, encoding="utf-8") as f:
+        f.write(iife)
+        path = f.name
+    proc = subprocess.run(["node", "--check", path],
+                          capture_output=True, text=True)
+    if proc.returncode != 0:
+        fail(f"node --check failed on wigmore tooltip IIFE: {proc.stderr.strip()}")
+    print("wigmore tooltip IIFE: extracted and node --check OK")
+    return iife
+
+
+def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     slug = article["slug"]
     title = article["title"]
     url = f"{SITE_URL}/blog/{slug}/"
@@ -659,12 +725,12 @@ def per_post_html(article, block, desc, css, font_links, stamp):
 {block}
   </main>
   <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; All field notes</a></footer>
-</body>
+{wig_script}</body>
 </html>
 """
 
 
-def build_blog_permalinks(page, articles, stamp):
+def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
     """Emit one static page per article at blog/<slug>/index.html.
 
     The feed block in the template is the single source of article prose:
@@ -672,7 +738,10 @@ def build_blog_permalinks(page, articles, stamp):
     so a rewrite flows to the feed and the permalink from one edit. Slugs
     are permanent IDs validated in load_data; a rewrite must never change
     the slug or previously shared links break. Also links each feed title to
-    its permalink and regenerates sitemap.xml. Returns the updated page.
+    its permalink and regenerates sitemap.xml. Each per-post page also gets
+    the article's Wigmore analyses plus the main page's tooltip renderer,
+    so the layer WHY dig-down works identically on permalinks. Returns the
+    updated page.
     """
     blocks = re.findall(r'<article class="research-note">.*?</article>', page, re.S)
     if len(blocks) != len(articles):
@@ -685,6 +754,8 @@ def build_blog_permalinks(page, articles, stamp):
         m.group(0) for m in re.finditer(r"<link[^>]*fonts\.googleapis[^>]*>", page))
     if not font_links:
         fail("no google fonts links found for per-post pages")
+
+    tooltip_iife = extract_wigmore_tooltip(template)
 
     for article, block in zip(articles, blocks):
         slug = article["slug"]
@@ -706,7 +777,17 @@ def build_blog_permalinks(page, articles, stamp):
             fail(f"article {slug}: feed block not unique in page")
         page = page.replace(block, block.replace(plain_h3, linked_h3, 1), 1)
 
-        post = per_post_html(article, block, desc, css, font_links, stamp)
+        subset = {f"{slug}|{slot}": a
+                  for (item, slot), a in wigmore_by_slot.items() if item == slug}
+        if not subset:
+            fail(f"article {slug}: no wigmore analyses for per-post page")
+        wig_data = json.dumps(subset, ensure_ascii=False)
+        if "</script" in wig_data.lower():
+            fail(f"article {slug}: wigmore data contains a script breaker")
+        wig_script = (f'  <script>window.__WIGMORE__ = {wig_data};</script>\n'
+                      f'  <script>\n{tooltip_iife}\n  </script>')
+        post = per_post_html(article, block, desc, css, font_links, stamp,
+                             wig_script)
         dest = HERE / "blog" / slug / "index.html"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(post, encoding="utf-8")
@@ -732,7 +813,7 @@ def build(systems_lab, baremetal, xv6):
           f"{sum(1 for c in cards if c.get('portability'))} portability panels")
 
     run_copy_gate(cards, articles)
-    run_why_quality_gate(cards, decisions, wigmore_by_slot)
+    run_why_quality_gate(cards, decisions, wigmore_by_slot, articles)
     run_gate(systems_lab, baremetal, xv6)
     print("drift gate: no contradictions")
 
@@ -764,7 +845,7 @@ def build(systems_lab, baremetal, xv6):
         marker = f"<!-- LAYER-STRIP:{slug} -->"
         if page.count(marker) != 1:
             fail(f"expected exactly one {marker} placeholder")
-        page = page.replace(marker, article_strip_html(article))
+        page = page.replace(marker, article_strip_html(article, wigmore_by_slot))
 
     for leftover in ("__PROJECTS_JSON__", "__CHIPS_JSON__", "__WIGMORE_JSON__", "LAYER-STRIP:"):
         if leftover in page:
@@ -784,7 +865,7 @@ def build(systems_lab, baremetal, xv6):
         fail("expected exactly one VERSION in sw.js")
     sw_path.write_text(sw_text, encoding="utf-8")
 
-    page = build_blog_permalinks(page, articles, stamp)
+    page = build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template)
 
     node_check_scripts(page)
 

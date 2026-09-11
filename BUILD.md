@@ -87,3 +87,13 @@ edit: nothing goes stale, nothing breaks.
 - **Feed links.** The build wraps each feed title in an anchor to its
   permalink; the per-post page keeps a plain heading and links back to
   `/#blog`. `sitemap.xml` is regenerated with every post URL.
+- **Layer WHY on articles.** Article layer strips carry the same `why`
+  buttons as card strips, in the feed and on per-post pages alike. Every
+  article slot has a Wigmore analysis in `data/wigmore.json`
+  (`kind: "article"`, `item` = the article slug) held to the card standard:
+  probandum equals the slot's `because` verbatim, dim verdicts establish
+  invariance, and the build's why gate fails on a missing analysis or a
+  mismatch. Each per-post page embeds its five analyses as
+  `window.__WIGMORE__` plus the main page's tooltip renderer extracted
+  verbatim, so the dig-down interaction is identical everywhere. A new
+  article must ship its five analyses or the build fails.
