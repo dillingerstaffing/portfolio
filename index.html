@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-050050">
+  <meta name="build-version" content="v20260911-050059">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -12556,7 +12556,7 @@ assert(check == 0x2144DF1C);</code></pre>
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "SPP is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes"
+        "because": "SPP, the Supervisor Previous Privilege bit, is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes: each ecall from S-mode traps with SPP read as 1 and scause 9."
       },
       "MICROARCH": {
         "applies": false,
@@ -12567,8 +12567,8 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "matters because M-mode firmware owns medeleg, stvec, and the S-mode entry; the proof is the firmware-level act of delegating the trap, dropping privilege, and observing the recorded mode"
       },
       "KERNEL": {
-        "applies": false,
-        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the trap-record beneath any kernel's exception handling"
+        "applies": true,
+        "because": "matters because a kernel's trap entry reads SPP to learn the interrupted privilege mode: on every trap it checks the bit to decide whether the trap came from user mode or supervisor mode and dispatches accordingly. The proof verifies the exact record that dispatch assumes, a trap from S-mode sets SPP to 1 with scause 9 for the supervisor ecall. If the bit did not record the mode, kernel trap-entry code could not tell user traps from kernel traps."
       },
       "ALGORITHM": {
         "applies": false,
@@ -12617,7 +12617,7 @@ assert(check == 0x2144DF1C);</code></pre>
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "matters because sip is a WARL CSR whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state"
+        "because": "matters because sip is a WARL CSR, write-any-read-legal, whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state, zero with SSI not delegated and exactly SSIP, bit 1, once mideleg delegates SSI."
       },
       "MICROARCH": {
         "applies": false,
@@ -12629,7 +12629,7 @@ assert(check == 0x2144DF1C);</code></pre>
       },
       "KERNEL": {
         "applies": false,
-        "because": "not here because no scheduler or driver layer runs; the proof checks the pending-bit register beneath any kernel's interrupt handling"
+        "because": "not here because the verified property is the legalization of software writes to sip: what survives an all-ones write in each delegation state. The kernel's trap and interrupt path reads the pending bits to dispatch; it is not the writer whose writes the legalization governs, so varying the legalization rule changes nothing the kernel's code does."
       },
       "ALGORITHM": {
         "applies": false,
@@ -80621,57 +80621,81 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "src-sstatus-spp",
     "kind": "card",
     "slot": "ISA",
-    "probandum": "SPP is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes",
+    "probandum": "SPP, the Supervisor Previous Privilege bit, is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes: each ecall from S-mode traps with SPP read as 1 and scause 9.",
     "keyList": [
       {
-        "n": 1,
         "kind": "probandum",
-        "text": "SPP is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes"
+        "n": 1,
+        "text": "SPP, the Supervisor Previous Privilege bit, is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes: each ecall from S-mode traps with SPP read as 1 and scause 9."
       },
       {
-        "n": 2,
-        "kind": "penultimate",
-        "text": "Both S-mode ecalls entered the handler with sstatus.SPP reading 1 and scause reading 9, matching the privileged spec's rule that SPP holds the privilege mode before the trap."
-      },
-      {
-        "n": 3,
-        "kind": "generalization",
-        "text": "The privileged spec's CSR and trap rules are the ground truth for the machine contract; an implementation that matches the spec's stated readbacks and trap behavior carries the contract."
-      },
-      {
-        "n": 4,
         "kind": "evidence",
-        "text": "The proof log records SPP=1 and scause=0x9 on both traps with medeleg=0x200, across three byte-identical QEMU 8.2.2 runs.",
+        "text": "M-mode delegates supervisor ecalls to S-mode via medeleg bit 9 and drops to S-mode with SPP set.",
         "source": {
           "tier": "lab",
+          "cite": "PROOF.md, setup rows",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
-        }
+        },
+        "n": 2
+      },
+      {
+        "kind": "evidence",
+        "text": "Each ecall traps to the S-mode handler, which reads SPP as 1 and scause as 9, then srets back to S-mode for the next ecall.",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md, trap rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+        },
+        "n": 3
+      },
+      {
+        "kind": "penultimate",
+        "text": "The verified behavior is the privileged ISA's own trap-record rule: a trap from S-mode records SPP 1 with the supervisor ecall cause.",
+        "n": 4
+      },
+      {
+        "kind": "generalization",
+        "text": "Exercising the exact trap-entry record the privileged specification describes engages the machine contract directly.",
+        "n": 5
+      },
+      {
+        "kind": "explanation",
+        "text": "One could object that the handler is a test probe, not a real trap handler.",
+        "n": 6
+      },
+      {
+        "kind": "refutation",
+        "text": "What matters is what was recorded, not who read it. The SPP value and the cause code are the specification's record; the probe reads the contract, it does not invent it.",
+        "n": 7
       }
     ],
     "inferences": [
       {
         "from": [
-          4
-        ],
-        "via": [
+          2,
           3
         ],
-        "to": [
-          2
+        "via": [
+          5
         ],
-        "strength": "strong"
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured trap-record facts in (2) and (3) establish the intermediate claim in (4) by the principle in (5)."
       },
       {
         "from": [
-          2
+          4
         ],
         "via": [
-          3
+          5
         ],
         "to": [
           1
         ],
-        "strength": "strong"
+        "strength": "strong",
+        "note": "The intermediate claim in (4) yields the lit verdict in (1) by the principle in (5). The objection in (6) is answered by (7)."
       }
     ]
   },
@@ -80795,57 +80819,86 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "src-sstatus-spp",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the trap-record beneath any kernel's exception handling",
+    "probandum": "matters because a kernel's trap entry reads SPP to learn the interrupted privilege mode: on every trap it checks the bit to decide whether the trap came from user mode or supervisor mode and dispatches accordingly. The proof verifies the exact record that dispatch assumes, a trap from S-mode sets SPP to 1 with scause 9 for the supervisor ecall. If the bit did not record the mode, kernel trap-entry code could not tell user traps from kernel traps.",
     "keyList": [
       {
-        "n": 1,
         "kind": "probandum",
-        "text": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the trap-record beneath any kernel's exception handling"
+        "n": 1,
+        "text": "matters because a kernel's trap entry reads SPP to learn the interrupted privilege mode: on every trap it checks the bit to decide whether the trap came from user mode or supervisor mode and dispatches accordingly. The proof verifies the exact record that dispatch assumes, a trap from S-mode sets SPP to 1 with scause 9 for the supervisor ecall. If the bit did not record the mode, kernel trap-entry code could not tell user traps from kernel traps."
       },
       {
-        "n": 2,
-        "kind": "penultimate",
-        "text": "The program runs bare-metal with no scheduler, no page tables, and no drivers; the only software above the trap record is the S-mode test payload."
-      },
-      {
-        "n": 3,
-        "kind": "generalization",
-        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
-      },
-      {
-        "n": 4,
         "kind": "evidence",
-        "text": "The proof log describes a bare-metal M-mode/S-mode program with no kernel components; no scheduling, VM, or driver behavior is recorded.",
+        "text": "Each supervisor ecall traps to the S-mode handler with SPP read as 1 and scause as 9.",
         "source": {
           "tier": "lab",
+          "cite": "PROOF.md, trap rows",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
-        }
+        },
+        "n": 2
+      },
+      {
+        "kind": "evidence",
+        "text": "The handler srets back to S-mode; the status register remembers where the trap came from, exactly as the privileged spec describes.",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md, return rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+        },
+        "n": 3
+      },
+      {
+        "kind": "penultimate",
+        "text": "The verified record is the exact bit a kernel's trap entry branches on to separate user traps from kernel traps.",
+        "n": 4
+      },
+      {
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map: a layer lights when the verified claim is load-bearing for work at that layer, whether or not the proof implements that layer.",
+        "n": 5
+      },
+      {
+        "kind": "generalization",
+        "text": "Trap-entry code that checks SPP on every trap to decide whether the trap came from user mode or supervisor mode is written against this record; change the record and the dispatch must change.",
+        "n": 6
+      },
+      {
+        "kind": "explanation",
+        "text": "One could object that no kernel runs in the proof, so the kernel is only a consumer of the record.",
+        "n": 7
+      },
+      {
+        "kind": "refutation",
+        "text": "Reading and branching on a register is not passive consumption; it is the mechanism. The kernel's trap entry dispatches on this bit, so the bit's behavior is load-bearing for that code by construction.",
+        "n": 8
       }
     ],
     "inferences": [
       {
         "from": [
-          4
-        ],
-        "via": [
+          2,
           3
         ],
-        "to": [
-          2
+        "via": [
+          5
         ],
-        "strength": "strong"
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured SPP facts in (2) and (3) establish the intermediate claim in (4) by the relevance-map principle in (5)."
       },
       {
         "from": [
-          2
+          4
         ],
         "via": [
-          3
+          6
         ],
         "to": [
           1
         ],
-        "strength": "strong"
+        "strength": "strong",
+        "note": "The intermediate claim in (4) yields the lit verdict in (1) by the dispatch principle in (6). The objection in (7) is answered by (8)."
       }
     ]
   },
@@ -80911,57 +80964,81 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "src-sip-write-probe",
     "kind": "card",
     "slot": "ISA",
-    "probandum": "matters because sip is a WARL CSR whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state",
+    "probandum": "matters because sip is a WARL CSR, write-any-read-legal, whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state, zero with SSI not delegated and exactly SSIP, bit 1, once mideleg delegates SSI.",
     "keyList": [
       {
-        "n": 1,
         "kind": "probandum",
-        "text": "matters because sip is a WARL CSR whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state"
+        "n": 1,
+        "text": "matters because sip is a WARL CSR, write-any-read-legal, whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state, zero with SSI not delegated and exactly SSIP, bit 1, once mideleg delegates SSI."
       },
       {
-        "n": 2,
-        "kind": "penultimate",
-        "text": "An all-ones write to sip read back 0x0 with SSI not delegated and exactly 0x2 (SSIP only) once mideleg delegated SSI, matching the WARL contract that only delegated writable bits survive."
-      },
-      {
-        "n": 3,
-        "kind": "generalization",
-        "text": "The privileged spec's CSR and WARL rules are the ground truth for the machine contract; an implementation that matches the spec's stated readbacks and legalization behavior carries the contract."
-      },
-      {
-        "n": 4,
         "kind": "evidence",
-        "text": "The proof log records sip=0x0 after the all-ones write in phase 1 and sip=0x2 after the same write in phase 2 with mideleg=0x1446, across three byte-identical QEMU 8.2.2 runs.",
+        "text": "M-mode writes all ones to sip; with SSI not delegated, the write legalizes to zero.",
         "source": {
           "tier": "lab",
+          "cite": "PROOF.md, no-delegation rows",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
-        }
+        },
+        "n": 2
+      },
+      {
+        "kind": "evidence",
+        "text": "After mideleg delegates SSI, the same all-ones write legalizes to exactly SSIP, bit 1; mip bit 1 tracks it as the alias while every other mip bit stays put.",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md, delegated rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+        },
+        "n": 3
+      },
+      {
+        "kind": "penultimate",
+        "text": "The verified claim is the WARL legalization contract of the sip CSR in each delegation state.",
+        "n": 4
+      },
+      {
+        "kind": "generalization",
+        "text": "A write-any-read-legal register's legalization rule is the privileged specification's own contract; measuring which bits survive a write engages the machine contract directly.",
+        "n": 5
+      },
+      {
+        "kind": "explanation",
+        "text": "One could object that WARL is an implementation detail of this hart's CSR file.",
+        "n": 6
+      },
+      {
+        "kind": "refutation",
+        "text": "WARL, write-any-read-legal, is the specification's defined class of register behavior, not an implementation choice. The legalization rule the proof reads is the contract the privileged ISA states.",
+        "n": 7
       }
     ],
     "inferences": [
       {
         "from": [
-          4
-        ],
-        "via": [
+          2,
           3
         ],
-        "to": [
-          2
+        "via": [
+          5
         ],
-        "strength": "strong"
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured legalization facts in (2) and (3) establish the intermediate claim in (4) by the principle in (5)."
       },
       {
         "from": [
-          2
+          4
         ],
         "via": [
-          3
+          5
         ],
         "to": [
           1
         ],
-        "strength": "strong"
+        "strength": "strong",
+        "note": "The intermediate claim in (4) yields the lit verdict in (1) by the principle in (5). The objection in (6) is answered by (7)."
       }
     ]
   },
@@ -81085,57 +81162,86 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "src-sip-write-probe",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "not here because no scheduler or driver layer runs; the proof checks the pending-bit register beneath any kernel's interrupt handling",
+    "probandum": "not here because the verified property is the legalization of software writes to sip: what survives an all-ones write in each delegation state. The kernel's trap and interrupt path reads the pending bits to dispatch; it is not the writer whose writes the legalization governs, so varying the legalization rule changes nothing the kernel's code does.",
     "keyList": [
       {
-        "n": 1,
         "kind": "probandum",
-        "text": "not here because no scheduler or driver layer runs; the proof checks the pending-bit register beneath any kernel's interrupt handling"
+        "n": 1,
+        "text": "not here because the verified property is the legalization of software writes to sip: what survives an all-ones write in each delegation state. The kernel's trap and interrupt path reads the pending bits to dispatch; it is not the writer whose writes the legalization governs, so varying the legalization rule changes nothing the kernel's code does."
       },
       {
-        "n": 2,
-        "kind": "penultimate",
-        "text": "The program runs bare-metal with no scheduler and no drivers; interrupt enables stayed clear and the trap handler never fired, so only the register contract was exercised."
-      },
-      {
-        "n": 3,
-        "kind": "generalization",
-        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
-      },
-      {
-        "n": 4,
         "kind": "evidence",
-        "text": "The proof log describes a bare-metal M-mode program with trap count 0 and interrupt enables clear; no scheduling or driver behavior is recorded.",
+        "text": "The proof writes all ones to sip from M-mode and reads back the legalized value in two delegation states.",
         "source": {
           "tier": "lab",
+          "cite": "PROOF.md, method",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
-        }
+        },
+        "n": 2
+      },
+      {
+        "kind": "evidence",
+        "text": "No kernel runs; the checks name the surviving bits after a software write, not any trap dispatch or scheduling decision.",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md, method",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+        },
+        "n": 3
+      },
+      {
+        "kind": "penultimate",
+        "text": "The verified property is the legalization of software writes to sip; the kernel's path reads pending bits but performs no such writes.",
+        "n": 4
+      },
+      {
+        "kind": "generalization",
+        "text": "Invariance keeps the dim verdict: when no mechanism at a layer reads, writes, or branches on the verified property, work at that layer is invariant under the claim.",
+        "n": 5
+      },
+      {
+        "kind": "generalization",
+        "text": "A path that reads the pending bits to dispatch is not governed by the rule for what survives a write; the writer and the reader depend on different contracts.",
+        "n": 6
+      },
+      {
+        "kind": "explanation",
+        "text": "One could object that the kernel's interrupt handling depends on the pending bits, which is what the proof studies.",
+        "n": 7
+      },
+      {
+        "kind": "refutation",
+        "text": "The kernel depends on the bits being set, not on the legalization of software writes to the register. The proof varies the write rule; the kernel's read path is invariant under that variation.",
+        "n": 8
       }
     ],
     "inferences": [
       {
         "from": [
-          4
-        ],
-        "via": [
+          2,
           3
         ],
-        "to": [
-          2
+        "via": [
+          6
         ],
-        "strength": "strong"
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured write-rule facts in (2) and the kernel-free method in (3) establish the intermediate claim in (4) by the invariance principle in (5)."
       },
       {
         "from": [
-          2
+          4
         ],
         "via": [
-          3
+          6
         ],
         "to": [
           1
         ],
-        "strength": "strong"
+        "strength": "strong",
+        "note": "The intermediate claim in (4) yields the dim verdict in (1) by the reader-versus-writer principle in (6). The objection in (7) is answered by (8)."
       }
     ]
   },
