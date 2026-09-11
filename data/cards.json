@@ -14126,5 +14126,119 @@
     },
     "portability": null,
     "stressItems": 5
+  },
+{
+    "id": "src-mideleg-seip-route",
+    "title": "mideleg bit 9 routes SEIP to S-mode",
+    "kicker": "RISCV",
+    "summary": "A bare-metal module verifies that mideleg bit 9 (supervisor external interrupt delegation) takes on QEMU 8.2.2 and routes a pended SEIP to S-mode. M-mode pends mip.SEIP, drops to S-mode, and observes exactly one S-mode trap with scause 9 and zero M-mode traps.",
+    "checks": 22,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mideleg-seip-route/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-seip-route/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "22 checks on QEMU 8.2.2: mideleg boot readback 0x1444; write 0x200 readback 0x1644 (bit 9 admitted); SEIP pended via M-mode csrs; exactly one S-mode trap with scause 0x8000000000000009; zero M-mode traps; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x44b4f8c94de3dbf9, identical across 3 runs; FNV-1a over write readbacks, pend readback, trap counts, and scause"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2 virt, single hart"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mideleg-seip-route",
+    "terminalLabel": "Verified mideleg-seip-route QEMU output",
+    "terminalOutput": "trap: mtvec=0x800001e4 (direct mode)\nboot: mideleg=0x1444\nmideleg: write=0x0 readback=0x1444\nmideleg: write=0x200 readback=0x1644\nmideleg: write=0x1644 readback=0x1644\nmedeleg: write=0x0 readback=0x0\ntrap: stvec=0x8000021c (direct mode)\npend: mip-after-csrs=0x200\ns-mode: sie=0x200\ncontrol: s_traps=0 m_traps=0\nsei: spins=0 s_traps=1 scause=0x8000000000000009 sepc=0x800003bc expected=0x800003bc sip-at-entry=0x200\nquiet: s_traps=1 m_traps=0\nrecord checksum=0x44b4f8c94de3dbf9\nRESULT: PASS (checks=22)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because mideleg is the privileged architecture's interrupt delegation CSR; the module verifies bit 9 (SEIP) is in the delegable set per the WARL legalization rule."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is the architectural delegation contract; the WARL bit set is QEMU's CSR model, not a microarchitectural timing or pipeline property."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because machine-mode firmware owns mideleg; setting the delegation bit is the firmware's mechanism for handing supervisor interrupts to S-mode."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor kernel's external interrupt path depends on SEIP arriving in S-mode; the module proves the delegation delivers exactly one trap with scause 9."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware CSR delegation contract, not a portable computational mechanism."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "user-pipeeof",
+    "title": "xv6 pipe reads return 0 forever after all writers close",
+    "kicker": "XV6",
+    "summary": "A user-space test verifies xv6 pipe EOF stickiness. The program writes 64 bytes through a pipe, closes all write ends, drains the 64 bytes, then observes three consecutive reads each return 0, proving EOF persists.",
+    "checks": 9,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/pipeeof.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks on QEMU 8.2.2: pipe created; 64 bytes written; drain sequence 64 then 0; three post-EOF reads each return 0; 64 bytes match pattern exactly; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xEEB9DFC603EE8AEF, over fd numbers, byte counts, and read return values; byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / pipeeof",
+    "terminalLabel": "Verified pipeeof QEMU output",
+    "terminalOutput": "xv6 kernel is booting\n\nhart 1 starting\nhart 2 starting\ninit: starting sh\n$ pipeeof\ncheck 1: pipe() ok, read fd 3, write fd 4\ncheck 2: forked child\ncheck 3: parent closed its write end\ncheck 4: child reaped, exit status 0 (write moved 64 bytes)\ndrain read return values: 64 0\ncheck 5: drain sequence 64, 0 as predicted, bytes match pattern in order\ncheck 6: read 64 bytes before EOF, matches 64 written\nEOF read return values: 0 0 0\ncheck 7: three reads after EOF each returned 0\ncheck 8: received 64 bytes equal the pattern exactly\ncheck 9: read end closed\nchecksum: 0xEEB9DFC603EE8AEF\nbytes written: 64, bytes read: 64\nchecks: 9 mismatches: 0\nPASS: reads returned 0 forever once all write ends closed (drain 64, 0; EOF reads 0 0 0)\n$",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the test exercises pipe read/write system calls; it checks kernel pipe buffer semantics, not the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is about the kernel's pipe EOF behavior; no microarchitectural property is measured."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test is a user program exercising pipes; firmware never manages pipe buffers."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because pipe EOF is the kernel's contract: once all write ends close and the buffer drains, reads return 0 forever, verified here with three consecutive zero reads."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a kernel pipe invariant, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
   }
 ]

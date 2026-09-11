@@ -98578,6 +98578,693 @@
           "note": "With the objection in (8) answered by (9), the intermediate conclusion in (5) plus the layer rule in (7) yields the verdict in (1)."
         }
       ]
+    },
+  {
+      "item": "src-mideleg-seip-route",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Matters at ISA because mideleg is the privileged architecture's interrupt delegation CSR; the module verifies bit 9 (SEIP) is in the delegable set per the WARL legalization rule.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at ISA because mideleg is the privileged architecture's interrupt delegation CSR; the module verifies bit 9 (SEIP) is in the delegable set per the WARL legalization rule."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "mideleg boot readback 0x1444; write 0x200 readback 0x1644 (bit 9 admitted, nothing else changed); 22 checks, 0 mismatches",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mideleg-seip-route/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-seip-route"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "RISC-V privileged spec defines mideleg as WARL; each bit's writability determines the delegable set on the hart",
+          "source": {
+            "tier": "spec",
+            "cite": "riscv-privileged spec mideleg",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The 0x1644 readback proves bit 9 is in the delegable set on this hart."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A WARL CSR's readback after a write is the architectural definition of which bits the hart implements."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The ISA layer lights when the verified claim is the privileged architecture's own CSR contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "4 plus 6 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mideleg-seip-route",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the verified claim is the architectural delegation contract; the WARL bit set is QEMU's CSR model, not a microarchitectural timing or pipeline property.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at MICROARCH because the verified claim is the architectural delegation contract; the WARL bit set is QEMU's CSR model, not a microarchitectural timing or pipeline property."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The PROOF.md limits state the WARL legalization and mip writability are this emulator's CSR model; no timing, pipeline, or cache behavior is asserted",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mideleg-seip-route/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-seip-route"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The delegation is an architectural contract; implementation timing is outside what was checked."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A CSR write/readback contract is defined by the architecture; which bits take is a model property, not a microarchitectural one."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The MICROARCH slot stays dim when the verified claim would hold identically regardless of pipeline or cache implementation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mideleg-seip-route",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Matters at FIRMWARE because machine-mode firmware owns mideleg; setting the delegation bit is the firmware's mechanism for handing supervisor interrupts to S-mode.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at FIRMWARE because machine-mode firmware owns mideleg; setting the delegation bit is the firmware's mechanism for handing supervisor interrupts to S-mode."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The module runs in M-mode, writes mideleg bit 9, then drops to S-mode; the S-mode trap arrives only because M-mode firmware delegated it",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mideleg-seip-route/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-seip-route"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The M-mode write to mideleg is the firmware act that makes the S-mode trap possible."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "Only M-mode can write mideleg; the delegation decision is firmware's job, not the kernel's."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The FIRMWARE layer lights when the verified mechanism is performed by machine-mode software."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mideleg-seip-route",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because a supervisor kernel's external interrupt path depends on SEIP arriving in S-mode; the module proves the delegation delivers exactly one trap with scause 9.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at KERNEL because a supervisor kernel's external interrupt path depends on SEIP arriving in S-mode; the module proves the delegation delivers exactly one trap with scause 9."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Exactly one S-mode trap with scause 0x8000000000000009, sepc matching the interrupted address, sip showing SEIP at entry; zero M-mode traps; quiet window leaves counts at s_traps=1, m_traps=0",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mideleg-seip-route/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-seip-route"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "One S-mode arrival with cause 9 and no M-mode arrival is exactly the contract a kernel's interrupt path needs."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A kernel's IPI and device interrupt handling starts with the trap arriving in the right mode with the right cause; one trap and no re-delivery is the contract."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The KERNEL layer lights when the verified property is the trap-delivery contract a supervisor kernel relies on."
+        },
+        {
+          "kind": "explanation",
+          "n": 6,
+          "text": "One could object that a single trap proves little. The quiet window (2,000,000 rdcycle) with counts unmoved proves no re-delivery, and the control phase (SEIP pending with SIE off, zero traps) proves the trap is caused by the delegation, not spurious."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With the objection in (6) addressed, 3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mideleg-seip-route",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the card verifies a hardware CSR delegation contract, not a portable computational mechanism.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ALGORITHM because the card verifies a hardware CSR delegation contract, not a portable computational mechanism."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The 22 checks assert CSR readbacks, trap counts, and scause values; no computed function with a portable equivalent is verified",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mideleg-seip-route/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-seip-route"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "There is no algorithm here to be portable; the claim is about what the hart's CSR model guarantees."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A CSR delegation contract has no portable software equivalent; there is no algorithm to port."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ALGORITHM slot stays dim when the card verifies hardware behavior rather than a computation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-pipeeof",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Not at ISA because the test exercises pipe read/write system calls; it checks kernel pipe buffer semantics, not the machine contract.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ISA because the test exercises pipe read/write system calls; it checks kernel pipe buffer semantics, not the machine contract."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The 9 checks assert fd numbers, byte counts, and read return values; no instruction, CSR, or trap behavior is asserted",
+          "source": {
+            "tier": "lab",
+            "cite": "user/pipeeof PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Pipe EOF is a kernel software contract, independent of the underlying instruction set."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A user-space test asserting only OS-level pipe behavior does not engage the instruction set."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ISA slot stays dim when the verified claim concerns kernel data structures rather than the machine contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-pipeeof",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the verified claim is about the kernel's pipe EOF behavior; no microarchitectural property is measured.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at MICROARCH because the verified claim is about the kernel's pipe EOF behavior; no microarchitectural property is measured."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The PROOF entry describes drain and EOF reads; the checks observe read return values, not hardware counters or timing",
+          "source": {
+            "tier": "lab",
+            "cite": "user/pipeeof PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The EOF stickiness is a software invariant of the pipe implementation; no microarchitectural feature bears on it."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A property determined by kernel pipe buffer management, observed through read returns, is indifferent to microarchitecture."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The MICROARCH slot stays dim when the verified claim concerns software buffer semantics."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-pipeeof",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Not at FIRMWARE because the test is a user program exercising pipes; firmware never manages pipe buffers.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at FIRMWARE because the test is a user program exercising pipes; firmware never manages pipe buffers."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The test is built as a UPROGS user program run from the xv6 shell; no firmware interface is exercised",
+          "source": {
+            "tier": "lab",
+            "cite": "user/pipeeof PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Firmware's job ends at boot; pipes are created and managed entirely by the xv6 kernel."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "Pipes are an operating-system IPC abstraction with no firmware counterpart."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The FIRMWARE slot stays dim when the verified property belongs to a software layer firmware never touches."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-pipeeof",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because pipe EOF is the kernel's contract: once all write ends close and the buffer drains, reads return 0 forever, verified here with three consecutive zero reads.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at KERNEL because pipe EOF is the kernel's contract: once all write ends close and the buffer drains, reads return 0 forever, verified here with three consecutive zero reads."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Drain sequence 64 then 0; three post-EOF reads each returned 0; 64 bytes match pattern exactly; 9 checks, 0 mismatches, checksum 0xEEB9DFC603EE8AEF",
+          "source": {
+            "tier": "lab",
+            "cite": "user/pipeeof PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The test source shows the parent closes its write end, the child writes 64 bytes and exits; the kernel must deliver EOF only after the last writer closes",
+          "source": {
+            "tier": "lab",
+            "cite": "user/pipeeof.c",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipeeof.c"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The 64-then-0 drain plus three zeros proves EOF is sticky: the kernel holds the contract across repeated reads."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "EOF stickiness (reads return 0 forever, not just once) is the kernel's pipe contract; three consecutive zeros verify persistence, not a transient."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The KERNEL layer lights when the verified property is the operating system's own IPC contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "4 plus 6 yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "user-pipeeof",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the card verifies a kernel pipe invariant, not a computational construction with a portable form.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ALGORITHM because the card verifies a kernel pipe invariant, not a computational construction with a portable form."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The 9 checks assert pipe behavior and data integrity; no computed function, no portable implementation",
+          "source": {
+            "tier": "lab",
+            "cite": "user/pipeeof PROOF entry",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "There is no algorithm here to be portable; the claim is about what the kernel's pipe implementation guarantees."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A kernel IPC invariant observed through I/O is not a portable computational mechanism."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ALGORITHM slot stays dim when the card verifies operating-system semantics rather than a computation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The measurements in (2,) establish the claim per 4, giving 3."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "3 plus 5 yields the verdict in (1)."
+        }
+      ]
     }
   ]
 }
