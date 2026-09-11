@@ -1,5 +1,44 @@
 [
  {
+  "title": "The Bit That Remembers Who Called",
+  "date": "2026-09-11",
+  "paragraphs": [
+   "A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP NAPOT entry, and dropped into an S-mode payload through sret. The payload issued two ecalls. Each trap landed in the S-mode handler, which read three values: SPP = 1, scause = 9, sepc = 0x800002a8, identical on both traps. The word sitting at that address was 0x73, the ecall instruction itself.",
+   "SPP is bit 8 of sstatus, and the hardware writes it at the instant of the trap: the privilege mode the hart was in just before the trap. In the same breath it copies the old interrupt-enable bit into SPIE and clears SIE, so no interrupt can re-enter the handler mid-stream. When the handler executes sret, the reverse happens: the privilege mode is restored from SPP, SIE from SPIE, then SPIE is set to 1, SPP cleared to 0, and the hart resumes at sepc. Push on trap, pop on sret. The trap path has a call stack exactly one frame deep, and the hardware maintains it.",
+   "Why does the hardware keep this record? Because one S-mode handler fields traps from two very different callers, and nothing else remembers which one called. The xv6 source tree checks it the way the hardware means it to be checked. In usertrap(), near the top of the function: if ((r_sstatus() & SSTATUS_SPP) != 0) panic(\"usertrap: not from user mode\"). In kerneltrap(): if ((sstatus & SSTATUS_SPP) == 0) panic(\"kerneltrap: not from supervisor mode\"). And usertrapret() deliberately clears SPP to 0, with the comment \"clear SPP to 0 for user mode\", before sret returns to the process. The hardware record is the only one that cannot be forged or miscomputed, because it is written at the exact instant of the trap. Without it the handler would have to infer the caller from sepc or saved state, and a kernel should not guess about who it was talking to.",
+   "One wrinkle, and it is the honest kind: one bit is one frame. Every trap overwrites SPP, so a trap taken inside the handler destroys the first record. The module's handler therefore reads sstatus before it dispatches on scause, copying the bit into a sticky per-trap slot, straight from ssp_trap.S:",
+   "The handler's trap entry reads sstatus before it dispatches on scause, copying bit 8 into a sticky per-trap slot in three instructions: read the CSR, shift right by 8, AND with 1. The code is the insight here; the snippet is on the page.",
+   "The record only survives if the handler keeps its own copy, the same discipline as saving callee-saved registers. The M-mode sibling works the same way one level up, except MPP holds two bits because M-mode traps can arrive from three levels: user, supervisor, or machine, with MPIE and MIE mirroring SPIE and SIE around mret. The checking, because that is the whole point: 11 checks, zero failures, and the three QEMU runs byte-identical, the same checksum 0x81dc6b1b81f94783 over the recorded values every time. One honest boundary from the proof file: this measures QEMU's model of the privileged contract, not silicon, and only the synchronous S-mode ecall path; interrupts, page faults, and traps from user mode are separate measurements. One sentence to carry away: every trap is a function call performed by hardware, and SPP is the return address it writes down for you."
+  ],
+  "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-spp",
+  "evidence": {
+   "label": "proof log",
+   "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+  },
+  "layers": {
+   "ISA": {
+    "applies": true,
+    "because": "the behavior under test is the RISC-V privileged specification's trap contract: sstatus bit 8 records the pre-trap privilege mode and sret restores it, measured directly by the module."
+   },
+   "MICROARCH": {
+    "applies": false,
+    "because": "no pipeline, cache, or predictor behavior is measured or claimed; the traps are synchronous and the module times nothing."
+   },
+   "FIRMWARE": {
+    "applies": true,
+    "because": "the M-mode half of the module is firmware work: it sets medeleg bit 9, opens the address space with one PMP NAPOT entry, and srets into S-mode, and that setup makes the S-mode measurement possible."
+   },
+   "KERNEL": {
+    "applies": true,
+    "because": "the S-mode handler is the kernel's trap entry, and the bit is load-bearing for real kernels: xv6's usertrap and kerneltrap panic when SPP contradicts the expected caller."
+   },
+   "ALGORITHM": {
+    "applies": false,
+    "because": "no computational mechanism is taught here; the piece is about a hardware record kept across a privilege transition, not a procedure."
+   }
+  }
+ },
+ {
   "title": "The Guard That Keeps Zero Honest",
   "date": "2026-09-10",
   "paragraphs": [

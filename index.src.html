@@ -932,6 +932,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bit That Remembers Who Called</h3>
+          <!-- LAYER-STRIP:the-bit-that-remembers-who-called -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 01:06 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP NAPOT entry, and dropped into an S-mode payload through sret. The payload issued two ecalls. Each trap landed in the S-mode handler, which read three values: SPP = 1, scause = 9, sepc = 0x800002a8, identical on both traps. The word sitting at that address was 0x73, the ecall instruction itself.</p>
+          <p>SPP is bit 8 of sstatus, and the hardware writes it at the instant of the trap: the privilege mode the hart was in just before the trap. In the same breath it copies the old interrupt-enable bit into SPIE and clears SIE, so no interrupt can re-enter the handler mid-stream. When the handler executes sret, the reverse happens: the privilege mode is restored from SPP, SIE from SPIE, then SPIE is set to 1, SPP cleared to 0, and the hart resumes at sepc. Push on trap, pop on sret. The trap path has a call stack exactly one frame deep, and the hardware maintains it.</p>
+          <p>Why does the hardware keep this record? Because one S-mode handler fields traps from two very different callers, and nothing else remembers which one called. The xv6 source tree checks it the way the hardware means it to be checked. In usertrap(), near the top of the function: if ((r_sstatus() &amp; SSTATUS_SPP) != 0) panic("usertrap: not from user mode"). In kerneltrap(): if ((sstatus &amp; SSTATUS_SPP) == 0) panic("kerneltrap: not from supervisor mode"). And usertrapret() deliberately clears SPP to 0, with the comment "clear SPP to 0 for user mode", before sret returns to the process. The hardware record is the only one that cannot be forged or miscomputed, because it is written at the exact instant of the trap. Without it the handler would have to infer the caller from sepc or saved state, and a kernel should not guess about who it was talking to.</p>
+          <p>One wrinkle, and it is the honest kind: one bit is one frame. Every trap overwrites SPP, so a trap taken inside the handler destroys the first record. The module's handler therefore reads sstatus before it dispatches on scause, copying the bit into a sticky per-trap slot. The code is the insight here:</p>
+          <pre><code>csrr t1, sstatus         // sstatus.SPP is bit 8
+srli t1, t1, 8
+andi t1, t1, 1</code></pre>
+          <p>The record only survives if the handler keeps its own copy, the same discipline as saving callee-saved registers. The M-mode sibling works the same way one level up, except MPP holds two bits because M-mode traps can arrive from three levels: user, supervisor, or machine, with MPIE and MIE mirroring SPIE and SIE around mret.</p>
+          <p>The checking, because that is the whole point: 11 checks, zero failures, and the three QEMU runs byte-identical, the same checksum 0x81dc6b1b81f94783 over the recorded values every time. One honest boundary from the proof file: this measures QEMU's model of the privileged contract, not silicon, and only the synchronous S-mode ecall path; interrupts, page faults, and traps from user mode are separate measurements. One sentence to carry away: every trap is a function call performed by hardware, and SPP is the return address it writes down for you.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-spp" target="_blank" rel="noopener">src/sstatus-spp</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Guard That Keeps Zero Honest</h3>
           <!-- LAYER-STRIP:the-guard-that-keeps-zero-honest -->
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 22:06 EDT</time></p>
