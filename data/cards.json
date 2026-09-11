@@ -15611,5 +15611,115 @@
     "terminalLabel": "",
     "checks": 22,
     "failures": 0
+  },
+  {
+    "id": "src-fflags-nx-inexact",
+    "kicker": "fflags NX bit sets on inexact fdiv.d; others stay 0",
+    "title": "fflags NX (inexact) accrual on fdiv.d",
+    "summary": "M-mode program clearing fcsr.fflags, executing fdiv.d 1.0/3.0, and verifying the NX bit sets with no other accrued flag moving, then clearing back to zero.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The F extension defines the accrued exception flags including NX for inexact results, so the observed set is the machine contract in action."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is hardware flag accrual on an inexact operation, not a software algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-inexact/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 checks on QEMU 8.2.2: fdiv.d 1.0/3.0 sets fflags NX with no other flag moving, clear restores zero, across 3 byte-identical runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xb3d407b627e1c2b2, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with FS enabled"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/fflags-nx-inexact",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 14,
+    "failures": 0
+  },
+  {
+    "id": "src-frm-rounding-write",
+    "kicker": "fcsr.frm modes 0-4 write and read back; rounding steers",
+    "title": "fcsr.frm rounding mode write/readback, all five",
+    "summary": "M-mode program writing each fcsr.frm rounding mode (RNE, RTZ, RDN, RUP, RMM) and verifying readback, including an RDN vs RUP quotient anchor proving the mode steers rounding.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The F extension defines frm as a WARL field naming the dynamic rounding mode, so each mode reading back is the contract's writable-field rule."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test programs and reads a CSR field; no pipeline or execution-unit internals are measured."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software enables FS and programs the floating-point control state, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is CSR field write/readback behavior, not a software algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 checks on QEMU 8.2.2: frm modes 0-4 each write and read back with fflags held at 0, plus RDN vs RUP quotient anchor, across 3 byte-identical runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x44951e60b5903b3c, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with FS enabled"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/frm-rounding-write",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 17,
+    "failures": 0
   }
 ]
