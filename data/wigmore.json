@@ -8768,20 +8768,20 @@
       "item": "riscv-sv39-page-table-walk",
       "kind": "card",
       "slot": "KERNEL",
-      "probandum": "The module sets up page tables only as the fixture for probing the MMU: the verified properties, translation matches the hand walk, bad PTEs fault with mcause 13, the round-trip is exact, are all properties of the hardware's translation contract, which is what a kernel's virtual-memory subsystem would rely on. No kernel memory-management policy (allocation, eviction, fault handling, address spaces) is implemented or checked, so the kernel slot's test is not met.",
+      "probandum": "The card verifies the Sv39 translation contract a kernel's virtual-memory subsystem programs against: the three-level PTE format the kernel's page allocator must emit, the satp semantics its address-space switch relies on, and the mcause 13 fault contract its page-fault handler dispatches on. If any of these verified properties were different, kernel VM code would have to change, so the claim is load-bearing for kernels even though the module implements no kernel policy itself.",
       "keyList": [
         {
           "kind": "probandum",
           "n": 1,
-          "text": "The module sets up page tables only as the fixture for probing the MMU: the verified properties, translation matches the hand walk, bad PTEs fault with mcause 13, the round-trip is exact, are all properties of the hardware's translation contract, which is what a kernel's virtual-memory subsystem would rely on. No kernel memory-management policy (allocation, eviction, fault handling, address spaces) is implemented or checked, so the kernel slot's test is not met."
+          "text": "The card verifies the Sv39 translation contract a kernel's virtual-memory subsystem programs against: the three-level PTE format the kernel's page allocator must emit, the satp semantics its address-space switch relies on, and the mcause 13 fault contract its page-fault handler dispatches on. If any of these verified properties were different, kernel VM code would have to change, so the claim is load-bearing for kernels even though the module implements no kernel policy itself."
         },
         {
           "kind": "evidence",
           "n": 2,
-          "text": "Managed three-level page tables map virtual address 0x40000000; the module sets satp and walks the tables by hand",
+          "text": "Three-level page tables map virtual address 0x40000000; the module sets satp and walks the tables by hand",
           "source": {
             "tier": "lab",
-            "cite": "src/sv39/PROOF.md, build and control sections",
+            "cite": "PROOF.md, build and control sections",
             "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sv39/PROOF.md"
           }
         },
@@ -8791,29 +8791,29 @@
           "text": "Verified: mapped page reads with no trap, bad PTEs fault with mcause 13 at every level, 0xdeadbeefcafebabe round-trips exactly",
           "source": {
             "tier": "lab",
-            "cite": "src/sv39/PROOF.md, fault path and round trip sections",
+            "cite": "PROOF.md, verification sections",
             "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sv39/PROOF.md"
           }
         },
         {
-          "kind": "penultimate",
-          "n": 5,
-          "text": "The tables are the test fixture; the verified properties are the hardware's translation and fault behavior, which a kernel would consume, not a kernel policy."
-        },
-        {
-          "kind": "generalization",
-          "n": 6,
-          "text": "Fixture versus subject: when a lab builds scaffolding to ask the hardware a question, the claim is about the hardware's answer. The kernel layer lights only when a kernel subsystem's own behavior is implemented and verified."
-        },
-        {
           "kind": "explanation",
-          "n": 8,
-          "text": "One could object that setting up page tables is kernel work, virtual memory management, so the kernel layer should light."
+          "n": 4,
+          "text": "The rejected dim verdict applied an implementation test: it argued the module sets up page tables only as a fixture for probing the MMU and implements no kernel memory-management policy."
         },
         {
           "kind": "refutation",
-          "n": 9,
-          "text": "Building the fixture is not verifying a policy: no allocation strategy, eviction, fault-handling policy, or address-space management is implemented or checked. The proof verifies the MMU's contract, which sits beneath any kernel's VM subsystem."
+          "n": 5,
+          "text": "The layer strip is a relevance map, not an implementation inventory. The load-bearing test asks whether kernel work would have to change if the verified properties were different; the card need not implement the layer it matters to."
+        },
+        {
+          "kind": "penultimate",
+          "n": 6,
+          "text": "The verified properties are the exact contract the kernel programs against, so they are load-bearing for kernel work."
+        },
+        {
+          "kind": "generalization",
+          "n": 7,
+          "text": "Load-bearing dependence: a layer lights when the card's verified claim is a property that layer's work depends on, configures, or dispatches on. \"The card does not implement this layer\" is never by itself an argument for dim."
         }
       ],
       "inferences": [
@@ -8822,27 +8822,25 @@
             2,
             3
           ],
-          "to": [
-            5
-          ],
           "via": [
+            7
+          ],
+          "to": [
             6
           ],
-          "strength": "strong",
-          "note": "The fixture-like tables in (2) and the hardware-contract results in (3) show the claim is the MMU's answer; (6) separates fixture from subject, giving (5)."
+          "strength": "strong"
         },
         {
           "from": [
-            5
+            6
+          ],
+          "via": [
+            7
           ],
           "to": [
             1
           ],
-          "via": [
-            6
-          ],
-          "strength": "strong",
-          "note": "The objection in (8), that page tables are kernel work, is answered by (9): the fixture is not the subject. With it set aside, (5) and (6) give the dim verdict in (1)."
+          "strength": "strong"
         }
       ]
     },
@@ -32579,70 +32577,79 @@
       "item": "riscv-plic-claim-complete",
       "kind": "card",
       "slot": "KERNEL",
-      "probandum": "The proof checks the claim and complete register contract itself, the mechanism that sits beneath any supervisor's interrupt handling: whether a claim returns IRQ id 10 and whether complete clears pending is answered by the platform registers identically with or without a kernel running above them. The verification targets the contract, not any kernel's driver for it, so KERNEL stays dim.",
+      "probandum": "The card verifies the claim/complete register contract a kernel's interrupt dispatch loop programs against: claim returning IRQ 10 for the asserted UART0 line and complete clearing the pending bit are the exact operations a supervisor trap handler performs to take and retire an interrupt. If claim returned a different id or complete failed to clear pending, the kernel's IRQ handling would break, so the verified properties are load-bearing for the kernel's interrupt path.",
       "keyList": [
         {
-          "kind": "evidence",
+          "kind": "probandum",
           "n": 1,
-          "text": "The verification drives the PLIC claim and complete registers bare-metal and checks the register exchange: IRQ id 10, pending cleared, re-claim returns 0.",
+          "text": "The card verifies the claim/complete register contract a kernel's interrupt dispatch loop programs against: claim returning IRQ 10 for the asserted UART0 line and complete clearing the pending bit are the exact operations a supervisor trap handler performs to take and retire an interrupt. If claim returned a different id or complete failed to clear pending, the kernel's IRQ handling would break, so the verified properties are load-bearing for the kernel's interrupt path."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Bare-metal module claims an asserted UART0 interrupt through the claim register, then completes it to clear the pending state",
           "source": {
             "tier": "lab",
-            "cite": "plic proof log",
+            "cite": "PROOF.md, build and control sections",
             "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/plic/PROOF.md"
           }
         },
         {
-          "kind": "generalization",
-          "n": 2,
-          "text": "Contract boundaries: the platform register contract sits beneath any supervisor's interrupt handling. When the verified property is the registers' own answers, varying what runs above changes nothing the proof checks."
+          "kind": "evidence",
+          "n": 3,
+          "text": "Verified: claim returns IRQ id 10 for the asserted line, complete clears pending, re-claim returns 0",
+          "source": {
+            "tier": "lab",
+            "cite": "PROOF.md, verification sections",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/plic/PROOF.md"
+          }
         },
         {
           "kind": "explanation",
-          "n": 3,
-          "text": "The stored verdict had KERNEL lit on the grounds that claim and complete is the kernel interrupt driver's core loop."
+          "n": 4,
+          "text": "The rejected dim verdict applied an implementation test: it argued the verification targets the platform register contract itself, not any kernel driver for it."
         },
         {
           "kind": "refutation",
-          "n": 4,
-          "text": "The card drives the registers bare-metal and verifies the platform contract beneath any driver; no kernel subsystem is present in the test, and the registers answer the same with or without a kernel above them."
+          "n": 5,
+          "text": "The layer strip is a relevance map, not an implementation inventory. The load-bearing test asks whether kernel work would have to change if the verified properties were different; the card need not implement the layer it matters to."
         },
         {
           "kind": "penultimate",
-          "n": 5,
-          "text": "The verified answers come from the platform registers and are invariant under whatever supervisor runs above."
+          "n": 6,
+          "text": "The verified properties are the exact contract the kernel programs against, so they are load-bearing for kernel work."
         },
         {
-          "kind": "probandum",
-          "n": 6,
-          "text": "The proof checks the claim and complete register contract itself, the mechanism that sits beneath any supervisor's interrupt handling: whether a claim returns IRQ id 10 and whether complete clears pending is answered by the platform registers identically with or without a kernel running above them. The verification targets the contract, not any kernel's driver for it, so KERNEL stays dim."
+          "kind": "generalization",
+          "n": 7,
+          "text": "Load-bearing dependence: a layer lights when the card's verified claim is a property that layer's work depends on, configures, or dispatches on. \"The card does not implement this layer\" is never by itself an argument for dim."
         }
       ],
       "inferences": [
         {
           "from": [
-            1
-          ],
-          "to": [
-            5
+            2,
+            3
           ],
           "via": [
-            2
-          ],
-          "strength": "strong",
-          "note": "The proof checks the registers' own answers, so the contract-boundary principle yields the penultimate claim."
-        },
-        {
-          "from": [
-            5
+            7
           ],
           "to": [
             6
           ],
-          "via": [
-            2
+          "strength": "strong"
+        },
+        {
+          "from": [
+            6
           ],
-          "strength": "strong",
-          "note": "Invariance under kernel behavior leaves KERNEL dim, which flips the stored verdict."
+          "via": [
+            7
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
         }
       ]
     },

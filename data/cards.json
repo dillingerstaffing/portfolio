@@ -2503,8 +2503,8 @@
         "because": "The module runs on an already initialized machine and uses the PLIC's claim and complete service after boot; it installs no boot-time machine-mode configuration of its own. It is the consumer side of platform services, not the installer, so FIRMWARE stays dim."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The proof checks the claim and complete register contract itself, the mechanism that sits beneath any supervisor's interrupt handling: whether a claim returns IRQ id 10 and whether complete clears pending is answered by the platform registers identically with or without a kernel running above them. The verification targets the contract, not any kernel's driver for it, so KERNEL stays dim."
+        "applies": true,
+        "because": "The card verifies the claim/complete register contract a kernel's interrupt dispatch loop programs against: claim returning IRQ 10 for the asserted UART0 line and complete clearing the pending bit are the exact operations a supervisor trap handler performs to take and retire an interrupt. If claim returned a different id or complete failed to clear pending, the kernel's IRQ handling would break, so the verified properties are load-bearing for the kernel's interrupt path."
       },
       "ALGORITHM": {
         "applies": false,
@@ -2962,8 +2962,8 @@
         "because": "The proof's question is whether the Sv39 translation and fault contract holds, which the privileged architecture answers directly. No boot-time machine-mode configuration (PMP, trap delegation, SBI) stands between the satp write and the verified translation."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "The module sets up page tables only as the fixture for probing the MMU: the verified properties, translation matches the hand walk, bad PTEs fault with mcause 13, the round-trip is exact, are all properties of the hardware's translation contract, which is what a kernel's virtual-memory subsystem would rely on. No kernel memory-management policy (allocation, eviction, fault handling, address spaces) is implemented or checked, so the kernel slot's test is not met."
+        "applies": true,
+        "because": "The card verifies the Sv39 translation contract a kernel's virtual-memory subsystem programs against: the three-level PTE format the kernel's page allocator must emit, the satp semantics its address-space switch relies on, and the mcause 13 fault contract its page-fault handler dispatches on. If any of these verified properties were different, kernel VM code would have to change, so the claim is load-bearing for kernels even though the module implements no kernel policy itself."
       },
       "ALGORITHM": {
         "applies": false,
