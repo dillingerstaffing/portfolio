@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-015250">
+  <meta name="build-version" content="v20260911-020805">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -932,6 +932,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Guard That Keeps Zero Honest</h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the lab tests in plain compiled host C; no RISC-V operation is executed or measured.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH</div><p class="layer-because">the branch-mispredict argument is invoked only to motivate the branchless construction; no pipeline, cache, or predictor behavior is measured or claimed.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nothing boots and no machine-mode configuration is touched.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the test runs in a plain user-space binary; no OS service, address translation, or I/O path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the one atomic idea a builder needs: x minus 1 erases the lowest set bit, so x is a power of two exactly when nothing survives the erasure and x is not zero; checked against a hand-written oracle on 26,777,408 inputs with zero mismatches.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 22:06 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take 12, which is 1100 in binary. Subtract 1 and you get 1011: the subtraction borrows through the two trailing zeros and stops at the lowest set bit, flipping exactly those three bits and nothing above them. AND the two together, 1100 and 1011, and you get 1000. One bit survives, so 12 is not a power of two.</p>
+          <p>Try 8 instead: 1000 minus 1 is 0111, and 1000 AND 0111 is 0. Nothing survives, so 8 is a power of two. That is the whole identity: x - 1 differs from x in precisely the lowest set bit and everything below it, so x &amp; (x - 1) erases the lowest set bit of x and leaves everything above it untouched. If x has exactly one bit set, the AND comes out zero; otherwise at least one bit survives.</p>
+          <p>The naive test, (x &amp; (x - 1)) == 0, has a bug the bit-twiddling canon admits in print: it calls 0 a power of two. Zero minus 1 wraps to all-ones, because unsigned subtraction wraps mod 2^64, and 0 AND all-ones is 0, so the test reports true. That is why the lab's function carries a guard. The code is the insight here:</p>
+          <pre><code>uint64_t is_pow2(uint64_t x) {
+    return (x != 0) &amp; ((x &amp; (x - 1)) == 0);
+}</code></pre>
+          <p>Hacker's Delight, section 2-1, gives the formula as turning off the rightmost 1-bit and notes it detects "a power of 2 or 0"; the Bit Twiddling Hacks page says plainly that 0 is incorrectly considered a power of 2, and gives the guarded form as the remedy. The lab is the canon, executed.</p>
+          <p>Why write it without branches? Both the guard and the equality are evaluated through setcc, the x86 instruction that turns a condition flag into a 0 or 1 with no jump, and the two results are combined with a bitwise AND, so gcc 13.3.0 at -O2 emits the construction with zero conditional jumps. No branch means no branch misprediction when the input stream is random, and the test bench feeds it exactly that: ten million fixed-seed random 64-bit values.</p>
+          <p>The full count: 192 directed edges (2^k, 2^k - 1, 2^k + 1 for every k from 0 to 63, including the top corner at 2^63), an exhaustive sweep of all 16,777,216 24-bit values, and the ten million randoms, 26,777,408 checks in all, nearly 27 million, zero mismatches against a hand-written popcount-loop oracle. No compiler builtins anywhere, so the test never leans on the thing it is testing. The checksum of the whole result stream is identical across the -O0, -O2, and sanitizer builds. One honest boundary, stated in the proof file itself: the full 4.29-billion-case 32-bit loop could not finish in one run, so the module ships the largest fully verified slice instead and says so. One sentence to carry away: subtracting 1 erases exactly the lowest set bit, so a number is a power of two exactly when nothing survives the erasure and the number is not zero.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/124-is-pow2" target="_blank" rel="noopener">lab/124-is-pow2</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Division That Adds Up Shifts</h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/125-div-by-7-shift-add/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the lab divides in plain compiled host C; no RISC-V operation is executed or measured.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH</div><p class="layer-because">the iteration count of the naive loop is invoked only to motivate the construction; no pipeline, cache, or predictor behavior is measured or claimed.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nothing boots and no machine-mode configuration is touched.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the division runs in a plain user-space binary; no OS service, address translation, or I/O path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the one atomic idea a builder needs: 1/7 repeats as 001 in binary, so x/7 is the sum of x's every-third right shift, and the walk-up correction is provably bounded at 10 steps; checked against the C / oracle on 26,777,238 inputs with zero mismatches.</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 21:05 EDT</time></p>
@@ -12084,6 +12104,132 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stimecmp-one-shot",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/stimecmp-one-shot",
     "terminalLabel": "Verified stimecmp-one-shot QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-118-bit-single",
+    "kicker": "BIT MANIPULATION",
+    "title": "Single-bit set, clear, toggle, and test",
+    "summary": "Four 64-bit bit operations built from the (1ULL << i) mask identity: set forces bit i to 1 with OR, clear forces it to 0 with AND NOT, toggle flips it with XOR, and test reads it with a shift and mask. Each operation touches exactly one bit and leaves the other 63 unchanged, and position 63 is pinned by an explicit edge case.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the proof ran on a host machine against a per-bit loop oracle, so no RISC-V bit-manipulation instruction ever executed and the claim never touches the machine contract"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the proof never leaves user space and configures no trap vector, CSR, or privilege level"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the lab measures the four operations against a naive per-bit reference, and no kernel subsystem allocates, pages, or schedules around it"
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "the mask identities are identical on every ISA, and the differential checks against the independent bit-loop reference are the value"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/118-bit-single/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4,017,408 (word, position) pairs checked against a naive per-bit loop reference with the i = 63 edge pinned, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "68 directed values x 64 positions x 4 operations plus 1,000,000 fixed-seed random pairs"
+      ],
+      [
+        "CHECKSUM",
+        "0x4c11b8482936109c, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "DISASSEMBLY",
+        "no shift by 64 or more in the four operations at -O2"
+      ],
+      [
+        "BENCHMARK",
+        "1.332 ns/value at -O2, best of 5, checksum-sinked so the loop survives the optimizer"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 118-bit-single",
+    "terminalOutput": "$ ./test_O2\nedge i=63 pinned: mask=0x8000000000000000\ndirected done: 4352 (word,position) pairs, 17408 checks\nrandom done: 1000000 (word,position) pairs, splitmix64 seed 0x123456789ABCDEF0\ntotal checks          : 4017408\nmismatches            : 0\nFNV-1a of all results : 0x4c11b8482936109c\n\n$ ./bench_O2\nbest: 1.332 ns/value over 50000000 operations",
+    "verificationEnvironment": "Host",
+    "checks": 4017408,
+    "failures": 0,
+    "stressItems": 4017408,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/118-bit-single",
+    "repoLabel": "GitHub: systems-lab/lab/118-bit-single",
+    "terminalLabel": "Verified lab-118-bit-single host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-pmp-lock-bit",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "PMP lock bit: rewrites ignored, M-mode load denied",
+    "summary": "M-mode programs PMP entry 0 as a locked NAPOT region with no permissions, then attempts all-ones writes to the entry's config and address registers. The readbacks come back unchanged, showing the lock bit freezes the entry; a load from inside the locked region traps with the load access fault code, showing the lock's permissions reach even M-mode.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the lock bit's freeze-on-write rule and M-mode enforcement are the privileged ISA's own contract, and the proof executes the exact CSR writes and trap the contract describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models the PMP check functionally, so no TLB, cache, or pipeline behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode boot firmware is the only software that can write a locked PMP entry before locking it; the proof is exactly the firmware-level act of programming, locking, and probing the entry"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the PMP contract beneath any kernel"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because ignoring writes to a locked CSR and trapping a denied load are hardware register contracts, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-lock-bit/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "17 checks against the lock-persistence and trap expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "LOCK PROBE",
+        "pmpcfg0 reads 0xffffffffffffff98 after the all-ones write with the locked entry byte 0x98 unchanged; pmpaddr0 unchanged at 0x200009ff"
+      ],
+      [
+        "TRAP",
+        "mcause=0x5 with mepc exactly at the faulting load and mtval carrying the faulting address"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / pmp-lock-bit",
+    "terminalOutput": "$ make run-pmp-lock-bit\npmp-lock-bit: PMP lock-bit persistence test\nhart mhartid=0\ncontrol: scratch readable/writable before PMP: ok\nconfig: pmpaddr0=0x200009ff (NAPOT 4 KiB at 0x80002000) pmpcfg0 entry0=0x98 (L=1 A=NAPOT R=W=X=0)\nlock:   pmpcfg0 after all-ones write=0xffffffffffffff98\nlock:   entry0 byte unchanged (0x98); entries 1-7 read 0x0xff (unlocked, write accepted)\nlock:   pmpaddr0 after all-ones write=0x200009ff\nload:  traps=1 mcause=0x5 mepc=0x80000540 mtval=0x80002000 resume-4=0x80000540\nchecks=17 fails=0\nRESULT: PASS (lock holds; load mcause=5)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": 17,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-lock-bit",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/pmp-lock-bit",
+    "terminalLabel": "Verified pmp-lock-bit QEMU output",
     "showRepoLink": true
   }
 ];
@@ -55928,6 +56074,586 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "A hardware register contract means the algorithm slot stays dim."
+      }
+    ]
+  },
+  "lab-118-bit-single|ISA": {
+    "item": "lab-118-bit-single",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "not here because the proof ran on a host machine against a per-bit loop oracle, so no RISC-V bit-manipulation instruction ever executed and the claim never touches the machine contract",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because the proof ran on a host machine against a per-bit loop oracle, so no RISC-V bit-manipulation instruction ever executed and the claim never touches the machine contract"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The lab's four operations were verified against a naive per-bit-loop oracle on the host; no RISC-V instruction was executed or compared."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Hardware treatment needs a hardware comparison: a claim about the machine contract is only carried by evidence that ran the contract."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log documents 4,017,408 differential checks against an independent per-bit loop reference on the host, with no QEMU or instruction-level comparison.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/118-bit-single/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-118-bit-single|MICROARCH": {
+    "item": "lab-118-bit-single",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "not here because the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The differential test compared computed outputs only; it measured no pipeline, cache, or predictor behavior."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Output comparison carries the computed result, not the microarchitecture that computed it, unless timings or counters are measured."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log's test section records checks and mismatches from host binaries; no performance counters, cache statistics, or pipeline traces appear.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/118-bit-single/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-118-bit-single|FIRMWARE": {
+    "item": "lab-118-bit-single",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "not here because the proof never leaves user space and configures no trap vector, CSR, or privilege level",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because the proof never leaves user space and configures no trap vector, CSR, or privilege level"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The lab runs as an ordinary user-space program on the host and configures no trap vector, CSR, or privilege level."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Firmware relevance needs a firmware act: booting, dispatching, or configuring hardware from a privileged level."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The build log compiles host C binaries and the run logs show plain test output; no bare-metal image, trap vector, or privileged configuration appears.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/118-bit-single/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-118-bit-single|KERNEL": {
+    "item": "lab-118-bit-single",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "not here because the lab measures the four operations against a naive per-bit reference, and no kernel subsystem allocates, pages, or schedules around it",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because the lab measures the four operations against a naive per-bit reference, and no kernel subsystem allocates, pages, or schedules around it"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The lab checks the four operations against a naive per-bit reference; no scheduling, paging, or driver behavior is exercised."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Kernel relevance needs a kernel mechanism in the loop; a pure user-space comparison does not reach the kernel layer."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log's mechanism section describes word-level operations with asserts and sanitizers; no system call or kernel subsystem is involved.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/118-bit-single/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-118-bit-single|ALGORITHM": {
+    "item": "lab-118-bit-single",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "the mask identities are identical on every ISA, and the differential checks against the independent bit-loop reference are the value",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "the mask identities are identical on every ISA, and the differential checks against the independent bit-loop reference are the value"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The same identities hold wherever unsigned 64-bit words exist; the reference was written independently of the mask identity."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "An algorithm claim is carried by independence: when the oracle cannot share the implementation's error, agreement transfers trust."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log documents the reference rebuilding each answer one bit at a time with plain right shifts, never using the shift-left-by-i mask identities.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/118-bit-single/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-pmp-lock-bit|ISA": {
+    "item": "src-pmp-lock-bit",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "the lock bit's freeze-on-write rule and M-mode enforcement are the privileged ISA's own contract, and the proof executes the exact CSR writes and trap the contract describes",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "the lock bit's freeze-on-write rule and M-mode enforcement are the privileged ISA's own contract, and the proof executes the exact CSR writes and trap the contract describes"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "Writing all-ones to pmpcfg0 left the locked entry's byte at 0x98, writing all-ones to pmpaddr0 left it at 0x200009ff, and the M-mode load trapped with mcause 5: exactly the privileged spec's lock-write-ignore rule and load access fault code."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The privileged spec's register rules are the ground truth for the machine contract; an implementation that matches the spec's stated readbacks and trap code carries the contract."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log records pmpcfg0 reading 0xffffffffffffff98 after the all-ones write with the locked entry byte unchanged, pmpaddr0 unchanged at 0x200009ff, and the load trapping once with mcause 0x5 across three byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-lock-bit/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-pmp-lock-bit|MICROARCH": {
+    "item": "src-pmp-lock-bit",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "not here because QEMU models the PMP check functionally, so no TLB, cache, or pipeline behavior is measured in the proof",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because QEMU models the PMP check functionally, so no TLB, cache, or pipeline behavior is measured in the proof"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "QEMU's virt machine implements the PMP check functionally; the proof recorded readbacks and trap fields, not TLB, cache, or pipeline behavior."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Functional emulation proves the architectural contract, not the implementation path: timing, caching, and prediction leave no trace in a functional model."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log's limits section states the verification covers QEMU 8.2.2's PMP model only, and records no throughput, cache, or pipeline measurements.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-lock-bit/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-pmp-lock-bit|FIRMWARE": {
+    "item": "src-pmp-lock-bit",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "matters because M-mode boot firmware is the only software that can write a locked PMP entry before locking it; the proof is exactly the firmware-level act of programming, locking, and probing the entry",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters because M-mode boot firmware is the only software that can write a locked PMP entry before locking it; the proof is exactly the firmware-level act of programming, locking, and probing the entry"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "Only M-mode software can write pmpaddr0 and pmpcfg0; the proof image boots straight into M-mode, programs entry 0, sets L, then probes the lock: the complete firmware-level sequence."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Firmware relevance follows from privilege: whatever only M-mode can configure is a firmware concern before it is anyone else's."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log documents the hart in M-mode programming pmpaddr0 to 0x200009ff and pmpcfg0 to 0x98, then attempting the hostile all-ones rewrites and the M-mode load.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-lock-bit/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-pmp-lock-bit|KERNEL": {
+    "item": "src-pmp-lock-bit",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the PMP contract beneath any kernel",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the PMP contract beneath any kernel"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The proof runs beneath any kernel: a bare-metal M-mode image with no scheduler, virtual memory, or driver layer."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Kernel relevance needs kernel machinery in the proof; a mechanism verified below the kernel does not carry kernel claims."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The module shares only boot.S and uart.c with the other demos and its log shows a single-hart bare-metal run with no operating system present.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-lock-bit/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-pmp-lock-bit|ALGORITHM": {
+    "item": "src-pmp-lock-bit",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "not here because ignoring writes to a locked CSR and trapping a denied load are hardware register contracts, not an ISA-independent computational mechanism",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because ignoring writes to a locked CSR and trapping a denied load are hardware register contracts, not an ISA-independent computational mechanism"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "Ignoring a write to a locked CSR and trapping a denied load are register-level hardware contracts; no portable computation is the subject of the proof."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Algorithm relevance needs an ISA-independent mechanism; a claim that only makes sense against named CSRs stays at the contract layers."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log's contract section names pmpcfg0, pmpaddr0, mcause, mepc, and mtval as the objects under test, all privileged CSR state.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-lock-bit/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
       }
     ]
   }

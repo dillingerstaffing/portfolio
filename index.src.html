@@ -932,6 +932,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Guard That Keeps Zero Honest</h3>
+          <!-- LAYER-STRIP:the-guard-that-keeps-zero-honest -->
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 22:06 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take 12, which is 1100 in binary. Subtract 1 and you get 1011: the subtraction borrows through the two trailing zeros and stops at the lowest set bit, flipping exactly those three bits and nothing above them. AND the two together, 1100 and 1011, and you get 1000. One bit survives, so 12 is not a power of two.</p>
+          <p>Try 8 instead: 1000 minus 1 is 0111, and 1000 AND 0111 is 0. Nothing survives, so 8 is a power of two. That is the whole identity: x - 1 differs from x in precisely the lowest set bit and everything below it, so x &amp; (x - 1) erases the lowest set bit of x and leaves everything above it untouched. If x has exactly one bit set, the AND comes out zero; otherwise at least one bit survives.</p>
+          <p>The naive test, (x &amp; (x - 1)) == 0, has a bug the bit-twiddling canon admits in print: it calls 0 a power of two. Zero minus 1 wraps to all-ones, because unsigned subtraction wraps mod 2^64, and 0 AND all-ones is 0, so the test reports true. That is why the lab's function carries a guard. The code is the insight here:</p>
+          <pre><code>uint64_t is_pow2(uint64_t x) {
+    return (x != 0) &amp; ((x &amp; (x - 1)) == 0);
+}</code></pre>
+          <p>Hacker's Delight, section 2-1, gives the formula as turning off the rightmost 1-bit and notes it detects "a power of 2 or 0"; the Bit Twiddling Hacks page says plainly that 0 is incorrectly considered a power of 2, and gives the guarded form as the remedy. The lab is the canon, executed.</p>
+          <p>Why write it without branches? Both the guard and the equality are evaluated through setcc, the x86 instruction that turns a condition flag into a 0 or 1 with no jump, and the two results are combined with a bitwise AND, so gcc 13.3.0 at -O2 emits the construction with zero conditional jumps. No branch means no branch misprediction when the input stream is random, and the test bench feeds it exactly that: ten million fixed-seed random 64-bit values.</p>
+          <p>The full count: 192 directed edges (2^k, 2^k - 1, 2^k + 1 for every k from 0 to 63, including the top corner at 2^63), an exhaustive sweep of all 16,777,216 24-bit values, and the ten million randoms, 26,777,408 checks in all, nearly 27 million, zero mismatches against a hand-written popcount-loop oracle. No compiler builtins anywhere, so the test never leans on the thing it is testing. The checksum of the whole result stream is identical across the -O0, -O2, and sanitizer builds. One honest boundary, stated in the proof file itself: the full 4.29-billion-case 32-bit loop could not finish in one run, so the module ships the largest fully verified slice instead and says so. One sentence to carry away: subtracting 1 erases exactly the lowest set bit, so a number is a power of two exactly when nothing survives the erasure and the number is not zero.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/124-is-pow2" target="_blank" rel="noopener">lab/124-is-pow2</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Division That Adds Up Shifts</h3>
           <!-- LAYER-STRIP:the-division-that-adds-up-shifts -->
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 21:05 EDT</time></p>

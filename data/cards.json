@@ -10790,5 +10790,131 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/stimecmp-one-shot",
     "terminalLabel": "Verified stimecmp-one-shot QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "lab-118-bit-single",
+    "kicker": "BIT MANIPULATION",
+    "title": "Single-bit set, clear, toggle, and test",
+    "summary": "Four 64-bit bit operations built from the (1ULL << i) mask identity: set forces bit i to 1 with OR, clear forces it to 0 with AND NOT, toggle flips it with XOR, and test reads it with a shift and mask. Each operation touches exactly one bit and leaves the other 63 unchanged, and position 63 is pinned by an explicit edge case.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the proof ran on a host machine against a per-bit loop oracle, so no RISC-V bit-manipulation instruction ever executed and the claim never touches the machine contract"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the differential test compared outputs on a host CPU and recorded no pipeline, cache, or predictor behavior"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the proof never leaves user space and configures no trap vector, CSR, or privilege level"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the lab measures the four operations against a naive per-bit reference, and no kernel subsystem allocates, pages, or schedules around it"
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "the mask identities are identical on every ISA, and the differential checks against the independent bit-loop reference are the value"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/118-bit-single/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4,017,408 (word, position) pairs checked against a naive per-bit loop reference with the i = 63 edge pinned, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "68 directed values x 64 positions x 4 operations plus 1,000,000 fixed-seed random pairs"
+      ],
+      [
+        "CHECKSUM",
+        "0x4c11b8482936109c, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "DISASSEMBLY",
+        "no shift by 64 or more in the four operations at -O2"
+      ],
+      [
+        "BENCHMARK",
+        "1.332 ns/value at -O2, best of 5, checksum-sinked so the loop survives the optimizer"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 118-bit-single",
+    "terminalOutput": "$ ./test_O2\nedge i=63 pinned: mask=0x8000000000000000\ndirected done: 4352 (word,position) pairs, 17408 checks\nrandom done: 1000000 (word,position) pairs, splitmix64 seed 0x123456789ABCDEF0\ntotal checks          : 4017408\nmismatches            : 0\nFNV-1a of all results : 0x4c11b8482936109c\n\n$ ./bench_O2\nbest: 1.332 ns/value over 50000000 operations",
+    "verificationEnvironment": "Host",
+    "checks": 4017408,
+    "failures": 0,
+    "stressItems": 4017408,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/118-bit-single",
+    "repoLabel": "GitHub: systems-lab/lab/118-bit-single",
+    "terminalLabel": "Verified lab-118-bit-single host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-pmp-lock-bit",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "PMP lock bit: rewrites ignored, M-mode load denied",
+    "summary": "M-mode programs PMP entry 0 as a locked NAPOT region with no permissions, then attempts all-ones writes to the entry's config and address registers. The readbacks come back unchanged, showing the lock bit freezes the entry; a load from inside the locked region traps with the load access fault code, showing the lock's permissions reach even M-mode.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the lock bit's freeze-on-write rule and M-mode enforcement are the privileged ISA's own contract, and the proof executes the exact CSR writes and trap the contract describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models the PMP check functionally, so no TLB, cache, or pipeline behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode boot firmware is the only software that can write a locked PMP entry before locking it; the proof is exactly the firmware-level act of programming, locking, and probing the entry"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the PMP contract beneath any kernel"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because ignoring writes to a locked CSR and trapping a denied load are hardware register contracts, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-lock-bit/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "17 checks against the lock-persistence and trap expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "LOCK PROBE",
+        "pmpcfg0 reads 0xffffffffffffff98 after the all-ones write with the locked entry byte 0x98 unchanged; pmpaddr0 unchanged at 0x200009ff"
+      ],
+      [
+        "TRAP",
+        "mcause=0x5 with mepc exactly at the faulting load and mtval carrying the faulting address"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / pmp-lock-bit",
+    "terminalOutput": "$ make run-pmp-lock-bit\npmp-lock-bit: PMP lock-bit persistence test\nhart mhartid=0\ncontrol: scratch readable/writable before PMP: ok\nconfig: pmpaddr0=0x200009ff (NAPOT 4 KiB at 0x80002000) pmpcfg0 entry0=0x98 (L=1 A=NAPOT R=W=X=0)\nlock:   pmpcfg0 after all-ones write=0xffffffffffffff98\nlock:   entry0 byte unchanged (0x98); entries 1-7 read 0x0xff (unlocked, write accepted)\nlock:   pmpaddr0 after all-ones write=0x200009ff\nload:  traps=1 mcause=0x5 mepc=0x80000540 mtval=0x80002000 resume-4=0x80000540\nchecks=17 fails=0\nRESULT: PASS (lock holds; load mcause=5)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": 17,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-lock-bit",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/pmp-lock-bit",
+    "terminalLabel": "Verified pmp-lock-bit QEMU output",
+    "showRepoLink": true
   }
 ]
