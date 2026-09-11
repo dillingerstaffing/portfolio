@@ -13784,5 +13784,119 @@
     },
     "portability": null,
     "stressItems": 7
+  },
+{
+    "id": "src-mie-mtie-gate",
+    "title": "mie.MTIE machine timer-interrupt enable gate",
+    "kicker": "RISCV PRIV",
+    "summary": "A bare-metal RISC-V program verifies the enable-gate behavior of mie.MTIE (bit 7), the M-mode enable for the machine timer interrupt. With mstatus.MIE set and the CLINT timer armed so mip.MTIP goes pending while MTIE is clear, the pending bit reads set with zero traps over a bounded window; setting MTIE then delivers exactly one trap with mcause 0x8000000000000007, and the handler's mtimecmp disarm stops re-delivery.",
+    "checks": 20,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mie-mtie-gate/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-mtie-gate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "20 checks on QEMU 8.2.2: phase A mie readback 0x0 with MTIP pending and 0 traps over the quiet window; phase B mie readback 0x80 with exactly 1 trap and mcause 0x8000000000000007; phase C 0 additional traps; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x5409721809eefeb2, over the run transcript, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode bare metal"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mie-mtie-gate",
+    "terminalLabel": "Verified mie.MTIE QEMU output",
+    "terminalOutput": "mie-mtie-gate: mie.MTIE machine timer-interrupt enable-gate check\nboot: mie=0x0 mstatus.MIE=0 mip=0x0 mtimecmp=0xffffffffffffffff\ntrap: mtvec=0x800001e4\nirq-global: mstatus.MIE=1 (stays set for the run)\nphaseA: mie-after-write=0x0 (expect 0x0)\nphaseA: mip=0x80 (MTIP bit SET)\nphaseA: traps-with-MTIE-clear=0 (expect 0), mip-after-window=0x80 (MTIP bit SET)\nphaseB: mie-after-write=0x80 (expect 0x80)\nphaseB: mcause=0x8000000000000007 mepc=0x800004fc trap-count=1\nphaseB: mip-after-handler=0x0 (MTIP bit clear)\nphaseC: traps-after-quiet=1 (expect 1)\nend: mstatus.MIE=1 mie=0x80\nRESULT: PASS (traps=1)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the trap rule in the RISC-V privileged specification takes interrupt i exactly when mstatus.MIE, mie[i], and mip[i] are all set, and this test verifies that rule for the machine timer interrupt (i=7)."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the enable-gate logic is a combinational function of CSR bits defined by the architecture; no pipeline, cache, or predictor behavior is measured or asserted."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because M-mode firmware arms the CLINT mtimecmp and relies on the MTIE gate to control when the timer interrupt can preempt, for example to defer timer handling during critical sections."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because MTIE is a machine-only enable bit; supervisor kernels use sie.STIE for the supervisor timer interrupt and cannot observe or modify mie."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware interrupt-gating rule directly, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "killreap",
+    "title": "xv6 kill marks a spinning child, wait reaps it",
+    "kicker": "XV6",
+    "summary": "A user-space test verifies xv6's kill and wait process-lifecycle contract. It forks a child that spins in a volatile loop, kills it (kill returns 0), and wait returns the child's pid with status -1, which is the status xv6's usertrap assigns to killed processes; a second wait returns -1 with no children left.",
+    "checks": 5,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/killreap.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "5 checks on QEMU 8.2.2: fork returned pid 4; kill returned 0; wait returned pid 4; stored status -1; second wait returned -1; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x34B177B4F80152EB, over the five measured values, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / killreap",
+    "terminalLabel": "Verified killreap QEMU output",
+    "terminalOutput": "xv6 kernel is booting\n\nhart 2 starting\nhart 1 starting\ninit: starting sh\n$ killreap\ncheck 1: fork returned child pid 4\ncheck 2: kill returned 0 for child pid 4\ncheck 3: wait returned pid 4, the killed child's pid\ncheck 4: wait stored status -1 for child 4\ncheck 5: second wait returned -1, no children left\nchecksum: 0x34B177B4F80152EB\nkill results: child=4 kill=0 wait=4 status=-1 wait2=-1\nchecks: 5 mismatches: 0\nPASS: kill() marked the child and wait() reaped its pid with status -1\n$",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the test exercises the kill and wait system calls; it checks process state transitions and return values, not the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is about the kernel's process-state bookkeeping on the kill path, not the implementation behind it."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test is a user program exercising process lifecycle syscalls; firmware never manages processes."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because kill and wait are the kernel's process-lifecycle contract: kill sets the killed flag, usertrap converts it to exit(-1), and sys_wait copies the status and reaps the slot, all verified here from user space."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a kernel process-management contract, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
   }
 ]

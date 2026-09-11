@@ -83983,6 +83983,736 @@
         "note": "3 plus 5 yields the verdict in (1)."
       }
     ]
+  },
+{
+    "item": "src-mie-mtie-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the trap rule in the RISC-V privileged specification takes interrupt i exactly when mstatus.MIE, mie[i], and mip[i] are all set, and this test verifies that rule for the machine timer interrupt (i=7).",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at ISA because the trap rule in the RISC-V privileged specification takes interrupt i exactly when mstatus.MIE, mie[i], and mip[i] are all set, and this test verifies that rule for the machine timer interrupt (i=7)."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Phase A: mie=0x0, mip=0x80 (MTIP SET), 0 traps over 2M-rdcycle window with mstatus.MIE=1; Phase B: mie=0x80, exactly 1 trap with mcause=0x8000000000000007; Phase C: 0 additional traps after handler disarms mtimecmp; 20 checks, 0 mismatches, checksum 0x5409721809eefeb2 identical across 3 QEMU 8.2.2 runs",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-mtie-gate"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The RISC-V privileged specification defines the interrupt trap condition as mstatus.MIE set AND mie[i] set AND mip[i] set for each interrupt i; MTIE is mie bit 7 and MTIP is mip bit 7",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, machine trap handling chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The measured trap behavior matches the privileged specification's three-way AND trap condition exactly: silence with MTIE clear, one trap with MTIE set."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "An interrupt that fires exactly when all three of MIE, the enable bit, and the pending bit are set, and stays silent when the enable is clear, satisfies the architectural trap rule."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer lights when the verified claim is the machine contract as specified, independent of any particular implementation."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that this is only a QEMU measurement, not real silicon. The contract verified is the architectural trap rule that QEMU implements; the claim is about the specified logic, which the emulator models faithfully for these CSRs."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "src-mie-mtie-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the enable-gate logic is a combinational function of CSR bits defined by the architecture; no pipeline, cache, or predictor behavior is measured or asserted.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at MICROARCH because the enable-gate logic is a combinational function of CSR bits defined by the architecture; no pipeline, cache, or predictor behavior is measured or asserted."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 20 checks compare CSR readbacks (mie, mip, mstatus), trap counts, mcause, and mepc; no timing, cache, or pipeline behavior is measured or asserted",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-mtie-gate"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The privileged specification defines the trap condition as a function of CSR state with no microarchitectural qualifier",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, machine trap handling chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The verified gate behavior holds by architectural definition and was checked without any microarchitectural measurement."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A property defined purely over architectural CSR state, with no timing or implementation-dependent clause, is indifferent to microarchitecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The MICROARCH slot stays dim when the verified claim would hold identically on any compliant implementation regardless of pipeline, cache, or predictor design."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "src-mie-mtie-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because M-mode firmware arms the CLINT mtimecmp and relies on the MTIE gate to control when the timer interrupt can preempt, for example to defer timer handling during critical sections.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at FIRMWARE because M-mode firmware arms the CLINT mtimecmp and relies on the MTIE gate to control when the timer interrupt can preempt, for example to defer timer handling during critical sections."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The module runs in M-mode, arms the CLINT mtimecmp at 0x02004000, and toggles mie.MTIE via CSR writes, the same operations M-mode firmware performs for timer management",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-mtie-gate"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The privileged specification describes mie as the machine-level interrupt enable register that M-mode software programs to control interrupt delivery",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, machine trap handling chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "MTIE is the firmware's switch for the machine timer interrupt, and the verified gate behavior is what lets firmware trust that the switch works."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "An enable bit that lets machine-mode software defer or allow timer interrupts is load-bearing for firmware that manages timer-driven preemption."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The FIRMWARE layer lights when the verified property is one that boot-time or runtime machine-mode software depends on to control interrupt delivery."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that this test uses a synthetic timer arm, not a real firmware scheduler. The claim is about the enable gate's behavior, which is the primitive firmware uses; the scheduling policy built on it is separate."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "src-mie-mtie-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because MTIE is a machine-only enable bit; supervisor kernels use sie.STIE for the supervisor timer interrupt and cannot observe or modify mie.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at KERNEL because MTIE is a machine-only enable bit; supervisor kernels use sie.STIE for the supervisor timer interrupt and cannot observe or modify mie."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The test executes entirely in M-mode; no S-mode or kernel code is involved in the verified property",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-mtie-gate"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The privileged specification places mie in the machine-level CSR address space, inaccessible from S-mode",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, CSR addressing chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "Because MTIE is invisible from S-mode, no kernel behavior can depend on its gate."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A machine-only CSR bit cannot be load-bearing for supervisor-mode software, which cannot observe or modify it."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The KERNEL slot stays dim when the verified property concerns state that kernel-mode software can neither read nor write."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "src-mie-mtie-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the card verifies a hardware interrupt-gating rule directly, not a computational construction with a portable form.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at ALGORITHM because the card verifies a hardware interrupt-gating rule directly, not a computational construction with a portable form."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 20 checks are CSR readback equalities, trap counts, and mcause values; no computed result, no portable implementation, no differential test against software",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mie-mtie-gate/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-mtie-gate"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "There is no algorithm here to be portable; the claim is about when the hardware takes a trap."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A bare hardware gating rule with no software counterpart exercises no algorithm; there is nothing portable to argue."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM slot stays dim when the card verifies hardware state transitions directly rather than a computational mechanism with an equivalent portable form."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "killreap",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the test exercises the kill and wait system calls; it checks process state transitions and return values, not the machine contract.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at ISA because the test exercises the kill and wait system calls; it checks process state transitions and return values, not the machine contract."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 5 checks assert fork pid (4), kill return (0), wait pid (4), stored status (-1), and second wait (-1); no instruction, CSR, or trap behavior is asserted",
+        "source": {
+          "tier": "lab",
+          "cite": "user/killreap PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The pid values and return codes checked here are a kernel software contract, independent of the underlying instruction set."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A user-space test that asserts only OS-level return values and process states does not engage the instruction set or privileged architecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ISA slot stays dim when the verified claim would hold identically on any ISA, since it concerns kernel bookkeeping rather than the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "killreap",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the verified claim is about the kernel's process-state bookkeeping on the kill path, not the implementation behind it.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at MICROARCH because the verified claim is about the kernel's process-state bookkeeping on the kill path, not the implementation behind it."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The PROOF entry describes the mechanism as the killed flag set in kill, exit(-1) in usertrap, and status copy plus slot reaping in sys_wait; the checks observe pids and return values, not hardware counters or timing",
+        "source": {
+          "tier": "lab",
+          "cite": "user/killreap PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The kill-to-reap state machine is a software invariant of the kernel; no microarchitectural feature bears on it."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A property determined by kernel C code paths, observed through system-call return values, is indifferent to the processor's microarchitecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The MICROARCH slot stays dim when the verified claim concerns software bookkeeping rather than implementation-dependent hardware behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "killreap",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the test is a user program exercising process lifecycle syscalls; firmware never manages processes.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at FIRMWARE because the test is a user program exercising process lifecycle syscalls; firmware never manages processes."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The test is built as a UPROGS user program shipped in fs.img and run from the xv6 shell; no firmware interface is exercised",
+        "source": {
+          "tier": "lab",
+          "cite": "user/killreap PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Firmware's job ends at boot; processes are created and managed entirely by the xv6 kernel thereafter."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "Process creation, signaling, and reaping are operating-system abstractions with no firmware counterpart; firmware neither provides nor constrains them."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The FIRMWARE slot stays dim when the verified property belongs to a software layer that firmware never touches."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "killreap",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because kill and wait are the kernel's process-lifecycle contract: kill sets the killed flag, usertrap converts it to exit(-1), and sys_wait copies the status and reaps the slot, all verified here from user space.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at KERNEL because kill and wait are the kernel's process-lifecycle contract: kill sets the killed flag, usertrap converts it to exit(-1), and sys_wait copies the status and reaps the slot, all verified here from user space."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "fork returned child pid 4; kill(4) returned 0; wait returned pid 4 with status -1 stored; second wait returned -1; 5 checks, 0 mismatches, checksum 0x34B177B4F80152EB identical across 3 QEMU 8.2.2 runs",
+        "source": {
+          "tier": "lab",
+          "cite": "user/killreap PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The test source shows no kernel code was changed; the assertions exercise xv6's existing kill flag, usertrap exit(-1), and sys_wait reaping from user space",
+        "source": {
+          "tier": "lab",
+          "cite": "user/killreap.c",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/killreap.c"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The sequence pid 4, kill 0, wait 4, status -1, wait -1 proves the kernel's kill path: the spinning child was marked, converted to exit(-1), and its slot reaped."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A process lifecycle that must transition through killed, exited with status -1, and reaped is a kernel state-machine contract; observing the exact pid and status sequence from user space verifies the contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The KERNEL layer lights when the verified property is the operating system's own process management, checked through its system-call interface."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that pid 4 and status -1 are just numbers. The chain matters: kill returned 0 (found the child), wait returned exactly pid 4 (reaped that child, not another), status was -1 (the kill path's exit code, not a normal exit), and the second wait returned -1 (no leaked zombie). Only the full kill-to-reap path produces this sequence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  {
+    "item": "killreap",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the card verifies a kernel process-management contract, not a computational construction with a portable form.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at ALGORITHM because the card verifies a kernel process-management contract, not a computational construction with a portable form."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 5 checks assert pids, return values, and status codes; no computed function, no portable implementation, no differential test against a software oracle",
+        "source": {
+          "tier": "lab",
+          "cite": "user/killreap PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "There is no algorithm here to be portable; the claim is about what the kernel does to a killed process."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A kernel state-machine invariant observed through system calls is not a portable computational mechanism; there is no algorithm to port."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM slot stays dim when the card verifies operating-system process management rather than a computation with an equivalent portable form."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
   }
   ]
 }
