@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-040639">
+  <meta name="build-version" content="v20260911-041845">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -12546,6 +12546,67 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/132-sv39-vpn-extract",
     "repoLabel": "GitHub: systems-lab/lab/132-sv39-vpn-extract",
     "terminalLabel": "Verified lab-132-sv39-vpn-extract host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-sstatus-spp",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "sstatus.SPP records S-mode across delegated ecall traps",
+    "summary": "M-mode delegates supervisor ecalls to S-mode via medeleg bit 9 and drops to S-mode with SPP set. Each ecall traps to the S-mode handler, which reads SPP as 1 and scause as 9, then srets back to S-mode for the next ecall. The status register remembers where the trap came from, exactly as the privileged spec describes.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "SPP is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models trap entry functionally, so no pipeline, trap-latency, or CSR-implementation behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware owns medeleg, stvec, and the S-mode entry; the proof is the firmware-level act of delegating the trap, dropping privilege, and observing the recorded mode"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the trap-record beneath any kernel's exception handling"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because recording the pre-trap privilege mode in a status bit is a hardware control contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "11 checks against the SPP-records-S-mode and scause-reports-ecall expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "DELEGATED",
+        "medeleg bit 9 set: both ecalls trapped to S-mode handler, zero M-mode traps"
+      ],
+      [
+        "RECORDED",
+        "both traps: SPP read 1, scause read 0x9, sepc at the ecall encoding 0x00000073"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sstatus-spp",
+    "terminalOutput": "$ make run-sstatus-spp\nsstatus-spp: sstatus.SPP record on delegated S-mode ecall traps\ndeleg: medeleg=0x200\ntrap1: spp=1 scause=0x9\ntrap2: spp=1 scause=0x9\nchecks=11 fails=0\nRESULT: PASS (SPP remembers S-mode)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 11,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-spp",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-spp",
+    "terminalLabel": "Run log",
     "showRepoLink": true
   }
 ];
@@ -80360,6 +80421,296 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The portable-mechanism claim in (5) plus (7) yields the lit verdict in (1)."
+      }
+    ]
+  },
+  "src-sstatus-spp|ISA": {
+    "item": "src-sstatus-spp",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "SPP is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "SPP is the privileged ISA's own record of the pre-trap privilege mode, and the proof exercises exactly the trap-from-S-mode-records-SPP behavior the rule describes"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "Both S-mode ecalls entered the handler with sstatus.SPP reading 1 and scause reading 9, matching the privileged spec's rule that SPP holds the privilege mode before the trap."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The privileged spec's CSR and trap rules are the ground truth for the machine contract; an implementation that matches the spec's stated readbacks and trap behavior carries the contract."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log records SPP=1 and scause=0x9 on both traps with medeleg=0x200, across three byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sstatus-spp|MICROARCH": {
+    "item": "src-sstatus-spp",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "not here because QEMU models trap entry functionally, so no pipeline, trap-latency, or CSR-implementation behavior is measured in the proof",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because QEMU models trap entry functionally, so no pipeline, trap-latency, or CSR-implementation behavior is measured in the proof"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The proof records SPP readbacks and trap counts only; it publishes no cycle counts, no pipeline traces, and no CSR-implementation details."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log contains only the SPP/scause/sepc values and check counts; no microarchitectural measurement appears in the recorded output.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sstatus-spp|FIRMWARE": {
+    "item": "src-sstatus-spp",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "matters because M-mode firmware owns medeleg, stvec, and the S-mode entry; the proof is the firmware-level act of delegating the trap, dropping privilege, and observing the recorded mode",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters because M-mode firmware owns medeleg, stvec, and the S-mode entry; the proof is the firmware-level act of delegating the trap, dropping privilege, and observing the recorded mode"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "An M-mode helper set medeleg bit 9, installed stvec, programmed PMP, set SPP and MPP, and sret into the S-mode payload; the delegation and the privilege drop are the firmware under test."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "M-mode firmware is the only software that can write medeleg and enter S-mode; a proof that does both to exercise the trap record is testing firmware behavior."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log shows the M-mode setup writing medeleg (readback 0x200), the sret into S-mode, and zero M-mode traps, across three byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sstatus-spp|KERNEL": {
+    "item": "src-sstatus-spp",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the trap-record beneath any kernel's exception handling",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the trap-record beneath any kernel's exception handling"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The program runs bare-metal with no scheduler, no page tables, and no drivers; the only software above the trap record is the S-mode test payload."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log describes a bare-metal M-mode/S-mode program with no kernel components; no scheduling, VM, or driver behavior is recorded.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sstatus-spp|ALGORITHM": {
+    "item": "src-sstatus-spp",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "not here because recording the pre-trap privilege mode in a status bit is a hardware control contract, not an ISA-independent computational mechanism",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because recording the pre-trap privilege mode in a status bit is a hardware control contract, not an ISA-independent computational mechanism"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The behavior under test is a status-bit record on trap entry, not a computation whose steps could be restated portably; there is no algorithm to extract."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log records only the SPP/scause readbacks on trap entry; no computational procedure independent of the CSR is described or measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
       }
     ]
   }
