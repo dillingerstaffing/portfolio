@@ -13344,5 +13344,111 @@
   "terminalName": "user-execargv",
   "terminalLabel": "user/execargv",
   "showRepoLink": true
+},
+{
+  "id": "src-mcountinhibit-ir-freeze",
+  "title": "mcountinhibit.IR freezes minstret until the bit is cleared",
+  "kicker": "one bit set, a thousand identical reads, then the counter moves again",
+  "summary": "src/mcountinhibit-ir-freeze is an M-mode bare-metal probe of the mcountinhibit.IR control bit. It sets IR and reads minstret repeatedly, then clears IR and samples the counter again, with a counting trap vector watching the whole run.",
+  "layers": {
+    "ISA": {
+      "applies": true,
+      "because": "The privileged ISA defines mcountinhibit.IR as the gate on the retired-instruction counter: while the bit is set, minstret must not advance. The proof exercises this machine contract on QEMU 8.2.2, with back-to-back minstret reads returning the identical value under IR and advancing again once IR is cleared."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The verified claim is a functional gate contract, whether the counter advances or holds. The log carries no timing or implementation measurement, so the claim is indifferent to the hardware behind the CSR."
+    },
+    "FIRMWARE": {
+      "applies": true,
+      "because": "M-mode firmware owns mcountinhibit and is the only software that can set IR. The proof performs the firmware-level act directly: inhibit the counter, observe it frozen, release it, observe it resume."
+    },
+    "KERNEL": {
+      "applies": false,
+      "because": "Supervisor kernels can read minstret but cannot write mcountinhibit; the gate is configured above the kernel's privilege, so the verified contract changes nothing the kernel sets up or depends on."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "An inhibit bit on a hardware counter is a machine control contract, not an ISA-independent computation. The frozen-then-advancing readback pattern is this CSR's behavior, not a portable mechanism."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-ir-freeze/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "7 checks of the IR gate: frozen readbacks identical under IR, resume samples strictly increasing after clear, gate readbacks as written, zero traps; 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0x5f6b8f12ec83304a, FNV-1a over the measured samples, run-specific where the samples are live counter values"
+    ]
+  ],
+  "terminalOutput": "Checks: 7\nMismatches: 0\nChecksum: 0x5f6b8f12ec83304a\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 7,
+  "failures": 0,
+  "stressItems": [],
+  "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-ir-freeze/mirf_main.c",
+  "repoLabel": "riscv-baremetal-demo/src/mcountinhibit-ir-freeze/mirf_main.c",
+  "terminalName": "src-mcountinhibit-ir-freeze",
+  "terminalLabel": "src/mcountinhibit-ir-freeze",
+  "showRepoLink": true
+},
+{
+  "id": "user-execfail",
+  "title": "a failed xv6 exec returns -1 and leaves the process image intact",
+  "kicker": "the bad path, the -1, the untouched sentinels",
+  "summary": "user/execfail is a user-space xv6 test that arms two sentinel globals, execs a nonexistent path, and checks the return. The test then re-reads both sentinels at their recorded addresses to prove the calling image survived the failed call.",
+  "layers": {
+    "ISA": {
+      "applies": false,
+      "because": "The verified claim is the kernel's refusal to replace the image on a bad path, identical on any ISA because xv6 implements the exec path in portable C; the proof log shows a user-space test of that C behavior, and the property holds regardless of the machine contract underneath."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The proof checks a functional outcome, the return code and intact memory, against a known expectation. The log publishes no timing, counter, or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA."
+    },
+    "FIRMWARE": {
+      "applies": false,
+      "because": "The test runs as an ordinary xv6 user program and configures nothing at machine level; the verified property is the kernel's error path, which never reaches firmware configuration."
+    },
+    "KERNEL": {
+      "applies": true,
+      "because": "xv6's exec must return -1 on a nonexistent path without touching the current image; the proof's exact -1 return and the byte-intact sentinel globals are a direct check of that kernel error path."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "The card verifies an OS error-path guarantee, not a portable computational construction; the claim is about what xv6's exec promises on failure, not an ISA-independent computation."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "5 checks of the failure path: exact -1 return, both sentinels byte-intact at their recorded addresses; 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0x79A8C1F02EDB5451, FNV-1a over the post-exec sentinel bytes and the return value, identical across 3 runs"
+    ]
+  ],
+  "terminalOutput": "Checks: 5\nMismatches: 0\nChecksum: 0x79A8C1F02EDB5451\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 5,
+  "failures": 0,
+  "stressItems": [],
+  "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/execfail.c",
+  "repoLabel": "xv6-getscount/user/execfail.c",
+  "terminalName": "user-execfail",
+  "terminalLabel": "user/execfail",
+  "showRepoLink": true
 }
 ]

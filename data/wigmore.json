@@ -81175,6 +81175,649 @@
         "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
       }
     ]
+  },
+  {
+    "item": "src-mcountinhibit-ir-freeze",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines mcountinhibit.IR as the gate on the retired-instruction counter: while the bit is set, minstret must not advance. The proof exercises this machine contract on QEMU 8.2.2, with back-to-back minstret reads returning the identical value under IR and advancing again once IR is cleared.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines mcountinhibit.IR as the gate on the retired-instruction counter: while the bit is set, minstret must not advance. The proof exercises this machine contract on QEMU 8.2.2, with back-to-back minstret reads returning the identical value under IR and advancing again once IR is cleared."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows back-to-back minstret reads returning the identical value while mcountinhibit.IR is set, and strictly increasing samples after IR is cleared, with zero traps.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-ir-freeze/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned ISA manual defines the Machine Counter-Enable and Inhibit CSR: when a bit in mcountinhibit is set, the corresponding counter is stopped.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The measured freeze and resume behavior is exactly the machine-contract rule the manual states, so the ISA layer carries the card's claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "src-mcountinhibit-ir-freeze",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is a functional gate contract, whether the counter advances or holds. The log carries no timing or implementation measurement, so the claim is indifferent to the hardware behind the CSR.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is a functional gate contract, whether the counter advances or holds. The log carries no timing or implementation measurement, so the claim is indifferent to the hardware behind the CSR."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log publishes only CSR readbacks, a trap count, and the pass verdict; it records no timing, rate, or implementation detail.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-ir-freeze/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "With nothing in the log about how the hart implements the gate, the claim cannot guide microarchitectural work."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "src-mcountinhibit-ir-freeze",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns mcountinhibit and is the only software that can set IR. The proof performs the firmware-level act directly: inhibit the counter, observe it frozen, release it, observe it resume.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware owns mcountinhibit and is the only software that can set IR. The proof performs the firmware-level act directly: inhibit the counter, observe it frozen, release it, observe it resume."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the program running in M-mode writing mcountinhibit directly, with the IR bit reading back as written.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-ir-freeze/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned ISA manual places mcountinhibit among the machine-level CSRs, which only M-mode software can access.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "Only M-mode software can perform the verified act, and the measured behavior is the counter-gating contract firmware relies on, so the firmware layer carries the card's claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "src-mcountinhibit-ir-freeze",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels can read minstret but cannot write mcountinhibit; the gate is configured above the kernel's privilege, so the verified contract changes nothing the kernel sets up or depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels can read minstret but cannot write mcountinhibit; the gate is configured above the kernel's privilege, so the verified contract changes nothing the kernel sets up or depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows mcountinhibit written from M-mode; the log contains no supervisor write path for this CSR.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-ir-freeze/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Because the kernel cannot configure the gate, the verified property is not load-bearing for kernel work; it is the firmware's contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "src-mcountinhibit-ir-freeze",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "An inhibit bit on a hardware counter is a machine control contract, not an ISA-independent computation. The frozen-then-advancing readback pattern is this CSR's behavior, not a portable mechanism.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "An inhibit bit on a hardware counter is a machine control contract, not an ISA-independent computation. The frozen-then-advancing readback pattern is this CSR's behavior, not a portable mechanism."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's verified property is a CSR bit freezing a specific hardware counter, which has no statement outside the machine contract.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-ir-freeze/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The claim is meaningful only where this CSR exists, so it cannot light a layer about portable computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "user-execfail",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The verified claim is the kernel's refusal to replace the image on a bad path, identical on any ISA because xv6 implements the exec path in portable C; the proof log shows a user-space test of that C behavior, and the property holds regardless of the machine contract underneath.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is the kernel's refusal to replace the image on a bad path, identical on any ISA because xv6 implements the exec path in portable C; the proof log shows a user-space test of that C behavior, and the property holds regardless of the machine contract underneath."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows a user-space test asserting the -1 return and intact sentinels, exercising only the kernel's C exec path.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The property is about the OS error path, which the log verifies through portable C code, so the ISA layer has no load-bearing role."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "user-execfail",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks a functional outcome, the return code and intact memory, against a known expectation. The log publishes no timing, counter, or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks a functional outcome, the return code and intact memory, against a known expectation. The log publishes no timing, counter, or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log publishes the return code, the sentinel values, and the verdict; it records no timing or implementation detail.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "With no implementation measurement in the log, the claim cannot guide microarchitectural work."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "user-execfail",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The test runs as an ordinary xv6 user program and configures nothing at machine level; the verified property is the kernel's error path, which never reaches firmware configuration.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The test runs as an ordinary xv6 user program and configures nothing at machine level; the verified property is the kernel's error path, which never reaches firmware configuration."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the test making only the exec system call from user space, with no machine-level CSR programmed.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Nothing in the verified property is configured at machine level, so the firmware layer has no load-bearing role."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "user-execfail",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "xv6's exec must return -1 on a nonexistent path without touching the current image; the proof's exact -1 return and the byte-intact sentinel globals are a direct check of that kernel error path.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "xv6's exec must return -1 on a nonexistent path without touching the current image; the proof's exact -1 return and the byte-intact sentinel globals are a direct check of that kernel error path."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows exec on a nonexistent path returning exactly -1, with both sentinel globals byte-intact at their recorded addresses afterward.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The test source arms the sentinels, performs the failing exec, and re-reads the sentinels, the exact sequence the log verifies.",
+        "source": {
+          "tier": "lab",
+          "cite": "test source",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/execfail.c"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The measured return code and intact memory are exactly the kernel error-path guarantee, so the kernel layer carries the card's claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
+  },
+  {
+    "item": "user-execfail",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies an OS error-path guarantee, not a portable computational construction; the claim is about what xv6's exec promises on failure, not an ISA-independent computation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies an OS error-path guarantee, not a portable computational construction; the claim is about what xv6's exec promises on failure, not an ISA-independent computation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's verified property is the process image surviving a failed exec, an OS mechanism.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The claim is meaningful only for process image management, not as a portable computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum"
+      }
+    ]
   }
   ]
 }
