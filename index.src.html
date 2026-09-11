@@ -932,6 +932,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bit That Reroutes a Trap</h3>
+          <!-- LAYER-STRIP:the-bit-that-reroutes-a-trap -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 10:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Run the same instruction twice. Boot a bare-metal RISC-V machine, drop from machine mode into supervisor mode, and execute ecall, the instruction that asks the layer above for a service. With the medeleg register at zero, the trap lands in the machine-mode handler: its cause register reads mcause = 9, the code for an environment call from supervisor mode. Write 0x200 to medeleg, which is bit 9 set, and execute the identical ecall again. This time the machine handler never fires. The supervisor-mode handler catches the trap instead, with scause = 9. Same instruction, two destinations, one bit of difference.</p>
+          <p>The bit exists because of who pays for every trap. The kernel runs in supervisor mode, and a system call is the most frequent request a machine fields: every file read, every byte on the terminal, every new process. Without delegation, each of those traps would rise to machine mode first, usually firmware, which would then have to forward it back down to the kernel that knows what to do with it. The obvious fix is a forwarder in firmware, but it sits on the hottest path in the system and would have to understand the kernel's business. Delegation removes the middleman: bit 9 of medeleg says supervisor environment calls belong to the supervisor, and the trap goes straight there. Trust, expressed as one bit.</p>
+          <p>The mechanism, step by step. RISC-V runs code in privilege modes: M-mode, machine mode, the most privileged, where firmware boots; and S-mode, supervisor mode, where an operating system kernel runs. A trap is the hardware interrupting whatever is running and jumping to a handler; each handler reads its mode's cause register, mcause or scause, to learn what happened. medeleg is an M-mode register with one bit per trap cause: when a bit is set, traps of that cause are delegated to S-mode instead of landing in M-mode. The test checks the contract from both sides. Phase one writes 0 to medeleg, reads back 0, and demands exactly one trap in the M-mode handler with mcause = 9 and the resume address mepc pointing at the captured ecall address. Phase two writes 0x200, reads back bit 9 set, and demands exactly one trap in the S-mode handler with scause = 9 and the supervisor's own resume address sepc at the same ecall.</p>
+          <p>The check that carries the argument reads like a receipt:</p>
+          <pre><code>check((p2_medeleg_rb &amp; (1UL &lt;&lt; 9)) != 0,
+      "phase-2 medeleg readback missing bit 9");
+check(s_regs[0] == 1, "phase-2 S-mode trap did not fire exactly once");
+check(s_regs[2] == SCAUSE_S_ECALL,
+      "phase-2 scause != environment call from S-mode (9)");</code></pre>
+          <p>Fourteen checks in all: the delegation readbacks, the exact trap counts per mode per phase, the cause codes, the resume addresses matching the captured ecall, the privilege records in mstatus and sstatus confirming arrival from supervisor mode, a cross-phase proof that no trap leaked into the wrong handler, and a quiet window where the counts were required not to move. Three runs on QEMU 8.2.2 produced byte-identical FNV-1a checksums over the verdict values. That is what a tight test looks like: the expected outputs are small integers, a trap count of 1 or 0, so there is nowhere for nondeterminism to hide.</p>
+          <p>Two honest boundaries. The module ran on QEMU's model of a hart, not on silicon, so it proves the contract as the emulator implements it: the specification's text, rendered in software. And the backlog item that ordered this test said the phase-one cause would be 0xb; the test asserts 0x9 instead, because the specification assigns 0xb to an environment call from M-mode and 9 to one from S-mode, and this ecall runs in S-mode. One sentence to carry away: the destination of a supervisor's system call is one bit in a register, and setting it is how the firmware gets out of the way.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-ecall-destination" target="_blank" rel="noopener">src/medeleg-ecall-destination</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Bit That Survives the Context Switch</h3>
           <!-- LAYER-STRIP:the-bit-that-survives-the-context-switch -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 09:05 EDT</time></p>

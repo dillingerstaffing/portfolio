@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-135040">
+  <meta name="build-version" content="v20260911-141513">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -932,6 +932,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bit That Reroutes a Trap</h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-ecall-destination/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">matters at ISA because the bit itself is the machine contract: the privileged architecture defines medeleg, assigns cause 9 to a supervisor environment call, and says a set bit 9 routes that trap to S-mode. The module checked the contract's exact shape: identical ecall, two destinations, one bit.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH</div><p class="layer-because">not at Microarch because the destination flip is a contract property, identical on every conforming implementation: no pipeline, cache, or branch-predictor behavior was measured or asserted, and none could change which handler the trap lands in.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE</div><p class="layer-because">matters at Firmware because firmware is the layer that holds the pen: medeleg is only writable in M-mode, so the decision to delegate is firmware policy, and the module's phase-two setup (write 0x200, read back bit 9 set) is the firmware action under test.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters at Kernel because the delegated trap is the kernel's syscall path: with the bit set, a supervisor kernel fields its own environment calls directly instead of receiving them forwarded down from M-mode, which is the hot path the delegation exists to shorten.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM</div><p class="layer-because">not at Algorithm because the mechanism is the architecture's privilege rule, not a portable technique: a trap destination switch has no meaning on a machine without M-mode, S-mode, and a delegation register, and nothing in the verified behavior travels.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 10:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Run the same instruction twice. Boot a bare-metal RISC-V machine, drop from machine mode into supervisor mode, and execute ecall, the instruction that asks the layer above for a service. With the medeleg register at zero, the trap lands in the machine-mode handler: its cause register reads mcause = 9, the code for an environment call from supervisor mode. Write 0x200 to medeleg, which is bit 9 set, and execute the identical ecall again. This time the machine handler never fires. The supervisor-mode handler catches the trap instead, with scause = 9. Same instruction, two destinations, one bit of difference.</p>
+          <p>The bit exists because of who pays for every trap. The kernel runs in supervisor mode, and a system call is the most frequent request a machine fields: every file read, every byte on the terminal, every new process. Without delegation, each of those traps would rise to machine mode first, usually firmware, which would then have to forward it back down to the kernel that knows what to do with it. The obvious fix is a forwarder in firmware, but it sits on the hottest path in the system and would have to understand the kernel's business. Delegation removes the middleman: bit 9 of medeleg says supervisor environment calls belong to the supervisor, and the trap goes straight there. Trust, expressed as one bit.</p>
+          <p>The mechanism, step by step. RISC-V runs code in privilege modes: M-mode, machine mode, the most privileged, where firmware boots; and S-mode, supervisor mode, where an operating system kernel runs. A trap is the hardware interrupting whatever is running and jumping to a handler; each handler reads its mode's cause register, mcause or scause, to learn what happened. medeleg is an M-mode register with one bit per trap cause: when a bit is set, traps of that cause are delegated to S-mode instead of landing in M-mode. The test checks the contract from both sides. Phase one writes 0 to medeleg, reads back 0, and demands exactly one trap in the M-mode handler with mcause = 9 and the resume address mepc pointing at the captured ecall address. Phase two writes 0x200, reads back bit 9 set, and demands exactly one trap in the S-mode handler with scause = 9 and the supervisor's own resume address sepc at the same ecall.</p>
+          <p>The check that carries the argument reads like a receipt:</p>
+          <pre><code>check((p2_medeleg_rb &amp; (1UL &lt;&lt; 9)) != 0,
+      "phase-2 medeleg readback missing bit 9");
+check(s_regs[0] == 1, "phase-2 S-mode trap did not fire exactly once");
+check(s_regs[2] == SCAUSE_S_ECALL,
+      "phase-2 scause != environment call from S-mode (9)");</code></pre>
+          <p>Fourteen checks in all: the delegation readbacks, the exact trap counts per mode per phase, the cause codes, the resume addresses matching the captured ecall, the privilege records in mstatus and sstatus confirming arrival from supervisor mode, a cross-phase proof that no trap leaked into the wrong handler, and a quiet window where the counts were required not to move. Three runs on QEMU 8.2.2 produced byte-identical FNV-1a checksums over the verdict values. That is what a tight test looks like: the expected outputs are small integers, a trap count of 1 or 0, so there is nowhere for nondeterminism to hide.</p>
+          <p>Two honest boundaries. The module ran on QEMU's model of a hart, not on silicon, so it proves the contract as the emulator implements it: the specification's text, rendered in software. And the backlog item that ordered this test said the phase-one cause would be 0xb; the test asserts 0x9 instead, because the specification assigns 0xb to an environment call from M-mode and 9 to one from S-mode, and this ecall runs in S-mode. One sentence to carry away: the destination of a supervisor's system call is one bit in a register, and setting it is how the firmware gets out of the way.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-ecall-destination" target="_blank" rel="noopener">src/medeleg-ecall-destination</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Bit That Survives the Context Switch</h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/147-pte-global-bit/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA</div><p class="layer-because">matters at ISA because the G bit is bit 5 of the Sv39 leaf page-table entry, defined by the privileged architecture, and the verified decision procedure is the specification's own contract: a global entry's translation applies without consulting the ASID, and an sfence.vma that names one ASID must leave global entries cached. The module's walks under ASIDs 1, 2, and 9 checked exactly that shape: global equals 1, the address-space ID never consulted.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH</div><p class="layer-because">not at Microarch because the verified property is the contract's decision procedure, identical on every conforming implementation: the 196.216 ns per lookup figure is the host model's linear scan over 256 slots, an artifact of the model, and no hardware TLB, pipeline, or cache behavior was measured or asserted.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not at Firmware because the G contract runs between the hart and the page tables, and nothing in the verified behavior depends on firmware: marking mappings global and choosing address-space IDs is the kernel's work, and the property holds identically however the firmware beneath it behaves.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL</div><p class="layer-because">matters at Kernel because the kernel is the layer that names address spaces: it picks the ASIDs, decides whether its own mappings are marked global, and issues the address-space-scoped fences on context switch. The module's boundary check makes this concrete, because xv6 never sets a G bit and builds every satp with ASID 0, so its kernel never asks the question this bit answers.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM</div><p class="layer-because">not at Algorithm because the lookup predicate is not a portable mechanism: the claim has no meaning on a machine without a G bit in its page-table entries, and the module proved the architecture's rule as written, not a software technique that travels.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 09:05 EDT</time></p>
@@ -15056,6 +15078,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "user-pipepart",
     "terminalLabel": "user/pipepart",
     "showRepoLink": true
+  },
+  {
+    "checks": 20,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+    },
+    "failures": 0,
+    "id": "src-mie-msie-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware enable control, not a computational construction. No portable algorithm is exercised; the mechanism is the mie.MSIE bit itself."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mie and decides which interrupts the hart takes. The verified property (MSIE alone gates the software interrupt while the pending bit is independent) is the exact enable contract firmware configures at boot."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines mie as the M-mode per-interrupt enable control and the machine software interrupt as cause 3 taken with the interrupt bit set. The proof pends the CLINT msip with MSIE clear and shows the pending bit held with no trap, then sets MSIE and shows the single trap arriving with mcause 0x8000000000000003; the enable bit alone decides delivery."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The verified gate lives in M-mode: supervisor kernels take their software interrupts through the delegated S-mode path (mideleg bit 1), and never operate the mie.MSIE enable bit. The kernel's IPI contract is the delegated SSI delivery, not this M-mode gate."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof decides the outcome from the mie enable bits: pended stays pending while MSIE is clear, one trap after it is set. Whether the interrupt is taken is determined by the enable control, not by pipeline depth, cache behavior, or branch prediction."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mie-msie-gate",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-msie-gate",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "20 checks on QEMU 8.2.2: msip pended with MSIE clear leaves mip.MSIP set with 0 traps over a bounded window, setting MSIE delivers exactly one trap with mcause 0x8000000000000003, no re-delivery, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x908c0c90d15478ee, over the run transcript, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2"
+      ]
+    ],
+    "stressItems": 20,
+    "summary": "mie.MSIE is the M-mode enable bit for the machine software interrupt. The program pends the CLINT msip with MSIE clear and shows the interrupt stays pending without trapping, then sets MSIE and shows exactly one M-mode trap. The handler clears the msip source before returning, so the trap does not re-fire.",
+    "terminalLabel": "Verified src-mie-msie-gate QEMU output",
+    "terminalName": "riscv-baremetal-demo / src / mie-msie-gate",
+    "terminalOutput": "$ make run-mie-msie-gate\nphaseA: mip=0x8 (MSIP bit SET) traps-with-MSIE-clear=0\nphaseB: mcause=0x8000000000000003 trap-count=1\nphaseC: traps-after-quiet=1\n\n20 checks, 0 mismatches\n\nmie.MSIE enable gate: PASS",
+    "title": "mie.MSIE gates the machine software interrupt, QEMU",
+    "verificationEnvironment": "QEMU 8.2.2"
+  },
+  {
+    "checks": 6,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "failures": 0,
+    "id": "waitexit",
+    "kicker": "XV6 KERNEL",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a kernel contract (status stored at exit, reported by wait), not a computational construction. No portable algorithm is exercised; the mechanism is the exit-to-wait handoff itself."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The test is a user program that exercises wait and exit; firmware never stores or reports exit statuses. The verified property is indifferent to firmware, which only boots the machine before xv6 takes over."
+      },
+      "ISA": {
+        "applies": false,
+        "because": "The test runs as a user program exercising wait and exit; it checks pid and status values, not the machine contract. The round-trip is insensitive to the ISA: it passes on any machine where the kernel stores the child's status for wait to report."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "wait and exit are the kernel's process-reaping contract, and this test verifies it from outside the kernel: the child hands a status to exit, and the parent's wait returns the child's pid with that exact status stored. The verified property is the kernel's status handoff."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is about the kernel's status handoff between exit and wait, not the implementation behind it. Whether the status round-trips is determined by the kernel's process-table bookkeeping, not by pipeline or cache behavior."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: xv6-getscount/user/waitexit.c",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks on QEMU 8.2.2: child exits with status 42, wait returns the child pid with 42 stored; second child exits with 0, wait returns its pid with 0 stored, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x674A9192CFB12DF9, over the observed pids, wait return values, and statuses"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space"
+      ]
+    ],
+    "stressItems": 6,
+    "summary": "A user-space xv6 test forks a child that exits with a fixed status, then checks that wait returns the child's pid and stores the exact status. A second child exiting with 0 repeats the round-trip. No kernel code changed; the test exercises the existing wait and exit path from user space.",
+    "terminalLabel": "Verified waitexit QEMU output",
+    "terminalName": "xv6-getscount / user / waitexit.c",
+    "terminalOutput": "$ waitexit\ncheck 2: wait returned pid 4, the first child's pid\ncheck 3: wait stored status 42 for child 4\ncheck 6: wait stored status 0 for child 5\n\nchecks: 6 mismatches: 0\n\nwait/exit status round-trip: PASS",
+    "title": "wait returns the child pid and exit status, xv6",
+    "verificationEnvironment": "QEMU 8.2.2"
   }
 ];
       const CHIPS_BY_KEY = {
@@ -97733,6 +97869,776 @@ assert(check == 0x2144DF1C);</code></pre>
         "note": "the penultimate claim entails the probandum"
       }
     ]
+  },
+  "src-mie-msie-gate|ISA": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "src-mie-msie-gate",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The ISA defines mie as the M-mode per-interrupt enable control and the machine software interrupt as cause 3 taken with the interrupt bit set. The proof pends the CLINT msip with MSIE clear and shows the pending bit held with no trap, then sets MSIE and shows the single trap arriving with mcause 0x8000000000000003; the enable bit alone decides delivery."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "Phase A: CLINT msip pended with mie.MSIE clear, mip read 0x8 (MSIP set) with 0 traps over a 2,000,000-rdcycle window. Phase B: mie.MSIE set, exactly 1 trap with mcause 0x8000000000000003 and mepc 0x800004dc. 20 checks, 0 mismatches."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "RISC-V ISA Manual, Privileged Architecture, Machine Interrupt Registers",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The privileged architecture defines mie as the M-mode interrupt-enable register and assigns the machine software interrupt cause code 3, taken with the interrupt bit (bit 63) set in mcause."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The measured delivery behavior matches the ISA's enable-bit contract exactly: pending without enable means no trap, pending with enable means a cause-3 trap."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A CSR control bit is part of the machine contract when the privileged specification defines its effect on trap delivery, so measuring the defined effect verifies the contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer lights when the verified claim depends on the machine contract, and here the claim is exactly the enable bit's specified delivery rule."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The ISA defines mie as the M-mode per-interrupt enable control and the machine software interrupt as cause 3 taken with the interrupt bit set. The proof pends the CLINT msip with MSIE clear and shows the pending bit held with no trap, then sets MSIE and shows the single trap arriving with mcause 0x8000000000000003; the enable bit alone decides delivery.",
+    "slot": "ISA"
+  },
+  "src-mie-msie-gate|MICROARCH": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "src-mie-msie-gate",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The proof decides the outcome from the mie enable bits: pended stays pending while MSIE is clear, one trap after it is set. Whether the interrupt is taken is determined by the enable control, not by pipeline depth, cache behavior, or branch prediction."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "The 20 checks vary only the mie.MSIE bit between phases; every outcome (0 traps versus exactly 1 trap) tracks the bit, with the rest of the machine state held fixed."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "No pipeline, cache, or predictor state was varied or recorded; the bounded windows are counted in rdcycle only to bound the observation, not to measure implementation timing."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The experiment's independent variable is the architectural enable bit and its dependent variable is the architectural trap outcome; implementation internals are neither varied nor observed."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A claim about an architectural control bit is decided at the contract level when the experiment varies only architectural state."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The microarchitecture layer stays dim when the verified property is invariant to implementation choices, as here where only the enable bit moves."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The proof decides the outcome from the mie enable bits: pended stays pending while MSIE is clear, one trap after it is set. Whether the interrupt is taken is determined by the enable control, not by pipeline depth, cache behavior, or branch prediction.",
+    "slot": "MICROARCH"
+  },
+  "src-mie-msie-gate|FIRMWARE": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "src-mie-msie-gate",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "M-mode firmware owns mie and decides which interrupts the hart takes. The verified property (MSIE alone gates the software interrupt while the pending bit is independent) is the exact enable contract firmware configures at boot."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "The module runs entirely in M-mode, the privilege level where firmware lives; it writes mie directly and observes the delivery decision."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "Boot baselines recorded mie=0x0 with mstatus.MIE=0, and the run sets the global MIE itself, the same configuration step firmware performs before handing the hart to lower privilege."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The program exercises exactly the configuration interface that M-mode firmware uses to decide interrupt delivery."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A mechanism counts at the firmware layer when it is the configuration contract that boot-time machine-mode software operates."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The firmware layer lights when the verified property is load-bearing for work at that layer, and interrupt-enable configuration is firmware's first job."
+      }
+    ],
+    "kind": "card",
+    "probandum": "M-mode firmware owns mie and decides which interrupts the hart takes. The verified property (MSIE alone gates the software interrupt while the pending bit is independent) is the exact enable contract firmware configures at boot.",
+    "slot": "FIRMWARE"
+  },
+  "src-mie-msie-gate|KERNEL": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "src-mie-msie-gate",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The verified gate lives in M-mode: supervisor kernels take their software interrupts through the delegated S-mode path (mideleg bit 1), and never operate the mie.MSIE enable bit. The kernel's IPI contract is the delegated SSI delivery, not this M-mode gate."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "The whole proof runs in M-mode; no S-mode code executes and no supervisor trap is involved."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "RISC-V ISA Manual, Privileged Architecture, Interrupt Delegation",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The privileged architecture assigns mie to M-mode; supervisor software enables its own interrupts through sie, and receives inter-processor interrupts through the mideleg-delegated SSI path."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The MSIE bit sits outside the supervisor kernel's operating interface; the kernel's software-interrupt path never goes through it."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A layer stays dim when the verified control is owned and operated by a different layer's software."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The layer strip is a relevance map: a layer lights only when the verified property is load-bearing for work at that layer."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The verified gate lives in M-mode: supervisor kernels take their software interrupts through the delegated S-mode path (mideleg bit 1), and never operate the mie.MSIE enable bit. The kernel's IPI contract is the delegated SSI delivery, not this M-mode gate.",
+    "slot": "KERNEL"
+  },
+  "src-mie-msie-gate|ALGORITHM": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "src-mie-msie-gate",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card verifies a hardware enable control, not a computational construction. No portable algorithm is exercised; the mechanism is the mie.MSIE bit itself."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "The module computes nothing: it writes one CSR bit, polls a pending bit, and counts traps; no input-output function is under test."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+        },
+        "text": "The proof log records readbacks and trap counts only; no throughput figure and no differential comparison against a software construction appear."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The verified property is a control-bit delivery rule with no portable computational content to extract."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A pure control-bit observation carries no algorithm; the algorithm layer covers computational mechanisms with portable input-output behavior."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The algorithm layer stays dim when there is no computational mechanism to port, only a hardware control to configure."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The card verifies a hardware enable control, not a computational construction. No portable algorithm is exercised; the mechanism is the mie.MSIE bit itself.",
+    "slot": "ALGORITHM"
+  },
+  "waitexit|ISA": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "waitexit",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The test runs as a user program exercising wait and exit; it checks pid and status values, not the machine contract. The round-trip is insensitive to the ISA: it passes on any machine where the kernel stores the child's status for wait to report."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "All 6 checks compare pid and status integers returned by wait; no instruction, CSR, or trap record is examined."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "The proof log documents the verification as the kernel's wait and exit behavior under QEMU 8.2.2, making no claim about the machine contract."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The experiment's assertions concern only kernel-reported values, which sit above the ISA; nothing in the test distinguishes one RISC-V implementation from another."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A user-space kernel test is ISA-insensitive when its assertions concern only values the kernel reports, not how the hardware delivers them."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer stays dim when the verified property would hold identically on any conforming implementation."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The test runs as a user program exercising wait and exit; it checks pid and status values, not the machine contract. The round-trip is insensitive to the ISA: it passes on any machine where the kernel stores the child's status for wait to report.",
+    "slot": "ISA"
+  },
+  "waitexit|MICROARCH": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "waitexit",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The verified claim is about the kernel's status handoff between exit and wait, not the implementation behind it. Whether the status round-trips is determined by the kernel's process-table bookkeeping, not by pipeline or cache behavior."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "The 6 checks assert exact pid and status equality; timing, cycle counts, and cache behavior are never measured."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "The proof log's limits note states the result as the kernel's functional behavior under QEMU, independent of implementation timing."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "Pass or fail depends only on the kernel's bookkeeping of the exit status, a software property above any implementation."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "Microarchitectural claims require measured or varied implementation behavior; a pure functional handoff check carries none."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The microarchitecture layer stays dim when the verified property is invariant to implementation choices."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The verified claim is about the kernel's status handoff between exit and wait, not the implementation behind it. Whether the status round-trips is determined by the kernel's process-table bookkeeping, not by pipeline or cache behavior.",
+    "slot": "MICROARCH"
+  },
+  "waitexit|FIRMWARE": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "waitexit",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The test is a user program that exercises wait and exit; firmware never stores or reports exit statuses. The verified property is indifferent to firmware, which only boots the machine before xv6 takes over."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "The test executes after xv6 boot, entirely within the kernel's process model; no machine-mode code runs during the test."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "test source",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitexit.c"
+        },
+        "text": "exit and wait are implemented in xv6's proc.c as kernel syscalls; neither path invokes the firmware interface."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The status handoff happens strictly between kernel data structures; firmware has no role in storing or reporting it."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A layer stays dim when the mechanism under test never crosses that layer's interface."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The layer strip is a relevance map: a layer lights only when the verified property is load-bearing for work at that layer."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The test is a user program that exercises wait and exit; firmware never stores or reports exit statuses. The verified property is indifferent to firmware, which only boots the machine before xv6 takes over.",
+    "slot": "FIRMWARE"
+  },
+  "waitexit|KERNEL": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "waitexit",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "wait and exit are the kernel's process-reaping contract, and this test verifies it from outside the kernel: the child hands a status to exit, and the parent's wait returns the child's pid with that exact status stored. The verified property is the kernel's status handoff."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "Child exits with status 42 and the parent's wait returns pid 4 with status 42 stored; a second child exits 0 and wait returns pid 5 with status 0; 6 checks, 0 mismatches."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "No kernel code was changed; the test exercises xv6's existing wait and exit path from user space."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The observed values prove the kernel stored the exact status at exit and reported it at wait, for two distinct children."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A kernel contract is verified from outside when user-space observations can only be explained by the kernel performing the specified handoff."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The kernel layer lights when the verified property is the kernel's own bookkeeping, observed through its system-call interface."
+      }
+    ],
+    "kind": "card",
+    "probandum": "wait and exit are the kernel's process-reaping contract, and this test verifies it from outside the kernel: the child hands a status to exit, and the parent's wait returns the child's pid with that exact status stored. The verified property is the kernel's status handoff.",
+    "slot": "KERNEL"
+  },
+  "waitexit|ALGORITHM": {
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "note": "The measured behavior in (2) together with the specification in (3), read through the warrant in (5), establishes the intermediate claim in (4).",
+        "strength": "strong",
+        "to": [
+          4
+        ],
+        "via": [
+          5
+        ]
+      },
+      {
+        "from": [
+          4
+        ],
+        "note": "The intermediate claim in (4) plus the layer rule in (6) yields the verdict in (1).",
+        "strength": "strong",
+        "to": [
+          1
+        ],
+        "via": [
+          6
+        ]
+      }
+    ],
+    "item": "waitexit",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card verifies a kernel contract (status stored at exit, reported by wait), not a computational construction. No portable algorithm is exercised; the mechanism is the exit-to-wait handoff itself."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "test source",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitexit.c"
+        },
+        "text": "The module computes nothing from its inputs; it forks, exits with constants, and compares reported values for equality."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        },
+        "text": "The proof log records pids and statuses only; no input-output function with portable behavior is under test."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The verified property is a storage-and-report contract between two syscalls, not a computation."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The algorithm layer covers computational mechanisms; a pure operating-system contract check has no portable algorithmic content."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The algorithm layer stays dim when there is no computational mechanism to port, only a kernel interface to honor."
+      }
+    ],
+    "kind": "card",
+    "probandum": "The card verifies a kernel contract (status stored at exit, reported by wait), not a computational construction. No portable algorithm is exercised; the mechanism is the exit-to-wait handoff itself.",
+    "slot": "ALGORITHM"
   }
 };
       // Exposed for the tooltip renderer, which lives in its own script

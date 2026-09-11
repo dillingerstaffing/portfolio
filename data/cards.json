@@ -13556,5 +13556,119 @@
   "terminalName": "user-pipepart",
   "terminalLabel": "user/pipepart",
   "showRepoLink": true
-}
+},
+  {
+    "checks": 20,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-msie-gate/PROOF.md"
+    },
+    "failures": 0,
+    "id": "src-mie-msie-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware enable control, not a computational construction. No portable algorithm is exercised; the mechanism is the mie.MSIE bit itself."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mie and decides which interrupts the hart takes. The verified property (MSIE alone gates the software interrupt while the pending bit is independent) is the exact enable contract firmware configures at boot."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The ISA defines mie as the M-mode per-interrupt enable control and the machine software interrupt as cause 3 taken with the interrupt bit set. The proof pends the CLINT msip with MSIE clear and shows the pending bit held with no trap, then sets MSIE and shows the single trap arriving with mcause 0x8000000000000003; the enable bit alone decides delivery."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The verified gate lives in M-mode: supervisor kernels take their software interrupts through the delegated S-mode path (mideleg bit 1), and never operate the mie.MSIE enable bit. The kernel's IPI contract is the delegated SSI delivery, not this M-mode gate."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof decides the outcome from the mie enable bits: pended stays pending while MSIE is clear, one trap after it is set. Whether the interrupt is taken is determined by the enable control, not by pipeline depth, cache behavior, or branch prediction."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mie-msie-gate",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-msie-gate",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "20 checks on QEMU 8.2.2: msip pended with MSIE clear leaves mip.MSIP set with 0 traps over a bounded window, setting MSIE delivers exactly one trap with mcause 0x8000000000000003, no re-delivery, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x908c0c90d15478ee, over the run transcript, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2"
+      ]
+    ],
+    "stressItems": 20,
+    "summary": "mie.MSIE is the M-mode enable bit for the machine software interrupt. The program pends the CLINT msip with MSIE clear and shows the interrupt stays pending without trapping, then sets MSIE and shows exactly one M-mode trap. The handler clears the msip source before returning, so the trap does not re-fire.",
+    "terminalLabel": "Verified src-mie-msie-gate QEMU output",
+    "terminalName": "riscv-baremetal-demo / src / mie-msie-gate",
+    "terminalOutput": "$ make run-mie-msie-gate\nphaseA: mip=0x8 (MSIP bit SET) traps-with-MSIE-clear=0\nphaseB: mcause=0x8000000000000003 trap-count=1\nphaseC: traps-after-quiet=1\n\n20 checks, 0 mismatches\n\nmie.MSIE enable gate: PASS",
+    "title": "mie.MSIE gates the machine software interrupt, QEMU",
+    "verificationEnvironment": "QEMU 8.2.2"
+  },
+  {
+    "checks": 6,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "failures": 0,
+    "id": "waitexit",
+    "kicker": "XV6 KERNEL",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a kernel contract (status stored at exit, reported by wait), not a computational construction. No portable algorithm is exercised; the mechanism is the exit-to-wait handoff itself."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The test is a user program that exercises wait and exit; firmware never stores or reports exit statuses. The verified property is indifferent to firmware, which only boots the machine before xv6 takes over."
+      },
+      "ISA": {
+        "applies": false,
+        "because": "The test runs as a user program exercising wait and exit; it checks pid and status values, not the machine contract. The round-trip is insensitive to the ISA: it passes on any machine where the kernel stores the child's status for wait to report."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "wait and exit are the kernel's process-reaping contract, and this test verifies it from outside the kernel: the child hands a status to exit, and the parent's wait returns the child's pid with that exact status stored. The verified property is the kernel's status handoff."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is about the kernel's status handoff between exit and wait, not the implementation behind it. Whether the status round-trips is determined by the kernel's process-table bookkeeping, not by pipeline or cache behavior."
+      }
+    },
+    "portability": null,
+    "repoLabel": "GitHub: xv6-getscount/user/waitexit.c",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "showRepoLink": true,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks on QEMU 8.2.2: child exits with status 42, wait returns the child pid with 42 stored; second child exits with 0, wait returns its pid with 0 stored, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x674A9192CFB12DF9, over the observed pids, wait return values, and statuses"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space"
+      ]
+    ],
+    "stressItems": 6,
+    "summary": "A user-space xv6 test forks a child that exits with a fixed status, then checks that wait returns the child's pid and stores the exact status. A second child exiting with 0 repeats the round-trip. No kernel code changed; the test exercises the existing wait and exit path from user space.",
+    "terminalLabel": "Verified waitexit QEMU output",
+    "terminalName": "xv6-getscount / user / waitexit.c",
+    "terminalOutput": "$ waitexit\ncheck 2: wait returned pid 4, the first child's pid\ncheck 3: wait stored status 42 for child 4\ncheck 6: wait stored status 0 for child 5\n\nchecks: 6 mismatches: 0\n\nwait/exit status round-trip: PASS",
+    "title": "wait returns the child pid and exit status, xv6",
+    "verificationEnvironment": "QEMU 8.2.2"
+  }
 ]
