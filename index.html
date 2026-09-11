@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-223336">
+  <meta name="build-version" content="v20260911-230605">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -17391,6 +17391,61 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "",
     "terminalLabel": "",
     "checks": 17,
+    "failures": 0
+  },
+  {
+    "id": "src-frm-dynamic-vs-static",
+    "kicker": "Static RNE in the instruction beats frm=RDN and frm=RUP",
+    "title": "Static rounding mode overrides fcsr.frm",
+    "summary": "M-mode program executing fdiv.d with a static RNE encoding under frm=RDN and frm=RUP, verifying both quotients are the RNE result and frm is untouched.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The F extension lets the instruction's rm field select a static rounding mode that overrides the dynamic frm, so the identical quotients are the contract's override rule."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test compares quotient values; no pipeline or execution-unit internals are measured."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software enables FS and programs frm before the test, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is instruction encoding override behavior, not a software algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "19 checks on QEMU 8.2.2: static-RNE fdiv.d under frm=RDN and frm=RUP both produce the RNE quotient with frm untouched, across 3 byte-identical runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xaaf26cfb83385742, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with FS enabled"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/frm-dynamic-vs-static",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 19,
     "failures": 0
   }
 ];
@@ -126826,6 +126881,323 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 3,
         "kind": "penultimate",
         "text": "CSR field write/readback is machine behavior, not a computational mechanism."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at ALGORITHM when the property is hardware behavior rather than portable computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-frm-dynamic-vs-static|ISA": {
+    "item": "src-frm-dynamic-vs-static",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The F extension lets the instruction's rm field select a static rounding mode that overrides the dynamic frm, so the identical quotients are the contract's override rule.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The F extension lets the instruction's rm field select a static rounding mode that overrides the dynamic frm, so the identical quotients are the contract's override rule."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "19 checks, 0 mismatches: static-RNE fdiv.d under frm=RDN and frm=RUP both produce the RNE quotient across 3 QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The F extension defines the instruction rm field as selecting a static rounding mode that overrides the dynamic frm.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The identical quotients are the override rule in action."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim that matches the ISA's defined override behavior engages the ISA layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-frm-dynamic-vs-static|MICROARCH": {
+    "item": "src-frm-dynamic-vs-static",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The test compares quotient values; no pipeline or execution-unit internals are measured.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The test compares quotient values; no pipeline or execution-unit internals are measured."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log compares quotient values; no pipeline or execution-unit internals were measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The measurement surface is quotient values only."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at MICROARCH when the verification compares architectural results and measures no implementation detail."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-frm-dynamic-vs-static|FIRMWARE": {
+    "item": "src-frm-dynamic-vs-static",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Machine-mode software enables FS and programs frm before the test, which is firmware's privilege.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Machine-mode software enables FS and programs frm before the test, which is firmware's privilege."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module enables FS and programs frm in M-mode before the test; the proof log shows the setup.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture assigns FS enable and frm programming to machine-mode software.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Floating-point setup is machine-mode firmware's job."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim about FS and frm setup engages FIRMWARE, because mstatus.FS and fcsr are programmed by machine-mode software."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-frm-dynamic-vs-static|KERNEL": {
+    "item": "src-frm-dynamic-vs-static",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The module runs bare metal with no operating system; no kernel mechanisms are involved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module runs bare metal in M-mode with no operating system present.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "With no OS, the property cannot be load-bearing for kernel work."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at KERNEL when no kernel mechanisms are involved."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-frm-dynamic-vs-static|ALGORITHM": {
+    "item": "src-frm-dynamic-vs-static",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The property is instruction encoding override behavior, not a software algorithm.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The property is instruction encoding override behavior, not a software algorithm."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verified property is which rounding the hart applies when the instruction names its own mode, an encoding override behavior.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "Encoding override is machine behavior, not a computational mechanism."
       },
       {
         "n": 4,
