@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Alignment the Page Table Demands of Itself",
+    "slug": "the-alignment-the-page-table-demands-of-itself",
+    "date": "2026-09-11",
+    "description": "A level-1 Sv39 leaf maps a whole 2 MiB superpage with one entry. Give it a PPN of 0x201 and the translation faults; 0x200 passes. Why the hardware checks the entry's own alignment, and the two different machines that agree on the answer.",
+    "paragraphs": [
+      "Give a level-1 leaf in an Sv39 page table a physical page number of 0x200, which is bit 9 standing alone. The alignment check looks at bits 8 down to 0, finds nothing set, and the translation proceeds. Now flip one bit: a PPN of 0x201. Bit 0 sits inside the checked range, and the translation raises a page fault. Bit 9 is the first bit of the superpage's base address; bit 8 is the last bit of the offset inside the superpage. The boundary is exactly that sharp, and 53 directed rows test the bit on each side of it, plus the all-ones and all-zeros corners.",
+      "Sv39 is RISC-V's 39-bit virtual address scheme: three 9-bit page-number fields, vpn[2], vpn[1], and vpn[0], plus a 12-bit offset inside a 4 KiB page. A normal translation walks all three levels of the page table. A superpage leaf stops the walk early, at level 1 or 2, and the VPN fields the skipped levels would have consumed become the offset inside the large region instead. The finished physical address takes its low segments from the virtual address, not from the entry, so the entry's own low PPN bits, nine per skipped level, go unused. The tempting implementation ignores them. The specification refuses, in its own sentence from the virtual-address translation process, section 4.3.2: if i > 0 and pte.ppn[i-1:0] is not zero, this is a misaligned superpage. A stray bit in a hand-built entry would otherwise describe a region whose base the entry does not fully determine, and the error would be silent. The hardware would rather fault than quietly use an address the entry does not fully describe.",
+      "The check is three lines. The level tells you how many low PPN segments the leaf skipped, nine bits per level, so the mask is one shifted by nine times the level, minus one:",
+      "For a level-1 leaf the mask is 0x1FF, bits 8 down to 0, which is why 0x200 passes and 0x201 faults. A level-0 leaf, an ordinary 4 KiB page, skips no levels, so the mask is zero and the rule never fires there.",
+      "What makes the verification honest is that the oracle is a different machine from the implementation. The code above builds the mask and tests the masked PPN. The oracle never builds a mask: it walks the 44-bit PPN field from the top down and faults the moment it finds a set bit below position nine times the level. Two constructions, same verdict, on thirty million pairs (30,000,063), zero disagreements, with an FNV-1a checksum identical under -O0, -O2, and the sanitizers. The module states its edges plainly too: no walking, no permission bits, no accessed-or-dirty updates; those live in the sibling labs. A module that knows its own edges is one I can trust.",
+      "One sentence to carry away: when a page table entry claims a whole region at once, its address must fit the claim exactly, and the hardware checks the receipt before trusting it."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/152-pte-superpage-misalign",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/152-pte-superpage-misalign/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified rule is the RISC-V privileged specification's own sentence, section 4.3.2: a superpage leaf whose low PPN segments are nonzero raises a page fault, so the alignment constraint binds every program that builds Sv39 page tables."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the property under test is the architecturally specified fault, identical on every compliant hart: no pipeline, cache, or predictor choice can change whether a nonzero low PPN segment faults, so the verdict is invariant across implementations."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because the first page tables are built by hand in early boot code: a misaligned superpage entry in firmware's own mappings faults on first access, so the alignment rule is load-bearing for whoever writes the initial page-table setup."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the kernel is the heaviest user of superpage mappings, direct maps and huge pages: its page-table code must keep the low PPN segments zero when installing a superpage leaf, or every access through that mapping faults."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because the verification is a portable computational argument: the mask test and the top-down bit scan are two structurally different computations of the same predicate, and their agreement on thirty million pairs proves the rule rather than the code, on any target."
+      }
+    }
+  },
+  {
     "title": "The Read the Compiler Must Not Skip",
     "slug": "the-read-the-compiler-must-not-skip",
     "date": "2026-09-11",
