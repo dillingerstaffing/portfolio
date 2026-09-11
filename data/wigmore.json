@@ -67911,6 +67911,296 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "src-sip-write-probe",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "matters because sip is a WARL CSR whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters because sip is a WARL CSR whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state"
+        },
+        {
+          "n": 2,
+          "kind": "penultimate",
+          "text": "An all-ones write to sip read back 0x0 with SSI not delegated and exactly 0x2 (SSIP only) once mideleg delegated SSI, matching the WARL contract that only delegated writable bits survive."
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "The privileged spec's CSR and WARL rules are the ground truth for the machine contract; an implementation that matches the spec's stated readbacks and legalization behavior carries the contract."
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The proof log records sip=0x0 after the all-ones write in phase 1 and sip=0x2 after the same write in phase 2 with mideleg=0x1446, across three byte-identical QEMU 8.2.2 runs.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "src-sip-write-probe",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "not here because QEMU models CSR legalization functionally, so no pipeline, interrupt-latency, or CSR-implementation behavior is measured in the proof",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because QEMU models CSR legalization functionally, so no pipeline, interrupt-latency, or CSR-implementation behavior is measured in the proof"
+        },
+        {
+          "n": 2,
+          "kind": "penultimate",
+          "text": "The proof records CSR readbacks only; it publishes no cycle counts, no interrupt-delivery timing, and no CSR-implementation details."
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The proof log contains only the sip/mip/mideleg readbacks and check counts; no microarchitectural measurement appears in the recorded output.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "src-sip-write-probe",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "matters because M-mode firmware owns mideleg and the sip/mip alias pair; the proof is the firmware-level act of delegating SSI and observing the legalized write in both states",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters because M-mode firmware owns mideleg and the sip/mip alias pair; the proof is the firmware-level act of delegating SSI and observing the legalized write in both states"
+        },
+        {
+          "n": 2,
+          "kind": "penultimate",
+          "text": "An M-mode program wrote mideleg to delegate SSI, wrote all ones to sip in both states, and observed mip bit 1 tracking sip bit 1 as the alias; the delegation and the observation are the firmware under test."
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "M-mode firmware is the only software that can write mideleg and sip; a proof that does both to exercise the WARL legalization is testing firmware behavior."
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The proof log shows the M-mode writes to mideleg (0x1444 to 0x1446 and back), the sip readbacks in each state, and mip bit 1 following sip bit 1, across three byte-identical QEMU 8.2.2 runs.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "src-sip-write-probe",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "not here because no scheduler or driver layer runs; the proof checks the pending-bit register beneath any kernel's interrupt handling",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because no scheduler or driver layer runs; the proof checks the pending-bit register beneath any kernel's interrupt handling"
+        },
+        {
+          "n": 2,
+          "kind": "penultimate",
+          "text": "The program runs bare-metal with no scheduler and no drivers; interrupt enables stayed clear and the trap handler never fired, so only the register contract was exercised."
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The proof log describes a bare-metal M-mode program with trap count 0 and interrupt enables clear; no scheduling or driver behavior is recorded.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "src-sip-write-probe",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "not here because WARL legalization is a hardware register contract, not an ISA-independent computational mechanism",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not here because WARL legalization is a hardware register contract, not an ISA-independent computational mechanism"
+        },
+        {
+          "n": 2,
+          "kind": "penultimate",
+          "text": "The behavior under test is which bits of a CSR survive a write, a register-level legalization rule, not a computation whose steps could be restated portably; there is no algorithm to extract."
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The proof log records only the sip/mip readbacks after writes; no computational procedure independent of the CSR is described or measured.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+          }
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            2
+          ],
+          "strength": "strong"
+        },
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }

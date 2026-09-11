@@ -11293,5 +11293,66 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-spp",
     "terminalLabel": "Run log",
     "showRepoLink": true
+  },
+  {
+    "id": "src-sip-write-probe",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "sip WARL writes legalize to exactly the delegated SSIP bit",
+    "summary": "M-mode writes all ones to sip, the supervisor interrupt-pending register, and reads back what survives. With SSI not delegated, the write legalizes to zero. After mideleg delegates SSI, the same write legalizes to exactly SSIP (bit 1), and mip bit 1 tracks it as the alias while every other mip bit stays put. The WARL rule is visible in the readback.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because sip is a WARL CSR whose legalized value is the privileged ISA's own contract: the proof reads exactly which bits survive an all-ones write in each delegation state"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models CSR legalization functionally, so no pipeline, interrupt-latency, or CSR-implementation behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware owns mideleg and the sip/mip alias pair; the proof is the firmware-level act of delegating SSI and observing the legalized write in both states"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler or driver layer runs; the proof checks the pending-bit register beneath any kernel's interrupt handling"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because WARL legalization is a hardware register contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-write-probe/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "20 checks on sip WARL legalization in both delegation states, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "UNDELEGATED",
+        "all-ones write to sip reads back 0x0, mip unchanged at 0x80"
+      ],
+      [
+        "DELEGATED",
+        "all-ones write to sip reads back 0x2 (SSIP only), mip bit 1 follows as the alias"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sip-write-probe",
+    "terminalOutput": "$ make run-sip-write-probe\nsip: WARL all-ones write/readback probe\nphase1: sip=0x0 mip=0x80 (not delegated)\nphase2: sip=0x2 mip=0x82 (SSI delegated)\nchecks=20 mismatches=0\ndigest=0xc2640b707a330c6f\nRESULT: PASS (WARL legalizes to the delegated bit)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 20,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sip-write-probe",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sip-write-probe",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
   }
 ]
