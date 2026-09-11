@@ -1,6 +1,7 @@
 [
   {
     "title": "The Bit That Reroutes a Trap",
+    "slug": "the-bit-that-reroutes-a-trap",
     "date": "2026-09-11",
     "paragraphs": [
       "Run the same instruction twice. Boot a bare-metal RISC-V machine, drop from machine mode into supervisor mode, and execute ecall, the instruction that asks the layer above for a service. With the medeleg register at zero, the trap lands in the machine-mode handler: its cause register reads mcause = 9, the code for an environment call from supervisor mode. Write 0x200 to medeleg, which is bit 9 set, and execute the identical ecall again. This time the machine handler never fires. The supervisor-mode handler catches the trap instead, with scause = 9. Same instruction, two destinations, one bit of difference.",
@@ -39,6 +40,7 @@
   },
   {
     "title": "The Bit That Survives the Context Switch",
+    "slug": "the-bit-that-survives-the-context-switch",
     "date": "2026-09-11",
     "paragraphs": [
       "Take virtual page number 0x12345, mapped with its page-table G bit set. Walk it under address-space IDs 1, 2, and 9: all three land on the same physical address, (0xABCDE shifted left by 12) plus the 0x678 offset, and every walk reports global equals 1. The address-space ID is never consulted. Now the contrast: the same virtual page number with G clear under ASID 1 lands on a page built from 0x11111, and under ASID 2 on a page built from 0x22222. Same number, different pages, because without the G bit the address-space name is part of the key.",
@@ -76,6 +78,7 @@
   },
   {
     "title": "The Brake Pedal on the Stopwatch",
+    "slug": "the-brake-pedal-on-the-stopwatch",
     "date": "2026-09-11",
     "paragraphs": [
       "Yesterday this blog measured the floor for reading the cycle counter. This note asks the opposite question: what happens when you stop it? One write of 0x1 to the mcountinhibit CSR, setting its CY bit, and one thousand back-to-back reads of mcycle came back identical, every one of them 0x0, a delta of exactly zero. One write of 0x0 to clear the bit, and the counter woke up: four samples, strictly increasing, with consecutive deltas in the tens of thousands of ticks. The brake pedal works.",
@@ -113,6 +116,7 @@
   },
   {
     "title": "The Page That Was Never There",
+    "slug": "the-page-that-was-never-there",
     "date": "2026-09-11",
     "paragraphs": [
       "Ask the operating system a question most programs never ask: how much memory can I actually have? The sbrkoom test asks it the blunt way: call sbrk(4096), the system call that moves the heap's break one page at a time, until the kernel says no. On a 128 megabyte QEMU machine the answer came back as a measured number: 32,468 pages, 132,988,928 bytes, about 126.8 megabytes. The break started at 0x4000 and stopped at 0x7ED8000, exactly 32,468 pages later, and a second sbrk(4096) still returned -1, so the ceiling is stable, not a hiccup.",
@@ -150,6 +154,7 @@
   },
   {
     "title": "The Multiply With No Multiply",
+    "slug": "the-multiply-with-no-multiply",
     "date": "2026-09-11",
     "paragraphs": [
       "Base RISC-V, RV32I, has no multiply instruction. The mul instruction lives in the M extension, which is optional, and a core that skips M still has to multiply. The software that does it is what compilers emit and what this lab writes by hand. The obvious move is to write a * b and trust the compiler; on an M-less core the compiler has no multiply to emit, so it calls a library routine instead. The lab takes the harder road on purpose: it bans the * operator from the source entirely, then checks the compiled object to make sure the compiler did not smuggle one back in. The claim has to hold beneath the abstraction, so the check runs beneath the abstraction.",
@@ -188,6 +193,7 @@
   },
   {
     "title": "The Bit That Reads Execute-Only Pages",
+    "slug": "the-bit-that-reads-execute-only-pages",
     "date": "2026-09-11",
     "paragraphs": [
       "One page at virtual address 0x40000000, mapped execute-only: the flags read valid, executable, accessed, dirty, and no read bit. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it; this entry may be executed but not read. Two phases, one load instruction. Phase A runs with MXR explicitly clear: the load raises exactly one trap, scause 0xd, the load page fault, with stval holding the faulting address and sepc pointing at the labeled load. t0 was poisoned to zero right before the load; after the handler advanced sepc past the instruction and returned, t0 was still zero. That is the part that makes it a proof rather than a story: the poison proves the load never completed. Phase B sets MXR with one csrs to sstatus: the identical load from the identical address returns the canary, 0xe4ec0d1edeadbeef, and the trap counter never moves past one. The only thing that changed between a fault and a success was one bit.",
@@ -226,6 +232,7 @@
   },
   {
     "title": "The Twelve Bits the Walk Never Touches",
+    "slug": "the-twelve-bits-the-walk-never-touches",
     "date": "2026-09-11",
     "paragraphs": [
       "Take a physical page number, say 0x80000, and an offset, say 0xabc. The physical address is 0x80000abc: the page number shifted left by 12, ORed with the offset. A physical page number names which 4 KiB page holds your byte; the offset is the low 12 bits, which pick the byte inside that page. Everything this lab proves hangs on that split.",
@@ -266,6 +273,7 @@
   },
   {
     "title": "The Gate With Three Locks",
+    "slug": "the-gate-with-three-locks",
     "date": "2026-09-11",
     "paragraphs": [
       "Take a page-table entry with R=1, W=1, X=0, U=0. Read the flags the way the hardware does: readable, writable, not executable, and owned by the supervisor, since U=0 marks a supervisor page. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it. Now run a load instruction in supervisor mode against this page. The verdict comes from three questions asked in a fixed order. The load passes all three and proceeds. Run the same load from user mode and it dies at the second question.",
@@ -306,6 +314,7 @@
   },
   {
     "title": "The Ten Fields in One Word",
+    "slug": "the-ten-fields-in-one-word",
     "date": "2026-09-11",
     "paragraphs": [
       "Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones, and the top field reads back 0x80000. A valid, readable, writable page at physical page 0x80000. Every page fault your kernel will ever handle starts with exactly this parsing step: xv6's walk() reads each level's entry to pull out the page number and check the permission bits. A misdecoded entry is a wrong mapping or a missed fault, so the parsing gets its own proof, small and focused, nothing else.",
@@ -346,6 +355,7 @@
   },
   {
     "title": "The Bit That Remembers Who Called",
+    "slug": "the-bit-that-remembers-who-called",
     "date": "2026-09-11",
     "paragraphs": [
       "A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP NAPOT entry, and dropped into an S-mode payload through sret. The payload issued two ecalls. Each trap landed in the S-mode handler, which read three values: SPP = 1, scause = 9, sepc = 0x800002a8, identical on both traps. The word sitting at that address was 0x73, the ecall instruction itself.",
@@ -385,6 +395,7 @@
   },
   {
     "title": "The Guard That Keeps Zero Honest",
+    "slug": "the-guard-that-keeps-zero-honest",
     "date": "2026-09-10",
     "paragraphs": [
       "Take 12, which is 1100 in binary. Subtract 1 and you get 1011: the subtraction borrows through the two trailing zeros and stops at the lowest set bit, flipping exactly those three bits and nothing above them. AND the two together, 1100 and 1011, and you get 1000. One bit survives, so 12 is not a power of two.",
@@ -423,6 +434,7 @@
   },
   {
     "title": "The Division That Adds Up Shifts",
+    "slug": "the-division-that-adds-up-shifts",
     "date": "2026-09-10",
     "paragraphs": [
       "Divide 100 by 7 without a divide instruction. The obvious program is a loop: subtract 7, count, repeat until the remainder drops below 7. For 100 that is 14 subtractions, fine. For four billion it is over 613 million, and the running time is decided by the input: the bigger the number, the longer you wait. A division whose cost grows with its answer is the failure to fix.",
@@ -461,6 +473,7 @@
   },
   {
     "title": "The Exponent That Already Counted",
+    "slug": "the-exponent-that-already-counted",
     "date": "2026-09-10",
     "paragraphs": [
       "The obvious program is a loop: start at bit 63, walk down, stop at the first 1, count the steps. It works, and for x = 2^63 it finishes after a single test. But for x = 1 it inspects 63 zeros first. The running time depends on the answer, and that is the whole problem: one branch per bit, mispredicted on random data, and a timing channel that leaks the input's magnitude. A quick check on this machine: the loop takes about 81 nanoseconds per value on inputs under 256, and about 4 when the top bit is set. About twenty times slower, decided by the input, while the float version below takes about 5 to 7 nanoseconds on both.",
@@ -499,6 +512,7 @@
   },
   {
     "title": "The Mask That Finds Every Match",
+    "slug": "the-mask-that-finds-every-match",
     "date": "2026-09-10",
     "paragraphs": [
       "Take x = 0x19eb and y = 0x18eb, two 16-bit words. Byte 0 is 0xeb in both, so it agrees. Byte 1 is 0x19 against 0x18, so it disagrees. Bytes 2 through 7 are all zero in both, so they agree. The answer is one byte, one bit per byte: bit i set exactly when byte i matched. Bits 0, 2, 3, 4, 5, 6, and 7 are set, bit 1 is clear, and the mask is 0xfd. The lab's whole job is to compute that byte with no branch anywhere.",
@@ -539,6 +553,7 @@
   },
   {
     "title": "The Comparison That Never Compares",
+    "slug": "the-comparison-that-never-compares",
     "date": "2026-09-10",
     "paragraphs": [
       "Take 3 and 5 and ask which is smaller. The code below does not compare them. It subtracts: d = 3 - 5. In unsigned 64-bit arithmetic there is no negative 2, so the subtraction wraps and d becomes 2^64 - 2, a number enormously larger than 3, nearly the largest the machine knows. Then it asks one question: is d greater than 3? Yes. That single test is the whole verdict: 3 is smaller than 5.",
@@ -578,6 +593,7 @@
   },
   {
     "title": "The Adder With No Plus Sign",
+    "slug": "the-adder-with-no-plus-sign",
     "date": "2026-09-10",
     "paragraphs": [
       "Add 11 and 7 the way you learned in school, one column at a time. In binary, 11 is 1011 and 7 is 0111. Rightmost column: 1 plus 1 is 10 in binary, so write 0 and carry 1. Next column: 1 plus 1 plus the carried 1 is 3, write 1, carry 1. Next: 0 plus 1 plus 1 is 2, write 0, carry 1. Leftmost: 1 plus 0 plus 1 is 2, write 0, carry 1. The written bits are 0010 with a final carry of 1, which reads as 10010, or 18. Notice that every column took three inputs: two operand bits and the carry from its neighbor.",
@@ -616,6 +632,7 @@
   },
   {
     "title": "The Stopwatch That Measures Itself",
+    "slug": "the-stopwatch-that-measures-itself",
     "date": "2026-09-10",
     "paragraphs": [
       "Every timing measurement pays a price: reading the clock itself takes cycles. If the thing you are measuring costs 200 cycles but the clock read costs 150 of them, your number is more clock than code. So the first benchmark worth writing is one that measures the stopwatch itself. On RISC-V the cycle counter is read with a single instruction, rdcycle, which copies the cycle CSR into a register. The question is simple: how many ticks does that one instruction cost?",
@@ -653,6 +670,7 @@
   },
   {
     "title": "The Six That Catches the Counterfeit Digit",
+    "slug": "the-six-that-catches-the-counterfeit-digit",
     "date": "2026-09-10",
     "paragraphs": [
       "A 16-bit word is supposed to hold four decimal digits, four bits per digit. Each 4-bit chunk is called a nibble, exactly one hex digit. The values 0 through 9 are honest digits. A through F have no decimal meaning at all: they are counterfeit, and any arithmetic that trusts them goes wrong silently. Before you believe a packed BCD value, you check all four nibbles. The challenge is checking them all at once, with no loop and no branches.",
@@ -692,6 +710,7 @@
   },
   {
     "title": "The Division That Never Divides",
+    "slug": "the-division-that-never-divides",
     "date": "2026-09-10",
     "paragraphs": [
       "On some chips division is slow, twenty cycles or more against three for a multiply, and on others the instruction barely exists. So compilers never emit a real division when the divisor is a known constant. They multiply by the reciprocal instead, written in fixed point. For division by 3, the reciprocal is 1/3, and at 33 bits of precision the fixed-point 1/3 is the constant 0xAAAAAAAB, the smallest integer just above 2^33 / 3.",
@@ -730,6 +749,7 @@
   },
   {
     "title": "The Four Bytes the Trap Handler Skips",
+    "slug": "the-four-bytes-the-trap-handler-skips",
     "date": "2026-09-10",
     "paragraphs": [
       "A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction's address into the mepc register and jumps to your handler. When the handler returns, the CPU resumes at whatever mepc points to. If the handler changed nothing, the CPU re-runs the same bad load, traps again, and you have an infinite loop. So the handler's most basic job is to move mepc past the dead instruction before returning.",
@@ -769,6 +789,7 @@
   },
   {
     "title": "The Lookup Table That Fits in 16 Bits",
+    "slug": "the-lookup-table-that-fits-in-16-bits",
     "date": "2026-09-10",
     "paragraphs": [
       "Parity asks a small question: does this 32-bit word hold an odd or an even number of 1-bits? The lab answers it with no popcount instruction, no table in memory, and no branches.",
@@ -808,6 +829,7 @@
   },
   {
     "title": "The Multiply That Never Carries",
+    "slug": "the-multiply-that-never-carries",
     "date": "2026-09-10",
     "paragraphs": [
       "Multiply 0xFF by 0xFF the schoolbook way: write out 8 shifted copies of 0xFF, one per set bit, and add the columns. The columns produce carries, and the total is 0xFE01. Now do the same thing but combine the columns with XOR instead of addition. Column 0 holds one 1, column 1 holds two, column 2 holds three, climbing to eight in column 7, then back down. XOR keeps a 1 wherever the count is odd, which is exactly the even-numbered columns, giving 0101010101010101 in binary: 0x5555. No carry ever propagated, because XOR never produces one.",
@@ -844,6 +866,7 @@
   },
   {
     "title": "The Decrement That Leaves Room for the Ceiling",
+    "slug": "the-decrement-that-leaves-room-for-the-ceiling",
     "date": "2026-09-08",
     "paragraphs": [
       "Suppose you need the smallest power of two that is at least x. The shape of the answer gives the algorithm away: a power of two in binary is a single 1-bit, so rounding up means finding the highest set bit of x and clearing everything below it. But there is an edge: if x is already a power of two, say 8, which is 0b1000, the highest set bit is already the answer, and any smearing of that bit downward would overshoot to 16.",
@@ -881,6 +904,7 @@
   },
   {
     "title": "The Checksum That Always Lands on 0x2144DF1C",
+    "slug": "the-checksum-that-always-lands-on-0x2144df1c",
     "date": "2026-09-07",
     "paragraphs": [
       "Three lines that verify any buffer against corruption:",

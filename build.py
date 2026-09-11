@@ -12,7 +12,11 @@ Flow:
        - /*__WIGMORE_JSON__*/  -> Wigmore slot analyses, keyed "item|slot"
        - <!-- LAYER-STRIP:<slug> --> (x10) -> static article layer strips
   4. node --check every generated <script> block.
-  5. Write index.html only if everything above succeeded.
+  5. Emit one static page per article at blog/<slug>/index.html, each with
+     its own social-preview meta tags (og:*/twitter:*), derived from the
+     same feed block so rewrites update the feed and the permalink together.
+     Feed titles are linked to their permalinks; sitemap.xml is regenerated.
+  6. Write index.html only if everything above succeeded.
 
 The delivered page stays fully static: no runtime fetching, no dynamic
 data loading. Edit data/*.json, then run build-portfolio.sh "message".
@@ -353,22 +357,35 @@ def load_data():
     if not isinstance(articles, list) or len(articles) < 10:
         fail(f"articles.json must hold at least 10 articles, found {len(articles) if isinstance(articles, list) else type(articles)}")
     seen_titles = set()
+    seen_slugs = set()
     for a in articles:
-        for f in ("title", "date", "paragraphs", "codeLink", "layers"):
+        for f in ("title", "slug", "date", "paragraphs", "codeLink", "layers"):
             if f not in a:
                 fail(f"article missing field {f}: {a.get('title')}")
         if a["title"] in seen_titles:
             fail(f"duplicate article title {a['title']}")
         seen_titles.add(a["title"])
+        # Slugs are permanent permalink IDs. A rewrite must never change the
+        # slug, or previously shared links break. Titles may change freely.
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", a["slug"]):
+            fail(f"article {a['title']}: bad slug {a['slug']!r}")
+        if a["slug"] in seen_slugs:
+            fail(f"duplicate article slug {a['slug']}")
+        seen_slugs.add(a["slug"])
+        desc = a.get("description", "")
+        if desc and (not isinstance(desc, str) or not desc.strip() or len(desc) > 300 or "\u2014" in desc):
+            fail(f"article {a['title']}: bad description override")
         if not isinstance(a["paragraphs"], list) or not a["paragraphs"]:
             fail(f"article {a['title']}: paragraphs must be a non-empty list")
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", a["date"]):
+            fail(f"article {a['title']}: bad date {a['date']!r}")
         check_layers(a["layers"], f"article {a['title']}")
         check_evidence(a.get("evidence"), f"article {a['title']}")
         lint_layer_triggers(
             a["title"] + " " + " ".join(a["paragraphs"]),
             a["layers"], f"article {a['title']}")
 
-    article_slugs = {slugify(a["title"]) for a in articles}
+    article_slugs = {a["slug"] for a in articles}
     wigmore_by_slot = check_wigmore(wigmore, set(seen), article_slugs)
     print(f"wigmore: {len(wigmore_by_slot)} slot analyses validated")
     if _pilot_missing_microarch:
@@ -410,7 +427,7 @@ def run_copy_gate(cards, articles):
         if p and not p.get("instructionWhat"):
             errors.append(f"{cid}: portability missing instructionWhat")
     for a in articles:
-        excerpt = a.get("excerpt", "") or a.get("summary", "")
+        excerpt = a.get("excerpt", "") or a.get("summary", "") or a.get("description", "")
         if any(p.search(excerpt) for p in stat_patterns):
             errors.append(f"article {a.get('id', '?')}: excerpt dumps stats")
     if errors:
@@ -542,6 +559,172 @@ def node_check_scripts(html_text):
     print(f"node --check: {len(scripts)} script block(s) OK")
 
 
+SITE_URL = "https://dillingerstaffing.github.io/portfolio"
+SITE_PATH = "/portfolio"
+OG_IMAGE = SITE_URL + "/og-image.png"
+OG_IMAGE_ALT = ("Chris Dillinger: freelance low-level C, RISC-V, and OS kernel "
+                "systems programmer")
+
+
+def social_description(article, block):
+    """Description for a post's social preview.
+
+    An explicit `description` field wins; otherwise the first body
+    paragraph, truncated at a word boundary. Either way it stays in sync
+    with the post because it is derived at build time, never stored twice.
+    """
+    override = (article.get("description") or "").strip()
+    if override:
+        return override
+    m = re.search(r'<div class="research-body">(.*)', block, re.S)
+    if not m:
+        fail(f"article {article['slug']}: no research-body in feed block")
+    p = re.search(r"<p>(.*?)</p>", m.group(1), re.S)
+    if not p:
+        fail(f"article {article['slug']}: no paragraph in research-body")
+    text = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", p.group(1)))).strip()
+    if len(text) > 200:
+        text = text[:197].rstrip().rsplit(" ", 1)[0] + "\u2026"
+    return text
+
+
+def write_sitemap(articles):
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    today = datetime.date.today().isoformat()
+
+    def entry(loc, lastmod, changefreq, priority):
+        lines.append("  <url>")
+        lines.append(f"    <loc>{loc}</loc>")
+        lines.append(f"    <lastmod>{lastmod}</lastmod>")
+        lines.append(f"    <changefreq>{changefreq}</changefreq>")
+        lines.append(f"    <priority>{priority}</priority>")
+        lines.append("  </url>")
+
+    entry(SITE_URL + "/", today, "weekly", "1.0")
+    for a in articles:
+        entry(f"{SITE_URL}/blog/{a['slug']}/", a["date"], "monthly", "0.8")
+    lines.append("</urlset>")
+    (HERE / "sitemap.xml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def per_post_html(article, block, desc, css, font_links, stamp):
+    slug = article["slug"]
+    title = article["title"]
+    url = f"{SITE_URL}/blog/{slug}/"
+    title_html = html.escape(title)
+    title_attr = html.escape(title, quote=True)
+    desc_attr = html.escape(desc, quote=True)
+    social_title = f"{title_html} &middot; Blog &middot; Chris Dillinger"
+    social_title_attr = f"{title_attr} \u00b7 Blog \u00b7 Chris Dillinger"
+    ld = {"@context": "https://schema.org", "@type": "BlogPosting",
+          "headline": title, "datePublished": article["date"],
+          "author": {"@type": "Person", "name": "Chris Dillinger"},
+          "mainEntityOfPage": url}
+    ld_json = json.dumps(ld, ensure_ascii=False)
+    json.loads(ld_json)  # never ship malformed JSON-LD
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="build-version" content="{stamp}" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#b8f34b" />
+  <title>{social_title}</title>
+  <meta name="description" content="{desc_attr}" />
+  <link rel="canonical" href="{url}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Chris Dillinger" />
+  <meta property="og:url" content="{url}" />
+  <meta property="og:title" content="{social_title_attr}" />
+  <meta property="og:description" content="{desc_attr}" />
+  <meta property="og:image" content="{OG_IMAGE}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="{OG_IMAGE_ALT}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{social_title_attr}" />
+  <meta name="twitter:description" content="{desc_attr}" />
+  <meta name="twitter:image" content="{OG_IMAGE}" />
+  <meta name="twitter:image:alt" content="{OG_IMAGE_ALT}" />
+  <meta property="article:published_time" content="{article['date']}T00:00:00-04:00" />
+  <script type="application/ld+json">{ld_json}</script>
+{font_links}
+  <style>{css}</style>
+</head>
+<body>
+  <header class="post-crumb"><a href="{SITE_PATH}/">Chris Dillinger</a><span> / </span><a href="{SITE_PATH}/#blog">Blog</a></header>
+  <main class="post-wrap">
+{block}
+  </main>
+  <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; All field notes</a></footer>
+</body>
+</html>
+"""
+
+
+def build_blog_permalinks(page, articles, stamp):
+    """Emit one static page per article at blog/<slug>/index.html.
+
+    The feed block in the template is the single source of article prose:
+    each per-post page reuses that exact block (with its baked layer strip),
+    so a rewrite flows to the feed and the permalink from one edit. Slugs
+    are permanent IDs validated in load_data; a rewrite must never change
+    the slug or previously shared links break. Also links each feed title to
+    its permalink and regenerates sitemap.xml. Returns the updated page.
+    """
+    blocks = re.findall(r'<article class="research-note">.*?</article>', page, re.S)
+    if len(blocks) != len(articles):
+        fail(f"expected {len(articles)} research-note blocks, found {len(blocks)}")
+    style_m = re.search(r"<style>(.*?)</style>", page, re.S)
+    if not style_m:
+        fail("no <style> block found for per-post pages")
+    css = style_m.group(1)
+    font_links = "\n".join(
+        m.group(0) for m in re.finditer(r"<link[^>]*fonts\.googleapis[^>]*>", page))
+    if not font_links:
+        fail("no google fonts links found for per-post pages")
+
+    for article, block in zip(articles, blocks):
+        slug = article["slug"]
+        title = article["title"]
+        if "\u2014" in title:
+            fail(f"article {slug}: em dash in title")
+        hm = re.search(r"<h3>(.*?)</h3>", block, re.S)
+        if not hm or html.unescape(hm.group(1)).strip() != title:
+            fail(f"article {slug}: feed block title does not match data title")
+        desc = social_description(article, block)
+        if not desc or "\u2014" in desc:
+            fail(f"article {slug}: bad social description")
+
+        # Feed: link the title to the permalink (the one visible change).
+        plain_h3 = hm.group(0)
+        linked_h3 = (f'<h3><a class="research-permalink" href="{SITE_PATH}/blog/{slug}/">'
+                     f"{hm.group(1)}</a></h3>")
+        if page.count(block) != 1:
+            fail(f"article {slug}: feed block not unique in page")
+        page = page.replace(block, block.replace(plain_h3, linked_h3, 1), 1)
+
+        post = per_post_html(article, block, desc, css, font_links, stamp)
+        dest = HERE / "blog" / slug / "index.html"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(post, encoding="utf-8")
+        if f'<meta property="og:url" content="{SITE_URL}/blog/{slug}/" />' not in post:
+            fail(f"article {slug}: per-post page missing its og:url")
+
+    write_sitemap(articles)
+    sitemap = (HERE / "sitemap.xml").read_text(encoding="utf-8")
+    for article in articles:
+        slug = article["slug"]
+        if f"{SITE_PATH}/blog/{slug}/" not in page:
+            fail(f"article {slug}: no permalink link in feed")
+        if f"{SITE_URL}/blog/{slug}/" not in sitemap:
+            fail(f"article {slug}: missing from sitemap.xml")
+    print(f"blog permalinks: {len(articles)} per-post pages + sitemap.xml")
+    return page
+
+
 def build(systems_lab, baremetal, xv6):
     cards, articles, chips_by_key, decisions, wigmore_by_slot = load_data()
     print(f"data OK: {len(cards)} cards, {len(articles)} articles, "
@@ -574,7 +757,7 @@ def build(systems_lab, baremetal, xv6):
 
     used_slugs = set()
     for article in articles:
-        slug = slugify(article["title"])
+        slug = article["slug"]
         if slug in used_slugs:
             fail(f"duplicate article slug {slug}")
         used_slugs.add(slug)
@@ -600,6 +783,8 @@ def build(systems_lab, baremetal, xv6):
     if m != 1:
         fail("expected exactly one VERSION in sw.js")
     sw_path.write_text(sw_text, encoding="utf-8")
+
+    page = build_blog_permalinks(page, articles, stamp)
 
     node_check_scripts(page)
 
