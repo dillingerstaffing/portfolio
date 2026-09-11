@@ -378,6 +378,44 @@ def load_data():
     return cards, articles, chips_by_key, wigmore_by_slot
 
 
+def run_copy_gate(cards, articles):
+    # Card copy OK-state gate (CARD_COPY_PRINCIPLES.md): banned spec labels,
+    # no stat-dumping in summaries/excerpts, instructionWhat required on
+    # portability blocks. A run whose cards fail this ships no site change.
+    banned_labels = {"DIFF TEST", "TIMED LOAD", "RESULT", "WHERE NEEDED"}
+    stat_patterns = [
+        re.compile(r"\d{1,3}(,\d{3})+"),  # comma-formatted thousands
+        re.compile(r"ns/value", re.I),
+        re.compile(r"Mvalues", re.I),
+        # counted test outcomes ("0 mismatches", "2088 comparisons"): a bare
+        # "comparison" is ordinary mechanism vocabulary, so require a count
+        re.compile(r"\b(?:\d[\d,]*|zero|no)\s+mismatches?\b", re.I),
+        re.compile(r"\b\d[\d,]*\s+comparisons?\b", re.I),
+        re.compile(r"\bchecksums?\b", re.I),
+    ]
+    errors = []
+    for c in cards:
+        cid = c.get("id", "?")
+        for row in c.get("specRows") or []:
+            if row[0] in banned_labels:
+                errors.append(f"{cid}: banned spec label {row[0]!r}")
+            elif row[0] != row[0].upper():
+                errors.append(f"{cid}: spec label not ALL CAPS: {row[0]!r}")
+        summary = c.get("summary", "")
+        if any(p.search(summary) for p in stat_patterns):
+            errors.append(f"{cid}: summary dumps stats")
+        p = c.get("portability")
+        if p and not p.get("instructionWhat"):
+            errors.append(f"{cid}: portability missing instructionWhat")
+    for a in articles:
+        excerpt = a.get("excerpt", "") or a.get("summary", "")
+        if any(p.search(excerpt) for p in stat_patterns):
+            errors.append(f"article {a.get('id', '?')}: excerpt dumps stats")
+    if errors:
+        fail("copy gate: card copy below OK state:\n  " + "\n  ".join(errors))
+    print(f"copy gate: OK ({len(cards)} cards, {len(articles)} articles)")
+
+
 def run_gate(systems_lab, baremetal, xv6):
     cmd = [sys.executable, str(GATE),
            "--cards", str(DATA / "cards.json"),
@@ -455,6 +493,7 @@ def build(systems_lab, baremetal, xv6):
           f"{len(chips_by_key)} chips, "
           f"{sum(1 for c in cards if c.get('portability'))} portability panels")
 
+    run_copy_gate(cards, articles)
     run_gate(systems_lab, baremetal, xv6)
     print("drift gate: no contradictions")
 
