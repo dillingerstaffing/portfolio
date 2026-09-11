@@ -11038,5 +11038,127 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/mscratch-csrrw",
     "terminalLabel": "Run log",
     "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-trap",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "mcounteren gate: S-mode rdcycle traps when gated, reads when enabled",
+    "summary": "M-mode clears mcounteren and drops to S-mode, where rdcycle raises an illegal-instruction trap with scause 0x2 instead of returning a count. M-mode then sets the CY enable bit, and the same S-mode rdcycle succeeds, returning strictly increasing samples. The gate opens and closes exactly as the privileged spec describes.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "mcounteren is the privileged ISA's own gate on S-mode counter access, and the proof exercises exactly the gated-traps and enabled-reads behavior the rule describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models counter access functionally, so no pipeline, counter-implementation, or timing behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware owns mcounteren and the S-mode entry; the proof is the firmware-level act of closing the gate, observing the trap, and opening it"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the counter gate beneath any kernel's timekeeping"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because gating counter reads on a privilege enable bit is a hardware control contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-trap/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "12 checks against the gated-traps and enabled-reads expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "GATED",
+        "mcounteren=0: S-mode rdcycle trapped as illegal instruction, scause 0x2, sepc at the rdcycle"
+      ],
+      [
+        "ENABLED",
+        "mcounteren CY set: S-mode rdcycle succeeded, strictly increasing samples"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-trap",
+    "terminalOutput": "$ make run-scounteren-trap\nscounteren-trap: mcounteren S-mode rdcycle gating\nGated: rdcycle trapped, scause=0x2\nEnabled: rdcycle ok, samples increasing\nchecks=12 fails=0\nRESULT: PASS (gate holds both ways)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 12,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-trap",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-trap",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-lrsc-store-invalidate",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "LR/SC reservation: intervening store breaks it, clean pair holds",
+    "summary": "M-mode runs lr.w followed by sw to the same address, then sc.w, and the store-conditional reports failure with the intervening value left in memory. The control pair lr.w followed directly by sc.w succeeds and writes its value. The reservation breaks exactly where the architecture says an intervening store may break it.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the LR/SC reservation is the ISA's own atomic primitive, and the proof exercises exactly the intervening-store-invalidates behavior the memory model describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models reservations functionally, so no cache-coherence, pipeline, or timing behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because no boot-time, PMP, or trap-delegation software is involved; the proof runs a single atomic sequence in M-mode"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, lock, or driver layer runs; the proof checks the atomic primitive beneath any kernel's synchronization"
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because the reservation pattern is the pure mechanism behind compare-and-swap loops and lock-free algorithms; the proof shows the failure mode every such algorithm must handle"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "6 checks against the invalidate-on-store and succeed-when-clean expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "INVALIDATED",
+        "lr.w; sw; sc.w: sc returned 1 (failure), memory held intervening value 0xBBBB1111"
+      ],
+      [
+        "CLEAN",
+        "lr.w; sc.w: sc returned 0 (success), memory held 0xEEEE4444"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / lrsc-store-invalidate",
+    "terminalOutput": "$ make run-lrsc-store-invalidate\nlrsc-store-invalidate: intervening store vs reservation\nInvalidated: sc=1, mem=0xBBBB1111\nClean: sc=0, mem=0xEEEE4444\nchecks=6 fails=0\nRESULT: PASS (reservation breaks on store)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 6,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/lrsc-store-invalidate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/lrsc-store-invalidate",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
   }
 ]

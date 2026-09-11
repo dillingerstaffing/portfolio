@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-022656">
+  <meta name="build-version" content="v20260911-024624">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -12351,6 +12351,128 @@ assert(check == 0x2144DF1C);</code></pre>
     "stressItems": [],
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/mscratch-csrrw",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-trap",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "mcounteren gate: S-mode rdcycle traps when gated, reads when enabled",
+    "summary": "M-mode clears mcounteren and drops to S-mode, where rdcycle raises an illegal-instruction trap with scause 0x2 instead of returning a count. M-mode then sets the CY enable bit, and the same S-mode rdcycle succeeds, returning strictly increasing samples. The gate opens and closes exactly as the privileged spec describes.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "mcounteren is the privileged ISA's own gate on S-mode counter access, and the proof exercises exactly the gated-traps and enabled-reads behavior the rule describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models counter access functionally, so no pipeline, counter-implementation, or timing behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware owns mcounteren and the S-mode entry; the proof is the firmware-level act of closing the gate, observing the trap, and opening it"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the counter gate beneath any kernel's timekeeping"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because gating counter reads on a privilege enable bit is a hardware control contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-trap/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "12 checks against the gated-traps and enabled-reads expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "GATED",
+        "mcounteren=0: S-mode rdcycle trapped as illegal instruction, scause 0x2, sepc at the rdcycle"
+      ],
+      [
+        "ENABLED",
+        "mcounteren CY set: S-mode rdcycle succeeded, strictly increasing samples"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-trap",
+    "terminalOutput": "$ make run-scounteren-trap\nscounteren-trap: mcounteren S-mode rdcycle gating\nGated: rdcycle trapped, scause=0x2\nEnabled: rdcycle ok, samples increasing\nchecks=12 fails=0\nRESULT: PASS (gate holds both ways)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 12,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-trap",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-trap",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-lrsc-store-invalidate",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "LR/SC reservation: intervening store breaks it, clean pair holds",
+    "summary": "M-mode runs lr.w followed by sw to the same address, then sc.w, and the store-conditional reports failure with the intervening value left in memory. The control pair lr.w followed directly by sc.w succeeds and writes its value. The reservation breaks exactly where the architecture says an intervening store may break it.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the LR/SC reservation is the ISA's own atomic primitive, and the proof exercises exactly the intervening-store-invalidates behavior the memory model describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models reservations functionally, so no cache-coherence, pipeline, or timing behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because no boot-time, PMP, or trap-delegation software is involved; the proof runs a single atomic sequence in M-mode"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, lock, or driver layer runs; the proof checks the atomic primitive beneath any kernel's synchronization"
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because the reservation pattern is the pure mechanism behind compare-and-swap loops and lock-free algorithms; the proof shows the failure mode every such algorithm must handle"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "6 checks against the invalidate-on-store and succeed-when-clean expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "INVALIDATED",
+        "lr.w; sw; sc.w: sc returned 1 (failure), memory held intervening value 0xBBBB1111"
+      ],
+      [
+        "CLEAN",
+        "lr.w; sc.w: sc returned 0 (success), memory held 0xEEEE4444"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / lrsc-store-invalidate",
+    "terminalOutput": "$ make run-lrsc-store-invalidate\nlrsc-store-invalidate: intervening store vs reservation\nInvalidated: sc=1, mem=0xBBBB1111\nClean: sc=0, mem=0xEEEE4444\nchecks=6 fails=0\nRESULT: PASS (reservation breaks on store)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 6,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/lrsc-store-invalidate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/lrsc-store-invalidate",
     "terminalLabel": "Run log",
     "showRepoLink": true
   }
@@ -57329,6 +57451,586 @@ assert(check == 0x2144DF1C);</code></pre>
         "source": {
           "tier": "lab",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mscratch-csrrw/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-scounteren-trap|ISA": {
+    "item": "src-scounteren-trap",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "mcounteren is the privileged ISA's own gate on S-mode counter access, and the proof exercises exactly the gated-traps and enabled-reads behavior the rule describes",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "mcounteren is the privileged ISA's own gate on S-mode counter access, and the proof exercises exactly the gated-traps and enabled-reads behavior the rule describes"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "With mcounteren=0 the S-mode rdcycle trapped as illegal instruction (scause=0x2) at the labeled site; with the CY bit set the same rdcycle succeeded and returned strictly increasing samples, matching the privileged spec's counter-enable gate."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The privileged spec's register and trap rules are the ground truth for the machine contract; an implementation that matches the spec's stated readbacks and trap behavior carries the contract."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log records the illegal-instruction trap with scause 0x2 under mcounteren=0 and the successful increasing rdcycle samples with CY set, across three byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-trap/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-scounteren-trap|MICROARCH": {
+    "item": "src-scounteren-trap",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "not here because QEMU models counter access functionally, so no pipeline, counter-implementation, or timing behavior is measured in the proof",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because QEMU models counter access functionally, so no pipeline, counter-implementation, or timing behavior is measured in the proof"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The proof records trap-or-read outcomes only; it publishes no cycle counts, no pipeline traces, and no counter-implementation details."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log contains only the trap cause codes and the rdcycle sample values; no microarchitectural measurement appears in the recorded output.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-trap/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-scounteren-trap|FIRMWARE": {
+    "item": "src-scounteren-trap",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "matters because M-mode firmware owns mcounteren and the S-mode entry; the proof is the firmware-level act of closing the gate, observing the trap, and opening it",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters because M-mode firmware owns mcounteren and the S-mode entry; the proof is the firmware-level act of closing the gate, observing the trap, and opening it"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "An M-mode helper cleared mcounteren, entered S-mode for the gated attempt, then set the CY bit and re-entered S-mode for the enabled attempt; the trap handler and the mode transitions are the firmware under test."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "M-mode firmware is the only software that can write mcounteren and enter S-mode; a proof that does both to exercise the gate is testing firmware behavior."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log shows the M-mode helper writing mcounteren, the S-mode entries, and the trap handler recording scause, across three byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-trap/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-scounteren-trap|KERNEL": {
+    "item": "src-scounteren-trap",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the counter gate beneath any kernel's timekeeping",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the counter gate beneath any kernel's timekeeping"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The program runs bare-metal with no scheduler, no page tables, and no drivers; the only software above the gate is the S-mode test stub."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log describes a bare-metal M-mode/S-mode program with no kernel components; no scheduling, VM, or driver behavior is recorded.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-trap/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-scounteren-trap|ALGORITHM": {
+    "item": "src-scounteren-trap",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "not here because gating counter reads on a privilege enable bit is a hardware control contract, not an ISA-independent computational mechanism",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because gating counter reads on a privilege enable bit is a hardware control contract, not an ISA-independent computational mechanism"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The behavior under test is a permission check on a CSR, not a computation whose steps could be restated portably; there is no algorithm to extract."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log records only the gate's open/closed behavior on rdcycle; no computational procedure independent of the CSR is described or measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-trap/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-lrsc-store-invalidate|ISA": {
+    "item": "src-lrsc-store-invalidate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "the LR/SC reservation is the ISA's own atomic primitive, and the proof exercises exactly the intervening-store-invalidates behavior the memory model describes",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "the LR/SC reservation is the ISA's own atomic primitive, and the proof exercises exactly the intervening-store-invalidates behavior the memory model describes"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The lr.w; sw; sc.w sequence returned sc=1 with the intervening value in memory, while the clean lr.w; sc.w control returned sc=0 and wrote its value, matching the ISA's reservation rule."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The privileged spec's register and trap rules are the ground truth for the machine contract; an implementation that matches the spec's stated readbacks and trap behavior carries the contract."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log records sc=1 with memory 0xBBBB1111 for the invalidated case and sc=0 with memory 0xEEEE4444 for the clean control, across three byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-lrsc-store-invalidate|MICROARCH": {
+    "item": "src-lrsc-store-invalidate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "not here because QEMU models reservations functionally, so no cache-coherence, pipeline, or timing behavior is measured in the proof",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because QEMU models reservations functionally, so no cache-coherence, pipeline, or timing behavior is measured in the proof"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The proof records sc return codes and memory contents only; it publishes no coherence traffic, no pipeline traces, and no timing."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log contains only the sc results and the memory words; no microarchitectural measurement appears in the recorded output.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-lrsc-store-invalidate|FIRMWARE": {
+    "item": "src-lrsc-store-invalidate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "not here because no boot-time, PMP, or trap-delegation software is involved; the proof runs a single atomic sequence in M-mode",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because no boot-time, PMP, or trap-delegation software is involved; the proof runs a single atomic sequence in M-mode"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The program executes lr.w, sw, and sc.w inline in M-mode with no firmware services; the only mechanism is the reservation itself."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log describes a single M-mode atomic sequence with no boot, PMP, or delegation steps; no firmware behavior is recorded.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-lrsc-store-invalidate|KERNEL": {
+    "item": "src-lrsc-store-invalidate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "not here because no scheduler, lock, or driver layer runs; the proof checks the atomic primitive beneath any kernel's synchronization",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not here because no scheduler, lock, or driver layer runs; the proof checks the atomic primitive beneath any kernel's synchronization"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The program runs bare-metal with no threads, no locks, and no drivers; the reservation is tested directly, not through any kernel primitive."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about what a proof does not measure stands on the proof's own recorded scope; where the log shows no such measurement, the negative claim holds."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log describes a bare-metal single-hart program with no kernel components; no scheduling or synchronization-layer behavior is recorded.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+        }
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          2
+        ],
+        "strength": "strong"
+      },
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-lrsc-store-invalidate|ALGORITHM": {
+    "item": "src-lrsc-store-invalidate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "matters because the reservation pattern is the pure mechanism behind compare-and-swap loops and lock-free algorithms; the proof shows the failure mode every such algorithm must handle",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters because the reservation pattern is the pure mechanism behind compare-and-swap loops and lock-free algorithms; the proof shows the failure mode every such algorithm must handle"
+      },
+      {
+        "n": 2,
+        "kind": "penultimate",
+        "text": "The invalidated case demonstrates the exact failure signal (sc=1) that a CAS retry loop checks, and the clean case shows the success path; both are the algorithm's contract with the hardware."
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A lock-free algorithm's correctness rests on handling the reservation-failure case; a proof that exhibits both outcomes documents the contract the algorithm relies on."
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The proof log records the sc=1 failure with the intervening store visible and the sc=0 success, the two outcomes a retry loop must distinguish, across three byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
         }
       }
     ],
