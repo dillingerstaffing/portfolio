@@ -100673,6 +100673,501 @@
                 "note": "A portable mechanism enforcing the RISC-V rule warrants the lit ALGORITHM verdict."
             }
         ]
+    },
+    {
+        "item": "the-read-the-compiler-must-not-skip",
+        "kind": "article",
+        "slot": "ISA",
+        "probandum": "not at ISA because the verified property is what machine code the compiler emits, a rule of the C language, not of any machine contract: both builds came from the same compiler, and the hoist-versus-reload argument is identical on any target, so no RISC-V instruction behavior is load-bearing for the verdict.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "not at ISA because the verified property is what machine code the compiler emits, a rule of the C language, not of any machine contract: both builds came from the same compiler, and the hoist-versus-reload argument is identical on any target, so no RISC-V instruction behavior is load-bearing for the verdict."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The disassembly experiment ran on gcc 13.3 targeting the host, not under QEMU: both the hoisted plain loop and the reloading volatile loop are host machine code, and no RISC-V instruction was executed or compared.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The volatile rule comes from the C language definition: a volatile access is an observable side effect that the compiler may not optimize out or reorder across a sequence point, a rule that binds every conforming compiler on every target.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "C standard, observable behavior (via cppreference, volatile qualifier)",
+                    "url": "https://en.cppreference.com/w/c/language/volatile"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "evidence",
+                "text": "The article's argument never invokes an ISA contract: the UART address is incidental, and the same poll loop and the same compiler verdict hold on any machine the compiler targets.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 5,
+                "kind": "penultimate",
+                "text": "The verdict depends only on the compiler's obligations under the C standard, so no machine-contract behavior is load-bearing."
+            },
+            {
+                "n": 6,
+                "kind": "generalization",
+                "text": "A claim that is true by language rule on every target does not engage any particular ISA."
+            },
+            {
+                "n": 7,
+                "kind": "generalization",
+                "text": "A layer stays dim when the verified property is invariant across it: the ISA layer records machine-contract dependence, and none is present here."
+            },
+            {
+                "n": 8,
+                "kind": "explanation",
+                "text": "A reader might object that the article is about a RISC-V UART driver, so the RISC-V ISA must be involved."
+            },
+            {
+                "n": 9,
+                "kind": "refutation",
+                "text": "The driver's RISC-V setting is the example, not the claim. The verified property is the compiler's read-elision rule, which the experiment demonstrates on host machine code; swapping the target changes the address and the mnemonics but not the argument. The ISA slot records dependence on a machine contract, and the article's claim has none.",
+                "refutes": 8
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3,
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    5
+                ],
+                "strength": "strong",
+                "note": "The measured behavior, the language rule, and the post's demonstration establish per the domain warrant that the intermediate conclusion holds."
+            },
+            {
+                "from": [
+                    5
+                ],
+                "via": [
+                    7
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "With the objection in (8) answered by (9), the intermediate conclusion plus the lighting rule yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "the-read-the-compiler-must-not-skip",
+        "kind": "article",
+        "slot": "MICROARCH",
+        "probandum": "not at Microarch because the difference under test is in the emitted code itself, decided by the compiler before any hardware runs: the plain build's loop contains no load at all, so no pipeline, cache, or predictor behavior could change which version observes the UART's next state.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "not at Microarch because the difference under test is in the emitted code itself, decided by the compiler before any hardware runs: the plain build's loop contains no load at all, so no pipeline, cache, or predictor behavior could change which version observes the UART's next state."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The plain build's loop contains no memory access at all: one test of 0x10000005, then an unconditional jump to itself; the stale bit can never refresh because no load exists to refresh it.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The volatile build reloads inside the loop, reading 0x10000005 into a register on every iteration, so the difference between the builds is in the emitted code, fixed before any hardware executes.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "evidence",
+                "text": "The compiler's hoisting decision is a property of the optimizer's model of plain memory, not of any execution unit: the abstract machine says ordinary memory cannot change under the program's feet.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "C standard, observable behavior (via cppreference, volatile qualifier)",
+                    "url": "https://en.cppreference.com/w/c/language/volatile"
+                }
+            },
+            {
+                "n": 5,
+                "kind": "penultimate",
+                "text": "Since the two programs differ in their instruction streams before execution begins, no runtime hardware behavior can change which one observes the UART."
+            },
+            {
+                "n": 6,
+                "kind": "generalization",
+                "text": "A difference fixed at compile time cannot be a microarchitectural effect."
+            },
+            {
+                "n": 7,
+                "kind": "generalization",
+                "text": "A layer stays dim when the verified property is decided before the layer's machinery runs: microarchitecture begins where the instruction stream ends."
+            },
+            {
+                "n": 8,
+                "kind": "explanation",
+                "text": "One might argue the empty spin's speed or the reload's timing is a microarchitectural claim."
+            },
+            {
+                "n": 9,
+                "kind": "refutation",
+                "text": "Speed is not the claim. The claim is whether a load exists in the loop at all, a fact visible in the disassembly with no timing involved; the verdict would stand on a cycle-accurate simulator or on silicon with any pipeline.",
+                "refutes": 8
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3,
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    5
+                ],
+                "strength": "strong",
+                "note": "The measured behavior, the language rule, and the post's demonstration establish per the domain warrant that the intermediate conclusion holds."
+            },
+            {
+                "from": [
+                    5
+                ],
+                "via": [
+                    7
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "With the objection in (8) answered by (9), the intermediate conclusion plus the lighting rule yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "the-read-the-compiler-must-not-skip",
+        "kind": "article",
+        "slot": "FIRMWARE",
+        "probandum": "matters at Firmware because the use under test is bare-metal firmware's only I/O path: the driver polls a memory-mapped UART register with no operating system underneath, and the kernel's volatile-considered-harmful note says the qualifier was meant for exactly memory-mapped I/O registers; the verified reload is what lets firmware see the hardware change its mind.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "matters at Firmware because the use under test is bare-metal firmware's only I/O path: the driver polls a memory-mapped UART register with no operating system underneath, and the kernel's volatile-considered-harmful note says the qualifier was meant for exactly memory-mapped I/O registers; the verified reload is what lets firmware see the hardware change its mind."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The driver polls the UART line status register at 0x10000005 through a volatile pointer helper, with no operating system underneath: bare-metal firmware's only way to learn the transmitter is ready.",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/uart.c",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The disassembly experiment shows the volatile loop reloading the register every iteration, the exact behavior a polled firmware driver depends on to see the hardware change its mind.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "evidence",
+                "text": "The kernel's volatile-considered-harmful document states the qualifier was originally meant for memory-mapped I/O registers, which is precisely this use.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "Linux kernel documentation, volatile-considered-harmful",
+                    "url": "https://www.kernel.org/doc/html/latest/process/volatile-considered-harmful.html"
+                }
+            },
+            {
+                "n": 5,
+                "kind": "penultimate",
+                "text": "The verified reload is the mechanism by which this firmware observes its hardware, so the property is load-bearing for firmware work."
+            },
+            {
+                "n": 6,
+                "kind": "generalization",
+                "text": "Firmware's contract with hardware is written in MMIO reads the compiler must not skip."
+            },
+            {
+                "n": 7,
+                "kind": "generalization",
+                "text": "A layer lights when the verified property is load-bearing for work at that layer: polled firmware I/O stands or falls on the compiler repeating the read."
+            },
+            {
+                "n": 8,
+                "kind": "explanation",
+                "text": "A reader might say the compiler rule is a language matter, so only the Algorithm layer should light."
+            },
+            {
+                "n": 9,
+                "kind": "refutation",
+                "text": "The rule is portable, and the use is firmware's: the layers record different things, the rule's portability at Algorithm and the rule's load-bearing use at Firmware. A bare-metal driver with the qualifier dropped spins forever, which is a firmware failure, not a language curiosity.",
+                "refutes": 8
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3,
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    5
+                ],
+                "strength": "strong",
+                "note": "The measured behavior, the language rule, and the post's demonstration establish per the domain warrant that the intermediate conclusion holds."
+            },
+            {
+                "from": [
+                    5
+                ],
+                "via": [
+                    7
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "With the objection in (8) answered by (9), the intermediate conclusion plus the lighting rule yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "the-read-the-compiler-must-not-skip",
+        "kind": "article",
+        "slot": "KERNEL",
+        "probandum": "not at Kernel because volatile offers no atomicity, synchronization, or memory ordering, so it cannot carry communication between threads: a kernel needing cross-thread visibility reaches for atomics or locks either way, and the races that volatile leaves unfixed are invariant under adding or removing the qualifier.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "not at Kernel because volatile offers no atomicity, synchronization, or memory ordering, so it cannot carry communication between threads: a kernel needing cross-thread visibility reaches for atomics or locks either way, and the races that volatile leaves unfixed are invariant under adding or removing the qualifier."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The C reference states volatile is not suitable for communication between threads: it offers no atomicity, synchronization, or memory ordering.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "C standard, observable behavior (via cppreference, volatile qualifier)",
+                    "url": "https://en.cppreference.com/w/c/language/volatile"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The kernel's volatile-considered-harmful document warns that programmers treat volatile as an easy atomic, which it is not; the kernel's own READ_ONCE is volatile plus relaxed ordering and still implies no barrier.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "Linux kernel documentation, volatile-considered-harmful",
+                    "url": "https://www.kernel.org/doc/html/latest/process/volatile-considered-harmful.html"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "evidence",
+                "text": "The article's takeaway draws the line explicitly: volatile answers whether the compiler may skip the read, never who else is writing; the second question takes atomics or locks.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 5,
+                "kind": "penultimate",
+                "text": "Adding or removing volatile changes nothing about cross-thread visibility, so a kernel's thread-communication behavior is invariant under the qualifier."
+            },
+            {
+                "n": 6,
+                "kind": "generalization",
+                "text": "A qualifier that answers a compiler question cannot settle a concurrency question."
+            },
+            {
+                "n": 7,
+                "kind": "generalization",
+                "text": "A layer stays dim when the verified property is invariant across it: the kernel's synchronization behavior does not move with volatile."
+            },
+            {
+                "n": 8,
+                "kind": "explanation",
+                "text": "One might argue the kernel discussion, volatile-considered-harmful and READ_ONCE, lights the Kernel layer."
+            },
+            {
+                "n": 9,
+                "kind": "refutation",
+                "text": "Discussion is not dependence. The kernel material is the why-not: it shows where volatile stops, and the verified property, the reload, does no work for kernel thread communication. The layer records what the property is load-bearing for, and here it is load-bearing against using volatile, not for it.",
+                "refutes": 8
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3,
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    5
+                ],
+                "strength": "strong",
+                "note": "The measured behavior, the language rule, and the post's demonstration establish per the domain warrant that the intermediate conclusion holds."
+            },
+            {
+                "from": [
+                    5
+                ],
+                "via": [
+                    7
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "With the objection in (8) answered by (9), the intermediate conclusion plus the lighting rule yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "the-read-the-compiler-must-not-skip",
+        "kind": "article",
+        "slot": "ALGORITHM",
+        "probandum": "matters at Algorithm because the volatile contract is a property of the C language, not of any machine: volatile accesses are observable side effects the compiler must not elide, on every conforming implementation, so the poll loop's correctness argument is portable and travels unchanged to any target.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "matters at Algorithm because the volatile contract is a property of the C language, not of any machine: volatile accesses are observable side effects the compiler must not elide, on every conforming implementation, so the poll loop's correctness argument is portable and travels unchanged to any target."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The volatile rule is defined by the C language: a volatile access is an observable side effect the compiler may not optimize out or reorder across a sequence point, binding every conforming implementation.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "C standard, observable behavior (via cppreference, volatile qualifier)",
+                    "url": "https://en.cppreference.com/w/c/language/volatile"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The poll loop's correctness argument uses only that rule: the register may change on its own, so the program must look every time, with no fact about any particular machine.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "evidence",
+                "text": "The experiment's verdict, hoisted read versus in-loop reload, follows from the language rule and would be reproduced by any conforming compiler on any target.",
+                "source": {
+                    "tier": "reference",
+                    "cite": "The Read the Compiler Must Not Skip, demonstration",
+                    "url": "https://dillingerstaffing.github.io/portfolio/blog/the-read-the-compiler-must-not-skip/"
+                }
+            },
+            {
+                "n": 5,
+                "kind": "penultimate",
+                "text": "The mechanism is a portable language contract, so the claim travels unchanged to any target."
+            },
+            {
+                "n": 6,
+                "kind": "generalization",
+                "text": "A property defined by a language standard rather than a machine manual is portable by construction."
+            },
+            {
+                "n": 7,
+                "kind": "generalization",
+                "text": "A layer lights when the verified property is load-bearing for work at that layer: portable code that must observe changing memory depends on this contract everywhere."
+            },
+            {
+                "n": 8,
+                "kind": "explanation",
+                "text": "A skeptic might say volatile is a compiler implementation detail, not an algorithm."
+            },
+            {
+                "n": 9,
+                "kind": "refutation",
+                "text": "The detail that varies, register allocation and mnemonics, is not the claim. The claim is the contract, the compiler must repeat the read, which is a precise, portable, checkable mechanism: the same shape of argument the Algorithm layer exists to record.",
+                "refutes": 8
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3,
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    5
+                ],
+                "strength": "strong",
+                "note": "The measured behavior, the language rule, and the post's demonstration establish per the domain warrant that the intermediate conclusion holds."
+            },
+            {
+                "from": [
+                    5
+                ],
+                "via": [
+                    7
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "With the objection in (8) answered by (9), the intermediate conclusion plus the lighting rule yields the verdict in (1)."
+            }
+        ]
     }
   ]
 }

@@ -948,6 +948,35 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Read the Compiler Must Not Skip</h3>
+          <!-- LAYER-STRIP:the-read-the-compiler-must-not-skip -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 13:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The UART driver in the bare-metal RISC-V tree waits on the transmitter with a two-line poll loop. The line status register sits at 0x10000005: the virt board's UART0 base, 0x10000000, plus the register offset 0x05. Until bit 5, the transmitter-holding-register-empty flag, reads set, the loop spins. Every access goes through one helper, a function returning a volatile pointer into that address:</p>
+<pre><code>static volatile unsigned char *uart_reg(unsigned long off) {
+    return (volatile unsigned char *)(UART0_BASE + off);
+}
+while ((*uart_reg(UART_LSR) &amp; LSR_THRE) == 0)
+    ;  // spin until the UART raises the transmitter-empty flag</code></pre>
+          <p>That one qualifier is the difference between a driver that sees the hardware change its mind and one that never does. Remove it and compile the loop's shape with gcc 13.3 at -O2. The compiler reads 0x10000005 exactly once, tests the bit, and if it was clear, drops into an empty spin with no memory access inside it:</p>
+<pre><code>testb $0x20, 0x10000005   # the single read, hoisted out of the loop
+jne   done
+jmp   spin                # empty spin: no load, the stale bit wins</code></pre>
+          <p>The reasoning is visible in the disassembly: the plain build hoists the load out of the loop, because in C's abstract machine that address is ordinary memory, and ordinary memory cannot change under the program's feet. Restore the qualifier and the load moves back inside the loop, a fresh read on every iteration:</p>
+<pre><code>reload:
+movzbl 0x10000005, %eax   # the load lives inside the loop
+test   $0x20, %al
+je     reload</code></pre>
+          <p>Why is the compiler allowed to do that? Because a plain read of that address is not an observable side effect. The compiler may assume the value it read is still there, because in the model where it is right, nothing else touches that byte. Memory-mapped hardware breaks the model: the UART flips the status bit from outside the program, in silicon the compiler cannot see. A volatile access is an observable side effect, and the standard's rule is that the compiler may neither optimize it out nor reorder it across a sequence point. volatile is the program telling the truth about the address: this one changes on its own, go look every time.</p>
+          <p>The temptation is to read volatile as a general safe-to-share marker, and it is exactly wrong. The Linux kernel's volatile-considered-harmful document is the corrective: programmers reach for volatile as an easy atomic, and it gives no atomicity, no synchronization, and no memory ordering. Two threads passing a flag through a volatile int can still race, still tear, still reorder on the hardware. The standard says it plainly too: volatile is not suitable for communication between threads. The qualifier was meant for memory-mapped I/O registers, which is exactly this use. The kernel's own READ_ONCE is modeled as a volatile read with relaxed ordering, and even that implies no barrier.</p>
+          <p>One sentence to carry away: volatile answers 'may the compiler skip this read?' with no. It never answers 'who else is writing?' That second question takes atomics or locks. The UART loop needs the first answer and nothing else, which is why one qualifier is the whole driver.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c" target="_blank" rel="noopener">src/uart.c</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Alarm That Will Not Leave Its Room</h3>
           <!-- LAYER-STRIP:the-alarm-that-will-not-leave-its-room -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 12:15 EDT</time></p>
