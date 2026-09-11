@@ -15269,5 +15269,119 @@
     },
     "portability": null,
     "stressItems": null
+  },
+  {
+    "id": "src-sie-ssip-clear-suppresses",
+    "kicker": "RISC-V",
+    "title": "sie.SSIE gates the supervisor software interrupt",
+    "summary": "A bare-metal M-mode program delegates the supervisor software interrupt to S-mode and pends it while the per-interrupt enable bit stays clear. The interrupt reads pending across a long poll with the global SIE gate open and no trap fires; setting the enable bit inside a labeled wait loop delivers exactly one S-mode trap carrying the interrupt cause code, the handler clears the pending bit, and a quiet window shows no second delivery.",
+    "checks": 20,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sie-ssip-clear-suppresses",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-ssip-clear-suppresses/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "20 checks on QEMU 8.2.2: with sie.SSIE clear and SIE set, a pended supervisor software interrupt stays pending across 2,000,000 reads with 0 traps; setting SSIE delivers exactly 1 S-mode trap with scause 0x8000000000000001 and sepc inside the wait loop, the handler clears the pending bit, and a 2,000,000-read quiet window shows no re-delivery; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x87a8ee03efaf53f3, the FNV-1a fold of the verdict values, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, bare-metal M-mode dropping to S-mode on the virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sie-ssip-clear-suppresses",
+    "terminalLabel": "Verified QEMU 8.2.2 output",
+    "terminalOutput": "$ qemu-system-riscv64 -machine virt -nographic -bios none -kernel sie-ssip-clear-suppresses.elf\nsie-ssip-clear-suppresses: S-mode SSIE gate test\nboot: mideleg=0x1444\nmideleg: write=0x2 readback=0x1446\nmip: after-pend=0x82\nS-mode entry: SIE=1\nS-mode entry: sie=0x0\nphase 1: polling with SSIE clear\ngated: reads-done=2000000 sip.SSIP-observed=1 traps-during-window=0 (expect 2000000 / 1 / 0)\nphase 2: opening sie.SSIE inside the labeled wait loop\ntrap1: scause=0x8000000000000001 sepc=0x800002a0 expected=[0x8000029c,0x800002b0) traps=1 sip-at-entry=0x2\nafter-trap: sip=0x0 m_traps=0 (expect 0x0 / 0)\nphase 3: quiet window\nquiet: reads-done=2000000 traps=1 (expect 2000000 / 1)\nVERDICT gated_traps=0 gated_ssip_observed=1 gate_open_traps=1 quiet_extra_traps=0 scause=0x8000000000000001 sip_ssip_final=0 ssie_after_open=1\nchecksum: 0x87a8ee03efaf53f3\nchecks=20 fails=0\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the claim is the machine contract's per-interrupt enable rule: a pending interrupt stays pending without trapping while its sie enable bit is clear and delivers exactly once when the bit is set, and the module verifies that rule on each side of the transition."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts pending-bit readbacks and trap counts across byte-identical runs, never timing: pipeline or cache behavior changes how fast a trap returns, never whether the enable gate admits it."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because machine-mode software sets up the whole experiment: it delegates the software interrupt through mideleg, pends it through mip, installs both trap vectors, and opens the address space with a PMP entry before dropping to S-mode."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor kernel drives this same per-interrupt enable through its sie view to admit or suppress the software interrupt, and the module verifies the gate genuinely refuses delivery while preserving the pending state the kernel would later service."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim is about a control bit's effect on trap delivery, not a computation: there is no portable operation here, only the machine's enable gate."
+      }
+    },
+    "portability": null,
+    "stressItems": null
+  },
+  {
+    "id": "user-sbrk-noop",
+    "kicker": "XV6",
+    "title": "sbrk(0) reports the break without moving it",
+    "summary": "An xv6 user-space test reads the break twice with a zero increment and checks both readings agree exactly. It grows the heap one page, reads the break twice more, and checks both equal the old break plus one page; a canary tiled over the grown page reads back byte-exact, proving the new page is usable.",
+    "checks": 6,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/sbrknoop.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks on QEMU 8.2.2: two sbrk(0) calls agree at 0x4000; sbrk(4096) returns the old break 0x4000; two more sbrk(0) calls both read 0x5000, exactly the old break plus one page; a canary tiled over the grown page reads back byte-exact; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9B1CE19B61131225, the FNV-1a fold of the break readbacks and canary result, independently recomputed on the host to the same value, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, no kernel changes"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / sbrknoop",
+    "terminalLabel": "Verified xv6 sbrk QEMU output",
+    "terminalOutput": "$ sbrknoop\ncheck 1: sbrk(0) call A: break 0x4000 is page-aligned\ncheck 2: sbrk(0) call B: 0x4000 == call A, unchanged\ncheck 3: sbrk(4096) returned old break 0x4000\ncheck 4: sbrk(0) call C: 0x5000 == 0x4000+4096, matches\ncheck 5: sbrk(0) call D: 0x5000 == 0x4000+4096, unchanged\ncheck 6: 4096-byte canary write/readback byte-exact\nchecksum: 0x9B1CE19B61131225\nsbrk-noop values: A=0x4000 B=0x4000 grow=0x4000 C=0x5000 D=0x5000\nchecks: 6 mismatches: 0\nPASS: sbrk(0) queries the break without changing it, growth shifts it by exactly 4096",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the claim is about xv6's break bookkeeping, not the machine contract: the module asserts break addresses and a canary readback, which would behave identically on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts break addresses and byte-exact readbacks across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the verified property is the sbrk contract: sys_sbrk must pass a zero increment straight through as a pure query of the process break, and the module checks that two queries agree before and after a real growth."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim depends on xv6's sys_sbrk and growproc behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
+      }
+    },
+    "portability": null,
+    "stressItems": null
   }
 ]

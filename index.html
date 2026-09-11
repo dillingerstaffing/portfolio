@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-211452">
+  <meta name="build-version" content="v20260911-213457">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -16936,6 +16936,120 @@ assert(check == 0x2144DF1C);</code></pre>
       "ALGORITHM": {
         "applies": false,
         "because": "Not at ALGORITHM because the claim depends on xv6's growproc and deallocuvm behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
+      }
+    },
+    "portability": null,
+    "stressItems": null
+  },
+  {
+    "id": "src-sie-ssip-clear-suppresses",
+    "kicker": "RISC-V",
+    "title": "sie.SSIE gates the supervisor software interrupt",
+    "summary": "A bare-metal M-mode program delegates the supervisor software interrupt to S-mode and pends it while the per-interrupt enable bit stays clear. The interrupt reads pending across a long poll with the global SIE gate open and no trap fires; setting the enable bit inside a labeled wait loop delivers exactly one S-mode trap carrying the interrupt cause code, the handler clears the pending bit, and a quiet window shows no second delivery.",
+    "checks": 20,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sie-ssip-clear-suppresses",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-ssip-clear-suppresses/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "20 checks on QEMU 8.2.2: with sie.SSIE clear and SIE set, a pended supervisor software interrupt stays pending across 2,000,000 reads with 0 traps; setting SSIE delivers exactly 1 S-mode trap with scause 0x8000000000000001 and sepc inside the wait loop, the handler clears the pending bit, and a 2,000,000-read quiet window shows no re-delivery; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x87a8ee03efaf53f3, the FNV-1a fold of the verdict values, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, bare-metal M-mode dropping to S-mode on the virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / sie-ssip-clear-suppresses",
+    "terminalLabel": "Verified QEMU 8.2.2 output",
+    "terminalOutput": "$ qemu-system-riscv64 -machine virt -nographic -bios none -kernel sie-ssip-clear-suppresses.elf\nsie-ssip-clear-suppresses: S-mode SSIE gate test\nboot: mideleg=0x1444\nmideleg: write=0x2 readback=0x1446\nmip: after-pend=0x82\nS-mode entry: SIE=1\nS-mode entry: sie=0x0\nphase 1: polling with SSIE clear\ngated: reads-done=2000000 sip.SSIP-observed=1 traps-during-window=0 (expect 2000000 / 1 / 0)\nphase 2: opening sie.SSIE inside the labeled wait loop\ntrap1: scause=0x8000000000000001 sepc=0x800002a0 expected=[0x8000029c,0x800002b0) traps=1 sip-at-entry=0x2\nafter-trap: sip=0x0 m_traps=0 (expect 0x0 / 0)\nphase 3: quiet window\nquiet: reads-done=2000000 traps=1 (expect 2000000 / 1)\nVERDICT gated_traps=0 gated_ssip_observed=1 gate_open_traps=1 quiet_extra_traps=0 scause=0x8000000000000001 sip_ssip_final=0 ssie_after_open=1\nchecksum: 0x87a8ee03efaf53f3\nchecks=20 fails=0\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the claim is the machine contract's per-interrupt enable rule: a pending interrupt stays pending without trapping while its sie enable bit is clear and delivers exactly once when the bit is set, and the module verifies that rule on each side of the transition."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts pending-bit readbacks and trap counts across byte-identical runs, never timing: pipeline or cache behavior changes how fast a trap returns, never whether the enable gate admits it."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because machine-mode software sets up the whole experiment: it delegates the software interrupt through mideleg, pends it through mip, installs both trap vectors, and opens the address space with a PMP entry before dropping to S-mode."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor kernel drives this same per-interrupt enable through its sie view to admit or suppress the software interrupt, and the module verifies the gate genuinely refuses delivery while preserving the pending state the kernel would later service."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim is about a control bit's effect on trap delivery, not a computation: there is no portable operation here, only the machine's enable gate."
+      }
+    },
+    "portability": null,
+    "stressItems": null
+  },
+  {
+    "id": "user-sbrk-noop",
+    "kicker": "XV6",
+    "title": "sbrk(0) reports the break without moving it",
+    "summary": "An xv6 user-space test reads the break twice with a zero increment and checks both readings agree exactly. It grows the heap one page, reads the break twice more, and checks both equal the old break plus one page; a canary tiled over the grown page reads back byte-exact, proving the new page is usable.",
+    "checks": 6,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/sbrknoop.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks on QEMU 8.2.2: two sbrk(0) calls agree at 0x4000; sbrk(4096) returns the old break 0x4000; two more sbrk(0) calls both read 0x5000, exactly the old break plus one page; a canary tiled over the grown page reads back byte-exact; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9B1CE19B61131225, the FNV-1a fold of the break readbacks and canary result, independently recomputed on the host to the same value, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, no kernel changes"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / sbrknoop",
+    "terminalLabel": "Verified xv6 sbrk QEMU output",
+    "terminalOutput": "$ sbrknoop\ncheck 1: sbrk(0) call A: break 0x4000 is page-aligned\ncheck 2: sbrk(0) call B: 0x4000 == call A, unchanged\ncheck 3: sbrk(4096) returned old break 0x4000\ncheck 4: sbrk(0) call C: 0x5000 == 0x4000+4096, matches\ncheck 5: sbrk(0) call D: 0x5000 == 0x4000+4096, unchanged\ncheck 6: 4096-byte canary write/readback byte-exact\nchecksum: 0x9B1CE19B61131225\nsbrk-noop values: A=0x4000 B=0x4000 grow=0x4000 C=0x5000 D=0x5000\nchecks: 6 mismatches: 0\nPASS: sbrk(0) queries the break without changing it, growth shifts it by exactly 4096",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the claim is about xv6's break bookkeeping, not the machine contract: the module asserts break addresses and a canary readback, which would behave identically on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts break addresses and byte-exact readbacks across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the verified property is the sbrk contract: sys_sbrk must pass a zero increment straight through as a pure query of the process break, and the module checks that two queries agree before and after a real growth."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim depends on xv6's sys_sbrk and growproc behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
       }
     },
     "portability": null,
@@ -124083,6 +124197,426 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 2,
         "kind": "evidence",
         "text": "The checks are break addresses and canary readbacks on this kernel; no portable computation is claimed.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim that depends on one kernel's implementation states that kernel's behavior, not a portable mechanism."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sie-ssip-clear-suppresses|ISA": {
+    "item": "src-sie-ssip-clear-suppresses",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the claim is the machine contract's per-interrupt enable rule: a pending interrupt stays pending without trapping while its sie enable bit is clear and delivers exactly once when the bit is set, and the module verifies that rule on each side of the transition.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ISA because the claim is the machine contract's per-interrupt enable rule: a pending interrupt stays pending without trapping while its sie enable bit is clear and delivers exactly once when the bit is set, and the module verifies that rule on each side of the transition."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows 2,000,000 reads with sip.SSIP observed pending and 0 traps while SSIE is clear, then exactly 1 trap with scause 0x8000000000000001 after the bit is set, byte-identical across 3 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-ssip-clear-suppresses/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The RISC-V privileged specification defines sie as the S-mode view of the interrupt-enable bits and assigns the supervisor software interrupt to bit 1 of the sip and sie registers.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When a program measures exactly the contract behavior the specification names, the claim lives at the machine-contract layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sie-ssip-clear-suppresses|MICROARCH": {
+    "item": "src-sie-ssip-clear-suppresses",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof asserts pending-bit readbacks and trap counts across byte-identical runs, never timing: pipeline or cache behavior changes how fast a trap returns, never whether the enable gate admits it.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof asserts pending-bit readbacks and trap counts across byte-identical runs, never timing: pipeline or cache behavior changes how fast a trap returns, never whether the enable gate admits it."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module's checks compare sip readbacks and trap counts only; no cycle counts, latencies, or contention measurements appear in the proof log.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-ssip-clear-suppresses/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A verification that never measures timing cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sie-ssip-clear-suppresses|FIRMWARE": {
+    "item": "src-sie-ssip-clear-suppresses",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because machine-mode software sets up the whole experiment: it delegates the software interrupt through mideleg, pends it through mip, installs both trap vectors, and opens the address space with a PMP entry before dropping to S-mode.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at FIRMWARE because machine-mode software sets up the whole experiment: it delegates the software interrupt through mideleg, pends it through mip, installs both trap vectors, and opens the address space with a PMP entry before dropping to S-mode."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records mideleg readback 0x1446 after writing bit 1, mtvec and stvec installed in direct mode, one PMP NAPOT entry opened, and the M-mode pend of mip.SSIP before the sret into S-mode.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-ssip-clear-suppresses/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Boot-time machine-mode configuration that the S-mode observation depends on makes the claim a firmware-layer claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sie-ssip-clear-suppresses|KERNEL": {
+    "item": "src-sie-ssip-clear-suppresses",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because a supervisor kernel drives this same per-interrupt enable through its sie view to admit or suppress the software interrupt, and the module verifies the gate genuinely refuses delivery while preserving the pending state the kernel would later service.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at KERNEL because a supervisor kernel drives this same per-interrupt enable through its sie view to admit or suppress the software interrupt, and the module verifies the gate genuinely refuses delivery while preserving the pending state the kernel would later service."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "During phase 1 the pending bit stays set and readable, sip.SSIP observed 1, while 0 traps fire, so the refused delivery is not a silently cleared source.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-ssip-clear-suppresses/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "An enable bit a supervisor kernel toggles to control interrupt delivery is load-bearing for kernel work when the proof checks the exact refusal semantics the kernel relies on."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-sie-ssip-clear-suppresses|ALGORITHM": {
+    "item": "src-sie-ssip-clear-suppresses",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the claim is about a control bit's effect on trap delivery, not a computation: there is no portable operation here, only the machine's enable gate.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the claim is about a control bit's effect on trap delivery, not a computation: there is no portable operation here, only the machine's enable gate."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's checks are CSR readbacks, trap counts, and cause codes; no computed value is produced or compared.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-ssip-clear-suppresses/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim with no computed output and no portable equivalent states machine behavior, not an algorithm."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-noop|ISA": {
+    "item": "user-sbrk-noop",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the claim is about xv6's break bookkeeping, not the machine contract: the module asserts break addresses and a canary readback, which would behave identically on any RISC-V implementation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ISA because the claim is about xv6's break bookkeeping, not the machine contract: the module asserts break addresses and a canary readback, which would behave identically on any RISC-V implementation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's checks are break addresses 0x4000 and 0x5000 plus a 4096-byte canary readback; no instruction, CSR, trap, or memory-model behavior is asserted.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim whose checks would read the same on any implementation of the ISA does not depend on the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-noop|MICROARCH": {
+    "item": "user-sbrk-noop",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof asserts break addresses and byte-exact readbacks across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof asserts break addresses and byte-exact readbacks across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the pages return, never which bytes they hold."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "No timing measurement appears in the proof log; the checksum folds break values and the canary result only.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A verification that never measures timing cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-noop|FIRMWARE": {
+    "item": "user-sbrk-noop",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the break arithmetic never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the program calling sbrk from user space with no machine-mode register reads or writes in the test path.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A user-space observation that consults no boot-time state does not depend on firmware."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-noop|KERNEL": {
+    "item": "user-sbrk-noop",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because the verified property is the sbrk contract: sys_sbrk must pass a zero increment straight through as a pure query of the process break, and the module checks that two queries agree before and after a real growth.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at KERNEL because the verified property is the sbrk contract: sys_sbrk must pass a zero increment straight through as a pure query of the process break, and the module checks that two queries agree before and after a real growth."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records sbrk(0) returning 0x4000 twice before the grow and 0x5000 twice after sbrk(4096), with the grow handing out memory starting at the old break.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "When the property under test is the exact bookkeeping rule of a kernel subsystem, the claim lives at the kernel layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrk-noop|ALGORITHM": {
+    "item": "user-sbrk-noop",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the claim depends on xv6's sys_sbrk and growproc behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the claim depends on xv6's sys_sbrk and growproc behavior, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The checks are break addresses on this kernel's process layout; no portable computation is claimed.",
         "source": {
           "tier": "lab",
           "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
