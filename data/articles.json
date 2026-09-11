@@ -1,5 +1,43 @@
 [
   {
+    "title": "The Multiply With No Multiply",
+    "date": "2026-09-11",
+    "paragraphs": [
+      "Base RISC-V, RV32I, has no multiply instruction. The mul instruction lives in the M extension, which is optional, and a core that skips M still has to multiply. The software that does it is what compilers emit and what this lab writes by hand. The obvious move is to write a * b and trust the compiler; on an M-less core the compiler has no multiply to emit, so it calls a library routine instead. The lab takes the harder road on purpose: it bans the * operator from the source entirely, then checks the compiled object to make sure the compiler did not smuggle one back in. The claim has to hold beneath the abstraction, so the check runs beneath the abstraction.",
+      "One you can check by hand. Take A = 0x00020003 and B = 0x00040005. Split each into 16-bit halves: a1 = 2, a0 = 3, b1 = 4, b0 = 5. Schoolbook multiplication is the grade-school kind: multiply every pair of digits and add the partial products at their positions. The expansion is A*B = a0*b0 + (a0*b1 + a1*b0)*2^16 + a1*b1*2^32. Modulo 2^32, the last term carries a factor of 2^32 and vanishes, and of the middle term only the low 16 bits survive the 2^16 scaling. So a0*b0 = 15, and the cross term is 3*4 + 2*5 = 22, times 65536 is 1,441,792. Add 15: 1,441,807, which is 0x16000F. Check it against the real multiply: 131,075 * 262,149 = 34,361,180,175, and mod 2^32 that is exactly 1,441,807. The shifts and adds agreed with the hardware multiply, without ever being one.",
+      "Each 16-by-16 partial product is exact in 32 bits, built the way lab/126 builds it: for each set bit i of one half, add the other half shifted left by i into a 32-bit accumulator. The lab's function is called mullo32, and the code is the insight here:",
+      "Four lines, taken verbatim from the module. p0, p1, p2 are the three partial products a0*b0, a0*b1, a1*b0. The masks keep only the low 16 bits of the cross terms, the shifts place them at bit 16, and adding them one at a time in unsigned arithmetic performs the inner mod 2^16 for free. The a1*b1 term is never computed at all: it would carry a factor of 2^32, so it cannot touch the low 32 bits of the answer.",
+      "The test oracle is the native expression (uint32_t)(a * b), deliberately a different computation from the schoolbook expansion, so agreement pins the identity instead of a shared bug. The source ban is checked two ways: a text search for * finds hits only in comment delimiters and prose, and the Makefile compiles the file alone at -O2 and fails the build unless the object contains zero multiply instructions. gcc 13.3.0 compiled the shift-add loops branchless, bit-test plus conditional move, and inlined them; the disassembly has no mul or imul anywhere. Lab/126 ran every one of the 4,294,967,296 pairs of 16-bit values, all 4.3 billion of them, exhaustive, zero mismatches, with one checksum identical across -O0, -O2, and the sanitizer build. Lab/128 ran 17,777,216 checks, 16.7 million exhaustive 24-bit values plus a million random 64-bit pairs, zero mismatches. Best of five at -O2: 47.232 nanoseconds per value, the timing honestly including the random-input step and the running accumulate, about the time light needs to cross a large room. The honest boundary: the module ran on the host toolchain, so what the 4.3 billion checks prove is that the shift-add construction returns exactly what the multiply instruction returns; the M-less core is why the construction matters, not where it was measured. One sentence to carry away: an instruction the base ISA never had, rebuilt from shifts and adds, and proved identical to the hardware multiply on 4.3 billion inputs without a single mismatch."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/128-mul-lo32-nomul",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/128-mul-lo32-nomul/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because whether a multiply instruction exists is an ISA contract question: base RV32I has no MUL, it lives in the optional M extension, and this lab is the software that contract demands on cores that skip M, proved to return exactly what the instruction returns"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the verdicts are differential equalities that hold regardless of pipeline, cache, or predictor behavior: no microarchitectural fact can move any check, and the 47.232 ns figure is a timing ceiling, not a claim about any microarchitecture"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the module is ordinary userland C compiled by gcc and run as a process: no boot code, no PMP entry, no SBI call enters the computation, so nothing firmware does can move the result"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the multiply is a pure function of its two input values: whichever kernel schedules the process, the same inputs give the same product, so kernel behavior cannot move the verdict"
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because the schoolbook expansion on 16-bit halves, with the 2^32 term provably vanishing, is a pure computational mechanism: the masked-shifted combine performs the inner mod 2^16 in ordinary unsigned arithmetic, and the proof is exhaustive over all 4.3 billion input pairs"
+      }
+    }
+  },
+  {
     "title": "The Bit That Reads Execute-Only Pages",
     "date": "2026-09-11",
     "paragraphs": [
