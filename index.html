@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-071131">
+  <meta name="build-version" content="v20260911-074040">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -13426,6 +13426,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-sum",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-sum",
     "terminalLabel": "Verified src-sstatus-sum QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-menvcfg-stce",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "menvcfg.STCE advertisement matches real Sstc, QEMU",
+    "summary": "menvcfg boots with STCE clear, but an all-ones write legalizes with STCE set. S-mode stimecmp reads work with no traps, and arming stimecmp delivers one supervisor timer interrupt, so the advertised bit agrees with the real Sstc presence.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines menvcfg.STCE as the Sstc presence advertisement: S-mode may use stimecmp exactly when the extension is present. The proof verifies this contract on QEMU 8.2.2: an all-ones write legalizes with STCE set, S-mode stimecmp reads work with no traps, and an armed stimecmp delivers one supervisor timer interrupt, 17 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks the STCE advertisement against real Sstc behavior: 17 checks, 0 mismatches. Whether stimecmp access works is determined by the extension's presence and the menvcfg bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware reads menvcfg.STCE to learn whether Sstc is available before programming supervisor timer delivery. The verified property (STCE set by an all-ones write, stimecmp access works, one interrupt per arm) is the presence signal firmware consults when choosing the timer path."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program stimecmp for their timer ticks when Sstc is present. The verified property (S-mode stimecmp reads work, one supervisor timer interrupt per arm, clean disarm with no re-delivery) is the timer-delivery contract the kernel's clock path depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure advertise-then-verify rule: a capability bit is checked against the real behavior it claims. The same advertised-capability pattern appears in portable code wherever a feature flag is confirmed by exercising the feature it names."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 in-program checks on QEMU 8.2.2: STCE legalizes set on an all-ones write, S-mode stimecmp reads work with 0 traps, one armed stimecmp delivers a supervisor timer interrupt with no re-delivery, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xddf55eeede88e646, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode and S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / menvcfg-stce",
+    "terminalOutput": "$ make run-menvcfg-stce\nboot: menvcfg=0x2000000000000000 STCE(bit63)=0\nprobe: csrw menvcfg, all-ones; legalized readback=0xa0000000000000f1\nset: csrs menvcfg, STCE; readback=0xa000000000000000 STCE sticks: yes (Sstc advertised)\nSTCE advertised = 1, S-mode access worked = 1 -> advertisement MATCHES reality\ntrap_count=1 scause=0x8000000000000005 sepc=0x80000210\ntraps in quiet window=0\nchecksum (FNV-1a over verdict values) = 0xddf55eeede88e646\nchecks=17 fails=0\nRESULT: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-stce",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/menvcfg-stce",
+    "terminalLabel": "Verified src-menvcfg-stce QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-tm-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "scounteren.TM gates U-mode rdtime, QEMU",
+    "summary": "Clearing scounteren.TM makes a U-mode rdtime trap as illegal instruction, with sepc at the rdtime site and the destination register untouched. Setting TM reopens the gate and the reads return the advancing timer.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines scounteren.TM as the U-mode time availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdtime traps with scause=2 and sepc at the rdtime site, enabled reads return increasing timer values, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap/read outcomes against the TM gate rule: 18 checks, 0 mismatches. Whether U-mode may read time is determined by the scounteren control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The gate under test is programmed by S-mode itself: the supervisor writes scounteren to control U-mode reads, so the access decision sits with the kernel. M-mode firmware owns only the outer mcounteren enable, which the proof opens once as scaffolding; the verified trap-vs-read property is not a firmware configuration."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program scounteren to decide what user space may read, and TM is the bit that hides or exposes the timer. The verified property (TM clear traps the U-mode read with sepc at the site, TM set returns the advancing timer) is the user-access gate the kernel's counter policy depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit selects trap vs read for a lower privilege level. The same per-resource enable-bit pattern appears in portable code wherever access to shared state is mediated by flags."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-tm-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 in-program checks on QEMU 8.2.2: U-mode rdtime with scounteren.TM clear traps illegal-instruction with sepc at the rdtime site, with TM set two reads return strictly increasing values, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9756843e0befd207, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M/S/U-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-tm-gate",
+    "terminalOutput": "$ make run-scounteren-tm-gate\nboot: scounteren=0x0\nwrite: mcounteren.TM=1 (unblock the M-level gate); readback=0x2\n[0] gated rdtime scause=0x2 stval=0xc01022f3 sepc=0x80000254 t0=0xdeadbeefdeadbeef a0=0x80001183\nphase B: setting scounteren.TM in S-mode...\n  scounteren readback=0x2\n  rdtime sample 0 (t0) = 0xe3d27\n  rdtime sample 1 (t1) = 0xe3d60  (delta = 57)\nchecksum (FNV-1a over verdict values) = 0x9756843e0befd207\nRESULT: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-tm-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-tm-gate",
+    "terminalLabel": "Verified src-scounteren-tm-gate QEMU output",
     "showRepoLink": true
   }
 ];
@@ -86368,6 +86482,738 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-menvcfg-stce|ISA": {
+    "item": "src-menvcfg-stce",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines menvcfg.STCE as the Sstc presence advertisement: S-mode may use stimecmp exactly when the extension is present. The proof verifies this contract on QEMU 8.2.2: an all-ones write legalizes with STCE set, S-mode stimecmp reads work with no traps, and an armed stimecmp delivers one supervisor timer interrupt, 17 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines menvcfg.STCE as the Sstc presence advertisement: S-mode may use stimecmp exactly when the extension is present. The proof verifies this contract on QEMU 8.2.2: an all-ones write legalizes with STCE set, S-mode stimecmp reads work with no traps, and an armed stimecmp delivers one supervisor timer interrupt, 17 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 17 in-program checks on QEMU 8.2.2: an all-ones write to menvcfg legalizes with STCE set, S-mode stimecmp reads work with 0 traps, and one armed stimecmp delivers a supervisor timer interrupt, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged specification defines menvcfg.STCE (bit 63) as the advertisement for the Sstc extension, and Sstc as the S-mode stimecmp timer mechanism.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA manual",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The card verifies the exact STCE advertisement contract the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "Objection: the card only ran on an emulator, so the ISA slot cannot be about the real contract."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The objection confuses the verification vehicle with the property verified. The proof checks the contract the ISA defines (STCE legalization, stimecmp access, timer delivery), and the probandum names the environment the checks ran in."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-menvcfg-stce|MICROARCH": {
+    "item": "src-menvcfg-stce",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks the STCE advertisement against real Sstc behavior: 17 checks, 0 mismatches. Whether stimecmp access works is determined by the extension's presence and the menvcfg bit, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks the STCE advertisement against real Sstc behavior: 17 checks, 0 mismatches. Whether stimecmp access works is determined by the extension's presence and the menvcfg bit, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 17 checks, 0 mismatches: whether S-mode stimecmp access works and whether the supervisor timer interrupt arrives is decided by the STCE bit and extension presence.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A dim slot must establish invariance: the verified outcome does not change with the layer's implementation choices."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Pipeline depth, cache policy, and predictor design cannot change whether the STCE bit legalizes or whether stimecmp access traps, so the microarchitecture slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: a real timer is hardware, so microarchitecture must matter."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses the physical timer with the verified contract. The checks decide a privilege and extension rule (does access trap, does the interrupt arrive), and that decision is the same for any pipeline or cache that implements the contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-menvcfg-stce|FIRMWARE": {
+    "item": "src-menvcfg-stce",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware reads menvcfg.STCE to learn whether Sstc is available before programming supervisor timer delivery. The verified property (STCE set by an all-ones write, stimecmp access works, one interrupt per arm) is the presence signal firmware consults when choosing the timer path.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware reads menvcfg.STCE to learn whether Sstc is available before programming supervisor timer delivery. The verified property (STCE set by an all-ones write, stimecmp access works, one interrupt per arm) is the presence signal firmware consults when choosing the timer path."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows M-mode setting STCE with csrs and reading back 0xa000000000000000, then S-mode stimecmp access working and one supervisor timer interrupt arriving per arm.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "M-mode firmware reads STCE to choose the supervisor timer path; the verified presence signal is the input to that firmware decision, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the M-mode code only ran the test harness, it did not consume STCE."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The slot asks whether the verified property is load-bearing for firmware work, not whether this run's firmware consumed it. Any M-mode timer setup must consult STCE before touching stimecmp."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-menvcfg-stce|KERNEL": {
+    "item": "src-menvcfg-stce",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels program stimecmp for their timer ticks when Sstc is present. The verified property (S-mode stimecmp reads work, one supervisor timer interrupt per arm, clean disarm with no re-delivery) is the timer-delivery contract the kernel's clock path depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels program stimecmp for their timer ticks when Sstc is present. The verified property (S-mode stimecmp reads work, one supervisor timer interrupt per arm, clean disarm with no re-delivery) is the timer-delivery contract the kernel's clock path depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log phase 2 shows S-mode arming stimecmp, exactly one supervisor timer trap arriving with scause=0x8000000000000005, the handler disarming to all-ones, and a quiet window with no re-delivery.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Supervisor kernels program stimecmp for timer ticks; the verified delivery contract (one interrupt per arm, clean disarm) is what the kernel clock path depends on."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: no kernel ran, only a bare-metal S-mode test."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The slot is a relevance map. The verified property (stimecmp delivers exactly one supervisor timer interrupt per arm) is the mechanism a supervisor kernel's timer subsystem relies on, so it lights regardless of whether a full kernel ran."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-menvcfg-stce|ALGORITHM": {
+    "item": "src-menvcfg-stce",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure advertise-then-verify rule: a capability bit is checked against the real behavior it claims. The same advertised-capability pattern appears in portable code wherever a feature flag is confirmed by exercising the feature it names.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure advertise-then-verify rule: a capability bit is checked against the real behavior it claims. The same advertised-capability pattern appears in portable code wherever a feature flag is confirmed by exercising the feature it names."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the advertise-then-verify pattern: the STCE capability bit is read, its all-ones legalization is checked, then the advertised Sstc feature is exercised.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A portable pattern verified in one domain transfers to any domain with the same structure."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure capability-bit check matched against real behavior, a pattern that appears in portable code wherever a feature flag is confirmed by exercising the feature it names."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the check used RISC-V CSRs, so it cannot be portable."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The CSRs are the instance; the advertise-then-verify rule is the pattern. The pattern, not the CSR names, is what transfers."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-tm-gate|ISA": {
+    "item": "src-scounteren-tm-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines scounteren.TM as the U-mode time availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdtime traps with scause=2 and sepc at the rdtime site, enabled reads return increasing timer values, 18 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines scounteren.TM as the U-mode time availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdtime traps with scause=2 and sepc at the rdtime site, enabled reads return increasing timer values, 18 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 18 in-program checks on QEMU 8.2.2: with TM clear, U-mode rdtime traps with scause=2 and sepc at the rdtime site; with TM set, two reads return strictly increasing values, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-tm-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged specification defines scounteren.TM as the gate on U-mode time reads, with mcounteren.TM as the outer M-mode enable.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA manual",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "penultimate",
+        "text": "The card verifies the exact TM gating contract the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "Objection: the card also needed mcounteren.TM, so the ISA claim is muddled."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The outer enable is part of the same ISA contract: mcounteren gates S-mode and below, scounteren gates U-mode. The proof checked each gate at its own level."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-tm-gate|MICROARCH": {
+    "item": "src-scounteren-tm-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks trap/read outcomes against the TM gate rule: 18 checks, 0 mismatches. Whether U-mode may read time is determined by the scounteren control bit, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks trap/read outcomes against the TM gate rule: 18 checks, 0 mismatches. Whether U-mode may read time is determined by the scounteren control bit, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 18 checks, 0 mismatches on trap-vs-read outcomes decided by the scounteren.TM bit.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-tm-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A dim slot must establish invariance: the verified outcome does not change with the layer's implementation choices."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "No pipeline, cache, or predictor can turn a gated illegal-instruction trap into a successful read, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the timer itself is a microarchitectural device."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The verified claim is the privilege gate's decision (trap vs read), not the timer's internals. The decision is identical for any timer implementation that honors the contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-tm-gate|FIRMWARE": {
+    "item": "src-scounteren-tm-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The gate under test is programmed by S-mode itself: the supervisor writes scounteren to control U-mode reads, so the access decision sits with the kernel. M-mode firmware owns only the outer mcounteren enable, which the proof opens once as scaffolding; the verified trap-vs-read property is not a firmware configuration.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The gate under test is programmed by S-mode itself: the supervisor writes scounteren to control U-mode reads, so the access decision sits with the kernel. M-mode firmware owns only the outer mcounteren enable, which the proof opens once as scaffolding; the verified trap-vs-read property is not a firmware configuration."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows M-mode opening mcounteren.TM once as setup, then S-mode programming scounteren.TM itself in phase B before the U-mode reads.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-tm-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A dim slot must establish invariance: the verified outcome does not change with the layer's implementation choices."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified gate is the supervisor's own access policy on U-mode reads; machine-mode firmware's only role is the outer enable set once as scaffolding, so the firmware slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: M-mode firmware had to act (opening mcounteren.TM), so firmware is involved."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "Setup involvement is not the verified claim. The 18 checks decide what scounteren.TM does to U-mode reads, a decision made and verified at S-mode, independent of any firmware timer policy."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-tm-gate|KERNEL": {
+    "item": "src-scounteren-tm-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels program scounteren to decide what user space may read, and TM is the bit that hides or exposes the timer. The verified property (TM clear traps the U-mode read with sepc at the site, TM set returns the advancing timer) is the user-access gate the kernel's counter policy depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels program scounteren to decide what user space may read, and TM is the bit that hides or exposes the timer. The verified property (TM clear traps the U-mode read with sepc at the site, TM set returns the advancing timer) is the user-access gate the kernel's counter policy depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log phase B shows S-mode setting scounteren.TM itself, after which U-mode rdtime reads return strictly increasing values; phase A shows TM clear trapping with scause=0x2, sepc at the site, and the destination register untouched.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-tm-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Supervisor kernels use scounteren to control what user space may read; the verified TM gate is the exact control a kernel's counter policy depends on."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the S-mode code was a test harness, not a kernel."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The slot asks whether the verified property is load-bearing for kernel work. A kernel hiding the timer from user space depends on exactly this trap-vs-read behavior, so the slot lights."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-scounteren-tm-gate|ALGORITHM": {
+    "item": "src-scounteren-tm-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure gating rule: one control bit selects trap vs read for a lower privilege level. The same per-resource enable-bit pattern appears in portable code wherever access to shared state is mediated by flags.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure gating rule: one control bit selects trap vs read for a lower privilege level. The same per-resource enable-bit pattern appears in portable code wherever access to shared state is mediated by flags."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the one-bit gate: TM clear selects trap, TM set selects read, for the lower privilege level.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-tm-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A portable pattern verified in one domain transfers to any domain with the same structure."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure per-resource enable-bit gate, a pattern that appears in portable code wherever access to shared state is mediated by flags."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the gate used RISC-V CSRs and traps, so it cannot be portable."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The CSRs and traps are the instance; the enable-bit gate on shared state is the pattern. The pattern transfers; the CSR names do not need to."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the generalization connects them to the penultimate claim"
       },
       {
         "from": [

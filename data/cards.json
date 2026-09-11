@@ -12050,5 +12050,119 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-sum",
     "terminalLabel": "Verified src-sstatus-sum QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-menvcfg-stce",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "menvcfg.STCE advertisement matches real Sstc, QEMU",
+    "summary": "menvcfg boots with STCE clear, but an all-ones write legalizes with STCE set. S-mode stimecmp reads work with no traps, and arming stimecmp delivers one supervisor timer interrupt, so the advertised bit agrees with the real Sstc presence.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines menvcfg.STCE as the Sstc presence advertisement: S-mode may use stimecmp exactly when the extension is present. The proof verifies this contract on QEMU 8.2.2: an all-ones write legalizes with STCE set, S-mode stimecmp reads work with no traps, and an armed stimecmp delivers one supervisor timer interrupt, 17 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks the STCE advertisement against real Sstc behavior: 17 checks, 0 mismatches. Whether stimecmp access works is determined by the extension's presence and the menvcfg bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware reads menvcfg.STCE to learn whether Sstc is available before programming supervisor timer delivery. The verified property (STCE set by an all-ones write, stimecmp access works, one interrupt per arm) is the presence signal firmware consults when choosing the timer path."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program stimecmp for their timer ticks when Sstc is present. The verified property (S-mode stimecmp reads work, one supervisor timer interrupt per arm, clean disarm with no re-delivery) is the timer-delivery contract the kernel's clock path depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure advertise-then-verify rule: a capability bit is checked against the real behavior it claims. The same advertised-capability pattern appears in portable code wherever a feature flag is confirmed by exercising the feature it names."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-stce/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 in-program checks on QEMU 8.2.2: STCE legalizes set on an all-ones write, S-mode stimecmp reads work with 0 traps, one armed stimecmp delivers a supervisor timer interrupt with no re-delivery, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xddf55eeede88e646, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode and S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / menvcfg-stce",
+    "terminalOutput": "$ make run-menvcfg-stce\nboot: menvcfg=0x2000000000000000 STCE(bit63)=0\nprobe: csrw menvcfg, all-ones; legalized readback=0xa0000000000000f1\nset: csrs menvcfg, STCE; readback=0xa000000000000000 STCE sticks: yes (Sstc advertised)\nSTCE advertised = 1, S-mode access worked = 1 -> advertisement MATCHES reality\ntrap_count=1 scause=0x8000000000000005 sepc=0x80000210\ntraps in quiet window=0\nchecksum (FNV-1a over verdict values) = 0xddf55eeede88e646\nchecks=17 fails=0\nRESULT: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-stce",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/menvcfg-stce",
+    "terminalLabel": "Verified src-menvcfg-stce QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-scounteren-tm-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "scounteren.TM gates U-mode rdtime, QEMU",
+    "summary": "Clearing scounteren.TM makes a U-mode rdtime trap as illegal instruction, with sepc at the rdtime site and the destination register untouched. Setting TM reopens the gate and the reads return the advancing timer.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines scounteren.TM as the U-mode time availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdtime traps with scause=2 and sepc at the rdtime site, enabled reads return increasing timer values, 18 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap/read outcomes against the TM gate rule: 18 checks, 0 mismatches. Whether U-mode may read time is determined by the scounteren control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The gate under test is programmed by S-mode itself: the supervisor writes scounteren to control U-mode reads, so the access decision sits with the kernel. M-mode firmware owns only the outer mcounteren enable, which the proof opens once as scaffolding; the verified trap-vs-read property is not a firmware configuration."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Supervisor kernels program scounteren to decide what user space may read, and TM is the bit that hides or exposes the timer. The verified property (TM clear traps the U-mode read with sepc at the site, TM set returns the advancing timer) is the user-access gate the kernel's counter policy depends on."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit selects trap vs read for a lower privilege level. The same per-resource enable-bit pattern appears in portable code wherever access to shared state is mediated by flags."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scounteren-tm-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 in-program checks on QEMU 8.2.2: U-mode rdtime with scounteren.TM clear traps illegal-instruction with sepc at the rdtime site, with TM set two reads return strictly increasing values, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9756843e0befd207, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M/S/U-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scounteren-tm-gate",
+    "terminalOutput": "$ make run-scounteren-tm-gate\nboot: scounteren=0x0\nwrite: mcounteren.TM=1 (unblock the M-level gate); readback=0x2\n[0] gated rdtime scause=0x2 stval=0xc01022f3 sepc=0x80000254 t0=0xdeadbeefdeadbeef a0=0x80001183\nphase B: setting scounteren.TM in S-mode...\n  scounteren readback=0x2\n  rdtime sample 0 (t0) = 0xe3d27\n  rdtime sample 1 (t1) = 0xe3d60  (delta = 57)\nchecksum (FNV-1a over verdict values) = 0x9756843e0befd207\nRESULT: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-tm-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-tm-gate",
+    "terminalLabel": "Verified src-scounteren-tm-gate QEMU output",
+    "showRepoLink": true
   }
 ]
