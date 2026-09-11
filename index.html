@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-141513">
+  <meta name="build-version" content="v20260911-143036">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -15192,6 +15192,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalOutput": "$ waitexit\ncheck 2: wait returned pid 4, the first child's pid\ncheck 3: wait stored status 42 for child 4\ncheck 6: wait stored status 0 for child 5\n\nchecks: 6 mismatches: 0\n\nwait/exit status round-trip: PASS",
     "title": "wait returns the child pid and exit status, xv6",
     "verificationEnvironment": "QEMU 8.2.2"
+  },
+  {
+    "id": "src-mstatus-mprv-readback",
+    "title": "mstatus.MPRV reads back exactly as written",
+    "kicker": "RISCV PRIV",
+    "summary": "A bare-metal RISC-V program verifies the write/readback contract of mstatus.MPRV (bit 17), the M-mode bit that makes data loads and stores use the MPP privilege. In M-mode on QEMU, the boot mstatus is read, MPRV is set via csrs and the readback must equal boot|MPRV exactly, then cleared via csrc and the readback must equal the boot value exactly, with zero traps.",
+    "checks": 5,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mstatus-mprv-readback/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-mprv-readback"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "5 checks on QEMU 8.2.2: set readback has bit 17 set; set readback equals boot|MPRV with no other bit disturbed; clear readback equals the boot value exactly; post-run mstatus equals the boot value; trap count 0, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x5ef757269922ecb1, over the boot value, both readbacks, and the post-run value, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode bare metal"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mstatus-mprv-readback",
+    "terminalLabel": "Verified mstatus.MPRV QEMU output",
+    "terminalOutput": "$ ./run.sh\n========================================\nmstatus.MPRV write/readback: set via csrs, clear via csrc\n========================================\n\nboot: mstatus=0xa00000000 MPRV(bit17)=0 MPP(bits12:11)=0\nset: csrs mstatus, bit17; readback=0xa00020000\nclear: csrc mstatus, bit17; readback=0xa00000000\nrestore: mstatus=0xa00000000 (boot was 0xa00000000)\ntraps recorded by the handler: 0\n\nchecksum (FNV-1a over the readback values) = 0x5ef757269922ecb1\nchecks: 5  mismatches: 0\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "MPRV is bit 17 of the mstatus CSR defined in the RISC-V privileged specification; the test verifies the architectural readback contract that a write to this bit is reflected in subsequent reads, which is the machine contract for M-mode memory-access privilege control."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The readback contract is architecturally defined; whether the bit reads back as written does not depend on pipeline depth, cache behavior, or branch prediction. An implementation that fails this is non-compliant, but the property itself is implementation-independent."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware uses MPRV to perform loads and stores with the privilege level in MPP, for example when copying data between user and supervisor memory; the firmware depends on the bit reading back as written to know the access privilege is actually in effect."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "MPRV is accessible only in M-mode; supervisor kernels run in S-mode and cannot read or write this bit. The kernel's memory access privilege is determined by its current mode, not by MPRV, so the readback contract is irrelevant to kernel operation."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a single CSR bit's write/readback behavior, not a computational construction. No portable algorithm is exercised; the mechanism is the hardware's CSR storage itself."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "openfail",
+    "title": "Failed open allocates no file descriptor",
+    "kicker": "XV6 KERNEL",
+    "summary": "A user-space xv6 test opens a nonexistent path twice (both must return -1), then creates and opens a real file and checks it lands on fd 3, the lowest free descriptor. It writes a 64-byte pattern, closes, re-opens, and verifies the readback is byte-exact. No kernel code changed; the test exercises the existing sys_open failure path from user space.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/openfail.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks on QEMU 8.2.2: two failed opens return -1; create+open lands on fd 3; 64-byte write succeeds; close and reopen lands on fd 3 again; 64-byte readback is byte-exact, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x8609A2A5E433A9DD, over the fd numbers, return values, and readback bytes"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / openfail.c",
+    "terminalLabel": "Verified openfail QEMU output",
+    "terminalOutput": "$ openfail\ncheck 1: open of nonexistent path returned -1\ncheck 2: second failed open returned -1\ncheck 3: create+open returned fd 3 (lowest free)\ncheck 4: wrote 64 bytes through fd 3\ncheck 5: reopen returned fd 3 (fd freed by close)\ncheck 6: read back 64 bytes from fd 3\ncheck 7: readback is byte-exact against the pattern\nchecksum: 0x8609A2A5E433A9DD\nfailed open returns: -1 -1, create fd: 3, reopen fd: 3\nchecks: 7 mismatches: 0\nPASS: failed opens returned -1 and the fd table was untouched",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The test runs as a user program exercising the open system call; it checks file descriptor numbers and return values, not the machine contract. The fd allocation behavior is insensitive to the ISA: it passes on any machine where the kernel leaves the fd table untouched on failed open."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is about the kernel's file descriptor table bookkeeping on the open failure path, not the implementation behind it. Whether a failed open leaks a descriptor is determined by the kernel's sys_open code, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The test is a user program that exercises the open system call; firmware never allocates file descriptors. The verified property is indifferent to firmware, which only boots the machine before xv6 takes over."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The file descriptor table is the kernel's resource-allocation contract, and this test verifies it from outside the kernel: a failed open must return -1 before fdalloc, leaving the table untouched so the next successful open lands on the lowest free descriptor. The verified property is the kernel's allocation discipline on the failure path."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a kernel resource-management contract (no allocation on failure), not a computational construction. No portable algorithm is exercised; the mechanism is the kernel's fd table bookkeeping itself."
+      }
+    },
+    "portability": null,
+    "stressItems": 7
   }
 ];
       const CHIPS_BY_KEY = {
@@ -98639,6 +98753,736 @@ assert(check == 0x2144DF1C);</code></pre>
     "kind": "card",
     "probandum": "The card verifies a kernel contract (status stored at exit, reported by wait), not a computational construction. No portable algorithm is exercised; the mechanism is the exit-to-wait handoff itself.",
     "slot": "ALGORITHM"
+  },
+  "src-mstatus-mprv-readback|ISA": {
+    "item": "src-mstatus-mprv-readback",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "MPRV is bit 17 of the mstatus CSR defined in the RISC-V privileged specification; the test verifies the architectural readback contract that a write to this bit is reflected in subsequent reads, which is the machine contract for M-mode memory-access privilege control.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "MPRV is bit 17 of the mstatus CSR defined in the RISC-V privileged specification; the test verifies the architectural readback contract that a write to this bit is reflected in subsequent reads, which is the machine contract for M-mode memory-access privilege control."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Boot mstatus read 0xa00000000 with MPRV(bit17)=0; csrs set bit 17, readback 0xa00020000 equals boot|MPRV exactly; csrc clear, readback 0xa00000000 equals boot exactly; 0 traps; 5 checks, 0 mismatches, checksum 0x5ef757269922ecb1 identical across 3 QEMU 8.2.2 runs",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-readback/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-mprv-readback"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The RISC-V privileged specification defines mstatus.MPRV as bit 17, controlling whether data loads and stores use the privilege mode in MPP",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, mstatus chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The measured readbacks match the privileged specification's MPRV contract exactly: the bit is set and cleared by software and reads back as written."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A CSR bit whose write/readback behavior is specified in the privileged architecture is part of the machine contract; verifying the readback verifies the contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer lights when the verified claim depends on the machine contract as specified, not on any particular implementation."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that this is only a QEMU measurement, not real silicon. The contract verified is the architectural one QEMU implements; the claim is about the specified behavior, which the emulator models faithfully for this CSR."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-mstatus-mprv-readback|MICROARCH": {
+    "item": "src-mstatus-mprv-readback",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The readback contract is architecturally defined; whether the bit reads back as written does not depend on pipeline depth, cache behavior, or branch prediction. An implementation that fails this is non-compliant, but the property itself is implementation-independent.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The readback contract is architecturally defined; whether the bit reads back as written does not depend on pipeline depth, cache behavior, or branch prediction. An implementation that fails this is non-compliant, but the property itself is implementation-independent."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 5 checks compare CSR readback values only; no timing, cache, or pipeline behavior is measured or asserted",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-readback/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-mprv-readback"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The privileged specification defines MPRV readback as a function of the CSR state, with no microarchitectural qualifier",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, mstatus chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The verified readback equality holds by architectural definition and was checked without any microarchitectural measurement."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A property defined purely over architectural state, with no timing or implementation-dependent clause, is indifferent to microarchitecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The MICROARCH slot stays dim when the verified claim would hold identically on any compliant implementation regardless of pipeline, cache, or predictor design."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-mstatus-mprv-readback|FIRMWARE": {
+    "item": "src-mstatus-mprv-readback",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware uses MPRV to perform loads and stores with the privilege level in MPP, for example when copying data between user and supervisor memory; the firmware depends on the bit reading back as written to know the access privilege is actually in effect.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "M-mode firmware uses MPRV to perform loads and stores with the privilege level in MPP, for example when copying data between user and supervisor memory; the firmware depends on the bit reading back as written to know the access privilege is actually in effect."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The module runs entirely in M-mode and manipulates MPRV via csrs/csrc, the same instructions M-mode firmware uses to control access privilege",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-readback/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-mprv-readback"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The privileged specification describes MPRV as the mechanism by which M-mode software accesses memory with a lower privilege, the standard firmware use case",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, mstatus chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "MPRV is the firmware's tool for privileged memory access, and the verified readback is what lets firmware trust that the tool is engaged."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A CSR bit whose purpose is to let machine-mode software act with a different privilege is load-bearing for firmware that performs cross-privilege memory access."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The FIRMWARE layer lights when the verified property is one that boot-time or runtime machine-mode software depends on to do its job."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that this test does no actual cross-privilege access. The claim is about the control bit's readback, which is the precondition firmware checks before relying on the access mode; the access itself is a separate mechanism."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-mstatus-mprv-readback|KERNEL": {
+    "item": "src-mstatus-mprv-readback",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "MPRV is accessible only in M-mode; supervisor kernels run in S-mode and cannot read or write this bit. The kernel's memory access privilege is determined by its current mode, not by MPRV, so the readback contract is irrelevant to kernel operation.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "MPRV is accessible only in M-mode; supervisor kernels run in S-mode and cannot read or write this bit. The kernel's memory access privilege is determined by its current mode, not by MPRV, so the readback contract is irrelevant to kernel operation."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The test executes entirely in M-mode; no S-mode or kernel code is involved in the verified property",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-readback/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-mprv-readback"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The privileged specification places mstatus in the machine-level CSR address space, inaccessible from S-mode",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec, CSR addressing chapter",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "Because MPRV is invisible from S-mode, no kernel behavior can depend on its readback."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A machine-only CSR bit cannot be load-bearing for supervisor-mode software, which cannot observe or modify it."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The KERNEL slot stays dim when the verified property concerns state that kernel-mode software can neither read nor write."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-mstatus-mprv-readback|ALGORITHM": {
+    "item": "src-mstatus-mprv-readback",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a single CSR bit's write/readback behavior, not a computational construction. No portable algorithm is exercised; the mechanism is the hardware's CSR storage itself.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card verifies a single CSR bit's write/readback behavior, not a computational construction. No portable algorithm is exercised; the mechanism is the hardware's CSR storage itself."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 5 checks are readback equalities over CSR values; no computed result, no portable implementation, no differential test against software",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-readback/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-mprv-readback"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "There is no algorithm here to be portable; the claim is about what the CSR holds after a write."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A bare hardware register readback with no software counterpart exercises no algorithm; there is nothing portable to argue."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM slot stays dim when the card verifies hardware state directly rather than a computational mechanism with a portable form."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "openfail|ISA": {
+    "item": "openfail",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The test runs as a user program exercising the open system call; it checks file descriptor numbers and return values, not the machine contract. The fd allocation behavior is insensitive to the ISA: it passes on any machine where the kernel leaves the fd table untouched on failed open.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The test runs as a user program exercising the open system call; it checks file descriptor numbers and return values, not the machine contract. The fd allocation behavior is insensitive to the ISA: it passes on any machine where the kernel leaves the fd table untouched on failed open."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 7 checks assert open return values (-1, -1), fd numbers (3, 3), byte counts (64, 64), and a byte-exact readback; no instruction, CSR, or trap behavior is asserted",
+        "source": {
+          "tier": "lab",
+          "cite": "user/openfail.c PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The fd numbers and return values checked here are a kernel software contract, independent of the underlying instruction set."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A user-space test that asserts only OS-level return values and resource numbers does not engage the instruction set or privileged architecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ISA slot stays dim when the verified claim would hold identically on any ISA, since it concerns kernel bookkeeping rather than the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "openfail|MICROARCH": {
+    "item": "openfail",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is about the kernel's file descriptor table bookkeeping on the open failure path, not the implementation behind it. Whether a failed open leaks a descriptor is determined by the kernel's sys_open code, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The verified claim is about the kernel's file descriptor table bookkeeping on the open failure path, not the implementation behind it. Whether a failed open leaks a descriptor is determined by the kernel's sys_open code, not by pipeline or cache behavior."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The PROOF entry describes the mechanism as sys_open returning -1 before fdalloc when namei fails; the checks observe fd numbers, not hardware counters or timing",
+        "source": {
+          "tier": "lab",
+          "cite": "user/openfail.c PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The fd table discipline is a software invariant of sys_open; no microarchitectural feature bears on it."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A property determined by kernel C code paths, observed through system-call return values, is indifferent to the processor's microarchitecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The MICROARCH slot stays dim when the verified claim concerns software bookkeeping rather than implementation-dependent hardware behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "openfail|FIRMWARE": {
+    "item": "openfail",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The test is a user program that exercises the open system call; firmware never allocates file descriptors. The verified property is indifferent to firmware, which only boots the machine before xv6 takes over.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The test is a user program that exercises the open system call; firmware never allocates file descriptors. The verified property is indifferent to firmware, which only boots the machine before xv6 takes over."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The test is built as a UPROGS user program shipped in fs.img and run from the xv6 shell; no firmware interface is exercised",
+        "source": {
+          "tier": "lab",
+          "cite": "user/openfail.c PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Firmware's job ends at boot; the fd table is created and managed entirely by the xv6 kernel thereafter."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "File descriptor allocation is an operating-system abstraction with no firmware counterpart; firmware neither provides nor constrains it."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The FIRMWARE slot stays dim when the verified property belongs to a software layer that firmware never touches."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "openfail|KERNEL": {
+    "item": "openfail",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The file descriptor table is the kernel's resource-allocation contract, and this test verifies it from outside the kernel: a failed open must return -1 before fdalloc, leaving the table untouched so the next successful open lands on the lowest free descriptor. The verified property is the kernel's allocation discipline on the failure path.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The file descriptor table is the kernel's resource-allocation contract, and this test verifies it from outside the kernel: a failed open must return -1 before fdalloc, leaving the table untouched so the next successful open lands on the lowest free descriptor. The verified property is the kernel's allocation discipline on the failure path."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Two opens of nonexistent paths return -1; the subsequent create+open returns fd 3, the lowest free descriptor after console fds 0, 1, 2; after close, reopen returns fd 3 again; 7 checks, 0 mismatches, checksum 0x8609A2A5E433A9DD",
+        "source": {
+          "tier": "lab",
+          "cite": "user/openfail.c PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The test source shows no kernel code was changed; the assertions exercise xv6's existing sys_open namei-failure return before fdalloc from user space",
+        "source": {
+          "tier": "lab",
+          "cite": "user/openfail.c",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/openfail.c"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The fd numbers 3 and 3 prove the failed opens allocated nothing: the kernel's failure path left the descriptor table exactly as it found it."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A resource table that must not leak entries on the failure path is a kernel allocation contract; observing the exact fd numbers from user space verifies the contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The KERNEL layer lights when the verified property is the operating system's own bookkeeping, checked through its system-call interface."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that fd 3 is just a small number and proves little. The two -1 returns plus fd 3 on create plus fd 3 again after close form a chain: any leaked descriptor would have pushed the create to 4 or higher, so the observed 3, 3 sequence is only consistent with zero allocation on failure."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "openfail|ALGORITHM": {
+    "item": "openfail",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a kernel resource-management contract (no allocation on failure), not a computational construction. No portable algorithm is exercised; the mechanism is the kernel's fd table bookkeeping itself.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card verifies a kernel resource-management contract (no allocation on failure), not a computational construction. No portable algorithm is exercised; the mechanism is the kernel's fd table bookkeeping itself."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 7 checks assert return values, fd numbers, and byte equality; no computed function, no portable implementation, no differential test against a software oracle",
+        "source": {
+          "tier": "lab",
+          "cite": "user/openfail.c PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "There is no algorithm here to be portable; the claim is about what the kernel's fd table contains after a failed open."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A kernel bookkeeping invariant observed through system calls is not a portable computational mechanism; there is no algorithm to port."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM slot stays dim when the card verifies operating-system state management rather than a computation with an equivalent portable form."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
   }
 };
       // Exposed for the tooltip renderer, which lives in its own script
