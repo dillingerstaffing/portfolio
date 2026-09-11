@@ -375,7 +375,7 @@ def load_data():
         print(f"pilot: {len(_pilot_missing_microarch)} items without a MICROARCH "
               f"verdict (expected until the pilot extension is approved)")
 
-    return cards, articles, chips_by_key, wigmore_by_slot
+    return cards, articles, chips_by_key, decisions, wigmore_by_slot
 
 
 def run_copy_gate(cards, articles):
@@ -416,6 +416,59 @@ def run_copy_gate(cards, articles):
     if errors:
         fail("copy gate: card copy below OK state:\n  " + "\n  ".join(errors))
     print(f"copy gate: OK ({len(cards)} cards, {len(articles)} articles)")
+
+
+def run_why_quality_gate(cards, decisions, wigmore_by_slot):
+    # WHY reasoning standard (from Chris 2026-09-11): every layer because
+    # must be a card-specific argument, never a checklist. The setup is never
+    # the argument. These frames are the known checklist patterns; a run
+    # whose becauses match them ships no site change.
+    checklist = [
+        re.compile(r"ran on (a|the) host\b", re.I),
+        re.compile(r"host machine\b", re.I),
+        re.compile(r"\bhost CPU\b", re.I),
+        re.compile(r"compared outputs on a host\b", re.I),
+        re.compile(r"runs? in user space with no\b", re.I),
+        re.compile(r"\bno (kernel|firmware) subsystem is involved\b", re.I),
+        re.compile(r"not a (kernel|firmware|microarch[a-z]*) subsystem\b", re.I),
+        re.compile(r"no (?:[\w\-/]+ )+instruction ever executed\b", re.I),
+        re.compile(r"recorded no (pipeline|cache|predictor)", re.I),
+        re.compile(r"alone cannot light\b", re.I),
+        re.compile(r"exercised no\b", re.I),
+        re.compile(r"touches? nothing\b", re.I),
+        re.compile(r"appears? nowhere\b", re.I),
+    ]
+    errors = []
+    for c in cards:
+        cid = c.get("id", "?")
+        for layer in LAYERS:
+            slot = (c.get("layers") or {}).get(layer) or {}
+            because = slot.get("because", "")
+            for pat in checklist:
+                if pat.search(because):
+                    errors.append(f"{cid}/{layer}: checklist phrasing "
+                                  f"{pat.pattern!r}")
+                    break
+            key = (cid, layer)
+            analysis = wigmore_by_slot.get(key)
+            if analysis is None:
+                errors.append(f"{cid}/{layer}: no wigmore analysis")
+            elif analysis.get("probandum") != because:
+                errors.append(f"{cid}/{layer}: because != analysis probandum")
+    # isa-decisions.json is authoritative for specification correspondence:
+    # every accepted instruction mapping must have its card's ISA slot lit.
+    accepted = {d["cardId"] for d in decisions if d["decision"] == "accepted"}
+    for c in cards:
+        cid = c.get("id", "?")
+        if cid in accepted:
+            slot = (c.get("layers") or {}).get("ISA") or {}
+            if not slot.get("applies"):
+                errors.append(f"{cid}: isa-decisions accepts an instruction "
+                              f"mapping but the ISA slot is dim")
+    if errors:
+        fail("why gate: layer arguments below standard:\n  " + "\n  ".join(errors))
+    print(f"why gate: OK ({len(cards)} cards, "
+          f"{len(wigmore_by_slot)} slot arguments)")
 
 
 def run_gate(systems_lab, baremetal, xv6):
@@ -490,12 +543,13 @@ def node_check_scripts(html_text):
 
 
 def build(systems_lab, baremetal, xv6):
-    cards, articles, chips_by_key, wigmore_by_slot = load_data()
+    cards, articles, chips_by_key, decisions, wigmore_by_slot = load_data()
     print(f"data OK: {len(cards)} cards, {len(articles)} articles, "
           f"{len(chips_by_key)} chips, "
           f"{sum(1 for c in cards if c.get('portability'))} portability panels")
 
     run_copy_gate(cards, articles)
+    run_why_quality_gate(cards, decisions, wigmore_by_slot)
     run_gate(systems_lab, baremetal, xv6)
     print("drift gate: no contradictions")
 
