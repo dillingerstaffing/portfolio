@@ -1,5 +1,43 @@
 [
  {
+  "title": "The Division That Adds Up Shifts",
+  "date": "2026-09-10",
+  "paragraphs": [
+   "Divide 100 by 7 without a divide instruction. The obvious program is a loop: subtract 7, count, repeat until the remainder drops below 7. For 100 that is 14 subtractions, fine. For four billion it is over 613 million, and the running time is decided by the input: the bigger the number, the longer you wait. A division whose cost grows with its answer is the failure to fix.",
+   "Here is a fact about 7 that looks like trivia until it becomes a tool. In binary, 1/7 is 0.001001001..., the triplet 001 repeating forever. Why: the series 2^-3 + 2^-6 + 2^-9 + ... has ratio 1/8, so it sums to (1/8) divided by (1 - 1/8), which is 1/7. Three lines, no faith required.",
+   "Multiply through by x and the division becomes a sum of shifts: x/7 = (x>>3) + (x>>6) + (x>>9) + ..., as exact reals. For x = 100: 100>>3 is 12, 100>>6 is 1, and every term after that shifts to zero. The sum is 13. Shifting drops the fractions, so this estimate can only ever sit at or below the truth, never above it; the lab's test asserted exactly that on every one of its 26.8 million inputs and never saw a violation.",
+   "Now walk up to the exact answer: the implementation sums every third right shift for the estimate, builds 7q as q + (q<<1) + (q<<2) with shifts and adds only, then steps q up one at a time while the remainder is at least 7. For x = 100: q starts at 13, t at 91, the remainder 9 is at least 7, so one step up: q = 14, t = 98, remainder 2, done.",
+   "Fourteen is 100 divided by 7 rounded down, and the whole thing took shifts, adds, and a single walk-up step. The proof bounds the shortfall under 10.58, so the loop can run at most 10 times, and the lab's own run observed exactly 10 as its maximum, theory and measurement agreeing to the digit. The checking, because that is the whole point: 26,777,238 inputs, nearly 27 million, twenty-two hand-built edge rows plus every 24-bit value plus ten million random 32-bit ones, zero wrong answers against the C / oracle, one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds, and a disassembly check confirming the compiler smuggled no divide instruction in behind the shifts. One sentence to carry away: 1/7 repeats as 001 in binary, so dividing by 7 is adding up a number's every-third right shift, then walking up by sevens to collect the fractions the shifts dropped."
+  ],
+  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/125-div-by-7-shift-add",
+  "evidence": {
+   "label": "proof log",
+   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/125-div-by-7-shift-add/PROOF.md"
+  },
+  "layers": {
+   "ISA": {
+    "applies": false,
+    "because": "not here because the lab divides in plain compiled host C; no RISC-V operation is executed or measured."
+   },
+   "MICROARCH": {
+    "applies": false,
+    "because": "the iteration count of the naive loop is invoked only to motivate the construction; no pipeline, cache, or predictor behavior is measured or claimed."
+   },
+   "FIRMWARE": {
+    "applies": false,
+    "because": "not here because nothing boots and no machine-mode configuration is touched."
+   },
+   "KERNEL": {
+    "applies": false,
+    "because": "not here because the division runs in a plain user-space binary; no OS service, address translation, or I/O path appears."
+   },
+   "ALGORITHM": {
+    "applies": true,
+    "because": "teaches the one atomic idea a builder needs: 1/7 repeats as 001 in binary, so x/7 is the sum of x's every-third right shift, and the walk-up correction is provably bounded at 10 steps; checked against the C / oracle on 26,777,238 inputs with zero mismatches."
+   }
+  }
+ },
+ {
   "title": "The Exponent That Already Counted",
   "date": "2026-09-10",
   "paragraphs": [
@@ -16,8 +54,8 @@
   },
   "layers": {
    "ISA": {
-    "applies": false,
-    "because": "not here because the lab counts in plain compiled C on the host; no RISC-V operation is executed or measured."
+    "applies": true,
+    "because": "the post rebuilds in portable C the leading-zero count the Zbb clz instruction specifies, naming the hardware operations it substitutes for; no clz instruction is executed"
    },
    "MICROARCH": {
     "applies": false,
