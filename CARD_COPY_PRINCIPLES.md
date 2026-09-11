@@ -4,6 +4,30 @@ Distilled 2026-09-10 from the swar-popcount-64 pilot review. Every card on the
 portfolio and every future card, demo, and blog post must meet these at a
 minimum. AAA standard: the reader never has to ask "what does that mean".
 
+## 0. WHY is the primary requirement
+
+- Every card answers WHY, not just WHAT. Every card carries all five layer
+  slots: ISA, MICROARCH, FIRMWARE, KERNEL, ALGORITHM.
+- Every slot needs a one-sentence because. Every because needs a formal
+  evidence-backed Wigmore argument in data/wigmore.json. A card without all
+  five arguments is not shippable.
+- Dim slots require honest negative arguments and evidence too.
+- THE VERDICT FOLLOWS THE ARGUMENT, NEVER THE REVERSE. A slot is lit or
+  dimmed because the Wigmore analysis proves it so, from the taxonomy
+  definitions and the card's evidence. Pre-existing lit/dim assignments are
+  never accepted on faith: every verdict is re-derived from first principles.
+  If the argument contradicts the old verdict, the verdict changes.
+  Decision tests: ISA lights iff the verified claim depends on the machine
+  contract (instructions, CSRs, traps, memory model). MICROARCH lights iff
+  the card measures or reasons about implementation behavior (pipelines,
+  caches, predictors, timing, contention). FIRMWARE lights iff the card
+  depends on boot-time machine-mode config (PMP, trap delegation, SBI, misa
+  dispatch); merely running under QEMU does not light it. KERNEL lights iff
+  the card implements or depends on a kernel subsystem and the verification
+  involved it. ALGORITHM lights iff the core verified claim is a pure
+  computational mechanism portable across ISAs. Mere mention of a layer's
+  vocabulary never lights it.
+
 ## 1. One surface, one job
 
 - The summary is the MECHANISM only: what it does, how it works, why the

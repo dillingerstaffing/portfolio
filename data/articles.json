@@ -3,11 +3,11 @@
   "title": "The Exponent That Already Counted",
   "date": "2026-09-10",
   "paragraphs": [
-   "Take x = 5. In binary that is 101, so a 64-bit word holding 5 has 61 leading zeros. The lab computes that 61 without counting a single bit, and it starts by making the top set bit copy itself downward: x |= x >> k for k = 1, 2, 4, 8, 16, 32. The first one turns 101 into 111. Each step doubles how far the run of ones reaches. By the last one every bit at or below the top set bit is 1. For 5 that is 0b111, which is 7, which is 2^3 - 1. In general the fill turns a number whose top set bit sits at position n into exactly 2^(n+1) - 1.",
-   "Now cast 7 to a double. A double stores its value as 1.f times 2^E, with E kept in bits 62 through 52 plus a bias of 1023. 7 is 1.75 times 2^2, so the field holds 2 + 1023. Read the field back out, subtract the bias, and you have 2, the position of the top set bit. 63 minus 2 is 61. The exponent the cast already computed is doing the counting; the fill just made sure the exponent equals the top bit's position. The code is the insight here:",
-   "The first line reinterprets the double's bits through a union, no math library involved. The second pulls the exponent field out of bits 62 through 52 and removes the 1023 bias. The fourth turns the bit position into a leading-zero count. The third line is the whole hazard, and it is there because the obvious version breaks exactly where doubles run out of integers.",
-   "Past 2^53, neighboring doubles sit more than 1 apart, so the filled value 2^(n+1) - 1 is not representable and the cast rounds it. From n = 54 up it always rounds up to 2^(n+1), a distance of 1 against at least 3 the other way, and the exponent reads one too high. The knife edge is n = 53: 2^54 - 1 is the exact midpoint between 2^54 - 2 and 2^54, and round-ties-to-even picks 2^54, because its significand is 1.0 (even) while the other is fifty-two ones (odd). The first draft guarded with x >> 54, on the mistaken belief that the midpoint would tie downward. The differential test refused to believe it: 5,010 mismatches out of ten million, about one in two thousand, every single one at n = 53.",
-   "Re-deriving the tie showed the correction had to be x >> 53, and the rerun is clean: 10,065,537 checks, about ten million, zero mismatches, one checksum byte-identical across the -O0, -O2, and sanitizer builds, no sanitizer reports. The oracle is __builtin_clzll on every one of the 65,536 sixteen-bit inputs, x = 0 pinned to 64 by contract, and ten million fixed-seed random 64-bit values, roughly half of them exercising the rounding correction. Best of five benchmark reps: 14.292 nanoseconds a value, about 70 million a second. One sentence to carry away: to count leading zeros, smear the top set bit into every bit below it, then read the exponent the cast already computed, minus one when the original reached 2^53."
+   "The obvious program is a loop: start at bit 63, walk down, stop at the first 1, count the steps. It works, and for x = 2^63 it finishes after a single test. But for x = 1 it inspects 63 zeros first. The running time depends on the answer, and that is the whole problem: one branch per bit, mispredicted on random data, and a timing channel that leaks the input's magnitude. A quick check on this machine: the loop takes about 81 nanoseconds per value on inputs under 256, and about 4 when the top bit is set. About twenty times slower, decided by the input, while the float version below takes about 5 to 7 nanoseconds on both.",
+   "Leading zeros are 63 minus floor(log2(x)), so the real question is what power of two x sits under. A double already answers that. Every conversion of an integer to a double computes an exponent, the field in bits 62 through 52 that stores floor(log2) plus a bias of 1023. The cast does the counting for free. So the trick is never to count at all: reshape x until the question you need is exactly the question the cast already answered, then read the exponent field.",
+   "Take x = 5, binary 101. Smear the top set bit downward with x |= x >> k for k = 1, 2, 4, 8, 16, 32. The first step turns 101 into 111, each step doubles how far the run of ones reaches, and after all six every bit at or below the top set bit is 1, so the filled value is exactly 2^(n+1) - 1 where n is the top bit's position. Cast that to double and the conversion computes exponent n, stored as n + 1023. Read bits 62 through 52 through a union, subtract the bias, and you have n; 63 minus n is the leading-zero count, 61 for 5. Nothing was counted. The exponent the cast already computed was read back out.",
+   "That read is exact only while the filled value converts exactly. Past 2^53, neighboring doubles sit more than 1 apart, so the cast rounds. From n = 54 up it always rounds up to 2^(n+1), a distance of 1 against at least 3 the other way, and the exponent reads one too high. The knife edge is n = 53: 2^54 - 1 is the exact midpoint between 2^54 - 2 and 2^54, and round-ties-to-even picks 2^54, whose significand 1.0 has an even least bit against 1.111...1's odd one. So the field reads one too high exactly when x >> 53 is nonzero, and the correction is one line: subtract 1 in that case.",
+   "Re-deriving the tie fixed the correction, and the rerun is clean: 10,065,537 checks, about ten million, zero mismatches, one checksum byte-identical across the -O0, -O2, and sanitizer builds, no sanitizer reports. The oracle is __builtin_clzll on every one of the 65,536 sixteen-bit inputs, x = 0 pinned to 64 by contract, and ten million fixed-seed random 64-bit values. The builtin stays in the test harness; the implementation is plain C11 with no intrinsics, no builtins, no library math."
   ],
   "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/115-clz-fp",
   "evidence": {
@@ -21,7 +21,7 @@
    },
    "MICROARCH": {
     "applies": false,
-    "because": "not here because the post teaches the bit-smear construction and its proof; no pipeline, cache, or predictor behavior is measured or claimed."
+    "because": "the post invokes timing and branch cost only to motivate the construction; no pipeline, cache, or predictor behavior is measured or claimed"
    },
    "FIRMWARE": {
     "applies": false,
@@ -33,7 +33,7 @@
    },
    "ALGORITHM": {
     "applies": true,
-    "because": "teaches the one atomic idea a builder needs: smear the top set bit downward, read the exponent the cast already computed, and earn the rounding correction from the n=53 tie, proved over ten million differential checks"
+    "because": "teaches the one atomic idea a builder needs: a double's exponent already stores floor(log2), so reshape the question instead of counting bits; the rounding correction is earned from the n=53 tie, checked against the builtin oracle on ten million inputs"
    }
   }
  },
