@@ -10522,5 +10522,273 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/scause-bit",
     "terminalLabel": "Verified scause-bit QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-satp-bare",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "satp MODE=Bare: No Translation",
+    "summary": "M-mode writes a canary word to a physical address, then drops to S-mode where a satp write of MODE=Bare with a nonzero PPN reads back with the MODE field at zero. The S-mode load returns the M-mode canary, showing the address reaches the same physical word with no translation in between; a store and loadback round-trips cleanly with no traps.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the Bare encoding of satp.MODE is the privileged ISA's own contract for no address translation, and the proof executes its write/readback and the direct physical access it promises"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models the Bare path functionally, so no TLB, cache, or pipeline behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode boot firmware opens the address space with a PMP NAPOT entry, without which S-mode is default-deny and every probe access would trap; the S-mode measurement runs on that opening"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the no-translation contract beneath any kernel"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because writing a mode field and reading it back is a hardware register contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-bare/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "8 checks against the write/readback and canary expectations, 0 mismatches, PASS across 3 byte-identical runs"
+      ],
+      [
+        "SATP WRITE",
+        "0xdeadbea0, MODE=Bare, nonzero PPN"
+      ],
+      [
+        "SATP READBACK",
+        "0xdeadbea0, MODE field reads 0"
+      ],
+      [
+        "CANARY",
+        "0xba5eba1100000001 at physical 0x81000000, matched by the S-mode load"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / satp-bare",
+    "terminalOutput": "$ make run-satp-bare\nsatp write ............ 0xdeadbea0 (MODE=Bare, nonzero PPN)\nsatp readback ......... 0xdeadbea0, MODE field 0\nS-mode load ........... 0xba5eba1100000001 (matches M-mode canary)\nS-mode store/loadback . 0xba5eba1100000002, round-trip clean\ntraps ................. 0\nRESULT: PASS x3 runs (byte-identical)\n\nsatp Bare: no translation, direct physical access",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 8,
+    "failures": 0,
+    "stressItems": 8,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/satp-bare",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/satp-bare",
+    "terminalLabel": "Verified satp-bare QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mideleg-warl",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "mideleg WARL Write Legalization",
+    "summary": "M-mode writes all-ones to mideleg and reads back the legalized value, then writes zero and reads back again. The boot value is 0x1444 rather than zero, the all-ones write legalizes to 0x3666, and the zero write reads back 0x1444 with the read-only-one bits holding through both.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "mideleg is a WARL CSR whose legalized write set is the privileged ISA's contract for which interrupts firmware may delegate, and the proof measures the write/legalized-readback triples on a real hart"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because CSR legalization is a functional register contract in QEMU, with no pipeline or cache behavior measured"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because interrupt delegation is configured by M-mode boot firmware before any supervisor code runs, and the legalized set bounds what that firmware can delegate"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no supervisor software runs; the proof stays at the M-mode configuration contract"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because a WARL legalization readback is a register contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-warl/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "6 WARL write/readback checks, 0 mismatches, PASS across 3 byte-identical runs"
+      ],
+      [
+        "BOOT VALUE",
+        "0x1444"
+      ],
+      [
+        "ALL-ONES WRITE",
+        "legalizes to 0x3666"
+      ],
+      [
+        "ZERO WRITE",
+        "reads back 0x1444, read-only-one bits hold"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mideleg-warl",
+    "terminalOutput": "$ make run-mideleg-warl\nboot mideleg .......... 0x1444\nwrite all-ones ........ readback 0x3666\nwrite zero ............ readback 0x1444\nwrite all-ones again .. readback 0x3666\nRESULT: PASS x3 runs (byte-identical)\n\nmideleg WARL probe, 0 mismatches",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 6,
+    "failures": 0,
+    "stressItems": 6,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-warl",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mideleg-warl",
+    "terminalLabel": "Verified mideleg-warl QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mtvec-mode0-direct",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "mtvec MODE=0: Every Trap Lands at BASE",
+    "summary": "M-mode writes mtvec with MODE=0 and reads back the mode bits at zero. A deliberate ecall and a machine timer interrupt each trap exactly once, both landing at the single BASE address with their expected cause codes, and no trap enters anywhere else.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the direct-mode rule is the privileged ISA's own trap-entry contract, and the proof executes it: an M-mode ecall and a machine timer interrupt both land at BASE with mcause 11 and 0x8000000000000007"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU dispatches traps functionally, so no pipeline, cache, or predictor behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because the trap vector is installed by M-mode boot firmware, and the single-entry handler that records both landings is that firmware's own code"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises the M-mode trap entry beneath any kernel"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because landing at one fixed address is a hardware trap-entry contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtvec-mode0-direct/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "19 checks, 0 mismatches, PASS across 3 byte-identical runs"
+      ],
+      [
+        "MTVEC",
+        "0x800001c8 written and read back, MODE=0"
+      ],
+      [
+        "ECALL LANDING",
+        "0x800001c8 = BASE, mcause 0xb"
+      ],
+      [
+        "TIMER LANDING",
+        "0x800001c8 = BASE, mcause 0x8000000000000007"
+      ],
+      [
+        "CHECKSUM",
+        "0x7b32d6aae4e318ef, identical across 3 runs"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mtvec-mode0-direct",
+    "terminalOutput": "$ make run-mtvec-mode0-direct\nmtvec ................. 0x800001c8 (MODE=0)\necall trap ............. landing 0x800001c8 = BASE, mcause 0xb\ntimer trap ............. landing 0x800001c8 = BASE, mcause 0x8000000000000007\ntraps elsewhere ......... 0\nRESULT: PASS x3 runs (byte-identical)\n\ndirect mode: every trap enters at BASE",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 19,
+    "failures": 0,
+    "stressItems": 19,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-mode0-direct",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mtvec-mode0-direct",
+    "terminalLabel": "Verified mtvec-mode0-direct QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-stimecmp-one-shot",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "stimecmp One-Shot: Disarm Holds",
+    "summary": "S-mode arms stimecmp a thousand mtime ticks ahead and takes exactly one supervisor timer interrupt. The handler disarms by writing all-ones to stimecmp, then a million-rdcycle quiet window passes with zero re-delivery traps.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the one-shot disarm is the Sstc timer's own contract: stimecmp compared against time raises exactly one supervisor timer interrupt, and the proof executes the arm, the single trap, and the quiet window"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models the timer comparison functionally, so no pipeline, cache, or predictor behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode boot firmware delegates the supervisor timer interrupt via mideleg, grants the counters via mcounteren, and opens the PMP before dropping to S-mode; the S-mode experiment runs on that delegation"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises the delegated S-mode timer beneath any kernel"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because disarming a timer compare register is a hardware register contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stimecmp-one-shot/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "16 checks, 0 mismatches, PASS across 3 runs"
+      ],
+      [
+        "TRAP",
+        "exactly 1, scause 0x8000000000000005"
+      ],
+      [
+        "QUIET WINDOW",
+        "1,000,000 rdcycle reads, 0 re-delivery traps"
+      ],
+      [
+        "DISARM",
+        "stimecmp reads back 0xffffffffffffffff after the handler"
+      ],
+      [
+        "CHECKSUM",
+        "0x8bd6d3fe55b327cb, identical across 3 runs"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / stimecmp-one-shot",
+    "terminalOutput": "$ make run-stimecmp-one-shot\ntimer trap ............. 1, scause 0x8000000000000005\nstimecmp disarm ........ 0xffffffffffffffff\nquiet window ........... 1,000,000 rdcycle reads, 0 traps\nRESULT: PASS x3 runs\n\none-shot disarm: the pending state clears",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 16,
+    "failures": 0,
+    "stressItems": 16,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stimecmp-one-shot",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/stimecmp-one-shot",
+    "terminalLabel": "Verified stimecmp-one-shot QEMU output",
+    "showRepoLink": true
   }
 ]
