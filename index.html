@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-000120">
+  <meta name="build-version" content="v20260911-000518">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -932,6 +932,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Exponent That Already Counted</h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/115-clz-fp/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the lab counts in plain compiled C on the host; no RISC-V operation is executed or measured.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nothing boots and no machine-mode configuration is touched.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the count runs in a plain user-space binary; no OS service, address translation, or I/O path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the one atomic idea a builder needs: smear the top set bit downward, read the exponent the cast already computed, and earn the rounding correction from the n=53 tie, proved over ten million differential checks</p></div></div>
+          <p class="research-date"><time datetime="2026-09-10">2026-09-10 20:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take x = 5. In binary that is 101, so a 64-bit word holding 5 has 61 leading zeros. The lab computes that 61 without counting a single bit, and it starts by making the top set bit copy itself downward: x |= x &gt;&gt; k for k = 1, 2, 4, 8, 16, 32. The first one turns 101 into 111. Each step doubles how far the run of ones reaches. By the last one every bit at or below the top set bit is 1. For 5 that is 0b111, which is 7, which is 2^3 - 1. In general the fill turns a number whose top set bit sits at position n into exactly 2^(n+1) - 1.</p>
+          <p>Now cast 7 to a double. A double stores its value as 1.f times 2^E, with E kept in bits 62 through 52 plus a bias of 1023. 7 is 1.75 times 2^2, so the field holds 2 + 1023. Read the field back out, subtract the bias, and you have 2, the position of the top set bit. 63 minus 2 is 61. The exponent the cast already computed is doing the counting; the fill just made sure the exponent equals the top bit's position. The code is the insight here:</p>
+          <pre><code>bits = double_bits((double)x);
+n = ((bits &gt;&gt; 52) &amp; 0x7FFu) - 1023u;
+if (x &gt;&gt; 53)
+    n -= 1;
+return 63 - n;</code></pre>
+          <p>The first line reinterprets the double's bits through a union, no math library involved. The second pulls the exponent field out of bits 62 through 52 and removes the 1023 bias. The fourth turns the bit position into a leading-zero count. The third line is the whole hazard, and it is there because the obvious version breaks exactly where doubles run out of integers.</p>
+          <p>Past 2^53, neighboring doubles sit more than 1 apart, so the filled value 2^(n+1) - 1 is not representable and the cast rounds it. From n = 54 up it always rounds up to 2^(n+1), a distance of 1 against at least 3 the other way, and the exponent reads one too high. The knife edge is n = 53: 2^54 - 1 is the exact midpoint between 2^54 - 2 and 2^54, and round-ties-to-even picks 2^54, because its significand is 1.0 (even) while the other is fifty-two ones (odd). The first draft guarded with x &gt;&gt; 54, on the mistaken belief that the midpoint would tie downward. The differential test refused to believe it: 5,010 mismatches out of ten million, about one in two thousand, every single one at n = 53.</p>
+          <p>Re-deriving the tie showed the correction had to be x &gt;&gt; 53, and the rerun is clean: 10,065,537 checks, about ten million, zero mismatches, one checksum byte-identical across the -O0, -O2, and sanitizer builds, no sanitizer reports. The oracle is __builtin_clzll on every one of the 65,536 sixteen-bit inputs, x = 0 pinned to 64 by contract, and ten million fixed-seed random 64-bit values, roughly half of them exercising the rounding correction. Best of five benchmark reps: 14.292 nanoseconds a value, about 70 million a second. One sentence to carry away: to count leading zeros, smear the top set bit into every bit below it, then read the exponent the cast already computed, minus one when the original reached 2^53.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/115-clz-fp" target="_blank" rel="noopener">lab/115-clz-fp</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Mask That Finds Every Match</h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/114-swar-eq-mask/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA</div><p class="layer-because">not here because the lab runs as compiled host C on x86-64; no RISC-V instruction is executed or measured.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE</div><p class="layer-because">not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL</div><p class="layer-because">not here because the mask runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM</div><p class="layer-because">teaches the one atomic idea a builder needs: a zero-byte test proves existence, two borrow-suppressed passes prove position, checked over 4.3 billion differential cases</p></div></div>
           <p class="research-date"><time datetime="2026-09-10">2026-09-10 19:04 EDT</time></p>
@@ -12172,9 +12193,9 @@ assert(check == 0x2144DF1C);</code></pre>
           })
           .join(', ');
         const rows = [
-          ['HARDWARE', `${esc(p.instruction)} (${esc(p.extension)})${specRef}`],
+          ['HARDWARE', `${esc(p.instruction)} (${esc(p.extension)}) — the popcount instruction: counts the set bits in a register in a single instruction${specRef}`],
           ['EQUIVALENT C', 'Portable C implementation, checked against the hardware instruction'],
-          [`WITHOUT ${esc(p.instruction)}`, chips],
+          [`WITHOUT ${esc(p.instruction || 'this instruction')}`, chips],
           ['COST', esc(p.costNote)]
         ];
         return `<ul class="portability">${rows
