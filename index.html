@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-030459">
+  <meta name="build-version" content="v20260911-033445">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -1518,7 +1518,7 @@ assert(check == 0x2144DF1C);</code></pre>
       },
       "KERNEL": {
         "applies": false,
-        "because": "not here because the allocator ran as a plain userspace heap library on the host, and the verification exercised no scheduling, virtual memory, driver, or syscall path"
+        "because": "the verified properties, bump, split, reuse, alignment to 128 bytes, concern only how the allocator subdivides a region it was already given: back those 512 bytes with static storage, a kernel page, or host malloc and every check is identical, because none of them consult scheduling, virtual memory, or drivers"
       },
       "ALGORITHM": {
         "applies": true,
@@ -26549,96 +26549,97 @@ assert(check == 0x2144DF1C);</code></pre>
     "item": "bump-allocator",
     "kind": "card",
     "slot": "KERNEL",
-    "probandum": "not here because the allocator ran as a plain userspace heap library on the host, and the verification exercised no scheduling, virtual memory, driver, or syscall path",
+    "probandum": "the verified properties, bump, split, reuse, alignment to 128 bytes, concern only how the allocator subdivides a region it was already given: back those 512 bytes with static storage, a kernel page, or host malloc and every check is identical, because none of them consult scheduling, virtual memory, or drivers",
     "keyList": [
       {
-        "n": 1,
         "kind": "probandum",
-        "text": "not here because the allocator ran as a plain userspace heap library on the host, and the verification exercised no scheduling, virtual memory, driver, or syscall path"
+        "n": 1,
+        "text": "the verified properties, bump, split, reuse, alignment to 128 bytes, concern only how the allocator subdivides a region it was already given: back those 512 bytes with static storage, a kernel page, or host malloc and every check is identical, because none of them consult scheduling, virtual memory, or drivers"
       },
       {
-        "n": 2,
         "kind": "evidence",
+        "n": 2,
         "text": "churn allocations 512, fragmentation ratio 0.357, churn throughput 19306.6 kops/s, AddressSanitizer CLEAN, UBSan CLEAN",
         "source": {
+          "cite": "lab/02-bump-allocator/PROOF.md, run-output section",
           "tier": "lab",
-          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/02-bump-allocator/PROOF.md",
-          "cite": "proof log"
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/02-bump-allocator/PROOF.md"
         }
       },
       {
-        "n": 3,
         "kind": "evidence",
+        "n": 3,
         "text": "A bare-metal bump allocator: allocation is a pointer bump, and freed blocks are split and reused in place, with alignment handled on request.",
         "source": {
-          "tier": "reference",
-          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/02-bump-allocator",
-          "cite": "repository"
+          "cite": "lab/02-bump-allocator, design summary",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/02-bump-allocator"
         }
       },
       {
-        "n": 4,
         "kind": "evidence",
+        "n": 4,
         "text": "512-byte heap capacity 8 x 64-byte blocks, alignment to 128 bytes PASS, free-list address reuse PASS, 7 test groups PASS",
         "source": {
+          "cite": "lab/02-bump-allocator/PROOF.md, checks section",
           "tier": "lab",
-          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/02-bump-allocator/PROOF.md",
-          "cite": "proof log"
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/02-bump-allocator/PROOF.md"
         }
       },
       {
+        "kind": "penultimate",
         "n": 5,
-        "kind": "generalization",
-        "text": "sanitizer-clean churn and fragmentation numbers describe a library heap, not a kernel subsystem"
+        "text": "The allocator's contract starts where the kernel's ends: it receives a valid region, and every verified property concerns only the subdivision logic inside that region."
       },
       {
+        "kind": "generalization",
         "n": 6,
-        "kind": "generalization",
-        "text": "the design and tests cover allocation, splitting, and reuse; no scheduler, VM, driver, or syscall appears"
+        "text": "Subdivision logic is independent of backing store: the same bump, split, and reuse code yields the same results whether the 512 bytes came from static storage, a kernel page, or host malloc, because no step consults the provider."
       },
       {
-        "n": 7,
         "kind": "generalization",
-        "text": "userspace verification alone cannot light KERNEL; a kernel subsystem must be implemented and exercised"
+        "n": 7,
+        "text": "A layer is dim for a lab when the verified claim is invariant to that layer's behavior: varying the layer changes nothing the proof checks. Mere absence of the layer from the test setup is not the argument; invariance is."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "One could object that the kernel provided the pages, so the kernel is involved in the result."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "Providing the precondition is not participating in the claim: the proof checks what the allocator does with the region, and that is identical for every provider. The kernel's involvement ends at the region boundary."
       }
     ],
     "inferences": [
       {
         "from": [
-          2
+          2,
+          3,
+          4
+        ],
+        "to": [
+          5
         ],
         "via": [
+          6
+        ],
+        "strength": "strong",
+        "note": "The measurements and design in (2), (3), and (4) are all subdivision-internal; by backing-store independence in (6) the kernel's provision is a precondition, giving the contract boundary in (5)."
+      },
+      {
+        "from": [
           5
         ],
         "to": [
           1
         ],
-        "strength": "strong"
-      },
-      {
-        "from": [
-          3,
-          4
-        ],
-        "via": [
-          6
-        ],
-        "to": [
-          1
-        ],
-        "strength": "normal"
-      },
-      {
-        "from": [
-          2
-        ],
         "via": [
           7
         ],
-        "to": [
-          1
-        ],
-        "strength": "strong"
+        "strength": "strong",
+        "note": "The contract boundary in (5) plus the invariance principle in (7) yields the dim verdict in (1): kernel behavior cannot perturb the verified claim."
       }
     ]
   },
