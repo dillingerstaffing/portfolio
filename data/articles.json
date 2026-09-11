@@ -1,5 +1,45 @@
 [
 {
+  "title": "The Gate With Three Locks",
+  "date": "2026-09-11",
+  "paragraphs": [
+   "Take a page-table entry with R=1, W=1, X=0, U=0. Read the flags the way the hardware does: readable, writable, not executable, and owned by the supervisor, since U=0 marks a supervisor page. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it. Now run a load instruction in supervisor mode against this page. The verdict comes from three questions asked in a fixed order. The load passes all three and proceeds. Run the same load from user mode and it dies at the second question.",
+   "The questions, in the order the specification's walk step applies them. First, the contradiction check: if W=1 and R=0, the access faults before any permission logic runs. Second, the privilege check: with the SUM bit clear (the lab states this boundary; SUM is the bit that would let the supervisor read user pages), a U=0 page is closed to user mode and a U=1 page is closed to supervisor mode. Third, the grant: a load needs R, a store needs W, an instruction fetch needs X. An entry with R=W=X=0 is not a leaf at all but a pointer to the next table level, so the grant gives it nothing, which agrees with the truth that it grants nothing.",
+   "The obvious design skips the first question and lets the grant logic sort it out: a page marked W=1, R=0 would simply fail loads and pass stores, writable-but-not-readable. The reason the specification bans the encoding instead is the invariant it protects: every writable page is also readable. If the contradiction could be written into a table, some piece of hardware would have to decide what a store to such a page means, and no two implementations would decide the same way. The fault keeps the contract free of contradictions, so no hardware ever has to interpret one.",
+   "The code is the insight here:",
+   "Three lines, and the placement is the point: this runs before the privilege check and before the grant switch, matching the order of the specification's walk step. The single condition is the whole invariant, writable implies readable, enforced at the gate rather than argued about later.",
+   "The proof runs every combination the table can express: 16 flag combinations times 3 access types times 2 privilege modes, 96 rows. That is the entire rulebook; there is no 97th row to miss. The oracle is built nothing like the implementation on purpose: the forbidden encodings as two explicit (r, w, x) patterns instead of the implication, the grant as a table instead of a switch, the privilege rule as its own predicate instead of early returns, so a bug hiding in one shape cannot hide in the other. Zero mismatches across all 96 rows, with the checksum efd3419afd2b56cb pinned across builds. One check costs 4.423 nanoseconds on this machine, a few billionths of a second, and a running kernel asks this question on nearly every memory access, millions of times a second, which is why the gate has to be cheap. The honest boundary, stated in the lab: this proves the leaf verdict only. Not the valid bit, not the accessed and dirty bits, not physical memory protection, not silicon. A proof that lists its own boundaries is the honest kind.",
+   "One sentence to carry away: a page-table entry's permission bits are a three-filter gate, contradiction first, privilege second, grant third, and the two forbidden encodings exist so that writable-but-not-readable can never be said out loud."
+  ],
+  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/135-pte-permission-check",
+  "evidence": {
+   "label": "proof log",
+   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+  },
+  "layers": {
+   "ISA": {
+     "applies": true,
+     "because": "matters because the R/W/X/U encodings and the fault rules are the Sv39 privileged ISA's own contract: the proof checks the implementation against the manual's rule table on every one of the 96 flag, access-type, and mode combinations"
+   },
+   "MICROARCH": {
+     "applies": false,
+     "because": "not here because the proof checks the permission rule table on the host, not a page-table walk; no TLB, walk, or fault-delivery hardware behavior is measured"
+   },
+   "FIRMWARE": {
+     "applies": true,
+     "because": "matters because M-mode firmware builds the page tables: writing a PTE with W set and R clear bakes in a guaranteed fault, and the proof pins exactly which encodings are legal before any table is built"
+   },
+   "KERNEL": {
+     "applies": true,
+     "because": "matters because the kernel's page-fault path and its permission changes live by these rules: the checked function is the rule the kernel applies when it decides whether an access faults"
+   },
+   "ALGORITHM": {
+     "applies": false,
+     "because": "not here because the check transcribes the ISA's rule table into boolean logic; outside Sv39 the same code means nothing, so there is no ISA-independent mechanism to argue"
+   }
+  }
+},
+{
   "title": "The Ten Fields in One Word",
   "date": "2026-09-11",
   "paragraphs": [
