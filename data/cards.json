@@ -10916,5 +10916,127 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/pmp-lock-bit",
     "terminalLabel": "Verified pmp-lock-bit QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-mie-toggle",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "mstatus.MIE gate: pending interrupt waits for the enable bit",
+    "summary": "M-mode arms a machine timer interrupt with MIE clear, observes the pending-but-gated window with no trap firing, then sets MIE and the single trap arrives immediately with the machine timer cause. The handler disarms the timer first, so the gate opens exactly once and no re-fire occurs.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the MIE gate is the privileged ISA's own rule for when a pending enabled interrupt reaches the handler, and the proof exercises exactly the clear-suppresses and set-delivers behavior the rule describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models interrupt delivery functionally, so no pipeline, interrupt-controller, or timing behavior is measured in the proof"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware owns the mstatus.MIE bit, the mie enable bits, and the trap handler; the proof is the firmware-level act of gating delivery, observing the quiet window, and opening the gate"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof checks the interrupt gate beneath any kernel's trap handling"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because gating a pending interrupt on a global enable bit is a hardware control contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-toggle/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "14 checks against the gate-suppresses and gate-opens expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "GATE WINDOW",
+        "mtimecmp armed with MIE clear: 0 traps across the observation window, mip.MTIP pending but gated"
+      ],
+      [
+        "TRAP",
+        "MIE set: exactly 1 trap with the machine timer cause, handler disarms mtimecmp to all-ones, no re-fire"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mie-toggle",
+    "terminalOutput": "$ make run-mie-toggle\nmie-toggle: mstatus.MIE global interrupt-enable gate\nMIE clear: armed timer, 0 traps in gated window\nMIE set: 1 trap, mcause machine timer\nchecks=14 fails=0\nRESULT: PASS (gate holds; single delivery)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 14,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-toggle",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mie-toggle",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mscratch-csrrw",
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "csrrw on mscratch: atomic swap, both sides verified",
+    "summary": "M-mode reads the boot value of mscratch, uses csrrw to atomically swap a sentinel into the CSR, then verifies both sides of the exchange: the register received the old mscratch value and mscratch reads back the sentinel. The original value is restored and exact restoration is verified, with zero traps across the run.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "csrrw's atomic read-and-write in one instruction is the Zicsr ISA's own contract, and the proof executes the exact swap-then-readback sequence the contract describes"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU models the CSR swap functionally, so no pipeline, register-file, or atomicity-implementation behavior is measured"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware uses mscratch as its trap scratch register; the proof is the firmware-level act of reading, swapping, and restoring the register traps depend on"
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no kernel runs; the proof checks the CSR swap contract beneath any supervisor's trap entry code"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because an atomic register-CSR exchange is a hardware instruction contract, not an ISA-independent computational mechanism"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mscratch-csrrw/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "PLATFORM",
+        "QEMU 8.2.2"
+      ],
+      [
+        "CORRECTNESS",
+        "5 checks against the swap and restore expectations, 0 mismatches, PASS in 3 byte-identical runs"
+      ],
+      [
+        "SWAP",
+        "csrrw sentinel into mscratch: register holds old boot value, mscratch reads back the sentinel via csrrs"
+      ],
+      [
+        "RESTORE",
+        "original boot value written back, mscratch reads back exactly the boot value, 0 traps"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mscratch-csrrw",
+    "terminalOutput": "$ make run-mscratch-csrrw\nmscratch-csrrw: csrrw atomic swap round-trip\nboot mscratch read, sentinel swapped in\nboth sides verified, original restored\nchecks=5 fails=0\nRESULT: PASS (swap atomic; restore exact)",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 5,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mscratch-csrrw",
+    "terminalLabel": "Run log",
+    "showRepoLink": true
   }
 ]
