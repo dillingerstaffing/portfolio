@@ -12917,5 +12917,165 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-ir-gate",
     "terminalLabel": "Verified src-scounteren-ir-gate QEMU output",
     "showRepoLink": true
+  },
+{
+    "id": "lab-146-pte-accessed-bit",
+    "title": "Sv39 leaf-PTE accessed-bit rule check, hardware A-bit behavior in a pure function",
+    "kicker": "the hardware sets the accessed bit on every permitted access and leaves the PTE untouched on a fault, so a rule table can pin it exactly",
+    "summary": "lab/146-pte-accessed-bit implements pte_a_check(flags, access), deciding whether an Sv39 leaf-PTE access faults and what the A (accessed) bit is afterwards, directly from the RISC-V Privileged ISA Specification. It differential-tests against a hand-transcribed 3x16 spec-table oracle over the full space of flag bytes and access types.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The card verifies the Sv39 PTE accessed-bit rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is a pure function of the spec rule table, indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card checks the rule in host userspace with no boot or machine-mode software involved, so the slot stays dim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The card proves the accessed-bit transition the kernel's page-replacement logic depends on, so the verified property is load-bearing for kernel work."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The card verifies a portable computational rule table, not hardware, so the mechanism is load-bearing as an algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-pte-accessed-bit/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "2304 inputs checked against a hand-transcribed spec table, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "3.443 ns/value at -O2 (best of 5)"
+      ],
+      [
+        "CHECKSUM",
+        "75d52de33bd90675, identical across -O0, -O2, and ASan+UBSan builds"
+      ]
+    ],
+    "terminalOutput": "HEADER-BEGIN\nChecks: 2304\nMismatches: 0\nChecksum: 75d52de33bd90675\nHEADER-END",
+    "verificationEnvironment": "Host",
+    "checks": 2304,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/146-pte-accessed-bit",
+    "repoLabel": "systems-lab/lab/146-pte-accessed-bit",
+    "terminalName": "lab-146",
+    "terminalLabel": "lab/146-pte-accessed-bit",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mcountinhibit-cy-gate",
+    "title": "mcountinhibit.CY freezes the mcycle counter, measured live on real hardware behavior",
+    "kicker": "setting one bit stops the cycle counter dead, clearing it brings it back, with zero advance in between",
+    "summary": "src/mcountinhibit-cy-gate is a bare-metal RISC-V program that verifies on the QEMU virt board the exact gating behavior of the mcountinhibit.CY bit for mcycle. With CY set, 1000 back-to-back mcycle reads return identical values; with CY cleared, the counter resumes with strictly increasing samples.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The card verifies the mcountinhibit.CY gating the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "The card proves the counter-inhibit control M-mode firmware configures, so the verified property is load-bearing for firmware work."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The card runs entirely in M-mode with no supervisor or user code involved, so the slot stays dim."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware control bit, not a computational construction, so the slot stays dim."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks against live mcycle reads, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x14cd37e90f3ea9db, identical across 3 QEMU 8.2.2 runs"
+      ]
+    ],
+    "terminalOutput": "Checks: 7\nMismatches: 0\nChecksum: 0x14cd37e90f3ea9db\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+        "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 7,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcountinhibit-cy-gate",
+    "repoLabel": "riscv-baremetal-demo/src/mcountinhibit-cy-gate",
+    "terminalName": "src-mcountinhibit",
+    "terminalLabel": "src/mcountinhibit-cy-gate",
+    "showRepoLink": true
+  },
+  {
+    "id": "user-dupredirect",
+    "title": "dup onto fd 1 redirects stdout into a file, proven byte-exact in xv6",
+    "kicker": "the shell trick everyone relies on works because dup takes the lowest free descriptor, and here it is measured",
+    "summary": "user/dupredirect is a user-space xv6 test program that proves dup redirects stdout (fd 1) into a file. It forks a child that closes fd 1, calls dup and requires it to return exactly 1, then writes a fixed 64-byte literal through fd 1. The parent reads the file back byte-exact.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The card verifies xv6 file-descriptor behavior, not a RISC-V instruction or CSR, so the slot stays dim."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card runs in xv6 user space with no machine-mode firmware involved, so the slot stays dim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The card proves the dup file-descriptor allocation the kernel's syscall layer implements, so the verified property is load-bearing for kernel work."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies kernel syscall behavior, not a portable computational construction, so the slot stays dim."
+      }
+    },
+    "evidence": {
+      "label": "repo",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4 checks against byte-exact file readback, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x3B30E2D211BDE3D5, FNV-1a 64 of the 64-byte payload"
+      ]
+    ],
+    "terminalOutput": "Checks: 4\nMismatches: 0\nChecksum: 0x3B30E2D211BDE3D5\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+        "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 4,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c",
+    "repoLabel": "xv6-getscount/user/dupredirect.c",
+    "terminalName": "user-dupredirect",
+    "terminalLabel": "user/dupredirect",
+    "showRepoLink": true
   }
 ]

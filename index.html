@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-111132">
+  <meta name="build-version" content="v20260911-113242">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -14377,6 +14377,166 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scounteren-ir-gate",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/scounteren-ir-gate",
     "terminalLabel": "Verified src-scounteren-ir-gate QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-146-pte-accessed-bit",
+    "title": "Sv39 leaf-PTE accessed-bit rule check, hardware A-bit behavior in a pure function",
+    "kicker": "the hardware sets the accessed bit on every permitted access and leaves the PTE untouched on a fault, so a rule table can pin it exactly",
+    "summary": "lab/146-pte-accessed-bit implements pte_a_check(flags, access), deciding whether an Sv39 leaf-PTE access faults and what the A (accessed) bit is afterwards, directly from the RISC-V Privileged ISA Specification. It differential-tests against a hand-transcribed 3x16 spec-table oracle over the full space of flag bytes and access types.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The card verifies the Sv39 PTE accessed-bit rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is a pure function of the spec rule table, indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card checks the rule in host userspace with no boot or machine-mode software involved, so the slot stays dim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The card proves the accessed-bit transition the kernel's page-replacement logic depends on, so the verified property is load-bearing for kernel work."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The card verifies a portable computational rule table, not hardware, so the mechanism is load-bearing as an algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-pte-accessed-bit/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "2304 inputs checked against a hand-transcribed spec table, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "3.443 ns/value at -O2 (best of 5)"
+      ],
+      [
+        "CHECKSUM",
+        "75d52de33bd90675, identical across -O0, -O2, and ASan+UBSan builds"
+      ]
+    ],
+    "terminalOutput": "HEADER-BEGIN\nChecks: 2304\nMismatches: 0\nChecksum: 75d52de33bd90675\nHEADER-END",
+    "verificationEnvironment": "Host",
+    "checks": 2304,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/146-pte-accessed-bit",
+    "repoLabel": "systems-lab/lab/146-pte-accessed-bit",
+    "terminalName": "lab-146",
+    "terminalLabel": "lab/146-pte-accessed-bit",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mcountinhibit-cy-gate",
+    "title": "mcountinhibit.CY freezes the mcycle counter, measured live on real hardware behavior",
+    "kicker": "setting one bit stops the cycle counter dead, clearing it brings it back, with zero advance in between",
+    "summary": "src/mcountinhibit-cy-gate is a bare-metal RISC-V program that verifies on the QEMU virt board the exact gating behavior of the mcountinhibit.CY bit for mcycle. With CY set, 1000 back-to-back mcycle reads return identical values; with CY cleared, the counter resumes with strictly increasing samples.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The card verifies the mcountinhibit.CY gating the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "The card proves the counter-inhibit control M-mode firmware configures, so the verified property is load-bearing for firmware work."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The card runs entirely in M-mode with no supervisor or user code involved, so the slot stays dim."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware control bit, not a computational construction, so the slot stays dim."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks against live mcycle reads, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x14cd37e90f3ea9db, identical across 3 QEMU 8.2.2 runs"
+      ]
+    ],
+    "terminalOutput": "Checks: 7\nMismatches: 0\nChecksum: 0x14cd37e90f3ea9db\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 7,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcountinhibit-cy-gate",
+    "repoLabel": "riscv-baremetal-demo/src/mcountinhibit-cy-gate",
+    "terminalName": "src-mcountinhibit",
+    "terminalLabel": "src/mcountinhibit-cy-gate",
+    "showRepoLink": true
+  },
+  {
+    "id": "user-dupredirect",
+    "title": "dup onto fd 1 redirects stdout into a file, proven byte-exact in xv6",
+    "kicker": "the shell trick everyone relies on works because dup takes the lowest free descriptor, and here it is measured",
+    "summary": "user/dupredirect is a user-space xv6 test program that proves dup redirects stdout (fd 1) into a file. It forks a child that closes fd 1, calls dup and requires it to return exactly 1, then writes a fixed 64-byte literal through fd 1. The parent reads the file back byte-exact.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The card verifies xv6 file-descriptor behavior, not a RISC-V instruction or CSR, so the slot stays dim."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The card runs in xv6 user space with no machine-mode firmware involved, so the slot stays dim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The card proves the dup file-descriptor allocation the kernel's syscall layer implements, so the verified property is load-bearing for kernel work."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies kernel syscall behavior, not a portable computational construction, so the slot stays dim."
+      }
+    },
+    "evidence": {
+      "label": "repo",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4 checks against byte-exact file readback, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x3B30E2D211BDE3D5, FNV-1a 64 of the 64-byte payload"
+      ]
+    ],
+    "terminalOutput": "Checks: 4\nMismatches: 0\nChecksum: 0x3B30E2D211BDE3D5\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 4,
+    "failures": 0,
+    "stressItems": [],
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c",
+    "repoLabel": "xv6-getscount/user/dupredirect.c",
+    "terminalName": "user-dupredirect",
+    "terminalLabel": "user/dupredirect",
     "showRepoLink": true
   }
 ];
@@ -92867,6 +93027,1071 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 4,
         "kind": "penultimate",
         "text": "The card verifies a hardware enable gate, not a computational construction, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-pte-accessed-bit|ISA": {
+    "item": "lab-146-pte-accessed-bit",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The card verifies the Sv39 PTE accessed-bit rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the Sv39 PTE accessed-bit rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for lab-146-pte-accessed-bit.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-pte-accessed-bit/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the Sv39 accessed-bit rule the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-pte-accessed-bit|MICROARCH": {
+    "item": "lab-146-pte-accessed-bit",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is a pure function of the spec rule table, indifferent to the implementation behind the ISA, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is a pure function of the spec rule table, indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for lab-146-pte-accessed-bit.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-pte-accessed-bit/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is a pure function of the spec table, indifferent to implementation, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-pte-accessed-bit|FIRMWARE": {
+    "item": "lab-146-pte-accessed-bit",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card checks the rule in host userspace with no boot or machine-mode software involved, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card checks the rule in host userspace with no boot or machine-mode software involved, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for lab-146-pte-accessed-bit.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-pte-accessed-bit/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card checks the rule in host userspace with no firmware involved, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-pte-accessed-bit|KERNEL": {
+    "item": "lab-146-pte-accessed-bit",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The card proves the accessed-bit transition the kernel's page-replacement logic depends on, so the verified property is load-bearing for kernel work.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card proves the accessed-bit transition the kernel's page-replacement logic depends on, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for lab-146-pte-accessed-bit.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-pte-accessed-bit/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the accessed-bit transition the kernel's page replacement depends on, so the property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "lab-146-pte-accessed-bit|ALGORITHM": {
+    "item": "lab-146-pte-accessed-bit",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a portable computational rule table, not hardware, so the mechanism is load-bearing as an algorithm.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies a portable computational rule table, not hardware, so the mechanism is load-bearing as an algorithm."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for lab-146-pte-accessed-bit.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/146-pte-accessed-bit/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies a portable rule table, so the mechanism is load-bearing as an algorithm."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcountinhibit-cy-gate|ISA": {
+    "item": "src-mcountinhibit-cy-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The card verifies the mcountinhibit.CY gating the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies the mcountinhibit.CY gating the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mcountinhibit-cy-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the mcountinhibit.CY gating the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcountinhibit-cy-gate|MICROARCH": {
+    "item": "src-mcountinhibit-cy-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mcountinhibit-cy-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcountinhibit-cy-gate|FIRMWARE": {
+    "item": "src-mcountinhibit-cy-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card proves the counter-inhibit control M-mode firmware configures, so the verified property is load-bearing for firmware work.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card proves the counter-inhibit control M-mode firmware configures, so the verified property is load-bearing for firmware work."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mcountinhibit-cy-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the counter-inhibit control M-mode firmware configures, so the property is load-bearing for firmware work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcountinhibit-cy-gate|KERNEL": {
+    "item": "src-mcountinhibit-cy-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The card runs entirely in M-mode with no supervisor or user code involved, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card runs entirely in M-mode with no supervisor or user code involved, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mcountinhibit-cy-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card runs entirely in M-mode with no supervisor code, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcountinhibit-cy-gate|ALGORITHM": {
+    "item": "src-mcountinhibit-cy-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a hardware control bit, not a computational construction, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies a hardware control bit, not a computational construction, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for src-mcountinhibit-cy-gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcountinhibit-cy-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies a hardware control bit, not a computational construction, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-dupredirect|ISA": {
+    "item": "user-dupredirect",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The card verifies xv6 file-descriptor behavior, not a RISC-V instruction or CSR, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies xv6 file-descriptor behavior, not a RISC-V instruction or CSR, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-dupredirect.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies xv6 file-descriptor behavior, not a RISC-V instruction, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-dupredirect|MICROARCH": {
+    "item": "user-dupredirect",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-dupredirect.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-dupredirect|FIRMWARE": {
+    "item": "user-dupredirect",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The card runs in xv6 user space with no machine-mode firmware involved, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card runs in xv6 user space with no machine-mode firmware involved, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-dupredirect.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card runs in xv6 user space with no firmware involved, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-dupredirect|KERNEL": {
+    "item": "user-dupredirect",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The card proves the dup file-descriptor allocation the kernel's syscall layer implements, so the verified property is load-bearing for kernel work.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card proves the dup file-descriptor allocation the kernel's syscall layer implements, so the verified property is load-bearing for kernel work."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-dupredirect.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the dup allocation the kernel's syscall layer implements, so the property is load-bearing for kernel work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "user-dupredirect|ALGORITHM": {
+    "item": "user-dupredirect",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies kernel syscall behavior, not a portable computational construction, so the slot stays dim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies kernel syscall behavior, not a portable computational construction, so the slot stays dim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the verified property for user-dupredirect.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/dupredirect.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies kernel syscall behavior, not a portable construction, so the slot stays dim."
       },
       {
         "n": 5,
