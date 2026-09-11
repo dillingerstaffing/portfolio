@@ -12689,5 +12689,119 @@
     "repoLabel": "GitHub: systems-lab/lab/146-va-canonical-check",
     "terminalLabel": "Verified lab-146-va-canonical-check Host output",
     "showRepoLink": true
-  }
+  },
+{
+  "id": "src-sip-seip-write",
+  "kicker": "RISC-V PRIVILEGED",
+  "title": "sip.SEIP read-only from S-mode, QEMU",
+  "summary": "S-mode writes all-ones to sip on QEMU 8.2.2: the SEIP bit (bit 9) reads back unchanged at zero while the software-writable SSIP bit sticks, proving the write executed and SEIP ignored it. Writing zero clears the writable bits, and the M-mode trap count stays zero throughout.",
+  "layers": {
+    "ISA": {
+      "applies": true,
+      "because": "The privileged ISA defines sip.SEIP as read-only for S-mode, and the proof documents exactly how QEMU 8.2.2 legalizes an S-mode all-ones write: SEIP stays clear while SSIP sticks, so the write executed and the bit ignored it. The write-readback triples (17 checks, 0 mismatches) are the verified contract behavior on this implementation."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The proof checks write-readback outcomes only: 17 checks, 0 mismatches. Whether SEIP changes is determined by the hart's WARL legalization, not by pipeline or cache behavior."
+    },
+    "FIRMWARE": {
+      "applies": true,
+      "because": "M-mode firmware controls S-mode visibility of sip through mideleg: this hart boots with mideleg 0x1444 and drops S-mode sip writes entirely unless SSI is delegated, so the S-mode phase is only observable because the boot code delegated SSI. The verified property tells firmware that S-mode software cannot touch SEIP, so supervisor external interrupts must arrive through the PLIC."
+    },
+    "KERNEL": {
+      "applies": false,
+      "because": "The card verifies that S-mode software cannot change SEIP by writing sip; a supervisor kernel signals external interrupts through the PLIC claim/complete path, never through sip. The negative result is reported honestly rather than stretched into a kernel mechanism that does not exist here."
+    },
+    "ALGORITHM": {
+      "applies": true,
+      "because": "The mechanism is a pure WARL legalization rule: a write that the implementation discards for the read-only bit, with the readback documenting the legalized value. The same write-may-be-ignored pattern appears in portable code wherever a register's writable bits are a subset of its width."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-seip-write/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "17 in-program checks on QEMU 8.2.2: S-mode all-ones sip write leaves SEIP at 0 while SSIP reads back 1 (the write executed), zero write clears the writable bits, 0 M-mode traps, 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0xfbef9753a3301da1, byte-identical across 3 runs"
+    ],
+    [
+      "ENVIRONMENT",
+      "QEMU 8.2.2, M-mode boot dropping to S-mode on virt board"
+    ]
+  ],
+  "terminalName": "riscv-baremetal-demo / src / sip-seip-write",
+  "terminalOutput": "$ make sip-seip-write.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel sip-seip-write.elf\nsip before: 0x0\ncsrw sip, all-ones -> readback 0x2 (SSIP stuck, SEIP unchanged)\ncsrw sip, zero -> readback 0x0\nM-mode traps: 0\nchecks=17 mismatches=0 checksum=0xfbef9753a3301da1\n\nsip.SEIP read-only from S-mode: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 17,
+  "failures": 0,
+  "stressItems": 17,
+  "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sip-seip-write",
+  "repoLabel": "GitHub: riscv-baremetal-demo/src/sip-seip-write",
+  "terminalLabel": "Verified src-sip-seip-write QEMU output",
+  "showRepoLink": true
+},
+{
+  "id": "sbrkoom",
+  "kicker": "XV6 KERNEL",
+  "title": "sbrk hits a stable growth ceiling, xv6",
+  "summary": "A user-space xv6 test loops sbrk(4096) until the kernel refuses: the break lands exactly pages times 4096 above the base, a further sbrk still fails, and the heap end is page-aligned. No kernel code changed; the test exercises the existing growproc path from user space.",
+  "layers": {
+    "ISA": {
+      "applies": false,
+      "because": "The test runs as a user program exercising sbrk; it checks heap addresses, not the machine contract. The 5 checks, 0 mismatches are insensitive to the ISA: they pass on any machine where the kernel refuses growth at its limit."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The verified claim is about the kernel's growth ceiling, not the implementation behind it: 5 checks, 0 mismatches. Where the ceiling sits is determined by the kernel's address-space limit and free memory, not by pipeline or cache behavior."
+    },
+    "FIRMWARE": {
+      "applies": false,
+      "because": "The test runs entirely in user space on xv6 with no machine-mode involvement. Firmware never configures the heap, so the verified property is indifferent to firmware."
+    },
+    "KERNEL": {
+      "applies": true,
+      "because": "growproc is the kernel's heap-growth contract, and this test verifies its refusal from outside the kernel: growth stops with -1, the break matches base plus pages times 4096, and the ceiling is stable rather than transient. The verified property is the kernel's memory-limit behavior."
+    },
+    "ALGORITHM": {
+      "applies": true,
+      "because": "The mechanism is a pure bounded-growth construction: grow while the allocator succeeds, refuse past the limit, and verify the boundary arithmetically. The same grow-to-refusal pattern appears in portable code wherever a buffer must find its capacity without knowing it in advance."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "5 checks in user space on QEMU 8.2.2: growth stops with -1 after 32468 pages, break at 0x7ED8000 equals base 0x4000 plus pages times 4096, a further sbrk still fails, heap end page-aligned, 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0x9348441C61B34D98, over the observed (pages, break, fail) triple"
+    ],
+    [
+      "ENVIRONMENT",
+      "QEMU 8.2.2, xv6 user space"
+    ]
+  ],
+  "terminalName": "xv6-getscount / user / sbrkoom.c",
+  "terminalOutput": "$ make qemu (runs sbrkoom)\ncheck 1: growth stopped with -1 after 32468 pages (132988928 bytes)\ncheck 2: sbrk(0)=0x7ED8000 == base(0x4000)+32468 pages*4096\ncheck 3: further sbrk(4096) still returns -1 (ceiling stable)\nchecks=5 mismatches=0 checksum=0x9348441C61B34D98\n\nsbrk growth ceiling is stable: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 5,
+  "failures": 0,
+  "stressItems": 5,
+  "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+  "repoLabel": "GitHub: xv6-getscount/user/sbrkoom.c",
+  "terminalLabel": "Verified sbrkoom QEMU output",
+  "showRepoLink": true
+}
 ]

@@ -76915,6 +76915,716 @@
           "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
         }
       ]
+    },
+    {
+      "item": "src-sip-seip-write",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "The privileged ISA defines sip.SEIP as read-only for S-mode, and the proof documents exactly how QEMU 8.2.2 legalizes an S-mode all-ones write: SEIP stays clear while SSIP sticks, so the write executed and the bit ignored it. The write-readback triples (17 checks, 0 mismatches) are the verified contract behavior on this implementation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The privileged ISA defines sip.SEIP as read-only for S-mode, and the proof documents exactly how QEMU 8.2.2 legalizes an S-mode all-ones write: SEIP stays clear while SSIP sticks, so the write executed and the bit ignored it. The write-readback triples (17 checks, 0 mismatches) are the verified contract behavior on this implementation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records 17 in-program checks on QEMU 8.2.2: all-ones sip write from S-mode, SEIP reads back 0 unchanged, SSIP reads back 1 proving the write executed, zero write clears the writable bits, 0 M-mode traps, 0 mismatches.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-seip-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The card documents the WARL legalization the privileged ISA permits for a read-only sip bit, so the result is load-bearing for anyone implementing to the machine contract."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "src-sip-seip-write",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "The proof checks write-readback outcomes only: 17 checks, 0 mismatches. Whether SEIP changes is determined by the hart's WARL legalization, not by pipeline or cache behavior.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The proof checks write-readback outcomes only: 17 checks, 0 mismatches. Whether SEIP changes is determined by the hart's WARL legalization, not by pipeline or cache behavior."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records 17 write-readback checks on QEMU 8.2.2 with 0 mismatches; the readbacks reflect CSR legalization, and no timing, cache, or pipeline measurement appears anywhere in the log.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-seip-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A dim slot must establish invariance, not just the absence of an implementation: the negative claim is as defensible as a positive one."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The readback is identical across 3 byte-identical runs, so the verified property is invariant to microarchitectural behavior; it is a contract fact, not an implementation fact."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "src-sip-seip-write",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "M-mode firmware controls S-mode visibility of sip through mideleg: this hart boots with mideleg 0x1444 and drops S-mode sip writes entirely unless SSI is delegated, so the S-mode phase is only observable because the boot code delegated SSI. The verified property tells firmware that S-mode software cannot touch SEIP, so supervisor external interrupts must arrive through the PLIC.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "M-mode firmware controls S-mode visibility of sip through mideleg: this hart boots with mideleg 0x1444 and drops S-mode sip writes entirely unless SSI is delegated, so the S-mode phase is only observable because the boot code delegated SSI. The verified property tells firmware that S-mode software cannot touch SEIP, so supervisor external interrupts must arrive through the PLIC."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records the mideleg readback 0x1444 at boot, the deliberate delegation of SSI (readback 0x1446), and the S-mode write-readback triples under that configuration, 0 M-mode traps.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-seip-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The boot-time delegation decision determines which sip bits S-mode can ever observe, so the verified SEIP write-ignore is load-bearing for firmware's trap-routing and interrupt-delivery choices."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "src-sip-seip-write",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "The card verifies that S-mode software cannot change SEIP by writing sip; a supervisor kernel signals external interrupts through the PLIC claim/complete path, never through sip. The negative result is reported honestly rather than stretched into a kernel mechanism that does not exist here.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The card verifies that S-mode software cannot change SEIP by writing sip; a supervisor kernel signals external interrupts through the PLIC claim/complete path, never through sip. The negative result is reported honestly rather than stretched into a kernel mechanism that does not exist here."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log shows the S-mode all-ones write leaving SEIP at 0 with 0 traps; nothing in the log exercises a kernel subsystem, and the bare-metal S-mode phase is not a kernel's trap path.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-seip-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A dim slot must establish invariance, not just the absence of an implementation: the negative claim is as defensible as a positive one."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The write-ignore property belongs to the machine contract and the PLIC; no kernel subsystem's behavior depends on S-mode writing SEIP, because no correct kernel attempts it."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "src-sip-seip-write",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "The mechanism is a pure WARL legalization rule: a write that the implementation discards for the read-only bit, with the readback documenting the legalized value. The same write-may-be-ignored pattern appears in portable code wherever a register's writable bits are a subset of its width.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The mechanism is a pure WARL legalization rule: a write that the implementation discards for the read-only bit, with the readback documenting the legalized value. The same write-may-be-ignored pattern appears in portable code wherever a register's writable bits are a subset of its width."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records the all-ones write legalized to readback 0x2: the discarded bits vanish and the writable bit persists, the same mask-and-compare shape as any write-mask rule.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sip-seip-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The write-mask rule is a pure computational construction over bit sets, independent of the hart; it travels wherever a value is written through a mask."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "sbrkoom",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "The test runs as a user program exercising sbrk; it checks heap addresses, not the machine contract. The 5 checks, 0 mismatches are insensitive to the ISA: they pass on any machine where the kernel refuses growth at its limit.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The test runs as a user program exercising sbrk; it checks heap addresses, not the machine contract. The 5 checks, 0 mismatches are insensitive to the ISA: they pass on any machine where the kernel refuses growth at its limit."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records 5 user-space checks on QEMU 8.2.2: growth stops with -1, the break matches base plus pages times 4096, the ceiling is stable, the heap end is page-aligned, 0 mismatches. No instruction, CSR, or trap behavior is exercised.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A dim slot must establish invariance, not just the absence of an implementation: the negative claim is as defensible as a positive one."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The checked property is the kernel's refusal to grow past its limit; it is identical on any ISA where the kernel enforces a limit, so the claim is invariant to the machine contract."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "sbrkoom",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "The verified claim is about the kernel's growth ceiling, not the implementation behind it: 5 checks, 0 mismatches. Where the ceiling sits is determined by the kernel's address-space limit and free memory, not by pipeline or cache behavior.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The verified claim is about the kernel's growth ceiling, not the implementation behind it: 5 checks, 0 mismatches. Where the ceiling sits is determined by the kernel's address-space limit and free memory, not by pipeline or cache behavior."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records 5 checks with 0 mismatches; the numbers are heap addresses and a refusal return code, and no timing, cache, or pipeline measurement appears anywhere in the log.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A dim slot must establish invariance, not just the absence of an implementation: the negative claim is as defensible as a positive one."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "Where the ceiling sits is set by the kernel's address-space limit and available memory; the verified property is invariant to microarchitectural behavior."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "sbrkoom",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "The test runs entirely in user space on xv6 with no machine-mode involvement. Firmware never configures the heap, so the verified property is indifferent to firmware.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The test runs entirely in user space on xv6 with no machine-mode involvement. Firmware never configures the heap, so the verified property is indifferent to firmware."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log shows a user-space program linked into xv6's fs.img; nothing in the log touches machine mode, mideleg, or PMP.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A dim slot must establish invariance, not just the absence of an implementation: the negative claim is as defensible as a positive one."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The growth ceiling is a property of the kernel's growproc; it holds regardless of boot-time firmware configuration."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "sbrkoom",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "growproc is the kernel's heap-growth contract, and this test verifies its refusal from outside the kernel: growth stops with -1, the break matches base plus pages times 4096, and the ceiling is stable rather than transient. The verified property is the kernel's memory-limit behavior.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "growproc is the kernel's heap-growth contract, and this test verifies its refusal from outside the kernel: growth stops with -1, the break matches base plus pages times 4096, and the ceiling is stable rather than transient. The verified property is the kernel's memory-limit behavior."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records 5 checks on QEMU 8.2.2: growth stops with -1 after 32468 pages, sbrk(0) at 0x7ED8000 equals base 0x4000 plus pages times 4096, a further sbrk still returns -1, 0 mismatches.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The card verifies the kernel's heap-growth refusal from outside the kernel, so the property is load-bearing for anyone relying on the kernel's memory-limit behavior."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
+    },
+    {
+      "item": "sbrkoom",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "The mechanism is a pure bounded-growth construction: grow while the allocator succeeds, refuse past the limit, and verify the boundary arithmetically. The same grow-to-refusal pattern appears in portable code wherever a buffer must find its capacity without knowing it in advance.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The mechanism is a pure bounded-growth construction: grow while the allocator succeeds, refuse past the limit, and verify the boundary arithmetically. The same grow-to-refusal pattern appears in portable code wherever a buffer must find its capacity without knowing it in advance."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records the grow-to-refusal loop and the arithmetic boundary check (pages times 4096 plus base equals the break), the same bounded-growth shape as any capacity-discovery loop.",
+          "source": {
+            "tier": "lab",
+            "cite": "proof log",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The grow-while-it-succeeds, refuse-past-the-limit construction is a pure computational pattern, independent of the kernel; it travels wherever a capacity must be found empirically."
+        },
+        {
+          "n": 5,
+          "kind": "explanation",
+          "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+        },
+        {
+          "n": 6,
+          "kind": "refutation",
+          "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+        }
+      ]
     }
   ]
 }
