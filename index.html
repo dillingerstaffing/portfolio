@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-171555">
+  <meta name="build-version" content="v20260911-173053">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -16081,6 +16081,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalOutput": "$ make clean && make && make run && make opt0 && make sanitize && make bench\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o test_pte_superpage test_pte_superpage.c pte_superpage.c\n./test_pte_superpage\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O0 -Wall -Wextra -Werror -o test_pte_superpage_o0 test_pte_superpage.c pte_superpage.c\n./test_pte_superpage_o0\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -o test_pte_superpage_asan test_pte_superpage.c pte_superpage.c\n./test_pte_superpage_asan\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o bench_pte_superpage bench_pte_superpage.c pte_superpage.c\n./bench_pte_superpage\n4.548 ns/predict at -O2 (best of 5, N=50000000)",
     "title": "Sv39 superpage misalignment fault rule",
     "verificationEnvironment": "Host"
+  },
+  {
+    "id": "src-medeleg-illegal-inst-route",
+    "title": "medeleg bit 2 routes illegal-instruction traps",
+    "kicker": "RISCV",
+    "summary": "A bare-metal module proves medeleg bit 2 selects the trap destination for illegal instructions. With the bit clear, an S-mode illegal word traps in M-mode; with the bit set, the same word traps in S-mode with the faulting encoding preserved.",
+    "checks": 13,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/medeleg-illegal-inst-route/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-illegal-inst-route/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "13 checks on QEMU 8.2.2: bit clear traps in M-mode with mcause 2 and mepc at the site; bit set traps in S-mode with scause 2 and sepc at the site; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xd9b098bdf45ff160, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2 virt, M-mode and S-mode"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / medeleg-illegal-inst-route",
+    "terminalLabel": "Verified medeleg-illegal-inst-route QEMU output",
+    "terminalOutput": "medeleg-illegal-inst-route: illegal-instruction trap destination switch test\nboot: medeleg=0x0\nphase1: medeleg-write=0x0 readback=0x0\nphase2: medeleg bit2 set readback=0x4\np1: m_traps=1 mcause=0x2 mepc=0x800002d8 expected=0x800002d8 mstatus_mpp=1 mtval=0xffffffff s_traps=0\np2: s_traps=1 scause=0x2 sepc=0x8000039e expected=0x8000039e sstatus_spp=1 stval=0xffffffff m_traps=1\nquiet: m_traps=1 s_traps=1\nchecksum=0xd9b098bdf45ff160\nRESULT: PASS (checks=13)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because medeleg is the privileged architecture's trap-delegation CSR; the module verifies bit 2 routes illegal-instruction traps per the spec's delegation rule."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is the architectural delegation contract; the trap destination is defined by the CSR, not by pipeline or timing."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because machine-mode firmware owns medeleg; setting bit 2 is the firmware's mechanism for delegating illegal-instruction traps to S-mode."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor kernel's trap handling depends on whether illegal instructions arrive in S-mode; the module proves both destinations."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware CSR delegation contract, not a portable computational mechanism."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "src-stval-illegal-capture",
+    "title": "stval captures the faulting instruction word",
+    "kicker": "RISCV",
+    "summary": "A bare-metal module proves the hart writes the faulting instruction encoding to stval on an illegal-instruction trap. An S-mode illegal word traps with scause 2, and stval equals the exact word executed.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/stval-illegal-capture/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-illegal-capture/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks on QEMU 8.2.2: S-mode illegal word traps with scause 2, sepc at the site, stval matching the executed word; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x3135d0ef80ebdf2f, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2 virt, S-mode"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / stval-illegal-capture",
+    "terminalLabel": "Verified stval-illegal-capture QEMU output",
+    "terminalOutput": "stval-illegal-capture: S-mode illegal-instruction stval capture test\nmedeleg: write=0x0 readback=0x0\nmedeleg: write=0x4 readback=0x4\nmedeleg: write=0x4 readback=0x4\nill: spins=0 s_traps=1 scause=0x2 sepc=0x8000030e expected=0x8000030e stval=0xffffffff word=0xffffffff m_traps=0\nquiet: s_traps=1 m_traps=0\nrecord checksum=0x3135d0ef80ebdf2f\nRESULT: PASS (checks=7)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because stval is the privileged architecture's trap-value CSR; the module verifies the hart writes the faulting encoding there on illegal instructions."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is the architectural trap-record contract; what the hart writes to stval is defined by the spec, not by implementation."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test runs the trap in S-mode with delegation set; firmware's role is limited to the delegation setup, not the stval capture itself."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor trap handler reads stval to identify the faulting instruction; the module proves the value matches the executed word."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware trap-record contract, not a portable computational mechanism."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
   }
 ];
       const CHIPS_BY_KEY = {
@@ -117440,6 +117554,688 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "With the objection in (8) answered by (9), the intermediate conclusion plus the lighting rule yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-medeleg-illegal-inst-route|ISA": {
+    "item": "src-medeleg-illegal-inst-route",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because medeleg is the privileged architecture's trap-delegation CSR; the module verifies bit 2 routes illegal-instruction traps per the spec's delegation rule.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at ISA because medeleg is the privileged architecture's trap-delegation CSR; the module verifies bit 2 routes illegal-instruction traps per the spec's delegation rule."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Bit clear: M-mode traps=1, mcause=0x2, mepc at the illegal word, S-mode traps=0; bit set: S-mode traps=1, scause=0x2, sepc at the word, M-mode traps unchanged; 13 checks, 0 mismatches",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-illegal-inst-route/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-illegal-inst-route"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "RISC-V privileged spec defines medeleg as the machine trap-delegation register; bit 2 corresponds to illegal-instruction traps",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec medeleg",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The M-mode trap with bit clear and S-mode trap with bit set prove the destination follows medeleg bit 2."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A CSR bit that flips the trap destination for a specific exception cause is the architecture's delegation contract, verified by observing both destinations."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer lights when the verified claim is the privileged architecture's own CSR delegation rule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-medeleg-illegal-inst-route|MICROARCH": {
+    "item": "src-medeleg-illegal-inst-route",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the verified claim is the architectural delegation contract; the trap destination is defined by the CSR, not by pipeline or timing.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at MICROARCH because the verified claim is the architectural delegation contract; the trap destination is defined by the CSR, not by pipeline or timing."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The checks assert trap counts, cause codes, and epc values; no pipeline, cache, or timing property is measured",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-illegal-inst-route/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-illegal-inst-route"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The delegation is a CSR contract; microarchitectural details do not affect which mode traps."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "Which privilege mode receives a trap is determined by the delegation CSR, not by implementation choices."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The MICROARCH slot stays dim when the verified claim is indifferent to microarchitectural implementation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-medeleg-illegal-inst-route|FIRMWARE": {
+    "item": "src-medeleg-illegal-inst-route",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because machine-mode firmware owns medeleg; setting bit 2 is the firmware's mechanism for delegating illegal-instruction traps to S-mode.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at FIRMWARE because machine-mode firmware owns medeleg; setting bit 2 is the firmware's mechanism for delegating illegal-instruction traps to S-mode."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The module runs in M-mode, writes medeleg=0x0 then sets bit 2 (readback 0x4), and drops to S-mode to observe the effect; only M-mode can write the CSR",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-illegal-inst-route/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-illegal-inst-route"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The M-mode writes to medeleg are the firmware acts that select the illegal-instruction trap destination."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "Only M-mode firmware can write medeleg; which traps reach S-mode is firmware's policy decision."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The FIRMWARE layer lights when the verified mechanism is performed by machine-mode software."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-medeleg-illegal-inst-route|KERNEL": {
+    "item": "src-medeleg-illegal-inst-route",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because a supervisor kernel's trap handling depends on whether illegal instructions arrive in S-mode; the module proves both destinations.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at KERNEL because a supervisor kernel's trap handling depends on whether illegal instructions arrive in S-mode; the module proves both destinations."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Bit set: scause=0x2, sepc at the illegal word, stval=0xffffffff, M-mode traps unchanged; bit clear: mcause=0x2, mepc at the word",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-illegal-inst-route/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-illegal-inst-route"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The S-mode trap record with the faulting word preserved is exactly what a kernel handler consumes."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A kernel that handles illegal instructions must know they arrive in S-mode; the delegation bit is what delivers them there."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The KERNEL layer lights when the verified property determines how supervisor software receives traps."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-medeleg-illegal-inst-route|ALGORITHM": {
+    "item": "src-medeleg-illegal-inst-route",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the card verifies a hardware CSR delegation contract, not a portable computational mechanism.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at ALGORITHM because the card verifies a hardware CSR delegation contract, not a portable computational mechanism."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 13 checks assert CSR readbacks, trap records, and delegation behavior; no computed function with a portable equivalent is verified",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-illegal-inst-route/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/medeleg-illegal-inst-route"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "There is no algorithm here to be portable; the claim is about what the hart's delegation model guarantees."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A trap-delegation CSR has no portable software equivalent; there is no algorithm to port."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM slot stays dim when the card verifies hardware behavior rather than a computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-stval-illegal-capture|ISA": {
+    "item": "src-stval-illegal-capture",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because stval is the privileged architecture's trap-value CSR; the module verifies the hart writes the faulting encoding there on illegal instructions.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at ISA because stval is the privileged architecture's trap-value CSR; the module verifies the hart writes the faulting encoding there on illegal instructions."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "S-mode illegal word traps with scause=0x2, sepc at the site, stval=0xffffffff equal to the executed word; 7 checks, 0 mismatches, 3 byte-identical runs",
+        "source": {
+          "tier": "lab",
+          "cite": "src/stval-illegal-capture/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stval-illegal-capture"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "RISC-V privileged spec defines stval as holding the faulting instruction encoding on illegal-instruction traps",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec stval",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "stval matching the executed 0xffffffff across 3 runs proves the hart records the faulting encoding."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The hart writing the exact faulting word to stval is the architecture's trap-record contract, verified by comparing stval against the executed encoding."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer lights when the verified claim is the privileged architecture's own trap-record rule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-stval-illegal-capture|MICROARCH": {
+    "item": "src-stval-illegal-capture",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the verified claim is the architectural trap-record contract; what the hart writes to stval is defined by the spec, not by implementation.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at MICROARCH because the verified claim is the architectural trap-record contract; what the hart writes to stval is defined by the spec, not by implementation."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The checks assert scause, sepc, and stval values; no pipeline, cache, or timing property is measured",
+        "source": {
+          "tier": "lab",
+          "cite": "src/stval-illegal-capture/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stval-illegal-capture"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The stval record is a CSR contract; microarchitectural details do not affect what the hart writes."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "The value written to stval on a trap is determined by the architecture, not by implementation choices."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The MICROARCH slot stays dim when the verified claim is indifferent to microarchitectural implementation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-stval-illegal-capture|FIRMWARE": {
+    "item": "src-stval-illegal-capture",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the test runs the trap in S-mode with delegation set; firmware's role is limited to the delegation setup, not the stval capture itself.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at FIRMWARE because the test runs the trap in S-mode with delegation set; firmware's role is limited to the delegation setup, not the stval capture itself."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The module sets medeleg bit 2 then runs the illegal word in S-mode; the stval value is produced by the hart's trap logic, not by firmware code",
+        "source": {
+          "tier": "lab",
+          "cite": "src/stval-illegal-capture/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stval-illegal-capture"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Firmware only enables the delegation; the stval capture is the hart's own trap-record behavior."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "The hart writes stval as part of the trap mechanism itself; firmware does not compute or supply the value."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The FIRMWARE slot stays dim when the verified property is produced by hardware trap logic rather than firmware software."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-stval-illegal-capture|KERNEL": {
+    "item": "src-stval-illegal-capture",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because a supervisor trap handler reads stval to identify the faulting instruction; the module proves the value matches the executed word.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at KERNEL because a supervisor trap handler reads stval to identify the faulting instruction; the module proves the value matches the executed word."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "stval=0xffffffff equals the executed word; scause=0x2 identifies the trap; sepc points at the faulting site",
+        "source": {
+          "tier": "lab",
+          "cite": "src/stval-illegal-capture/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stval-illegal-capture"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The stval/sepc/scause triple is the kernel handler's input; the module proves the hart supplies it correctly."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A kernel decoding an illegal instruction from its trap handler reads exactly the stval/sepc/scause triple this module verifies."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The KERNEL layer lights when the verified property is what supervisor trap handlers consume."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "src-stval-illegal-capture|ALGORITHM": {
+    "item": "src-stval-illegal-capture",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the card verifies a hardware trap-record contract, not a portable computational mechanism.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at ALGORITHM because the card verifies a hardware trap-record contract, not a portable computational mechanism."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 7 checks assert trap records and CSR values; no computed function with a portable equivalent is verified",
+        "source": {
+          "tier": "lab",
+          "cite": "src/stval-illegal-capture/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stval-illegal-capture"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "There is no algorithm here to be portable; the claim is about what the hart's trap logic guarantees."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A trap-value CSR has no portable software equivalent; there is no algorithm to port."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM slot stays dim when the card verifies hardware behavior rather than a computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
       }
     ]
   }

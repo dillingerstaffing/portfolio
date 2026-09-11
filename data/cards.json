@@ -14472,5 +14472,119 @@
     "terminalOutput": "$ make clean && make && make run && make opt0 && make sanitize && make bench\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o test_pte_superpage test_pte_superpage.c pte_superpage.c\n./test_pte_superpage\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O0 -Wall -Wextra -Werror -o test_pte_superpage_o0 test_pte_superpage.c pte_superpage.c\n./test_pte_superpage_o0\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -o test_pte_superpage_asan test_pte_superpage.c pte_superpage.c\n./test_pte_superpage_asan\nchecks=30000063 mismatches=0 checksum=5cb66b0d233f83a1\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o bench_pte_superpage bench_pte_superpage.c pte_superpage.c\n./bench_pte_superpage\n4.548 ns/predict at -O2 (best of 5, N=50000000)",
     "title": "Sv39 superpage misalignment fault rule",
     "verificationEnvironment": "Host"
+  },
+{
+    "id": "src-medeleg-illegal-inst-route",
+    "title": "medeleg bit 2 routes illegal-instruction traps",
+    "kicker": "RISCV",
+    "summary": "A bare-metal module proves medeleg bit 2 selects the trap destination for illegal instructions. With the bit clear, an S-mode illegal word traps in M-mode; with the bit set, the same word traps in S-mode with the faulting encoding preserved.",
+    "checks": 13,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/medeleg-illegal-inst-route/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-illegal-inst-route/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "13 checks on QEMU 8.2.2: bit clear traps in M-mode with mcause 2 and mepc at the site; bit set traps in S-mode with scause 2 and sepc at the site; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xd9b098bdf45ff160, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2 virt, M-mode and S-mode"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / medeleg-illegal-inst-route",
+    "terminalLabel": "Verified medeleg-illegal-inst-route QEMU output",
+    "terminalOutput": "medeleg-illegal-inst-route: illegal-instruction trap destination switch test\nboot: medeleg=0x0\nphase1: medeleg-write=0x0 readback=0x0\nphase2: medeleg bit2 set readback=0x4\np1: m_traps=1 mcause=0x2 mepc=0x800002d8 expected=0x800002d8 mstatus_mpp=1 mtval=0xffffffff s_traps=0\np2: s_traps=1 scause=0x2 sepc=0x8000039e expected=0x8000039e sstatus_spp=1 stval=0xffffffff m_traps=1\nquiet: m_traps=1 s_traps=1\nchecksum=0xd9b098bdf45ff160\nRESULT: PASS (checks=13)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because medeleg is the privileged architecture's trap-delegation CSR; the module verifies bit 2 routes illegal-instruction traps per the spec's delegation rule."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is the architectural delegation contract; the trap destination is defined by the CSR, not by pipeline or timing."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because machine-mode firmware owns medeleg; setting bit 2 is the firmware's mechanism for delegating illegal-instruction traps to S-mode."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor kernel's trap handling depends on whether illegal instructions arrive in S-mode; the module proves both destinations."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware CSR delegation contract, not a portable computational mechanism."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "src-stval-illegal-capture",
+    "title": "stval captures the faulting instruction word",
+    "kicker": "RISCV",
+    "summary": "A bare-metal module proves the hart writes the faulting instruction encoding to stval on an illegal-instruction trap. An S-mode illegal word traps with scause 2, and stval equals the exact word executed.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/stval-illegal-capture/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-illegal-capture/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks on QEMU 8.2.2: S-mode illegal word traps with scause 2, sepc at the site, stval matching the executed word; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x3135d0ef80ebdf2f, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2 virt, S-mode"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / stval-illegal-capture",
+    "terminalLabel": "Verified stval-illegal-capture QEMU output",
+    "terminalOutput": "stval-illegal-capture: S-mode illegal-instruction stval capture test\nmedeleg: write=0x0 readback=0x0\nmedeleg: write=0x4 readback=0x4\nmedeleg: write=0x4 readback=0x4\nill: spins=0 s_traps=1 scause=0x2 sepc=0x8000030e expected=0x8000030e stval=0xffffffff word=0xffffffff m_traps=0\nquiet: s_traps=1 m_traps=0\nrecord checksum=0x3135d0ef80ebdf2f\nRESULT: PASS (checks=7)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because stval is the privileged architecture's trap-value CSR; the module verifies the hart writes the faulting encoding there on illegal instructions."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is the architectural trap-record contract; what the hart writes to stval is defined by the spec, not by implementation."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test runs the trap in S-mode with delegation set; firmware's role is limited to the delegation setup, not the stval capture itself."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because a supervisor trap handler reads stval to identify the faulting instruction; the module proves the value matches the executed word."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a hardware trap-record contract, not a portable computational mechanism."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
   }
 ]
