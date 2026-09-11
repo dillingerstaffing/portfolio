@@ -13238,4 +13238,111 @@
     "terminalLabel": "user/pipeorder",
     "showRepoLink": true
   }
+,
+{
+  "id": "src-sie-stie-write",
+  "title": "sie STIE write/readback: the M-mode enable bit legalizes exactly",
+  "kicker": "all-ones in, only the delegated bit back out",
+  "summary": "src/sie-stie-write is a bare-metal RISC-V program that never leaves M-mode and pends no interrupt. It records the boot sie value, writes all-ones to sie and publishes the legalized readback, then sets STIE with csrs and clears it with csrc, reading the bit back each time.",
+  "layers": {
+    "ISA": {
+      "applies": true,
+      "because": "The privileged ISA defines sie.STIE as the supervisor timer-interrupt enable bit, writable where delegated; the proof verifies this contract on QEMU 8.2.2, with an all-ones sie write reading back 0x20 once STIE is delegated and csrs/csrc round-tripping bit 5 over 15 checks with 0 mismatches."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The proof checks write-readback outcomes of a CSR: 15 WARL checks, 0 mismatches. Which bits stick is determined by the hart's legalization, not by pipeline or cache behavior."
+    },
+    "FIRMWARE": {
+      "applies": true,
+      "because": "M-mode firmware owns sie and the mideleg bit that makes STIE writable; the proof is the firmware-level act of delegating STIE through mideleg and mapping exactly which sie bits survive an all-ones write."
+    },
+    "KERNEL": {
+      "applies": true,
+      "because": "Supervisor kernels enable their timer interrupt by writing sie.STIE; the verified property, that STIE admits writes exactly when delegated and reads back set or clear on demand, is the enable-bit contract the kernel's interrupt setup depends on."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "A WARL legalization readback is a register contract, not an ISA-independent computational mechanism: the values 0x0 and 0x20 are this hart's contract facts, meaningless off RISC-V, and there is no portable computation to extract."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-write/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "15 checks of sie write/readback legalization, 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0xfe7b4a55488e1c01, identical across 3 QEMU 8.2.2 runs"
+    ]
+  ],
+  "terminalOutput": "Checks: 15\nMismatches: 0\nChecksum: 0xfe7b4a55488e1c01\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 15,
+  "failures": 0,
+  "stressItems": [],
+  "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sie-stie-write",
+  "repoLabel": "riscv-baremetal-demo/src/sie-stie-write",
+  "terminalName": "src-sie-stie-write",
+  "terminalLabel": "src/sie-stie-write",
+  "showRepoLink": true
+},
+{
+  "id": "user-execargv",
+  "title": "xv6 exec delivers argv byte-exact into the new program",
+  "kicker": "five arguments in, five arguments out, down to the empty string",
+  "summary": "user/execargv is a user-space xv6 test that forks a child, wires its stdout to a pipe, and execs user/execargv_echo with a known five-argument vector. The echo program prints argc, each argument with its length, and whether argv[argc] is NULL; the parent parses the capture and compares it byte for byte against the expected output.",
+  "layers": {
+    "ISA": {
+      "applies": false,
+      "because": "The verified claim is the kernel's image-replacement behavior, identical on any ISA because xv6 copies argv in portable C; the proof log shows a user-space test against that C implementation, and the property holds regardless of the machine contract underneath."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The proof checks byte-exact argument delivery, a functional property; the log publishes no timing, counter, or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA."
+    },
+    "FIRMWARE": {
+      "applies": false,
+      "because": "The test runs as an ordinary xv6 user program; the log shows the test configuring nothing at machine level, so the verified property does not touch firmware configuration."
+    },
+    "KERNEL": {
+      "applies": true,
+      "because": "xv6's exec builds the new process image and copies the argument vector into it; the proof's byte-exact comparison of all five arguments and the NULL terminator is a direct check of that kernel subsystem's work."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "The card verifies an OS mechanism, process image replacement, not a portable computational construction; the claim is about what xv6's exec guarantees, not an ISA-independent computation."
+    }
+  },
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "9 checks of the pipe-captured output against the expected bytes (argc, five arguments with lengths, the NULL terminator), 0 mismatches"
+    ],
+    [
+      "CHECKSUM",
+      "0x5019A7B55A3768B4, FNV-1a over the 200 captured bytes, matched by an independent host recomputation"
+    ]
+  ],
+  "terminalOutput": "Checks: 9\nMismatches: 0\nChecksum: 0x5019A7B55A3768B4\nEnvironment: QEMU 8.2.2\nVerdict: PASS",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 9,
+  "failures": 0,
+  "stressItems": [],
+  "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/execargv.c",
+  "repoLabel": "xv6-getscount/user/execargv.c",
+  "terminalName": "user-execargv",
+  "terminalLabel": "user/execargv",
+  "showRepoLink": true
+}
 ]

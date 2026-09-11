@@ -80465,6 +80465,716 @@
           "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
         }
       ]
-    }
+    },
+  {
+    "item": "src-sie-stie-write",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines sie.STIE as the supervisor timer-interrupt enable bit, writable where delegated; the proof verifies this contract on QEMU 8.2.2, with an all-ones sie write reading back 0x20 once STIE is delegated and csrs/csrc round-tripping bit 5 over 15 checks with 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines sie.STIE as the supervisor timer-interrupt enable bit, writable where delegated; the proof verifies this contract on QEMU 8.2.2, with an all-ones sie write reading back 0x20 once STIE is delegated and csrs/csrc round-tripping bit 5 over 15 checks with 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the sie write/readback triples for src-sie-stie-write: boot 0x0, all-ones 0x20 with STIE delegated, csrs 0x20, csrc 0x0, with 0 traps.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The proof exercises the privileged ISA's sie.STIE write/readback contract directly, so the enable-bit legalization is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: QEMU is an emulator, so the readbacks describe QEMU, not the ISA contract."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses the test platform with the claim: the claim is the WARL legalization rule the privileged ISA defines, and the proof measures this hart's exact legal set against that rule, which is how a contract is checked on any implementation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "src-sie-stie-write",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks write-readback outcomes of a CSR: 15 WARL checks, 0 mismatches. Which bits stick is determined by the hart's legalization, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks write-readback outcomes of a CSR: 15 WARL checks, 0 mismatches. Which bits stick is determined by the hart's legalization, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log for src-sie-stie-write publishes CSR write/readback values only; it records no timing, counter, or implementation measurement.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim concerns which bits the register admits, a functional legalization fact that any conforming hart reproduces identically."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: every CSR readback is produced by some microarchitecture, so the implementation must matter."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property: the slot asks whether work at the microarchitecture layer is load-bearing on the verified claim, and the legalization rule is fixed by the ISA contract, not by the pipeline behind it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "src-sie-stie-write",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns sie and the mideleg bit that makes STIE writable; the proof is the firmware-level act of delegating STIE through mideleg and mapping exactly which sie bits survive an all-ones write.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware owns sie and the mideleg bit that makes STIE writable; the proof is the firmware-level act of delegating STIE through mideleg and mapping exactly which sie bits survive an all-ones write."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the M-mode delegation step: mideleg written 0x20 reads back 0x1464, and only then does the all-ones sie write admit STIE.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The proof is the firmware-level act of configuring the delegation that gates the enable bit, so the verified property is the firmware configuration contract itself."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: writing a CSR is just a test step, not firmware work."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection mistakes the probe for the property: the property measured is which sie bits M-mode firmware may expose to supervisor code, and the mideleg write is exactly the configuration act firmware performs."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "src-sie-stie-write",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Supervisor kernels enable their timer interrupt by writing sie.STIE; the verified property, that STIE admits writes exactly when delegated and reads back set or clear on demand, is the enable-bit contract the kernel's interrupt setup depends on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Supervisor kernels enable their timer interrupt by writing sie.STIE; the verified property, that STIE admits writes exactly when delegated and reads back set or clear on demand, is the enable-bit contract the kernel's interrupt setup depends on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows STIE admitting writes exactly when delegated and reading back set or clear on demand.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "A supervisor kernel enables its timer interrupt by writing sie.STIE, so the delegation-gated writability the proof measures is the enable-bit contract that setup depends on."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the proof never leaves M-mode and no kernel runs, so the kernel cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property: the slot asks whether kernel work is load-bearing on the verified claim, and the kernel's timer-interrupt enable path depends on STIE behaving exactly as measured."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "src-sie-stie-write",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "A WARL legalization readback is a register contract, not an ISA-independent computational mechanism: the values 0x0 and 0x20 are this hart's contract facts, meaningless off RISC-V, and there is no portable computation to extract.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "A WARL legalization readback is a register contract, not an ISA-independent computational mechanism: the values 0x0 and 0x20 are this hart's contract facts, meaningless off RISC-V, and there is no portable computation to extract."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's verified values are the hart's sie legalization facts: 0x0 at boot, 0x20 for the delegated all-ones write.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sie-stie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is a register contract tied to RISC-V privileged CSRs, with no ISA-independent computation to extract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: write/readback round-trips are a general pattern that appears in portable code."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection mistakes the test shape for the claim: the claim is the legalized values themselves, which are this hart's contract facts and meaningless off RISC-V."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "user-execargv",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The verified claim is the kernel's image-replacement behavior, identical on any ISA because xv6 copies argv in portable C; the proof log shows a user-space test against that C implementation, and the property holds regardless of the machine contract underneath.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is the kernel's image-replacement behavior, identical on any ISA because xv6 copies argv in portable C; the proof log shows a user-space test against that C implementation, and the property holds regardless of the machine contract underneath."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records a user-space test of xv6's exec argument handling: 9 checks comparing the pipe capture against the expected bytes, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is xv6's image-replacement behavior in portable C, identical on any ISA the kernel is built for."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the test ran on a RISC-V build under QEMU, so the ISA must matter."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses the test platform with the claim: the claim is the kernel's argv-copying behavior, which the same C code performs on any ISA, and the proof exercises no machine-contract behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "user-execargv",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks byte-exact argument delivery, a functional property; the log publishes no timing, counter, or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks byte-exact argument delivery, a functional property; the log publishes no timing, counter, or implementation measurement, so the claim is indifferent to the microarchitecture behind the ISA."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log publishes the byte-exact argv comparison only; it records no timing, counter, or implementation measurement.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is the functional delivery of the argument bytes, which any implementation running the same xv6 code reproduces identically."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: every executed instruction runs on some microarchitecture, so the implementation must matter."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property: the slot asks whether work at the microarchitecture layer is load-bearing on the verified claim, and byte-exact argv delivery is fixed by the kernel's code, not by the pipeline behind it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "user-execargv",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The test runs as an ordinary xv6 user program; the log shows the test configuring nothing at machine level, so the verified property does not touch firmware configuration.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The test runs as an ordinary xv6 user program; the log shows the test configuring nothing at machine level, so the verified property does not touch firmware configuration."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the test running as an ordinary xv6 user program, configuring nothing at machine level.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property lives entirely in the xv6 process image setup, with no firmware configuration step involved."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the kernel booted under machine-mode firmware, so firmware is in the picture."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses the boot environment with the claim: the slot asks whether firmware work is load-bearing on the verified property, and argv delivery through exec depends on no firmware configuration."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "user-execargv",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "xv6's exec builds the new process image and copies the argument vector into it; the proof's byte-exact comparison of all five arguments and the NULL terminator is a direct check of that kernel subsystem's work.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "xv6's exec builds the new process image and copies the argument vector into it; the proof's byte-exact comparison of all five arguments and the NULL terminator is a direct check of that kernel subsystem's work."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records the byte-exact comparison: argc 5, all five arguments with lengths, argv[5] NULL, 0 mismatches over 9 checks.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "xv6's exec is the kernel subsystem that builds the new process image and copies the argument vector into it, so the proof checks that subsystem's work directly."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the test is user-space code, so it cannot verify a kernel subsystem."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses where the test runs with what it checks: the user-space runner observes the kernel's exec output, and the byte-exact comparison is a direct check of the image the kernel built."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  {
+    "item": "user-execargv",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies an OS mechanism, process image replacement, not a portable computational construction; the claim is about what xv6's exec guarantees, not an ISA-independent computation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies an OS mechanism, process image replacement, not a portable computational construction; the claim is about what xv6's exec guarantees, not an ISA-independent computation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log's verified property is the argument vector arriving intact through exec, an OS mechanism.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is about what xv6's exec guarantees for process creation, not an ISA-independent computational mechanism."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: copying bytes is a general computational pattern."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection mistakes the mechanism's shape for the claim: the claim is the OS guarantee that exec preserves argv, which is meaningful only for process image replacement, not as a portable computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the measured property, the relevance-map rule connects it to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  }
   ]
 }

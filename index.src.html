@@ -932,6 +932,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bit That Survives the Context Switch</h3>
+          <!-- LAYER-STRIP:the-bit-that-survives-the-context-switch -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 09:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take virtual page number 0x12345, mapped with its page-table G bit set. Walk it under address-space IDs 1, 2, and 9: all three land on the same physical address, (0xABCDE shifted left by 12) plus the 0x678 offset, and every walk reports global equals 1. The address-space ID is never consulted. Now the contrast: the same virtual page number with G clear under ASID 1 lands on a page built from 0x11111, and under ASID 2 on a page built from 0x22222. Same number, different pages, because without the G bit the address-space name is part of the key.</p>
+          <p>Here is the cost it removes. The kernel is mapped at the same virtual addresses in every process, and every context switch loads a new satp register carrying a new ASID. A full TLB flush on every switch would throw away the kernel's translations too, and each one costs three page-table memory reads to rebuild, while the TLB holds only dozens to hundreds of entries. The alternatives are flushing everything every time or storing the kernel's mappings once per address space, the same entry wearing N name tags. The G bit says: this mapping exists in all address spaces, store it once, and when the fence names a single ASID, leave it alone.</p>
+          <p>The privileged specification says it plainer than I can. "Global mappings were devised to reduce the cost of context switches." And then the sentence that carries the whole contract: "failing to mark a global mapping as global merely reduces performance, whereas marking a nonglobal mapping as global is an error." G is a performance promise, not a correctness one, and lying in the wrong direction breaks isolation, because one process would start reaching another's pages through a shared cache entry.</p>
+          <p>The entire rule fits in one line of the test bench, taken verbatim from the lookup it verified:</p>
+          <pre><code>if (e-&gt;valid &amp;&amp; e-&gt;vpn == vpn &amp;&amp; (e-&gt;global || e-&gt;asid == asid)) {
+    r.hit = 1;
+    r.pa = e-&gt;pa;
+    return r;
+}</code></pre>
+          <p>One clause, two doors: global entries skip the ASID check entirely, non-global entries open only on an ID match. The module proved the decision procedure, not silicon: 201,850 checks against an independently written spec table, zero mismatches, with the full result stream checksumming identically under -O0, -O2, and ASan plus UBSan. The rule held for 4K pages, 2M megapages, and 1G gigapages alike, and a branch entry's G bit was correctly ignored, because only the leaf's G decides. Two honest boundaries: the spec's own wording forks on whether a non-leaf G implies globality below it, so the lab tested the leaf-only reading and named the other as an open question. And the boundary I like best: xv6 sets no G bits and builds every satp with ASID 0, so the kernel I study never asks this question. One sentence to carry away: a translation is either named by its address space or it belongs to all of them, and one bit in the page table is the entire difference.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/147-pte-global-bit" target="_blank" rel="noopener">lab/147-pte-global-bit</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Brake Pedal on the Stopwatch</h3>
           <!-- LAYER-STRIP:the-brake-pedal-on-the-stopwatch -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 08:07 EDT</time></p>
