@@ -14012,5 +14012,119 @@
     },
     "portability": null,
     "stressItems": 5
+  },
+{
+    "id": "lab-150-pte-a-d-bits",
+    "title": "Sv39 A/D bits set on the terminating leaf only",
+    "kicker": "SV39",
+    "summary": "A C model predicts exactly which PTE gains the accessed bit and which gains the dirty bit for a scripted Sv39 three-level page-table walk. The model implements the spec's hardware-update scheme: the terminating leaf PTE gains A on any successful access and D on a completed store, while non-leaf PTEs are never modified (their A/D bits are reserved).",
+    "checks": 1215,
+    "failures": 0,
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab",
+    "repoLabel": "GitHub: systems-lab/lab/150-pte-a-d-bits/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/150-pte-a-d-bits/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "1215 scripted Sv39 walks checked against the spec's hardware-update scheme, 0 mismatches; identical results at -O2, -O0, and under AddressSanitizer plus UBSan"
+      ],
+      [
+        "BENCHMARK",
+        "5.840 ns per prediction at -O2 (best of 5, 2,000,000 predictions)"
+      ],
+      [
+        "CHECKSUM",
+        "15d19d25bf280794, identical across -O2, -O0, and sanitizer builds"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 150-pte-a-d-bits",
+    "terminalLabel": "Verified lab/150-pte-a-d-bits build and run output",
+    "terminalOutput": "$ make\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o test_pte_ad test_pte_ad.c pte_ad.c\n$ make run\n./test_pte_ad\nchecks=1215 mismatches=0 checksum=15d19d25bf280794\n$ make opt0\ngcc -std=c11 -O0 -Wall -Wextra -Werror -o test_pte_ad_o0 test_pte_ad.c pte_ad.c\n./test_pte_ad_o0\nchecks=1215 mismatches=0 checksum=15d19d25bf280794\n$ make sanitize\ngcc -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -o test_pte_ad_asan test_pte_ad.c pte_ad.c\n./test_pte_ad_asan\nchecks=1215 mismatches=0 checksum=15d19d25bf280794\n$ make bench\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o bench_pte_ad bench_pte_ad.c pte_ad.c\n./bench_pte_ad\n5.840 ns/predict at -O2 (best of 5, N=2000000)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the A/D update rule is defined by the privileged architecture (section 4.3.2 step 9 updates the terminating leaf only; section 4.3.1 reserves non-leaf A/D), and the model implements that contract exactly."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the model predicts the architectural update rule for completed accesses; it does not model speculative updates, TLB caching, or any implementation-specific timing."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the A/D rule is a hardware page-walker contract; firmware neither performs nor configures the update."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because kernels rely on the A bit for page replacement and the D bit for writeback decisions; knowing the update lands on the terminating leaf only (never non-leaf levels) is load-bearing for page-table scanning code."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "Matters at ALGORITHM because the walk is a pure computational mechanism over a scripted tree, portable as C; the differential test verifies the algorithm against the spec's rule with no hardware in the loop."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "unlinkopen",
+    "title": "xv6 unlinked file stays readable through the open fd",
+    "kicker": "XV6",
+    "summary": "A user-space test verifies xv6's inode lifetime across unlink. The program creates a file, writes a 128-byte pattern, unlinks the path while the descriptor is open, then reads the pattern back byte-exact through the still-open fd. After close, a fresh open of the path returns -1, proving the directory entry is gone while the inode survived.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/unlinkopen.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks on QEMU 8.2.2: fd 3 allocated; 128 bytes written; reopen gives fd 3; unlink returns 0 with fd open; 128 bytes read back byte-exact; close returns 0; post-close open returns -1; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x65AF3CA870DABE29, over fd numbers, readback bytes, and post-close open return; byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, 3 harts"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / unlinkopen",
+    "terminalLabel": "Verified unlinkopen QEMU output",
+    "terminalOutput": "xv6 kernel is booting\n\nhart 2 starting\nhart 1 starting\ninit: starting sh\n$ unlinkopen\ncheck 1: create+open returned fd 3 (lowest free)\ncheck 2: wrote 128 bytes through fd 3\ncheck 3: reopen read-only returned fd 3\ncheck 4: unlink returned 0 with fd 3 still open\ncheck 5: read 128 bytes through the unlinked fd, byte-exact\ncheck 6: close returned 0\ncheck 7: post-close open of the unlinked path returned -1\nchecksum: 0x65AF3CA870DABE29\nreadback bytes: 128, post-close open: -1\nchecks: 7 mismatches: 0\nPASS: unlinked path read back byte-exact through the open fd, fresh open returned -1",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the test exercises the unlink and read system calls; it checks filesystem inode lifetime, not the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is about the kernel's inode reference counting; no microarchitectural property is measured or asserted."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test is a user program exercising file I/O; firmware never manages inodes."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because unlink-while-open is the kernel's inode lifetime contract: the directory entry goes away but the open struct file keeps its inode alive, verified here from user space with byte-exact readback."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a kernel reference-counting invariant, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
   }
 ]

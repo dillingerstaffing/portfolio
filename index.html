@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-152203">
+  <meta name="build-version" content="v20260911-154552">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -15567,6 +15567,120 @@ assert(check == 0x2144DF1C);</code></pre>
       "ALGORITHM": {
         "applies": false,
         "because": "Not at ALGORITHM because the card verifies a kernel locking invariant, not a computational construction with a portable form."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "lab-150-pte-a-d-bits",
+    "title": "Sv39 A/D bits set on the terminating leaf only",
+    "kicker": "SV39",
+    "summary": "A C model predicts exactly which PTE gains the accessed bit and which gains the dirty bit for a scripted Sv39 three-level page-table walk. The model implements the spec's hardware-update scheme: the terminating leaf PTE gains A on any successful access and D on a completed store, while non-leaf PTEs are never modified (their A/D bits are reserved).",
+    "checks": 1215,
+    "failures": 0,
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab",
+    "repoLabel": "GitHub: systems-lab/lab/150-pte-a-d-bits/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/150-pte-a-d-bits/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "1215 scripted Sv39 walks checked against the spec's hardware-update scheme, 0 mismatches; identical results at -O2, -O0, and under AddressSanitizer plus UBSan"
+      ],
+      [
+        "BENCHMARK",
+        "5.840 ns per prediction at -O2 (best of 5, 2,000,000 predictions)"
+      ],
+      [
+        "CHECKSUM",
+        "15d19d25bf280794, identical across -O2, -O0, and sanitizer builds"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 150-pte-a-d-bits",
+    "terminalLabel": "Verified lab/150-pte-a-d-bits build and run output",
+    "terminalOutput": "$ make\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o test_pte_ad test_pte_ad.c pte_ad.c\n$ make run\n./test_pte_ad\nchecks=1215 mismatches=0 checksum=15d19d25bf280794\n$ make opt0\ngcc -std=c11 -O0 -Wall -Wextra -Werror -o test_pte_ad_o0 test_pte_ad.c pte_ad.c\n./test_pte_ad_o0\nchecks=1215 mismatches=0 checksum=15d19d25bf280794\n$ make sanitize\ngcc -std=c11 -O1 -g -Wall -Wextra -Werror -fsanitize=address,undefined -o test_pte_ad_asan test_pte_ad.c pte_ad.c\n./test_pte_ad_asan\nchecks=1215 mismatches=0 checksum=15d19d25bf280794\n$ make bench\ngcc -std=c11 -O2 -Wall -Wextra -Werror -o bench_pte_ad bench_pte_ad.c pte_ad.c\n./bench_pte_ad\n5.840 ns/predict at -O2 (best of 5, N=2000000)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the A/D update rule is defined by the privileged architecture (section 4.3.2 step 9 updates the terminating leaf only; section 4.3.1 reserves non-leaf A/D), and the model implements that contract exactly."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the model predicts the architectural update rule for completed accesses; it does not model speculative updates, TLB caching, or any implementation-specific timing."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the A/D rule is a hardware page-walker contract; firmware neither performs nor configures the update."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because kernels rely on the A bit for page replacement and the D bit for writeback decisions; knowing the update lands on the terminating leaf only (never non-leaf levels) is load-bearing for page-table scanning code."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "Matters at ALGORITHM because the walk is a pure computational mechanism over a scripted tree, portable as C; the differential test verifies the algorithm against the spec's rule with no hardware in the loop."
+      }
+    },
+    "portability": null,
+    "stressItems": 5
+  },
+  {
+    "id": "unlinkopen",
+    "title": "xv6 unlinked file stays readable through the open fd",
+    "kicker": "XV6",
+    "summary": "A user-space test verifies xv6's inode lifetime across unlink. The program creates a file, writes a 128-byte pattern, unlinks the path while the descriptor is open, then reads the pattern back byte-exact through the still-open fd. After close, a fresh open of the path returns -1, proving the directory entry is gone while the inode survived.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/unlinkopen.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks on QEMU 8.2.2: fd 3 allocated; 128 bytes written; reopen gives fd 3; unlink returns 0 with fd open; 128 bytes read back byte-exact; close returns 0; post-close open returns -1; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x65AF3CA870DABE29, over fd numbers, readback bytes, and post-close open return; byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, 3 harts"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / unlinkopen",
+    "terminalLabel": "Verified unlinkopen QEMU output",
+    "terminalOutput": "xv6 kernel is booting\n\nhart 2 starting\nhart 1 starting\ninit: starting sh\n$ unlinkopen\ncheck 1: create+open returned fd 3 (lowest free)\ncheck 2: wrote 128 bytes through fd 3\ncheck 3: reopen read-only returned fd 3\ncheck 4: unlink returned 0 with fd 3 still open\ncheck 5: read 128 bytes through the unlinked fd, byte-exact\ncheck 6: close returned 0\ncheck 7: post-close open of the unlinked path returned -1\nchecksum: 0x65AF3CA870DABE29\nreadback bytes: 128, post-close open: -1\nchecks: 7 mismatches: 0\nPASS: unlinked path read back byte-exact through the open fd, fresh open returned -1",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the test exercises the unlink and read system calls; it checks filesystem inode lifetime, not the machine contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the verified claim is about the kernel's inode reference counting; no microarchitectural property is measured or asserted."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test is a user program exercising file I/O; firmware never manages inodes."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because unlink-while-open is the kernel's inode lifetime contract: the directory entry goes away but the open struct file keeps its inode alive, verified here from user space with byte-exact readback."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the card verifies a kernel reference-counting invariant, not a computational construction with a portable form."
       }
     },
     "portability": null,
@@ -113126,6 +113240,698 @@ assert(check == 0x2144DF1C);</code></pre>
         "kind": "generalization",
         "n": 5,
         "text": "The ALGORITHM slot stays dim when the card verifies operating-system locking rather than a computation with an equivalent portable form."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "lab-150-pte-a-d-bits|ISA": {
+    "item": "lab-150-pte-a-d-bits",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the A/D update rule is defined by the privileged architecture (section 4.3.2 step 9 updates the terminating leaf only; section 4.3.1 reserves non-leaf A/D), and the model implements that contract exactly.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at ISA because the A/D update rule is defined by the privileged architecture (section 4.3.2 step 9 updates the terminating leaf only; section 4.3.1 reserves non-leaf A/D), and the model implements that contract exactly."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "1215 scripted Sv39 walks checked against the spec's hardware-update scheme, 0 mismatches; the module documents the correction that A/D set on the terminating leaf only, per spec 4.3.2, not non-leaf",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/150-pte-a-d-bits/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/150-pte-a-d-bits"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "RISC-V privileged spec section 4.3.2 step 9 performs the A/D update on the terminating leaf PTE; section 4.3.1 reserves non-leaf D, A, U bits for future standard use",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-privileged spec sections 4.3.1, 4.3.2",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The 1215 checks with 0 mismatches confirm the model matches the spec's leaf-only A/D update rule."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A model that implements the spec's update rule verbatim and passes 1215 differential checks is evidence the rule is understood at the architectural level."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer lights when the verified claim is the privileged architecture's own page-table update contract."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that the backlog gloss said A is set on non-leaf traversals. The module explicitly corrects this against the pinned spec: section 4.3.2 step 9 updates the terminating leaf only, and 4.3.1 reserves non-leaf A/D. The shipped rule follows the spec, not the gloss."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "lab-150-pte-a-d-bits|MICROARCH": {
+    "item": "lab-150-pte-a-d-bits",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the model predicts the architectural update rule for completed accesses; it does not model speculative updates, TLB caching, or any implementation-specific timing.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at MICROARCH because the model predicts the architectural update rule for completed accesses; it does not model speculative updates, TLB caching, or any implementation-specific timing."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The PROOF.md scope states: no speculative A updates, no TLB caching effects, inputs are canonical Sv39 addresses; the model predicts updates for architecturally completed accesses only",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/150-pte-a-d-bits/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/150-pte-a-d-bits"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The verified rule is the architectural contract; implementation choices like speculation are outside what was checked."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A property defined over architecturally completed accesses, with speculation and caching explicitly out of scope, is indifferent to microarchitecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The MICROARCH slot stays dim when the verified claim would hold identically on any implementation of the same architectural rule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "lab-150-pte-a-d-bits|FIRMWARE": {
+    "item": "lab-150-pte-a-d-bits",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the A/D rule is a hardware page-walker contract; firmware neither performs nor configures the update.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at FIRMWARE because the A/D rule is a hardware page-walker contract; firmware neither performs nor configures the update."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 1215 checks exercise a C model of the page-walker update rule; no firmware interface, boot code, or machine-mode software behavior is asserted",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/150-pte-a-d-bits/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/150-pte-a-d-bits"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Firmware's job ends before the page walker runs; the A/D update is hardware's contract with the architecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "The hardware page walker performs A/D updates autonomously; firmware has no role in the mechanism."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The FIRMWARE slot stays dim when the verified property belongs to hardware behavior that firmware never touches."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "lab-150-pte-a-d-bits|KERNEL": {
+    "item": "lab-150-pte-a-d-bits",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because kernels rely on the A bit for page replacement and the D bit for writeback decisions; knowing the update lands on the terminating leaf only (never non-leaf levels) is load-bearing for page-table scanning code.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at KERNEL because kernels rely on the A bit for page replacement and the D bit for writeback decisions; knowing the update lands on the terminating leaf only (never non-leaf levels) is load-bearing for page-table scanning code."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The module predicts exactly which PTE gains A and which gains D per access, mutating the tree as hardware would; kernel page-reclamation scans read these bits to decide eviction and writeback",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/150-pte-a-d-bits/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/150-pte-a-d-bits"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The leaf-only finding tells kernel code exactly where to look for A/D: the terminating PTE, never the intermediate levels."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A kernel that scans page tables for A/D must know which levels hardware updates; scanning non-leaf levels for bits hardware never sets would be wasted work or a bug."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The KERNEL layer lights when the verified property determines how operating-system memory management reads page-table state."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "lab-150-pte-a-d-bits|ALGORITHM": {
+    "item": "lab-150-pte-a-d-bits",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Matters at ALGORITHM because the walk is a pure computational mechanism over a scripted tree, portable as C; the differential test verifies the algorithm against the spec's rule with no hardware in the loop.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at ALGORITHM because the walk is a pure computational mechanism over a scripted tree, portable as C; the differential test verifies the algorithm against the spec's rule with no hardware in the loop."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The model is a C function ad_predict walking a scripted tree; 1215 checks, 0 mismatches, identical checksum across -O2, -O0, and sanitizer builds, verified on Host with no QEMU",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/150-pte-a-d-bits/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/150-pte-a-d-bits"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The identical checksums across optimization levels and sanitizers prove the walk is a pure algorithm, not an artifact of one build."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A deterministic walk over a data structure, verified by differential testing against a specification, is a portable algorithm; the build-variant identity proves implementation independence."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM layer lights when the card verifies a computational mechanism whose correctness is established by testing, not by hardware execution."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "unlinkopen|ISA": {
+    "item": "unlinkopen",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the test exercises the unlink and read system calls; it checks filesystem inode lifetime, not the machine contract.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at ISA because the test exercises the unlink and read system calls; it checks filesystem inode lifetime, not the machine contract."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 7 checks assert fd numbers, write/read byte counts, unlink return, and post-close open return; no instruction, CSR, or trap behavior is asserted",
+        "source": {
+          "tier": "lab",
+          "cite": "user/unlinkopen PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The inode lifetime checked here is a kernel software contract, independent of the underlying instruction set."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A user-space test that asserts only OS-level file behavior and data integrity does not engage the instruction set or privileged architecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ISA slot stays dim when the verified claim would hold identically on any ISA, since it concerns kernel reference counting rather than the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "unlinkopen|MICROARCH": {
+    "item": "unlinkopen",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the verified claim is about the kernel's inode reference counting; no microarchitectural property is measured or asserted.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at MICROARCH because the verified claim is about the kernel's inode reference counting; no microarchitectural property is measured or asserted."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The PROOF entry describes the mechanism as the open struct file keeping its inode alive after the directory entry is removed; the checks observe file behavior, not hardware counters or timing",
+        "source": {
+          "tier": "lab",
+          "cite": "user/unlinkopen PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The inode survival is a software invariant of the file table; no microarchitectural feature bears on it."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A property determined by kernel reference counting, observed through file I/O, is indifferent to the processor's microarchitecture."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The MICROARCH slot stays dim when the verified claim concerns software lifetime management rather than implementation-dependent hardware behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "unlinkopen|FIRMWARE": {
+    "item": "unlinkopen",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the test is a user program exercising file I/O; firmware never manages inodes.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at FIRMWARE because the test is a user program exercising file I/O; firmware never manages inodes."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The test is built as a UPROGS user program shipped in fs.img and run from the xv6 shell; no firmware interface is exercised",
+        "source": {
+          "tier": "lab",
+          "cite": "user/unlinkopen PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Firmware's job ends at boot; inodes are created and managed entirely by the xv6 kernel thereafter."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "Inodes are an operating-system filesystem abstraction with no firmware counterpart; firmware neither provides nor constrains them."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The FIRMWARE slot stays dim when the verified property belongs to a software layer that firmware never touches."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2,) establish the claim per 4, giving 3."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "3 plus 5 yields the verdict in (1)."
+      }
+    ]
+  },
+  "unlinkopen|KERNEL": {
+    "item": "unlinkopen",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because unlink-while-open is the kernel's inode lifetime contract: the directory entry goes away but the open struct file keeps its inode alive, verified here from user space with byte-exact readback.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Matters at KERNEL because unlink-while-open is the kernel's inode lifetime contract: the directory entry goes away but the open struct file keeps its inode alive, verified here from user space with byte-exact readback."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Unlink returned 0 with fd 3 open; 128 bytes read back byte-exact through the unlinked fd; post-close open of the path returned -1; 7 checks, 0 mismatches, checksum 0x65AF3CA870DABE29",
+        "source": {
+          "tier": "lab",
+          "cite": "user/unlinkopen PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The test source shows no kernel code was changed; the assertions exercise xv6's existing sys_unlink path and file-table inode reference from user space",
+        "source": {
+          "tier": "lab",
+          "cite": "user/unlinkopen.c",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/unlinkopen.c"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The byte-exact 128-byte read after unlink proves the inode survived; the -1 on fresh open proves the name is gone. Both halves of the contract hold."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "Reference counting that keeps an inode alive past its last name is the kernel's contract; observing byte-exact data after unlink and -1 after close verifies both halves."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The KERNEL layer lights when the verified property is the operating system's own lifetime contract, checked through its system-call interface."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that the test only shows one file. The contract is per-inode: the open struct file holds a reference, so the inode cannot be freed until close. The byte-exact readback is the direct observation of that reference keeping the data alive."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measurements in (2, 3) establish the claim per 5, giving 4."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With the objection in (7) addressed, 4 plus 6 yields the verdict in (1)."
+      }
+    ]
+  },
+  "unlinkopen|ALGORITHM": {
+    "item": "unlinkopen",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the card verifies a kernel reference-counting invariant, not a computational construction with a portable form.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Not at ALGORITHM because the card verifies a kernel reference-counting invariant, not a computational construction with a portable form."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The 7 checks assert file behavior, data integrity, and syscall returns; no computed function, no portable implementation, no differential test against a software oracle",
+        "source": {
+          "tier": "lab",
+          "cite": "user/unlinkopen PROOF entry",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "There is no algorithm here to be portable; the claim is about what the kernel's file table guarantees."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A kernel lifetime invariant observed through I/O is not a portable computational mechanism; there is no algorithm to port."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ALGORITHM slot stays dim when the card verifies operating-system reference counting rather than a computation with an equivalent portable form."
       }
     ],
     "inferences": [
