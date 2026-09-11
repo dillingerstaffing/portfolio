@@ -1,655 +1,695 @@
 [
-{
-  "title": "The Gate With Three Locks",
-  "date": "2026-09-11",
-  "paragraphs": [
-   "Take a page-table entry with R=1, W=1, X=0, U=0. Read the flags the way the hardware does: readable, writable, not executable, and owned by the supervisor, since U=0 marks a supervisor page. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it. Now run a load instruction in supervisor mode against this page. The verdict comes from three questions asked in a fixed order. The load passes all three and proceeds. Run the same load from user mode and it dies at the second question.",
-   "The questions, in the order the specification's walk step applies them. First, the contradiction check: if W=1 and R=0, the access faults before any permission logic runs. Second, the privilege check: with the SUM bit clear (the lab states this boundary; SUM is the bit that would let the supervisor read user pages), a U=0 page is closed to user mode and a U=1 page is closed to supervisor mode. Third, the grant: a load needs R, a store needs W, an instruction fetch needs X. An entry with R=W=X=0 is not a leaf at all but a pointer to the next table level, so the grant gives it nothing, which agrees with the truth that it grants nothing.",
-   "The obvious design skips the first question and lets the grant logic sort it out: a page marked W=1, R=0 would simply fail loads and pass stores, writable-but-not-readable. The reason the specification bans the encoding instead is the invariant it protects: every writable page is also readable. If the contradiction could be written into a table, some piece of hardware would have to decide what a store to such a page means, and no two implementations would decide the same way. The fault keeps the contract free of contradictions, so no hardware ever has to interpret one.",
-   "The code is the insight here:",
-   "Three lines, and the placement is the point: this runs before the privilege check and before the grant switch, matching the order of the specification's walk step. The single condition is the whole invariant, writable implies readable, enforced at the gate rather than argued about later.",
-   "The proof runs every combination the table can express: 16 flag combinations times 3 access types times 2 privilege modes, 96 rows. That is the entire rulebook; there is no 97th row to miss. The oracle is built nothing like the implementation on purpose: the forbidden encodings as two explicit (r, w, x) patterns instead of the implication, the grant as a table instead of a switch, the privilege rule as its own predicate instead of early returns, so a bug hiding in one shape cannot hide in the other. Zero mismatches across all 96 rows, with the checksum efd3419afd2b56cb pinned across builds. One check costs 4.423 nanoseconds on this machine, a few billionths of a second, and a running kernel asks this question on nearly every memory access, millions of times a second, which is why the gate has to be cheap. The honest boundary, stated in the lab: this proves the leaf verdict only. Not the valid bit, not the accessed and dirty bits, not physical memory protection, not silicon. A proof that lists its own boundaries is the honest kind.",
-   "One sentence to carry away: a page-table entry's permission bits are a three-filter gate, contradiction first, privilege second, grant third, and the two forbidden encodings exist so that writable-but-not-readable can never be said out loud."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/135-pte-permission-check",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+  {
+    "title": "The Twelve Bits the Walk Never Touches",
+    "date": "2026-09-11",
+    "paragraphs": [
+      "Take a physical page number, say 0x80000, and an offset, say 0xabc. The physical address is 0x80000abc: the page number shifted left by 12, ORed with the offset. A physical page number names which 4 KiB page holds your byte; the offset is the low 12 bits, which pick the byte inside that page. Everything this lab proves hangs on that split.",
+      "The part that keeps pulling me back is not the arithmetic, it is what the arithmetic refuses to do. A page-table walk never rewrites the low bits of your address. The privileged specification says it plainly in section 4.3.2: the page offset of the physical address equals the page offset of the virtual address. The tables decide which page your data lives on; the offset rides through the whole walk untouched.",
+      "It generalizes beautifully, and the invariant is the same at every scale. When the walk finds its leaf one level up, a 2 MiB megapage, the pass-through window grows: the upper page-number bits shift by 21 and the low 21 bits of the virtual address are copied verbatim, with the hardware faulting on a misaligned superpage if the low 9 bits of the page number are not zero. At two levels up, a 1 GiB page, the top bits shift by 30 and 30 bits of your address ride through, the low 18 required zero. Translation replaces the page number and copies everything below it untouched. The bigger the page, the more of your address the hardware trusts you with.",
+      "The code is the insight here:",
+      "Three lines. The shift moves page-number bit k to address bit k plus 12; the masks make the contract explicit, 44 bits for the page number, 12 for the offset, and anything above those widths is never read, so a stray high bit in a caller cannot leak into the address; the OR recombines two disjoint fields, so no carry can cross between them. Your xv6 walk() always descends to level 0, so every mapping it builds is exactly the 4 KiB case this formula covers.",
+      "The test is deliberately built nothing like the code it checks. The oracle never shifts a whole field: it walks destination bits 0 through 55 and sets each one individually from a single-bit extraction, so it shares no structure with the implementation and cannot share its bugs. 60,331,824 checks, roughly one for every second in almost two years, zero mismatches, and the checksum 235e187d99433244 identical across three builds. One conversion costs 4.275 nanoseconds, best observed, about the time light takes to cross four feet of a room. The honest boundary: the lab proves the 4 KiB case. The megapage forms above are verified against the spec text, not yet against a differential oracle, so they are the next rung, not a claimed proof.",
+      "One sentence to carry away: the page walk replaces the page number and copies everything below it untouched, and the bigger the page, the more of the address rides through."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/136-pte-to-phys-addr",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/136-pte-to-phys-addr/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because the 44-bit page number at PTE bits 53:10 and the offset pass-through, pa.pgoff equals va.pgoff, are the privileged ISA's own address-formation contract: the proof checks the implementation against that contract on 60,331,824 cases"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the proof checks the address-formation arithmetic in software; no TLB, walk hardware, or cache behavior is exercised, and the formation is identical on any implementation, so microarchitectural variance cannot move the result"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware builds Sv39 page tables: every leaf entry it writes must carry a page number that forms the correct physical address by exactly this shift-and-OR, before the hardware will walk the table"
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters because the kernel turns page-table entries into physical addresses constantly: xv6's walk() always descends to level 0, so every xv6 mapping is exactly the 4 KiB case this lab proves"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because the 44-bit and 12-bit split is the ISA's fixed contract: outside Sv39 the same shift amounts mean nothing, so the proven identity carries no ISA-independent claim"
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-     "applies": true,
-     "because": "matters because the R/W/X/U encodings and the fault rules are the Sv39 privileged ISA's own contract: the proof checks the implementation against the manual's rule table on every one of the 96 flag, access-type, and mode combinations"
-   },
-   "MICROARCH": {
-     "applies": false,
-     "because": "not here because the proof checks the permission rule table on the host, not a page-table walk; no TLB, walk, or fault-delivery hardware behavior is measured"
-   },
-   "FIRMWARE": {
-     "applies": true,
-     "because": "matters because M-mode firmware builds the page tables: writing a PTE with W set and R clear bakes in a guaranteed fault, and the proof pins exactly which encodings are legal before any table is built"
-   },
-   "KERNEL": {
-     "applies": true,
-     "because": "matters because the kernel's page-fault path and its permission changes live by these rules: the checked function is the rule the kernel applies when it decides whether an access faults"
-   },
-   "ALGORITHM": {
-     "applies": false,
-     "because": "not here because the check transcribes the ISA's rule table into boolean logic; outside Sv39 the same code means nothing, so there is no ISA-independent mechanism to argue"
-   }
-  }
-},
-{
-  "title": "The Ten Fields in One Word",
-  "date": "2026-09-11",
-  "paragraphs": [
-   "Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones, and the top field reads back 0x80000. A valid, readable, writable page at physical page 0x80000. Every page fault your kernel will ever handle starts with exactly this parsing step: xv6's walk() reads each level's entry to pull out the page number and check the permission bits. A misdecoded entry is a wrong mapping or a missed fault, so the parsing gets its own proof, small and focused, nothing else.",
-   "The obvious way to parse a fixed bit layout in C is a struct with bitfields, one named field per entry part, widths in the declaration. The honest reason not to is that C leaves bitfield layout implementation-defined. The compiler is free to pack the fields in an order you did not ask for, so the struct expresses a hope, not a contract. The lab decodes with shift-and-mask identities instead: one shift and one mask per field, every boundary explicit in the source. Shifting right by k moves bit k into position 0; masking with a run of ones keeps exactly the field width and clears everything above. The mechanism is portable to every ISA; only the boundaries come from the RISC-V contract.",
-   "The layout is the privileged specification's own: 44 bits of physical page number in bits 53:10, two bits reserved for supervisor software in 9:8, then the eight flags, dirty, accessed, global, user, execute, write, read, valid. The ten field masks are disjoint and cover bits 53:0 with no overlap and no gaps, so the fields partition the word, and shifting each field back to its position and ORing restores the entry exactly. That partition is the whole invariant: encode(decode(pte)) equals pte, and the test checks it on every one of the 4.3 billion cases.",
-   "The code is the insight here:",
-   "Three of the ten fields; the other seven follow the same identity. The flag order, valid up through user, matches xv6's kernel/riscv.h bit for bit, so the layout the lab checks is the layout a real kernel reads.",
-   "The best part is the promise about the bits the decoder never touches. Bits 63:54 are reserved for future use: decode never reads them, and encode always leaves them clear. That is checked, not assumed. Every directed edge value goes through twice, once bare and once with those top ten bits set, and the decoded fields must come out identical. 108 checks just for the promise that the future stays invisible.",
-   "The full count: 4,304,967,566 cases, more than 4.3 billion, zero mismatches. Every 32-bit word that exists, ten million fixed-seed 64-bit randoms, 162 directed edges, and the reserved-bits row. The oracle is deliberately built nothing like the implementation: one loop per field, each field assembled bit by bit through a pointer table, no helper code shared with the thing it tests. A second, independently written per-bit Python reference cross-checked 200,162 more values, also zero mismatches, and the checksum of every decoded output is e3c4316e414a6146. One honest caveat on speed: three timing runs on this noisy VM gave 25.782, 9.626, and 11.195 nanoseconds per decode, so the 9.626 number is the best observed, not a promise. One sentence to carry away: a page-table entry is a fixed bit contract from the privileged specification, and this test proved the decoder agrees with it on more than four billion cases without a single mismatch."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/133-sv39-pte-decode",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/133-sv39-pte-decode/PROOF.md"
+  {
+    "title": "The Gate With Three Locks",
+    "date": "2026-09-11",
+    "paragraphs": [
+      "Take a page-table entry with R=1, W=1, X=0, U=0. Read the flags the way the hardware does: readable, writable, not executable, and owned by the supervisor, since U=0 marks a supervisor page. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it. Now run a load instruction in supervisor mode against this page. The verdict comes from three questions asked in a fixed order. The load passes all three and proceeds. Run the same load from user mode and it dies at the second question.",
+      "The questions, in the order the specification's walk step applies them. First, the contradiction check: if W=1 and R=0, the access faults before any permission logic runs. Second, the privilege check: with the SUM bit clear (the lab states this boundary; SUM is the bit that would let the supervisor read user pages), a U=0 page is closed to user mode and a U=1 page is closed to supervisor mode. Third, the grant: a load needs R, a store needs W, an instruction fetch needs X. An entry with R=W=X=0 is not a leaf at all but a pointer to the next table level, so the grant gives it nothing, which agrees with the truth that it grants nothing.",
+      "The obvious design skips the first question and lets the grant logic sort it out: a page marked W=1, R=0 would simply fail loads and pass stores, writable-but-not-readable. The reason the specification bans the encoding instead is the invariant it protects: every writable page is also readable. If the contradiction could be written into a table, some piece of hardware would have to decide what a store to such a page means, and no two implementations would decide the same way. The fault keeps the contract free of contradictions, so no hardware ever has to interpret one.",
+      "The code is the insight here:",
+      "Three lines, and the placement is the point: this runs before the privilege check and before the grant switch, matching the order of the specification's walk step. The single condition is the whole invariant, writable implies readable, enforced at the gate rather than argued about later.",
+      "The proof runs every combination the table can express: 16 flag combinations times 3 access types times 2 privilege modes, 96 rows. That is the entire rulebook; there is no 97th row to miss. The oracle is built nothing like the implementation on purpose: the forbidden encodings as two explicit (r, w, x) patterns instead of the implication, the grant as a table instead of a switch, the privilege rule as its own predicate instead of early returns, so a bug hiding in one shape cannot hide in the other. Zero mismatches across all 96 rows, with the checksum efd3419afd2b56cb pinned across builds. One check costs 4.423 nanoseconds on this machine, a few billionths of a second, and a running kernel asks this question on nearly every memory access, millions of times a second, which is why the gate has to be cheap. The honest boundary, stated in the lab: this proves the leaf verdict only. Not the valid bit, not the accessed and dirty bits, not physical memory protection, not silicon. A proof that lists its own boundaries is the honest kind.",
+      "One sentence to carry away: a page-table entry's permission bits are a three-filter gate, contradiction first, privilege second, grant third, and the two forbidden encodings exist so that writable-but-not-readable can never be said out loud."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/135-pte-permission-check",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/135-pte-permission-check/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because the R/W/X/U encodings and the fault rules are the Sv39 privileged ISA's own contract: the proof checks the implementation against the manual's rule table on every one of the 96 flag, access-type, and mode combinations"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the proof checks the permission rule table on the host, not a page-table walk; no TLB, walk, or fault-delivery hardware behavior is measured"
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters because M-mode firmware builds the page tables: writing a PTE with W set and R clear bakes in a guaranteed fault, and the proof pins exactly which encodings are legal before any table is built"
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters because the kernel's page-fault path and its permission changes live by these rules: the checked function is the rule the kernel applies when it decides whether an access faults"
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because the check transcribes the ISA's rule table into boolean logic; outside Sv39 the same code means nothing, so there is no ISA-independent mechanism to argue"
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-    "applies": true,
-    "because": "the field boundaries under test are the privileged specification's own Sv39 contract: PPN in bits 53:10, RSW in 9:8, the eight flags in 7:0. The piece checks agreement with that contract on 4,304,967,566 inputs with zero mismatches; the lab did not choose this layout, the specification did."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "the proof compares decoded field values against a per-field reference, a value operation on the input word: which bits sit at each position is fixed by the word itself, so no unmeasured pipeline, cache, or predictor behavior could move the result. The 9.626 ns figure is reported as a measurement, not part of the proof."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "the decoder configures no trap vector, CSR, or privilege level; it treats the PTE layout as a bit-field specification to parse, the way one parses a file header. Firmware sets up page tables, it does not decode individual entries, so no firmware configuration stands between the input and the claim."
-   },
-   "KERNEL": {
-    "applies": true,
-    "because": "PTE decode is what the kernel does when it walks page tables and handles page faults: xv6's walk() reads each level's entry to extract the page number and check the permission bits. The verified property is the parsing step kernel virtual memory depends on; a misdecoded entry here is a wrong mapping or a missed fault in the kernel."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the one atomic idea a builder needs: exact bit-contract parsing through shift-and-mask identities, with the round-trip invariant (encode(decode(pte)) equal to pte) as the proof that the fields partition the word. The mechanism ports to every ISA; only the boundaries come from the RISC-V contract."
-   }
-  }
-},
- {
-  "title": "The Bit That Remembers Who Called",
-  "date": "2026-09-11",
-  "paragraphs": [
-   "A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP NAPOT entry, and dropped into an S-mode payload through sret. The payload issued two ecalls. Each trap landed in the S-mode handler, which read three values: SPP = 1, scause = 9, sepc = 0x800002a8, identical on both traps. The word sitting at that address was 0x73, the ecall instruction itself.",
-   "SPP is bit 8 of sstatus, and the hardware writes it at the instant of the trap: the privilege mode the hart was in just before the trap. In the same breath it copies the old interrupt-enable bit into SPIE and clears SIE, so no interrupt can re-enter the handler mid-stream. When the handler executes sret, the reverse happens: the privilege mode is restored from SPP, SIE from SPIE, then SPIE is set to 1, SPP cleared to 0, and the hart resumes at sepc. Push on trap, pop on sret. The trap path has a call stack exactly one frame deep, and the hardware maintains it.",
-   "Why does the hardware keep this record? Because one S-mode handler fields traps from two very different callers, and nothing else remembers which one called. The xv6 source tree checks it the way the hardware means it to be checked. In usertrap(), near the top of the function: if ((r_sstatus() & SSTATUS_SPP) != 0) panic(\"usertrap: not from user mode\"). In kerneltrap(): if ((sstatus & SSTATUS_SPP) == 0) panic(\"kerneltrap: not from supervisor mode\"). And usertrapret() deliberately clears SPP to 0, with the comment \"clear SPP to 0 for user mode\", before sret returns to the process. The hardware record is the only one that cannot be forged or miscomputed, because it is written at the exact instant of the trap. Without it the handler would have to infer the caller from sepc or saved state, and a kernel should not guess about who it was talking to.",
-   "One wrinkle, and it is the honest kind: one bit is one frame. Every trap overwrites SPP, so a trap taken inside the handler destroys the first record. The module's handler therefore reads sstatus before it dispatches on scause, copying the bit into a sticky per-trap slot, straight from ssp_trap.S:",
-   "The handler's trap entry reads sstatus before it dispatches on scause, copying bit 8 into a sticky per-trap slot in three instructions: read the CSR, shift right by 8, AND with 1. The code is the insight here; the snippet is on the page.",
-   "The record only survives if the handler keeps its own copy, the same discipline as saving callee-saved registers. The M-mode sibling works the same way one level up, except MPP holds two bits because M-mode traps can arrive from three levels: user, supervisor, or machine, with MPIE and MIE mirroring SPIE and SIE around mret. The checking, because that is the whole point: 11 checks, zero failures, and the three QEMU runs byte-identical, the same checksum 0x81dc6b1b81f94783 over the recorded values every time. One honest boundary from the proof file: this measures QEMU's model of the privileged contract, not silicon, and only the synchronous S-mode ecall path; interrupts, page faults, and traps from user mode are separate measurements. One sentence to carry away: every trap is a function call performed by hardware, and SPP is the return address it writes down for you."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-spp",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+  {
+    "title": "The Ten Fields in One Word",
+    "date": "2026-09-11",
+    "paragraphs": [
+      "Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones, and the top field reads back 0x80000. A valid, readable, writable page at physical page 0x80000. Every page fault your kernel will ever handle starts with exactly this parsing step: xv6's walk() reads each level's entry to pull out the page number and check the permission bits. A misdecoded entry is a wrong mapping or a missed fault, so the parsing gets its own proof, small and focused, nothing else.",
+      "The obvious way to parse a fixed bit layout in C is a struct with bitfields, one named field per entry part, widths in the declaration. The honest reason not to is that C leaves bitfield layout implementation-defined. The compiler is free to pack the fields in an order you did not ask for, so the struct expresses a hope, not a contract. The lab decodes with shift-and-mask identities instead: one shift and one mask per field, every boundary explicit in the source. Shifting right by k moves bit k into position 0; masking with a run of ones keeps exactly the field width and clears everything above. The mechanism is portable to every ISA; only the boundaries come from the RISC-V contract.",
+      "The layout is the privileged specification's own: 44 bits of physical page number in bits 53:10, two bits reserved for supervisor software in 9:8, then the eight flags, dirty, accessed, global, user, execute, write, read, valid. The ten field masks are disjoint and cover bits 53:0 with no overlap and no gaps, so the fields partition the word, and shifting each field back to its position and ORing restores the entry exactly. That partition is the whole invariant: encode(decode(pte)) equals pte, and the test checks it on every one of the 4.3 billion cases.",
+      "The code is the insight here:",
+      "Three of the ten fields; the other seven follow the same identity. The flag order, valid up through user, matches xv6's kernel/riscv.h bit for bit, so the layout the lab checks is the layout a real kernel reads.",
+      "The best part is the promise about the bits the decoder never touches. Bits 63:54 are reserved for future use: decode never reads them, and encode always leaves them clear. That is checked, not assumed. Every directed edge value goes through twice, once bare and once with those top ten bits set, and the decoded fields must come out identical. 108 checks just for the promise that the future stays invisible.",
+      "The full count: 4,304,967,566 cases, more than 4.3 billion, zero mismatches. Every 32-bit word that exists, ten million fixed-seed 64-bit randoms, 162 directed edges, and the reserved-bits row. The oracle is deliberately built nothing like the implementation: one loop per field, each field assembled bit by bit through a pointer table, no helper code shared with the thing it tests. A second, independently written per-bit Python reference cross-checked 200,162 more values, also zero mismatches, and the checksum of every decoded output is e3c4316e414a6146. One honest caveat on speed: three timing runs on this noisy VM gave 25.782, 9.626, and 11.195 nanoseconds per decode, so the 9.626 number is the best observed, not a promise. One sentence to carry away: a page-table entry is a fixed bit contract from the privileged specification, and this test proved the decoder agrees with it on more than four billion cases without a single mismatch."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/133-sv39-pte-decode",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/133-sv39-pte-decode/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the field boundaries under test are the privileged specification's own Sv39 contract: PPN in bits 53:10, RSW in 9:8, the eight flags in 7:0. The piece checks agreement with that contract on 4,304,967,566 inputs with zero mismatches; the lab did not choose this layout, the specification did."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "the proof compares decoded field values against a per-field reference, a value operation on the input word: which bits sit at each position is fixed by the word itself, so no unmeasured pipeline, cache, or predictor behavior could move the result. The 9.626 ns figure is reported as a measurement, not part of the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "the decoder configures no trap vector, CSR, or privilege level; it treats the PTE layout as a bit-field specification to parse, the way one parses a file header. Firmware sets up page tables, it does not decode individual entries, so no firmware configuration stands between the input and the claim."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "PTE decode is what the kernel does when it walks page tables and handles page faults: xv6's walk() reads each level's entry to extract the page number and check the permission bits. The verified property is the parsing step kernel virtual memory depends on; a misdecoded entry here is a wrong mapping or a missed fault in the kernel."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: exact bit-contract parsing through shift-and-mask identities, with the round-trip invariant (encode(decode(pte)) equal to pte) as the proof that the fields partition the word. The mechanism ports to every ISA; only the boundaries come from the RISC-V contract."
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-    "applies": true,
-    "because": "the behavior under test is the RISC-V privileged specification's trap contract: sstatus bit 8 records the pre-trap privilege mode and sret restores it, measured directly by the module."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "no pipeline, cache, or predictor behavior is measured or claimed; the traps are synchronous and the module times nothing."
-   },
-   "FIRMWARE": {
-    "applies": true,
-    "because": "the M-mode half of the module is firmware work: it sets medeleg bit 9, opens the address space with one PMP NAPOT entry, and srets into S-mode, and that setup makes the S-mode measurement possible."
-   },
-   "KERNEL": {
-    "applies": true,
-    "because": "the S-mode handler is the kernel's trap entry, and the bit is load-bearing for real kernels: xv6's usertrap and kerneltrap panic when SPP contradicts the expected caller."
-   },
-   "ALGORITHM": {
-    "applies": false,
-    "because": "no computational mechanism is taught here; the piece is about a hardware record kept across a privilege transition, not a procedure."
-   }
-  }
- },
- {
-  "title": "The Guard That Keeps Zero Honest",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Take 12, which is 1100 in binary. Subtract 1 and you get 1011: the subtraction borrows through the two trailing zeros and stops at the lowest set bit, flipping exactly those three bits and nothing above them. AND the two together, 1100 and 1011, and you get 1000. One bit survives, so 12 is not a power of two.",
-   "Try 8 instead: 1000 minus 1 is 0111, and 1000 AND 0111 is 0. Nothing survives, so 8 is a power of two. That is the whole identity: x - 1 differs from x in precisely the lowest set bit and everything below it, so x & (x - 1) erases the lowest set bit of x and leaves everything above it untouched. If x has exactly one bit set, the AND comes out zero; otherwise at least one bit survives.",
-   "The naive test, (x & (x - 1)) == 0, has a bug the bit-twiddling canon admits in print: it calls 0 a power of two. Zero minus 1 wraps to all-ones, because unsigned subtraction wraps mod 2^64, and 0 AND all-ones is 0, so the test reports true. That is why the lab's function carries a guard: (x != 0) & ((x & (x - 1)) == 0). The guard is what keeps zero honest.",
-   "Hacker's Delight, section 2-1, gives the formula as turning off the rightmost 1-bit and notes it detects \"a power of 2 or 0\"; the Bit Twiddling Hacks page says plainly that 0 is incorrectly considered a power of 2, and gives the guarded form as the remedy. The lab is the canon, executed. Both the guard and the equality are evaluated through setcc, the x86 instruction that turns a condition flag into a 0 or 1 with no jump, and combined with a bitwise AND, so gcc 13.3.0 at -O2 emits the construction with zero conditional jumps. No branch means no branch misprediction when the input stream is random, and the test bench feeds it exactly that: ten million fixed-seed random 64-bit values.",
-   "The full count: 192 directed edges (2^k, 2^k - 1, 2^k + 1 for every k from 0 to 63, including the top corner at 2^63), an exhaustive sweep of all 16,777,216 24-bit values, and the ten million randoms, 26,777,408 checks in all, nearly 27 million, zero mismatches against a hand-written popcount-loop oracle. No compiler builtins anywhere, so the test never leans on the thing it is testing. The checksum of the whole result stream is identical across the -O0, -O2, and sanitizer builds. One honest boundary, stated in the proof file itself: the full 4.29-billion-case 32-bit loop could not finish in one run, so the module ships the largest fully verified slice instead and says so. One sentence to carry away: subtracting 1 erases exactly the lowest set bit, so a number is a power of two exactly when nothing survives the erasure and the number is not zero."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/124-is-pow2",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+  {
+    "title": "The Bit That Remembers Who Called",
+    "date": "2026-09-11",
+    "paragraphs": [
+      "A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP NAPOT entry, and dropped into an S-mode payload through sret. The payload issued two ecalls. Each trap landed in the S-mode handler, which read three values: SPP = 1, scause = 9, sepc = 0x800002a8, identical on both traps. The word sitting at that address was 0x73, the ecall instruction itself.",
+      "SPP is bit 8 of sstatus, and the hardware writes it at the instant of the trap: the privilege mode the hart was in just before the trap. In the same breath it copies the old interrupt-enable bit into SPIE and clears SIE, so no interrupt can re-enter the handler mid-stream. When the handler executes sret, the reverse happens: the privilege mode is restored from SPP, SIE from SPIE, then SPIE is set to 1, SPP cleared to 0, and the hart resumes at sepc. Push on trap, pop on sret. The trap path has a call stack exactly one frame deep, and the hardware maintains it.",
+      "Why does the hardware keep this record? Because one S-mode handler fields traps from two very different callers, and nothing else remembers which one called. The xv6 source tree checks it the way the hardware means it to be checked. In usertrap(), near the top of the function: if ((r_sstatus() & SSTATUS_SPP) != 0) panic(\"usertrap: not from user mode\"). In kerneltrap(): if ((sstatus & SSTATUS_SPP) == 0) panic(\"kerneltrap: not from supervisor mode\"). And usertrapret() deliberately clears SPP to 0, with the comment \"clear SPP to 0 for user mode\", before sret returns to the process. The hardware record is the only one that cannot be forged or miscomputed, because it is written at the exact instant of the trap. Without it the handler would have to infer the caller from sepc or saved state, and a kernel should not guess about who it was talking to.",
+      "One wrinkle, and it is the honest kind: one bit is one frame. Every trap overwrites SPP, so a trap taken inside the handler destroys the first record. The module's handler therefore reads sstatus before it dispatches on scause, copying the bit into a sticky per-trap slot, straight from ssp_trap.S:",
+      "The handler's trap entry reads sstatus before it dispatches on scause, copying bit 8 into a sticky per-trap slot in three instructions: read the CSR, shift right by 8, AND with 1. The code is the insight here; the snippet is on the page.",
+      "The record only survives if the handler keeps its own copy, the same discipline as saving callee-saved registers. The M-mode sibling works the same way one level up, except MPP holds two bits because M-mode traps can arrive from three levels: user, supervisor, or machine, with MPIE and MIE mirroring SPIE and SIE around mret. The checking, because that is the whole point: 11 checks, zero failures, and the three QEMU runs byte-identical, the same checksum 0x81dc6b1b81f94783 over the recorded values every time. One honest boundary from the proof file: this measures QEMU's model of the privileged contract, not silicon, and only the synchronous S-mode ecall path; interrupts, page faults, and traps from user mode are separate measurements. One sentence to carry away: every trap is a function call performed by hardware, and SPP is the return address it writes down for you."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-spp",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the behavior under test is the RISC-V privileged specification's trap contract: sstatus bit 8 records the pre-trap privilege mode and sret restores it, measured directly by the module."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "no pipeline, cache, or predictor behavior is measured or claimed; the traps are synchronous and the module times nothing."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "the M-mode half of the module is firmware work: it sets medeleg bit 9, opens the address space with one PMP NAPOT entry, and srets into S-mode, and that setup makes the S-mode measurement possible."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "the S-mode handler is the kernel's trap entry, and the bit is load-bearing for real kernels: xv6's usertrap and kerneltrap panic when SPP contradicts the expected caller."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "no computational mechanism is taught here; the piece is about a hardware record kept across a privilege transition, not a procedure."
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the lab tests in plain compiled host C; no RISC-V operation is executed or measured."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "the branch-mispredict argument is invoked only to motivate the branchless construction; no pipeline, cache, or predictor behavior is measured or claimed."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because nothing boots and no machine-mode configuration is touched."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the test runs in a plain user-space binary; no OS service, address translation, or I/O path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the one atomic idea a builder needs: x minus 1 erases the lowest set bit, so x is a power of two exactly when nothing survives the erasure and x is not zero; checked against a hand-written oracle on 26,777,408 inputs with zero mismatches."
-   }
-  }
- },
- {
-  "title": "The Division That Adds Up Shifts",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Divide 100 by 7 without a divide instruction. The obvious program is a loop: subtract 7, count, repeat until the remainder drops below 7. For 100 that is 14 subtractions, fine. For four billion it is over 613 million, and the running time is decided by the input: the bigger the number, the longer you wait. A division whose cost grows with its answer is the failure to fix.",
-   "Here is a fact about 7 that looks like trivia until it becomes a tool. In binary, 1/7 is 0.001001001..., the triplet 001 repeating forever. Why: the series 2^-3 + 2^-6 + 2^-9 + ... has ratio 1/8, so it sums to (1/8) divided by (1 - 1/8), which is 1/7. Three lines, no faith required.",
-   "Multiply through by x and the division becomes a sum of shifts: x/7 = (x>>3) + (x>>6) + (x>>9) + ..., as exact reals. For x = 100: 100>>3 is 12, 100>>6 is 1, and every term after that shifts to zero. The sum is 13. Shifting drops the fractions, so this estimate can only ever sit at or below the truth, never above it; the lab's test asserted exactly that on every one of its 26.8 million inputs and never saw a violation.",
-   "Now walk up to the exact answer: the implementation sums every third right shift for the estimate, builds 7q as q + (q<<1) + (q<<2) with shifts and adds only, then steps q up one at a time while the remainder is at least 7. For x = 100: q starts at 13, t at 91, the remainder 9 is at least 7, so one step up: q = 14, t = 98, remainder 2, done.",
-   "Fourteen is 100 divided by 7 rounded down, and the whole thing took shifts, adds, and a single walk-up step. The proof bounds the shortfall under 10.58, so the loop can run at most 10 times, and the lab's own run observed exactly 10 as its maximum, theory and measurement agreeing to the digit. The checking, because that is the whole point: 26,777,238 inputs, nearly 27 million, twenty-two hand-built edge rows plus every 24-bit value plus ten million random 32-bit ones, zero wrong answers against the C / oracle, one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds, and a disassembly check confirming the compiler smuggled no divide instruction in behind the shifts. One sentence to carry away: 1/7 repeats as 001 in binary, so dividing by 7 is adding up a number's every-third right shift, then walking up by sevens to collect the fractions the shifts dropped."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/125-div-by-7-shift-add",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/125-div-by-7-shift-add/PROOF.md"
+  {
+    "title": "The Guard That Keeps Zero Honest",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Take 12, which is 1100 in binary. Subtract 1 and you get 1011: the subtraction borrows through the two trailing zeros and stops at the lowest set bit, flipping exactly those three bits and nothing above them. AND the two together, 1100 and 1011, and you get 1000. One bit survives, so 12 is not a power of two.",
+      "Try 8 instead: 1000 minus 1 is 0111, and 1000 AND 0111 is 0. Nothing survives, so 8 is a power of two. That is the whole identity: x - 1 differs from x in precisely the lowest set bit and everything below it, so x & (x - 1) erases the lowest set bit of x and leaves everything above it untouched. If x has exactly one bit set, the AND comes out zero; otherwise at least one bit survives.",
+      "The naive test, (x & (x - 1)) == 0, has a bug the bit-twiddling canon admits in print: it calls 0 a power of two. Zero minus 1 wraps to all-ones, because unsigned subtraction wraps mod 2^64, and 0 AND all-ones is 0, so the test reports true. That is why the lab's function carries a guard: (x != 0) & ((x & (x - 1)) == 0). The guard is what keeps zero honest.",
+      "Hacker's Delight, section 2-1, gives the formula as turning off the rightmost 1-bit and notes it detects \"a power of 2 or 0\"; the Bit Twiddling Hacks page says plainly that 0 is incorrectly considered a power of 2, and gives the guarded form as the remedy. The lab is the canon, executed. Both the guard and the equality are evaluated through setcc, the x86 instruction that turns a condition flag into a 0 or 1 with no jump, and combined with a bitwise AND, so gcc 13.3.0 at -O2 emits the construction with zero conditional jumps. No branch means no branch misprediction when the input stream is random, and the test bench feeds it exactly that: ten million fixed-seed random 64-bit values.",
+      "The full count: 192 directed edges (2^k, 2^k - 1, 2^k + 1 for every k from 0 to 63, including the top corner at 2^63), an exhaustive sweep of all 16,777,216 24-bit values, and the ten million randoms, 26,777,408 checks in all, nearly 27 million, zero mismatches against a hand-written popcount-loop oracle. No compiler builtins anywhere, so the test never leans on the thing it is testing. The checksum of the whole result stream is identical across the -O0, -O2, and sanitizer builds. One honest boundary, stated in the proof file itself: the full 4.29-billion-case 32-bit loop could not finish in one run, so the module ships the largest fully verified slice instead and says so. One sentence to carry away: subtracting 1 erases exactly the lowest set bit, so a number is a power of two exactly when nothing survives the erasure and the number is not zero."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/124-is-pow2",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the lab tests in plain compiled host C; no RISC-V operation is executed or measured."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "the branch-mispredict argument is invoked only to motivate the branchless construction; no pipeline, cache, or predictor behavior is measured or claimed."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because nothing boots and no machine-mode configuration is touched."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the test runs in a plain user-space binary; no OS service, address translation, or I/O path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: x minus 1 erases the lowest set bit, so x is a power of two exactly when nothing survives the erasure and x is not zero; checked against a hand-written oracle on 26,777,408 inputs with zero mismatches."
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the lab divides in plain compiled host C; no RISC-V operation is executed or measured."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "the iteration count of the naive loop is invoked only to motivate the construction; no pipeline, cache, or predictor behavior is measured or claimed."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because nothing boots and no machine-mode configuration is touched."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the division runs in a plain user-space binary; no OS service, address translation, or I/O path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the one atomic idea a builder needs: 1/7 repeats as 001 in binary, so x/7 is the sum of x's every-third right shift, and the walk-up correction is provably bounded at 10 steps; checked against the C / oracle on 26,777,238 inputs with zero mismatches."
-   }
-  }
- },
- {
-  "title": "The Exponent That Already Counted",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "The obvious program is a loop: start at bit 63, walk down, stop at the first 1, count the steps. It works, and for x = 2^63 it finishes after a single test. But for x = 1 it inspects 63 zeros first. The running time depends on the answer, and that is the whole problem: one branch per bit, mispredicted on random data, and a timing channel that leaks the input's magnitude. A quick check on this machine: the loop takes about 81 nanoseconds per value on inputs under 256, and about 4 when the top bit is set. About twenty times slower, decided by the input, while the float version below takes about 5 to 7 nanoseconds on both.",
-   "This lab rebuilds a hardware operation in portable C. Chips count leading zeros as a single hardware operation: x86 calls it LZCNT, ARM calls it CLZ, RISC-V's Zbb has one. Inside, that operation is a priority encoder, not a loop but a mesh of gates that examines all 64 bits at once, in space rather than time, the answer falling out of the wiring as the signal propagates. The lab uses no builtins and no intrinsics, so it cannot call that operation. Instead it borrows a top-bit finder every CPU is guaranteed to have: the float conversion unit. Leading zeros are 63 minus floor(log2(x)), so the real question is what power of two x sits under, and every conversion of an integer to a double must compute that exponent to normalize the value, storing floor(log2) plus a bias of 1023 in bits 62 through 52. The cast does the counting for free. So the trick is never to count at all: reshape x until the question you need is exactly the question the cast already answered, then read the exponent field.",
-   "Take x = 5, binary 101. Smear the top set bit downward with x |= x >> k for k = 1, 2, 4, 8, 16, 32. The first step turns 101 into 111, each step doubles how far the run of ones reaches, and after all six every bit at or below the top set bit is 1, so the filled value is exactly 2^(n+1) - 1 where n is the top bit's position. Cast that to double and the conversion computes exponent n, stored as n + 1023. Read bits 62 through 52 through a union, subtract the bias, and you have n; 63 minus n is the leading-zero count, 61 for 5. Nothing was counted. The exponent the cast already computed was read back out.",
-   "That read is exact only while the filled value converts exactly. Past 2^53, neighboring doubles sit more than 1 apart, so the cast rounds. From n = 54 up it always rounds up to 2^(n+1), a distance of 1 against at least 3 the other way, and the exponent reads one too high. The knife edge is n = 53: 2^54 - 1 is the exact midpoint between 2^54 - 2 and 2^54, and round-ties-to-even picks 2^54, whose significand 1.0 has an even least bit against 1.111...1's odd one. So the field reads one too high exactly when x >> 53 is nonzero, and the correction is one line: subtract 1 in that case.",
-   "Re-deriving the tie fixed the correction, and the rerun is clean: 10,065,537 checks, about ten million, zero mismatches, one checksum byte-identical across the -O0, -O2, and sanitizer builds, no sanitizer reports. The oracle is __builtin_clzll on every one of the 65,536 sixteen-bit inputs, x = 0 pinned to 64 by contract, and ten million fixed-seed random 64-bit values. The builtin stays in the test harness; the implementation is plain C11 with no intrinsics, no builtins, no library math."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/115-clz-fp",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/115-clz-fp/PROOF.md"
+  {
+    "title": "The Division That Adds Up Shifts",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Divide 100 by 7 without a divide instruction. The obvious program is a loop: subtract 7, count, repeat until the remainder drops below 7. For 100 that is 14 subtractions, fine. For four billion it is over 613 million, and the running time is decided by the input: the bigger the number, the longer you wait. A division whose cost grows with its answer is the failure to fix.",
+      "Here is a fact about 7 that looks like trivia until it becomes a tool. In binary, 1/7 is 0.001001001..., the triplet 001 repeating forever. Why: the series 2^-3 + 2^-6 + 2^-9 + ... has ratio 1/8, so it sums to (1/8) divided by (1 - 1/8), which is 1/7. Three lines, no faith required.",
+      "Multiply through by x and the division becomes a sum of shifts: x/7 = (x>>3) + (x>>6) + (x>>9) + ..., as exact reals. For x = 100: 100>>3 is 12, 100>>6 is 1, and every term after that shifts to zero. The sum is 13. Shifting drops the fractions, so this estimate can only ever sit at or below the truth, never above it; the lab's test asserted exactly that on every one of its 26.8 million inputs and never saw a violation.",
+      "Now walk up to the exact answer: the implementation sums every third right shift for the estimate, builds 7q as q + (q<<1) + (q<<2) with shifts and adds only, then steps q up one at a time while the remainder is at least 7. For x = 100: q starts at 13, t at 91, the remainder 9 is at least 7, so one step up: q = 14, t = 98, remainder 2, done.",
+      "Fourteen is 100 divided by 7 rounded down, and the whole thing took shifts, adds, and a single walk-up step. The proof bounds the shortfall under 10.58, so the loop can run at most 10 times, and the lab's own run observed exactly 10 as its maximum, theory and measurement agreeing to the digit. The checking, because that is the whole point: 26,777,238 inputs, nearly 27 million, twenty-two hand-built edge rows plus every 24-bit value plus ten million random 32-bit ones, zero wrong answers against the C / oracle, one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds, and a disassembly check confirming the compiler smuggled no divide instruction in behind the shifts. One sentence to carry away: 1/7 repeats as 001 in binary, so dividing by 7 is adding up a number's every-third right shift, then walking up by sevens to collect the fractions the shifts dropped."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/125-div-by-7-shift-add",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/125-div-by-7-shift-add/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the lab divides in plain compiled host C; no RISC-V operation is executed or measured."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "the iteration count of the naive loop is invoked only to motivate the construction; no pipeline, cache, or predictor behavior is measured or claimed."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because nothing boots and no machine-mode configuration is touched."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the division runs in a plain user-space binary; no OS service, address translation, or I/O path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: 1/7 repeats as 001 in binary, so x/7 is the sum of x's every-third right shift, and the walk-up correction is provably bounded at 10 steps; checked against the C / oracle on 26,777,238 inputs with zero mismatches."
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-    "applies": true,
-    "because": "the post rebuilds in portable C the leading-zero count the Zbb clz instruction specifies, naming the hardware operations it substitutes for; no clz instruction is executed"
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "the post invokes timing and branch cost only to motivate the construction; no pipeline, cache, or predictor behavior is measured or claimed"
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because nothing boots and no machine-mode configuration is touched."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the count runs in a plain user-space binary; no OS service, address translation, or I/O path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the one atomic idea a builder needs: a double's exponent already stores floor(log2), so reshape the question instead of counting bits; the rounding correction is earned from the n=53 tie, checked against the builtin oracle on ten million inputs"
-   }
-  }
- },
- {
-  "title": "The Mask That Finds Every Match",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Take x = 0x19eb and y = 0x18eb, two 16-bit words. Byte 0 is 0xeb in both, so it agrees. Byte 1 is 0x19 against 0x18, so it disagrees. Bytes 2 through 7 are all zero in both, so they agree. The answer is one byte, one bit per byte: bit i set exactly when byte i matched. Bits 0, 2, 3, 4, 5, 6, and 7 are set, bit 1 is clear, and the mask is 0xfd. The lab's whole job is to compute that byte with no branch anywhere.",
-   "XOR the two words first: d = x ^ y. Every byte that agreed becomes 0x00, every byte that disagreed becomes nonzero. The problem is now a zero-byte mask. The bit-twiddling canon has an old identity for this: subtract 0x0101010101010101, then AND with the complement of d and with 0x8080808080808080. For a zero byte it works beautifully. 0x00 minus 1 is 0xFF, the high bit set, and the complement of 0x00 is 0xFF, its high bit set too. Both tests pass, so the byte is flagged. For a nonzero byte the two high bits can never agree: at 128 or below the subtraction leaves the high bit clear, at 129 or above the complement has it clear. So the identity answers one question: does a zero byte exist somewhere in this word?",
-   "Run the identity straight on d = 0x0100 and watch it lie. Byte 1 of d is 0x01, a byte that disagrees, but byte 0 borrows during the subtraction, so byte 1 is computed as 0x01 minus 1 minus the borrow: 0xFF. Its high bit is set, and the complement of 0x01 is 0xFE, its high bit set too. Both tests pass on a byte that should fail. The identity reports 0xff, every byte equal, and the honest answer is 0xfd. The hand analysis says exactly when this happens: with no borrow coming in, the naive form has no false positives; with a borrow coming in, 0x01 is the one value that lies. A standalone Python model of both forms confirmed it: 272 mismatches in 1,048,576 values, about one in 3,855, every single one the 0x01-with-borrow shape.",
-   "The fix is borrow suppression, and the code is the insight here:",
-   "The first line reduces equality to zero bytes. The second parks every odd byte at 0xFF: 0xFF minus 1 minus a borrow never borrows, so every even byte sees a borrow-in of zero and the exact no-false-positive analysis holds for the even half. The third runs the identity on the even half. The fourth and fifth are the mirror image for the odd half. The sixth ORs the two together, leaving a 0x80 marker in exactly the bytes where d is zero, which is exactly the bytes where x and y agreed.",
-   "A final gather shifts the markers down and compresses the eight 0x80 flags into one byte, bit i set exactly when byte i matched. Then the checking, because that is the whole point: 4,304,967,312 differential checks, about 4.3 billion, sixteen hand-directed rows plus every one of the 4,294,967,296 sixteen-bit pairs plus ten million random 64-bit pairs, zero mismatches. One FNV-1a fingerprint of the whole result stream, identical across the -O0, -O2, and sanitizer builds. Not one conditional jump in the -O2 disassembly. It runs at 4.31 nanoseconds a value, about 232 million values a second.",
-   "The identity is old. It comes from the Bit Twiddling Hacks page, first posted to a newsgroup by Alan Mycroft in April 1987, with a faster four-operation form suggested by Juha Jarvi in 2005. And the false positive is not just a lab curiosity: a reporter on the hashbrown tracker once traced a heisenbug in their byte-matching routine to exactly this shape of lie. We found ours before it shipped, because the differential test is the point. One sentence to carry away: the zero-byte test says a zero exists somewhere; two passes with the untested half parked at 0xFF say exactly where."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/114-swar-eq-mask",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/114-swar-eq-mask/PROOF.md"
+  {
+    "title": "The Exponent That Already Counted",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "The obvious program is a loop: start at bit 63, walk down, stop at the first 1, count the steps. It works, and for x = 2^63 it finishes after a single test. But for x = 1 it inspects 63 zeros first. The running time depends on the answer, and that is the whole problem: one branch per bit, mispredicted on random data, and a timing channel that leaks the input's magnitude. A quick check on this machine: the loop takes about 81 nanoseconds per value on inputs under 256, and about 4 when the top bit is set. About twenty times slower, decided by the input, while the float version below takes about 5 to 7 nanoseconds on both.",
+      "This lab rebuilds a hardware operation in portable C. Chips count leading zeros as a single hardware operation: x86 calls it LZCNT, ARM calls it CLZ, RISC-V's Zbb has one. Inside, that operation is a priority encoder, not a loop but a mesh of gates that examines all 64 bits at once, in space rather than time, the answer falling out of the wiring as the signal propagates. The lab uses no builtins and no intrinsics, so it cannot call that operation. Instead it borrows a top-bit finder every CPU is guaranteed to have: the float conversion unit. Leading zeros are 63 minus floor(log2(x)), so the real question is what power of two x sits under, and every conversion of an integer to a double must compute that exponent to normalize the value, storing floor(log2) plus a bias of 1023 in bits 62 through 52. The cast does the counting for free. So the trick is never to count at all: reshape x until the question you need is exactly the question the cast already answered, then read the exponent field.",
+      "Take x = 5, binary 101. Smear the top set bit downward with x |= x >> k for k = 1, 2, 4, 8, 16, 32. The first step turns 101 into 111, each step doubles how far the run of ones reaches, and after all six every bit at or below the top set bit is 1, so the filled value is exactly 2^(n+1) - 1 where n is the top bit's position. Cast that to double and the conversion computes exponent n, stored as n + 1023. Read bits 62 through 52 through a union, subtract the bias, and you have n; 63 minus n is the leading-zero count, 61 for 5. Nothing was counted. The exponent the cast already computed was read back out.",
+      "That read is exact only while the filled value converts exactly. Past 2^53, neighboring doubles sit more than 1 apart, so the cast rounds. From n = 54 up it always rounds up to 2^(n+1), a distance of 1 against at least 3 the other way, and the exponent reads one too high. The knife edge is n = 53: 2^54 - 1 is the exact midpoint between 2^54 - 2 and 2^54, and round-ties-to-even picks 2^54, whose significand 1.0 has an even least bit against 1.111...1's odd one. So the field reads one too high exactly when x >> 53 is nonzero, and the correction is one line: subtract 1 in that case.",
+      "Re-deriving the tie fixed the correction, and the rerun is clean: 10,065,537 checks, about ten million, zero mismatches, one checksum byte-identical across the -O0, -O2, and sanitizer builds, no sanitizer reports. The oracle is __builtin_clzll on every one of the 65,536 sixteen-bit inputs, x = 0 pinned to 64 by contract, and ten million fixed-seed random 64-bit values. The builtin stays in the test harness; the implementation is plain C11 with no intrinsics, no builtins, no library math."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/115-clz-fp",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/115-clz-fp/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the post rebuilds in portable C the leading-zero count the Zbb clz instruction specifies, naming the hardware operations it substitutes for; no clz instruction is executed"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "the post invokes timing and branch cost only to motivate the construction; no pipeline, cache, or predictor behavior is measured or claimed"
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because nothing boots and no machine-mode configuration is touched."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the count runs in a plain user-space binary; no OS service, address translation, or I/O path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: a double's exponent already stores floor(log2), so reshape the question instead of counting bits; the rounding correction is earned from the n=53 tie, checked against the builtin oracle on ten million inputs"
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the lab runs as compiled host C on x86-64; no RISC-V instruction is executed or measured."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the argument is the mask construction finding every match; timing and implementation effects never enter."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the mask runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the one atomic idea a builder needs: a zero-byte test proves existence, two borrow-suppressed passes prove position, checked over 4.3 billion differential cases"
-   }
-  }
- },
- {
-  "title": "The Comparison That Never Compares",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Take 3 and 5 and ask which is smaller. The code below does not compare them. It subtracts: d = 3 - 5. In unsigned 64-bit arithmetic there is no negative 2, so the subtraction wraps and d becomes 2^64 - 2, a number enormously larger than 3, nearly the largest the machine knows. Then it asks one question: is d greater than 3? Yes. That single test is the whole verdict: 3 is smaller than 5.",
-   "The identity is called borrow-out: d > a exactly when a < b. When a is the smaller one, the subtraction cannot be represented, so it borrows, and the wrapped difference overshoots a. When a is larger, a - b is small and honest and never exceeds a. Equality needs no wrapping argument at all, just a == b. The three cases partition the world, so the greater-than flag is whatever is left over: gt = 1 - lt - eq. Check 3 and 5 by hand: lt = 1, eq = 0, gt = 0, answer -1.",
-   "The whole implementation is five lines, and the code is the insight here:",
-   "The first line computes the wrapped difference. The second reads the borrow straight out of it: 1 exactly when a is smaller. The third is plain equality. The fourth is the partition of the world, 1 exactly when a is larger. The last confines the answer to -1, 0, +1, where no signed overflow is possible.",
-   "The -O2 build is eleven instructions with zero jumps, and the first line is gone. The compiler deleted d = a - b, because the hardware already has that subtraction: cmp performs it, keeps the flags, and discards the number, and setb reads the borrow out of the carry flag. Five lines of C collapsed into the machine's own comparison, the silicon and the source agreeing on what comparison is.",
-   "This is not a new idea wearing C clothes. The x86 manuals describe CMP exactly as a subtraction without storage of the result that affects flags only. RISC-V threw the flags register away and kept the shape anyway: a BLTU branch is taken exactly when a - b wraps past a, which is the lt bit above, the flags just never escaping into the architecture. The lab held for every 16-bit pair that exists, all 4,294,967,296 of them, about 4.3 billion, plus ten million random 64-bit pairs and fourteen hand-built edge rows: zero mismatches, and one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds. In one sentence: the wrap-around is not the error in the subtraction, it is the verdict, and comparison is subtraction that threw away the answer and kept the truth."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/100-branchless-cmp",
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/100-branchless-cmp/PROOF.md"
+  {
+    "title": "The Mask That Finds Every Match",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Take x = 0x19eb and y = 0x18eb, two 16-bit words. Byte 0 is 0xeb in both, so it agrees. Byte 1 is 0x19 against 0x18, so it disagrees. Bytes 2 through 7 are all zero in both, so they agree. The answer is one byte, one bit per byte: bit i set exactly when byte i matched. Bits 0, 2, 3, 4, 5, 6, and 7 are set, bit 1 is clear, and the mask is 0xfd. The lab's whole job is to compute that byte with no branch anywhere.",
+      "XOR the two words first: d = x ^ y. Every byte that agreed becomes 0x00, every byte that disagreed becomes nonzero. The problem is now a zero-byte mask. The bit-twiddling canon has an old identity for this: subtract 0x0101010101010101, then AND with the complement of d and with 0x8080808080808080. For a zero byte it works beautifully. 0x00 minus 1 is 0xFF, the high bit set, and the complement of 0x00 is 0xFF, its high bit set too. Both tests pass, so the byte is flagged. For a nonzero byte the two high bits can never agree: at 128 or below the subtraction leaves the high bit clear, at 129 or above the complement has it clear. So the identity answers one question: does a zero byte exist somewhere in this word?",
+      "Run the identity straight on d = 0x0100 and watch it lie. Byte 1 of d is 0x01, a byte that disagrees, but byte 0 borrows during the subtraction, so byte 1 is computed as 0x01 minus 1 minus the borrow: 0xFF. Its high bit is set, and the complement of 0x01 is 0xFE, its high bit set too. Both tests pass on a byte that should fail. The identity reports 0xff, every byte equal, and the honest answer is 0xfd. The hand analysis says exactly when this happens: with no borrow coming in, the naive form has no false positives; with a borrow coming in, 0x01 is the one value that lies. A standalone Python model of both forms confirmed it: 272 mismatches in 1,048,576 values, about one in 3,855, every single one the 0x01-with-borrow shape.",
+      "The fix is borrow suppression, and the code is the insight here:",
+      "The first line reduces equality to zero bytes. The second parks every odd byte at 0xFF: 0xFF minus 1 minus a borrow never borrows, so every even byte sees a borrow-in of zero and the exact no-false-positive analysis holds for the even half. The third runs the identity on the even half. The fourth and fifth are the mirror image for the odd half. The sixth ORs the two together, leaving a 0x80 marker in exactly the bytes where d is zero, which is exactly the bytes where x and y agreed.",
+      "A final gather shifts the markers down and compresses the eight 0x80 flags into one byte, bit i set exactly when byte i matched. Then the checking, because that is the whole point: 4,304,967,312 differential checks, about 4.3 billion, sixteen hand-directed rows plus every one of the 4,294,967,296 sixteen-bit pairs plus ten million random 64-bit pairs, zero mismatches. One FNV-1a fingerprint of the whole result stream, identical across the -O0, -O2, and sanitizer builds. Not one conditional jump in the -O2 disassembly. It runs at 4.31 nanoseconds a value, about 232 million values a second.",
+      "The identity is old. It comes from the Bit Twiddling Hacks page, first posted to a newsgroup by Alan Mycroft in April 1987, with a faster four-operation form suggested by Juha Jarvi in 2005. And the false positive is not just a lab curiosity: a reporter on the hashbrown tracker once traced a heisenbug in their byte-matching routine to exactly this shape of lie. We found ours before it shipped, because the differential test is the point. One sentence to carry away: the zero-byte test says a zero exists somewhere; two passes with the untested half parked at 0xFF say exactly where."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/114-swar-eq-mask",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/114-swar-eq-mask/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the lab runs as compiled host C on x86-64; no RISC-V instruction is executed or measured."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the argument is the mask construction finding every match; timing and implementation effects never enter."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the mask runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: a zero-byte test proves existence, two borrow-suppressed passes prove position, checked over 4.3 billion differential cases"
+      }
+    }
   },
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the lab compares unsigned integers in compiled host C; BLTU appears as architectural context, not as an executed or measured instruction."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post derives the branchless comparison from unsigned arithmetic; it makes no claim about how any pipeline executes it."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the comparison runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the one atomic idea a builder needs: comparison is subtraction that kept only the borrow, proved correct over 4.3 billion differential cases"
-   }
-  }
- },
- {
-  "title": "The Adder With No Plus Sign",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Add 11 and 7 the way you learned in school, one column at a time. In binary, 11 is 1011 and 7 is 0111. Rightmost column: 1 plus 1 is 10 in binary, so write 0 and carry 1. Next column: 1 plus 1 plus the carried 1 is 3, write 1, carry 1. Next: 0 plus 1 plus 1 is 2, write 0, carry 1. Leftmost: 1 plus 0 plus 1 is 2, write 0, carry 1. The written bits are 0010 with a final carry of 1, which reads as 10010, or 18. Notice that every column took three inputs: two operand bits and the carry from its neighbor.",
-   "The simplest circuit for this is the half adder. It adds two bits and nothing else: the sum bit is XOR, 1 when the inputs differ, and the carry bit is AND, 1 only when both inputs are 1. One column with no incoming carry is exactly a half adder. But the moment a carry arrives from the column below, the half adder is out of inputs. It adds two bits, and a column needs three.",
-   "So chain two half adders. The first adds the two operand bits: p is a XOR b, g is a AND b. The second adds p and the incoming carry, giving the column sum p XOR carry and a second carry p AND carry. The column's carry out is g OR that second carry, which expands to (a AND b) OR (a AND carry) OR (b AND carry). Check it by cases. If a and b are both 1, the first term fires and the second half adder contributes nothing, since p is 0. If they differ, p is 1, so the second carry is exactly the incoming carry. If both are 0, nothing fires. The carry out is 1 exactly when at least two of the three inputs are 1, which is exactly when the column's bits add to 2 or 3: the overflow. Each column is a three-bit majority vote.",
-   "The lab writes this per-bit stage directly in C, and these three lines are the whole datapath. The first computes the column's sum bit. The second computes the carry out as the majority vote. The third plants the sum bit in its column. Nothing else in the function touches the operands with anything but bitwise operations and shifts.",
-   "Then the question is whether this construction really is addition. The lab ran 8,590,934,630 cases against the native + operator, about 8.6 billion checks, roughly one for every person on the planet: 38 hand-built edge rows, every 16-bit pair times both carry values exhaustively, 2^33 cases in about six and a half minutes, plus a million fixed-seed random 64-bit pairs. Zero mismatches. The carry out of bit 63 was checked against the native overflow identity on every 64-bit case, and one FNV fingerprint came out identical across the -O0, -O2, and sanitizer builds. The disassembly was read too: only xor, and, or, shifts, moves, and compares, with the two add instructions being the loop counter, not the operands. Throughput is a few hundred nanoseconds per value, and the lab is honest that the number moves with CPU frequency, so treat it as order of magnitude only. In one sentence: a 64-bit adder is 64 three-bit majority votes chained by their own overflow."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/98-half-adder-chain",
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the article builds adders from XOR and AND gates, not from any RISC-V instruction."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the column-carry construction is pure integer logic; the post never measures or models implementation behavior."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because gate-level adder construction involves no boot-time M-mode software."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the article is a circuits-first derivation; no scheduler, driver, or syscall path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the one atomic idea a builder needs: a 64-bit adder is 64 three-bit majority votes chained by their own overflow, proved against the native plus operator over 8.6 billion cases"
-   }
+  {
+    "title": "The Comparison That Never Compares",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Take 3 and 5 and ask which is smaller. The code below does not compare them. It subtracts: d = 3 - 5. In unsigned 64-bit arithmetic there is no negative 2, so the subtraction wraps and d becomes 2^64 - 2, a number enormously larger than 3, nearly the largest the machine knows. Then it asks one question: is d greater than 3? Yes. That single test is the whole verdict: 3 is smaller than 5.",
+      "The identity is called borrow-out: d > a exactly when a < b. When a is the smaller one, the subtraction cannot be represented, so it borrows, and the wrapped difference overshoots a. When a is larger, a - b is small and honest and never exceeds a. Equality needs no wrapping argument at all, just a == b. The three cases partition the world, so the greater-than flag is whatever is left over: gt = 1 - lt - eq. Check 3 and 5 by hand: lt = 1, eq = 0, gt = 0, answer -1.",
+      "The whole implementation is five lines, and the code is the insight here:",
+      "The first line computes the wrapped difference. The second reads the borrow straight out of it: 1 exactly when a is smaller. The third is plain equality. The fourth is the partition of the world, 1 exactly when a is larger. The last confines the answer to -1, 0, +1, where no signed overflow is possible.",
+      "The -O2 build is eleven instructions with zero jumps, and the first line is gone. The compiler deleted d = a - b, because the hardware already has that subtraction: cmp performs it, keeps the flags, and discards the number, and setb reads the borrow out of the carry flag. Five lines of C collapsed into the machine's own comparison, the silicon and the source agreeing on what comparison is.",
+      "This is not a new idea wearing C clothes. The x86 manuals describe CMP exactly as a subtraction without storage of the result that affects flags only. RISC-V threw the flags register away and kept the shape anyway: a BLTU branch is taken exactly when a - b wraps past a, which is the lt bit above, the flags just never escaping into the architecture. The lab held for every 16-bit pair that exists, all 4,294,967,296 of them, about 4.3 billion, plus ten million random 64-bit pairs and fourteen hand-built edge rows: zero mismatches, and one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds. In one sentence: the wrap-around is not the error in the subtraction, it is the verdict, and comparison is subtraction that threw away the answer and kept the truth."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/100-branchless-cmp",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/100-branchless-cmp/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the lab compares unsigned integers in compiled host C; BLTU appears as architectural context, not as an executed or measured instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post derives the branchless comparison from unsigned arithmetic; it makes no claim about how any pipeline executes it."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because nothing boots and no machine-mode CSR, PMP entry, or trap vector is configured."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the comparison runs in a host user-space binary; no scheduler, VM, driver, or syscall path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: comparison is subtraction that kept only the borrow, proved correct over 4.3 billion differential cases"
+      }
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/98-half-adder-chain/PROOF.md"
-  }
- },
- {
-  "title": "The Stopwatch That Measures Itself",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Every timing measurement pays a price: reading the clock itself takes cycles. If the thing you are measuring costs 200 cycles but the clock read costs 150 of them, your number is more clock than code. So the first benchmark worth writing is one that measures the stopwatch itself. On RISC-V the cycle counter is read with a single instruction, rdcycle, which copies the cycle CSR into a register. The question is simple: how many ticks does that one instruction cost?",
-   "To find out, run the instruction against itself. The module executes 38 bursts of 27 back-to-back rdcycle reads, each burst a single volatile asm block writing into 27 distinct registers (t0 through t6, a0 through a7, s0 through s11, ra deliberately left out), so the compiler has to emit the 27 reads verbatim with nothing between them. That is not a hope: the shipped binary was disassembled and shows 27 consecutive rdcycle instructions with nothing between the first and the last. Only the 26 consecutive-pair deltas inside each burst count. The intervals between bursts hold stores and loop bookkeeping, so they are excluded by construction, stated up front, not hidden.",
-   "Three runs, 988 deltas each, every delta strictly positive, zero traps. The minimum is 135 in all three runs, rock stable; medians 165, 180, 165. The maximums are another world: 222,525, 1,530,195, and 9,810. One run's histogram puts 987 of 988 deltas in the first bin and a single outlier in the last. That split is the whole story. On QEMU the \"cycle\" counter is host ticks: CSR_CYCLE resolves through QEMU 8.2.2's target/riscv/csr.c to get_ticks(), which on x86_64 is the host's rdtsc, so when the host deschedules between two adjacent reads it shows up as a million-tick delta. The minimum is the true floor of the instruction. The maximum is the host being elsewhere.",
-   "This is an old idea done honestly. The lmbench timing harness measures its own overhead by benchmarking gettimeofday() itself, and its most-used statistical policy is the minimum of a few repetitions, discarding runs contaminated by system noise. This module follows that policy, min equals 135 three times in a row, and then goes one better: it publishes min, median, max, and the full histogram together, so the contamination is shown, not silently thrown away. Even the verdict refuses to be eyeballed: PASS writes 0x5555 to the virt finisher and QEMU exits 0; FAIL parks the hart in wfi until the harness times out. In one sentence: before you trust a clock to measure your code, measure the clock."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/cycle-read-latency",
-  "layers": {
-   "ISA": {
-    "applies": true,
-    "because": "measures the true floor of rdcycle at 135 cycles on QEMU, so a benchmark author knows how much of a timing number is the stopwatch itself and how much is the code under test"
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post calibrates clock-read overhead as a measurement correction; it attributes nothing to pipelines, caches, or predictors."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because the measurement is a bare probe of the counter read cost, not boot-time firmware."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the bursts run in a bare harness; no scheduler or timer subsystem is measured."
-   },
-   "ALGORITHM": {
-    "applies": false,
-    "because": "not here because cycle-counter reads and their costs are machine-specific; other ISAs have different counters and semantics."
-   }
+  {
+    "title": "The Adder With No Plus Sign",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Add 11 and 7 the way you learned in school, one column at a time. In binary, 11 is 1011 and 7 is 0111. Rightmost column: 1 plus 1 is 10 in binary, so write 0 and carry 1. Next column: 1 plus 1 plus the carried 1 is 3, write 1, carry 1. Next: 0 plus 1 plus 1 is 2, write 0, carry 1. Leftmost: 1 plus 0 plus 1 is 2, write 0, carry 1. The written bits are 0010 with a final carry of 1, which reads as 10010, or 18. Notice that every column took three inputs: two operand bits and the carry from its neighbor.",
+      "The simplest circuit for this is the half adder. It adds two bits and nothing else: the sum bit is XOR, 1 when the inputs differ, and the carry bit is AND, 1 only when both inputs are 1. One column with no incoming carry is exactly a half adder. But the moment a carry arrives from the column below, the half adder is out of inputs. It adds two bits, and a column needs three.",
+      "So chain two half adders. The first adds the two operand bits: p is a XOR b, g is a AND b. The second adds p and the incoming carry, giving the column sum p XOR carry and a second carry p AND carry. The column's carry out is g OR that second carry, which expands to (a AND b) OR (a AND carry) OR (b AND carry). Check it by cases. If a and b are both 1, the first term fires and the second half adder contributes nothing, since p is 0. If they differ, p is 1, so the second carry is exactly the incoming carry. If both are 0, nothing fires. The carry out is 1 exactly when at least two of the three inputs are 1, which is exactly when the column's bits add to 2 or 3: the overflow. Each column is a three-bit majority vote.",
+      "The lab writes this per-bit stage directly in C, and these three lines are the whole datapath. The first computes the column's sum bit. The second computes the carry out as the majority vote. The third plants the sum bit in its column. Nothing else in the function touches the operands with anything but bitwise operations and shifts.",
+      "Then the question is whether this construction really is addition. The lab ran 8,590,934,630 cases against the native + operator, about 8.6 billion checks, roughly one for every person on the planet: 38 hand-built edge rows, every 16-bit pair times both carry values exhaustively, 2^33 cases in about six and a half minutes, plus a million fixed-seed random 64-bit pairs. Zero mismatches. The carry out of bit 63 was checked against the native overflow identity on every 64-bit case, and one FNV fingerprint came out identical across the -O0, -O2, and sanitizer builds. The disassembly was read too: only xor, and, or, shifts, moves, and compares, with the two add instructions being the loop counter, not the operands. Throughput is a few hundred nanoseconds per value, and the lab is honest that the number moves with CPU frequency, so treat it as order of magnitude only. In one sentence: a 64-bit adder is 64 three-bit majority votes chained by their own overflow."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/98-half-adder-chain",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the article builds adders from XOR and AND gates, not from any RISC-V instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the column-carry construction is pure integer logic; the post never measures or models implementation behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because gate-level adder construction involves no boot-time M-mode software."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the article is a circuits-first derivation; no scheduler, driver, or syscall path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the one atomic idea a builder needs: a 64-bit adder is 64 three-bit majority votes chained by their own overflow, proved against the native plus operator over 8.6 billion cases"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/98-half-adder-chain/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cycle-read-latency/PROOF.md"
-  }
- },
- {
-  "title": "The Six That Catches the Counterfeit Digit",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "A 16-bit word is supposed to hold four decimal digits, four bits per digit. Each 4-bit chunk is called a nibble, exactly one hex digit. The values 0 through 9 are honest digits. A through F have no decimal meaning at all: they are counterfeit, and any arithmetic that trusts them goes wrong silently. Before you believe a packed BCD value, you check all four nibbles. The challenge is checking them all at once, with no loop and no branches.",
-   "Take one nibble and add 6. If it holds 9, you get 15, which still fits in four bits: no overflow. If it holds A, meaning 10, you get 16, which does not fit: a carry spills out of the nibble. F gives 21, also a spill. So adding 6 turns the question \"is this digit 10 or more\" into \"did a carry fall out,\" and a carry is something the adder reports for free. That is the entire trick, and you can check it on your fingers: 9 + 6 = 15 stays, 10 + 6 = 16 spills.",
-   "The tempting move is adding 6 to every nibble in a single instruction: w + 0x6666. Try it on 0x9A00, whose nibbles are 9, A, 0, 0, so only the A is counterfeit. The A plus 6 is 16, spilling a carry upward into the 9's lane, where 9 + 6 + 1, the intruding carry, is 16, spilling again. The honest 9 is now flagged counterfeit too. The true verdict is one bad digit; the naive form reports two. Across all 65,536 inputs it misfires 4,572 times, about 7 percent, roughly one word in fourteen. The lab keeps this naive form as a negative control: it earns its keep by being wrong in exactly this instructive way.",
-   "The carry crossed because the lanes touch. So stop letting them touch. Add the even nibbles and the odd nibbles in two separate sums, leaving dead gaps of zero bits between lanes: (w & 0x0F0F) + 0x0606 handles nibbles 0 and 2. When nibble 0 overflows, its carry lands in bit 4, a gap bit that is zero in both addends. A carry that lands where there is nothing to add to simply stops: 0 + 0 + 1 = 1, and no new carry is born. Every lane starts with carry-in zero by construction, so a carry out of a lane means exactly one thing: the digit was counterfeit.",
-   "Each lane's verdict sits in a single known bit of its sum: bit 4 reports nibble 0, bit 12 reports nibble 2, and the odd sum, computed wide so the top carry has somewhere to land, puts nibble 1 in bit 8 and nibble 3 in bit 16. Shift those four bits into place and you hold a 4-bit mask of every counterfeit digit. No branches, no loop. In one sentence: add 6 to every digit at once, and wherever a carry spills out of its lane, the digit was counterfeit.",
-   "All 65,536 inputs were checked against an independent per-nibble loop, plus 18 hand-built trap rows like 0x9A00 designed to fool the naive form: zero mismatches. The output stream is bit-identical at -O0, -O2, and under the sanitizers, so the optimizer preserved the construction instead of outsmarting it. It runs in 4.27 nanoseconds per value."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/80-bcd-digit-valid",
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the add-6-per-nibble guard uses plain adds and carries, touching no extension instruction."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post is about the nibble-check construction; no implementation behavior is measured."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because nibble validation involves no boot-time M-mode software."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the article is a digit-validity derivation; no kernel path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "teaches the lane-isolation trick in full: add 6 to every nibble at once, leave gap bits so intruding carries die, and read four verdict bits to find every counterfeit digit with no loop and no branch"
-   }
+  {
+    "title": "The Stopwatch That Measures Itself",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Every timing measurement pays a price: reading the clock itself takes cycles. If the thing you are measuring costs 200 cycles but the clock read costs 150 of them, your number is more clock than code. So the first benchmark worth writing is one that measures the stopwatch itself. On RISC-V the cycle counter is read with a single instruction, rdcycle, which copies the cycle CSR into a register. The question is simple: how many ticks does that one instruction cost?",
+      "To find out, run the instruction against itself. The module executes 38 bursts of 27 back-to-back rdcycle reads, each burst a single volatile asm block writing into 27 distinct registers (t0 through t6, a0 through a7, s0 through s11, ra deliberately left out), so the compiler has to emit the 27 reads verbatim with nothing between them. That is not a hope: the shipped binary was disassembled and shows 27 consecutive rdcycle instructions with nothing between the first and the last. Only the 26 consecutive-pair deltas inside each burst count. The intervals between bursts hold stores and loop bookkeeping, so they are excluded by construction, stated up front, not hidden.",
+      "Three runs, 988 deltas each, every delta strictly positive, zero traps. The minimum is 135 in all three runs, rock stable; medians 165, 180, 165. The maximums are another world: 222,525, 1,530,195, and 9,810. One run's histogram puts 987 of 988 deltas in the first bin and a single outlier in the last. That split is the whole story. On QEMU the \"cycle\" counter is host ticks: CSR_CYCLE resolves through QEMU 8.2.2's target/riscv/csr.c to get_ticks(), which on x86_64 is the host's rdtsc, so when the host deschedules between two adjacent reads it shows up as a million-tick delta. The minimum is the true floor of the instruction. The maximum is the host being elsewhere.",
+      "This is an old idea done honestly. The lmbench timing harness measures its own overhead by benchmarking gettimeofday() itself, and its most-used statistical policy is the minimum of a few repetitions, discarding runs contaminated by system noise. This module follows that policy, min equals 135 three times in a row, and then goes one better: it publishes min, median, max, and the full histogram together, so the contamination is shown, not silently thrown away. Even the verdict refuses to be eyeballed: PASS writes 0x5555 to the virt finisher and QEMU exits 0; FAIL parks the hart in wfi until the harness times out. In one sentence: before you trust a clock to measure your code, measure the clock."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/cycle-read-latency",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "measures the true floor of rdcycle at 135 cycles on QEMU, so a benchmark author knows how much of a timing number is the stopwatch itself and how much is the code under test"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post calibrates clock-read overhead as a measurement correction; it attributes nothing to pipelines, caches, or predictors."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the measurement is a bare probe of the counter read cost, not boot-time firmware."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the bursts run in a bare harness; no scheduler or timer subsystem is measured."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because cycle-counter reads and their costs are machine-specific; other ISAs have different counters and semantics."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cycle-read-latency/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/80-bcd-digit-valid/PROOF.md"
-  }
- },
- {
-  "title": "The Division That Never Divides",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "On some chips division is slow, twenty cycles or more against three for a multiply, and on others the instruction barely exists. So compilers never emit a real division when the divisor is a known constant. They multiply by the reciprocal instead, written in fixed point. For division by 3, the reciprocal is 1/3, and at 33 bits of precision the fixed-point 1/3 is the constant 0xAAAAAAAB, the smallest integer just above 2^33 / 3.",
-   "Try it on 10, where the true answer is 3. Multiply 10 by 0xAAAAAAAB to get 28,633,115,310, then shift right by 33, which divides by 2^33 = 8,589,934,592. The quotient is 3.33, and the shift keeps only the whole part: 3. Exact.",
-   "The reason it never overshoots is the shape of the product. For every 32-bit input, the 64-bit product holds the true answer above bit 33 and all of the rounding error below it, and the error can never grow large enough to reach bit 33. The shift therefore discards exactly the error and keeps exactly the answer. The lab's proof walks that bound; the short version is that the constant was chosen as the ceiling of 2^33 / 3, and with that choice the error term provably stays under 2^33 for every input.",
-   "Verified against the native / operator on 19 directed edge rows at the ends of the range, all 65,536 16-bit inputs exhaustively, and 1,000,000 fixed-seed random values: 1,065,555 checks, 0 mismatches, with an identical FNV-1a checksum across -O0, -O2, and ASan+UBSan builds. At -O2 the compiler emits mov, imul, shr, ret, no div instruction, about 2.2 nanoseconds per call.",
-   "The general construction for any divisor comes from Granlund and Montgomery's 1994 PLDI paper on strength-reducing integer division. The lab pins down the 32-bit divide-by-3 case with the exact error bound, the edge cases, and the measurements. In one sentence: division by a constant is multiplication by a fixed-point reciprocal, and the whole art is proving the rounding error never reaches the bits you keep."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/91-div3-magic",
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the magic-multiply identity uses only a base multiply and shift, touching no extension instruction."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the cycle figures motivate the substitution; the post characterizes no pipeline, cache, or predictor."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because constant division involves no boot-time M-mode software."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the article derives the quotient bound; no kernel path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "matters because compilers replace division by a constant with this multiply-and-shift, and the article proves the rounding error never reaches the kept bits"
-   }
+  {
+    "title": "The Six That Catches the Counterfeit Digit",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "A 16-bit word is supposed to hold four decimal digits, four bits per digit. Each 4-bit chunk is called a nibble, exactly one hex digit. The values 0 through 9 are honest digits. A through F have no decimal meaning at all: they are counterfeit, and any arithmetic that trusts them goes wrong silently. Before you believe a packed BCD value, you check all four nibbles. The challenge is checking them all at once, with no loop and no branches.",
+      "Take one nibble and add 6. If it holds 9, you get 15, which still fits in four bits: no overflow. If it holds A, meaning 10, you get 16, which does not fit: a carry spills out of the nibble. F gives 21, also a spill. So adding 6 turns the question \"is this digit 10 or more\" into \"did a carry fall out,\" and a carry is something the adder reports for free. That is the entire trick, and you can check it on your fingers: 9 + 6 = 15 stays, 10 + 6 = 16 spills.",
+      "The tempting move is adding 6 to every nibble in a single instruction: w + 0x6666. Try it on 0x9A00, whose nibbles are 9, A, 0, 0, so only the A is counterfeit. The A plus 6 is 16, spilling a carry upward into the 9's lane, where 9 + 6 + 1, the intruding carry, is 16, spilling again. The honest 9 is now flagged counterfeit too. The true verdict is one bad digit; the naive form reports two. Across all 65,536 inputs it misfires 4,572 times, about 7 percent, roughly one word in fourteen. The lab keeps this naive form as a negative control: it earns its keep by being wrong in exactly this instructive way.",
+      "The carry crossed because the lanes touch. So stop letting them touch. Add the even nibbles and the odd nibbles in two separate sums, leaving dead gaps of zero bits between lanes: (w & 0x0F0F) + 0x0606 handles nibbles 0 and 2. When nibble 0 overflows, its carry lands in bit 4, a gap bit that is zero in both addends. A carry that lands where there is nothing to add to simply stops: 0 + 0 + 1 = 1, and no new carry is born. Every lane starts with carry-in zero by construction, so a carry out of a lane means exactly one thing: the digit was counterfeit.",
+      "Each lane's verdict sits in a single known bit of its sum: bit 4 reports nibble 0, bit 12 reports nibble 2, and the odd sum, computed wide so the top carry has somewhere to land, puts nibble 1 in bit 8 and nibble 3 in bit 16. Shift those four bits into place and you hold a 4-bit mask of every counterfeit digit. No branches, no loop. In one sentence: add 6 to every digit at once, and wherever a carry spills out of its lane, the digit was counterfeit.",
+      "All 65,536 inputs were checked against an independent per-nibble loop, plus 18 hand-built trap rows like 0x9A00 designed to fool the naive form: zero mismatches. The output stream is bit-identical at -O0, -O2, and under the sanitizers, so the optimizer preserved the construction instead of outsmarting it. It runs in 4.27 nanoseconds per value."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/80-bcd-digit-valid",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the add-6-per-nibble guard uses plain adds and carries, touching no extension instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post is about the nibble-check construction; no implementation behavior is measured."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because nibble validation involves no boot-time M-mode software."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the article is a digit-validity derivation; no kernel path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "teaches the lane-isolation trick in full: add 6 to every nibble at once, leave gap bits so intruding carries die, and read four verdict bits to find every counterfeit digit with no loop and no branch"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/80-bcd-digit-valid/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/91-div3-magic/PROOF.md"
-  }
- },
- {
-  "title": "The Four Bytes the Trap Handler Skips",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction's address into the mepc register and jumps to your handler. When the handler returns, the CPU resumes at whatever mepc points to. If the handler changed nothing, the CPU re-runs the same bad load, traps again, and you have an infinite loop. So the handler's most basic job is to move mepc past the dead instruction before returning.",
-   "How far past? RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits of the first parcel: anything but 11 there is a 16-bit compressed instruction, and 11 starts the longer forms. A handler that blindly adds 4 will land in the middle of an instruction whenever the faulting one was compressed, and the CPU will try to execute half an instruction.",
-   "This module pins the fault site to exactly 4 bytes, twice over. First it assembles the faulting load under .option norvc, which tells the assembler to emit no compressed instructions in that region. Then it refuses to trust that promise alone: it captures the address on both sides of the faulting load with in-assembly numeric local labels, la t0, 1f before and 1: after, and the test asserts at runtime that the two addresses differ by exactly 4.",
-   "Why in-assembly labels instead of a C labels-as-values label? A C label only stays where the programmer put it if a computed goto can reach it. With no computed goto in range, -O2 is free to merge blocks and move the label, and the captured address follows the label to its new home. An assembler numeric label is resolved by the assembler exactly where written. That is the whole reason, and the construction is trustworthy because of it.",
-   "The test then proves the skip happened exactly once: the trap counter reads exactly 1, since a re-trap would have made it 2; the 0xdeadbeefdeadbeef marker still sits at its address, since a skip of 8 would have sailed over it; mcause reads 5 for a load access fault with the bad address in mtval; the instruction word at the fault address reads 0x0005a503, the intended lw; and the destination register still holds its pre-fault sentinel, proving the faulting load never committed. Three QEMU runs, byte-identical.",
-   "One honest boundary. The xv6 kernel gets away with mepc += 4 after an ecall only because ecall has no compressed form. This module is the general case: prove the instruction's length first, then skip it. And the verification is against QEMU's M-mode model, which is faithful, but it is still a model, not silicon. In one sentence: a trap handler that skips must know the instruction's length, and the only length worth trusting is one measured at runtime from both sides of the fault."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mepc-resume-skip",
-  "layers": {
-   "ISA": {
-    "applies": true,
-    "because": "matters because it pins the mepc-advance rule for skipping exactly one faulting instruction, including the compressed-instruction length check and why assembler labels beat C labels-as-values"
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post teaches the mepc-plus-four resume rule; trap timing and pipeline effects are never discussed."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because the article isolates the mepc-advance contract itself; no boot-time firmware code is written."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the article derives the skip rule for a bare handler; no kernel trap path runs."
-   },
-   "ALGORITHM": {
-    "applies": false,
-    "because": "not here because mepc and variable-length instruction encoding are RISC-V machine specifics, not portable logic."
-   }
+  {
+    "title": "The Division That Never Divides",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "On some chips division is slow, twenty cycles or more against three for a multiply, and on others the instruction barely exists. So compilers never emit a real division when the divisor is a known constant. They multiply by the reciprocal instead, written in fixed point. For division by 3, the reciprocal is 1/3, and at 33 bits of precision the fixed-point 1/3 is the constant 0xAAAAAAAB, the smallest integer just above 2^33 / 3.",
+      "Try it on 10, where the true answer is 3. Multiply 10 by 0xAAAAAAAB to get 28,633,115,310, then shift right by 33, which divides by 2^33 = 8,589,934,592. The quotient is 3.33, and the shift keeps only the whole part: 3. Exact.",
+      "The reason it never overshoots is the shape of the product. For every 32-bit input, the 64-bit product holds the true answer above bit 33 and all of the rounding error below it, and the error can never grow large enough to reach bit 33. The shift therefore discards exactly the error and keeps exactly the answer. The lab's proof walks that bound; the short version is that the constant was chosen as the ceiling of 2^33 / 3, and with that choice the error term provably stays under 2^33 for every input.",
+      "Verified against the native / operator on 19 directed edge rows at the ends of the range, all 65,536 16-bit inputs exhaustively, and 1,000,000 fixed-seed random values: 1,065,555 checks, 0 mismatches, with an identical FNV-1a checksum across -O0, -O2, and ASan+UBSan builds. At -O2 the compiler emits mov, imul, shr, ret, no div instruction, about 2.2 nanoseconds per call.",
+      "The general construction for any divisor comes from Granlund and Montgomery's 1994 PLDI paper on strength-reducing integer division. The lab pins down the 32-bit divide-by-3 case with the exact error bound, the edge cases, and the measurements. In one sentence: division by a constant is multiplication by a fixed-point reciprocal, and the whole art is proving the rounding error never reaches the bits you keep."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/91-div3-magic",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the magic-multiply identity uses only a base multiply and shift, touching no extension instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the cycle figures motivate the substitution; the post characterizes no pipeline, cache, or predictor."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because constant division involves no boot-time M-mode software."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the article derives the quotient bound; no kernel path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because compilers replace division by a constant with this multiply-and-shift, and the article proves the rounding error never reaches the kept bits"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/91-div3-magic/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mepc-resume-skip/PROOF.md"
-  }
- },
- {
-  "title": "The Lookup Table That Fits in 16 Bits",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Parity asks a small question: does this 32-bit word hold an odd or an even number of 1-bits? The lab answers it with no popcount instruction, no table in memory, and no branches.",
-   "First, fold the word down. XOR the top 16 bits into the bottom 16: x ^= x >> 16. Each bit of the result is the XOR of two original bits, and the XOR of two bits is 1 exactly when the pair held an odd number of ones. So the 16-bit result has the same parity as the whole word. Fold again by 8, then by 4, and the parity of all 32 bits now lives in the low nibble.",
-   "Check it on 0xD2, which is 11010010, four ones, even. Fold by 4: 1101 XOR 0010 = 1111. Fold by 2: 11 XOR 11 = 00. The low nibble is 1100, still even. The count collapsed, but its oddness or evenness survived every step, because XOR-ing pairs can never change the parity of the total.",
-   "Now the answer is a 4-bit value, and there are only 16 possible answers. Write all 16 down as bits, with bit i holding the parity of the nibble i: bit 0 is 0, bit 1 is 1, bit 2 is 1, bit 3 is 0, and so on through bit 15. Those 16 bits spell 0110 1001 1001 0110, which is 0x6996. Reading the table is one shift: (0x6996 >> v) & 1. For our 0xD2, v is 12, bit 12 of the constant is 0, even, correct.",
-   "The constant is only trustworthy because every one of its 16 bits was hand-derived against the naive definition in the lab's proof, and the compiler emits movl $27030, that is 0x6996 in decimal, with no popcount in sight: the table really is an immediate, not a memory reference.",
-   "Verified three ways: all 65,536 16-bit inputs against a naive bit counter, 1,065,536 differential cases over full 32-bit values, and a million random pairs checking the homomorphism the fold relies on, parity(a XOR b) = parity(a) XOR parity(b). Zero mismatches, and one FNV fingerprint shared across -O0, -O2, and sanitizer builds, so the result does not depend on how it was compiled. The shift-and-mask table read is Mathew Hendry's 2002 comp.lang.c trick; the lab's contribution is the fold that shrinks any word to the nibble the table can read. In one sentence: when a table has 16 entries of one bit each, the table fits inside a 16-bit constant."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996",
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the XOR-fold parity derivation uses plain XORs and shifts, touching no extension instruction."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post is about the parity construction; the table's cache behavior is never measured or claimed."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because parity folding involves no boot-time M-mode software."
-   },
-   "KERNEL": {
-    "applies": false,
-    "because": "not here because the article is a parity derivation; no kernel path appears."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "matters because it computes 32-bit parity with no popcount instruction and no memory table, the whole lookup folded into the immediate 0x6996"
-   }
+  {
+    "title": "The Four Bytes the Trap Handler Skips",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction's address into the mepc register and jumps to your handler. When the handler returns, the CPU resumes at whatever mepc points to. If the handler changed nothing, the CPU re-runs the same bad load, traps again, and you have an infinite loop. So the handler's most basic job is to move mepc past the dead instruction before returning.",
+      "How far past? RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits of the first parcel: anything but 11 there is a 16-bit compressed instruction, and 11 starts the longer forms. A handler that blindly adds 4 will land in the middle of an instruction whenever the faulting one was compressed, and the CPU will try to execute half an instruction.",
+      "This module pins the fault site to exactly 4 bytes, twice over. First it assembles the faulting load under .option norvc, which tells the assembler to emit no compressed instructions in that region. Then it refuses to trust that promise alone: it captures the address on both sides of the faulting load with in-assembly numeric local labels, la t0, 1f before and 1: after, and the test asserts at runtime that the two addresses differ by exactly 4.",
+      "Why in-assembly labels instead of a C labels-as-values label? A C label only stays where the programmer put it if a computed goto can reach it. With no computed goto in range, -O2 is free to merge blocks and move the label, and the captured address follows the label to its new home. An assembler numeric label is resolved by the assembler exactly where written. That is the whole reason, and the construction is trustworthy because of it.",
+      "The test then proves the skip happened exactly once: the trap counter reads exactly 1, since a re-trap would have made it 2; the 0xdeadbeefdeadbeef marker still sits at its address, since a skip of 8 would have sailed over it; mcause reads 5 for a load access fault with the bad address in mtval; the instruction word at the fault address reads 0x0005a503, the intended lw; and the destination register still holds its pre-fault sentinel, proving the faulting load never committed. Three QEMU runs, byte-identical.",
+      "One honest boundary. The xv6 kernel gets away with mepc += 4 after an ecall only because ecall has no compressed form. This module is the general case: prove the instruction's length first, then skip it. And the verification is against QEMU's M-mode model, which is faithful, but it is still a model, not silicon. In one sentence: a trap handler that skips must know the instruction's length, and the only length worth trusting is one measured at runtime from both sides of the fault."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mepc-resume-skip",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because it pins the mepc-advance rule for skipping exactly one faulting instruction, including the compressed-instruction length check and why assembler labels beat C labels-as-values"
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post teaches the mepc-plus-four resume rule; trap timing and pipeline effects are never discussed."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because the article isolates the mepc-advance contract itself; no boot-time firmware code is written."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the article derives the skip rule for a bare handler; no kernel trap path runs."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not here because mepc and variable-length instruction encoding are RISC-V machine specifics, not portable logic."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mepc-resume-skip/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/97-parity-6996/PROOF.md"
-  }
- },
- {
-  "title": "The Multiply That Never Carries",
-  "date": "2026-09-10",
-  "paragraphs": [
-   "Multiply 0xFF by 0xFF the schoolbook way: write out 8 shifted copies of 0xFF, one per set bit, and add the columns. The columns produce carries, and the total is 0xFE01. Now do the same thing but combine the columns with XOR instead of addition. Column 0 holds one 1, column 1 holds two, column 2 holds three, climbing to eight in column 7, then back down. XOR keeps a 1 wherever the count is odd, which is exactly the even-numbered columns, giving 0101010101010101 in binary: 0x5555. No carry ever propagated, because XOR never produces one.",
-   "That is carryless multiplication: ordinary shift-and-add with XOR as the combine step. Each bit is treated as a coefficient of a polynomial, and the result is the polynomial product. It sounds like a curiosity until you learn that AES-GCM authentication, the machinery that keeps TLS sessions honest, is built on exactly this operation, and that modern chips carry a dedicated PCLMULQDQ instruction for it. A pure-C version matters wherever that instruction is absent and the crypto still has to run.",
-   "For each set bit i of a, the loop XORs b shifted left by i into a 128-bit accumulator. The mask m turns the conditional into arithmetic, so there is no branch; the hi half catches the bits that shift past bit 64. Verified on all 2^32 pairs of 16-bit inputs plus a million random 64-bit pairs, checking the algebraic laws the construction must obey: distributivity over XOR, commutativity, multiply-by-one, multiply-by-zero. Zero mismatches, about 103 nanoseconds per 64-bit multiply. In one sentence: change the combine step from addition to XOR and multiplication becomes carryless, which is exactly the operation cryptography needed badly enough to put in hardware."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul",
-  "layers": {
-   "ISA": {
-    "applies": true,
-    "because": "matters because the article's shift-XOR construction is exactly what the clmul instruction in Zbc does in hardware."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post derives carryless multiplication from the schoolbook construction; no implementation timing is analyzed."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because polynomial multiplication involves no boot-time M-mode software."
-   },
-   "KERNEL": {
-    "applies": true,
-    "because": "matters because the article names AES-GCM authentication, the machinery that keeps TLS sessions honest, as built on exactly this carryless product."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "matters because the branch-free shift-XOR loop is pure C with no tables, so the carryless product runs identically anywhere, which is exactly what crypto needs wherever the clmul-class instruction is absent."
-   }
+  {
+    "title": "The Lookup Table That Fits in 16 Bits",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Parity asks a small question: does this 32-bit word hold an odd or an even number of 1-bits? The lab answers it with no popcount instruction, no table in memory, and no branches.",
+      "First, fold the word down. XOR the top 16 bits into the bottom 16: x ^= x >> 16. Each bit of the result is the XOR of two original bits, and the XOR of two bits is 1 exactly when the pair held an odd number of ones. So the 16-bit result has the same parity as the whole word. Fold again by 8, then by 4, and the parity of all 32 bits now lives in the low nibble.",
+      "Check it on 0xD2, which is 11010010, four ones, even. Fold by 4: 1101 XOR 0010 = 1111. Fold by 2: 11 XOR 11 = 00. The low nibble is 1100, still even. The count collapsed, but its oddness or evenness survived every step, because XOR-ing pairs can never change the parity of the total.",
+      "Now the answer is a 4-bit value, and there are only 16 possible answers. Write all 16 down as bits, with bit i holding the parity of the nibble i: bit 0 is 0, bit 1 is 1, bit 2 is 1, bit 3 is 0, and so on through bit 15. Those 16 bits spell 0110 1001 1001 0110, which is 0x6996. Reading the table is one shift: (0x6996 >> v) & 1. For our 0xD2, v is 12, bit 12 of the constant is 0, even, correct.",
+      "The constant is only trustworthy because every one of its 16 bits was hand-derived against the naive definition in the lab's proof, and the compiler emits movl $27030, that is 0x6996 in decimal, with no popcount in sight: the table really is an immediate, not a memory reference.",
+      "Verified three ways: all 65,536 16-bit inputs against a naive bit counter, 1,065,536 differential cases over full 32-bit values, and a million random pairs checking the homomorphism the fold relies on, parity(a XOR b) = parity(a) XOR parity(b). Zero mismatches, and one FNV fingerprint shared across -O0, -O2, and sanitizer builds, so the result does not depend on how it was compiled. The shift-and-mask table read is Mathew Hendry's 2002 comp.lang.c trick; the lab's contribution is the fold that shrinks any word to the nibble the table can read. In one sentence: when a table has 16 entries of one bit each, the table fits inside a 16-bit constant."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the XOR-fold parity derivation uses plain XORs and shifts, touching no extension instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post is about the parity construction; the table's cache behavior is never measured or claimed."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because parity folding involves no boot-time M-mode software."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because the article is a parity derivation; no kernel path appears."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because it computes 32-bit parity with no popcount instruction and no memory table, the whole lookup folded into the immediate 0x6996"
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/97-parity-6996/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/67-clmul/PROOF.md"
-  }
- },
- {
-  "title": "The Decrement That Leaves Room for the Ceiling",
-  "date": "2026-09-08",
-  "paragraphs": [
-   "Suppose you need the smallest power of two that is at least x. The shape of the answer gives the algorithm away: a power of two in binary is a single 1-bit, so rounding up means finding the highest set bit of x and clearing everything below it. But there is an edge: if x is already a power of two, say 8, which is 0b1000, the highest set bit is already the answer, and any smearing of that bit downward would overshoot to 16.",
-   "The decrement fixes the edge before anything else happens. Set v = x - 1. If x was exactly 8, v is now 7, 0b0111, whose highest set bit sits one below the answer, and the algorithm will climb back to 8. If x was 9, v is 8, 0b1000, and the algorithm climbs to 16. The subtraction turns \"at or below\" into \"strictly below,\" which is exactly what the rest of the construction needs.",
-   "Then smear the top bit downward: each OR with a right-shifted copy doubles how far the highest 1 reaches, so after shifts of 1, 2, 4, 8, 16, and 32, every bit below the top is 1, and v has the form 2^m - 1. One final +1 gives 2^m, the ceiling.",
-   "Every line is the algorithm: the decrement handles the already-a-power-of-two case, the six ORs smear the top bit down through all 64 positions, and the increment lands on the ceiling. All 2^32 32-bit inputs plus targeted 64-bit edge cases verify against a naive loop with zero mismatches, in about half a nanosecond per call. In one sentence: round up by first stepping down, because x - 1 makes the highest set bit safe to smear, and the smear plus one is the ceiling."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/84-round-up-pow2",
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the decrement-then-smear construction uses plain shifts, ORs, and one increment, touching no extension instruction."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post derives the round-up construction from the shape of powers of two; implementation behavior never enters."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because rounding up involves no boot-time M-mode software."
-   },
-   "KERNEL": {
-    "applies": true,
-    "because": "matters because buddy-style page allocators round every request size up to a power of two with exactly this smear."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "matters because the decrement-then-smear identity is pure bit arithmetic, identical on every ISA."
-   }
+  {
+    "title": "The Multiply That Never Carries",
+    "date": "2026-09-10",
+    "paragraphs": [
+      "Multiply 0xFF by 0xFF the schoolbook way: write out 8 shifted copies of 0xFF, one per set bit, and add the columns. The columns produce carries, and the total is 0xFE01. Now do the same thing but combine the columns with XOR instead of addition. Column 0 holds one 1, column 1 holds two, column 2 holds three, climbing to eight in column 7, then back down. XOR keeps a 1 wherever the count is odd, which is exactly the even-numbered columns, giving 0101010101010101 in binary: 0x5555. No carry ever propagated, because XOR never produces one.",
+      "That is carryless multiplication: ordinary shift-and-add with XOR as the combine step. Each bit is treated as a coefficient of a polynomial, and the result is the polynomial product. It sounds like a curiosity until you learn that AES-GCM authentication, the machinery that keeps TLS sessions honest, is built on exactly this operation, and that modern chips carry a dedicated PCLMULQDQ instruction for it. A pure-C version matters wherever that instruction is absent and the crypto still has to run.",
+      "For each set bit i of a, the loop XORs b shifted left by i into a 128-bit accumulator. The mask m turns the conditional into arithmetic, so there is no branch; the hi half catches the bits that shift past bit 64. Verified on all 2^32 pairs of 16-bit inputs plus a million random 64-bit pairs, checking the algebraic laws the construction must obey: distributivity over XOR, commutativity, multiply-by-one, multiply-by-zero. Zero mismatches, about 103 nanoseconds per 64-bit multiply. In one sentence: change the combine step from addition to XOR and multiplication becomes carryless, which is exactly the operation cryptography needed badly enough to put in hardware."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters because the article's shift-XOR construction is exactly what the clmul instruction in Zbc does in hardware."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post derives carryless multiplication from the schoolbook construction; no implementation timing is analyzed."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because polynomial multiplication involves no boot-time M-mode software."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters because the article names AES-GCM authentication, the machinery that keeps TLS sessions honest, as built on exactly this carryless product."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because the branch-free shift-XOR loop is pure C with no tables, so the carryless product runs identically anywhere, which is exactly what crypto needs wherever the clmul-class instruction is absent."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/67-clmul/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/84-round-up-pow2/PROOF.md"
-  }
- },
- {
-  "title": "The Checksum That Always Lands on 0x2144DF1C",
-  "date": "2026-09-07",
-  "paragraphs": [
-   "Three lines that verify any buffer against corruption:",
-   "Compute the CRC-32 of a message, append the four checksum bytes in little-endian order, and checksum the whole thing again. The result is always 0x2144DF1C, for every message. Ethernet hardware has relied on this since the 1980s: instead of recomputing and comparing against a stored value, the receiver checks one constant.",
-   "The reason it lands on a nonzero constant instead of zero is the bit-flip. This CRC variant inverts every bit of the register before returning it, so the appended bytes are not the raw remainder of the message; they are the remainder with every bit flipped. Re-checking therefore does not cancel to zero the way a plain remainder would. The fixed pre- and post-inversions steer every message, long or empty, to the same nonzero residue.",
-   "Byte order is load-bearing, and the lab proves it with a control: append the checksum big-endian instead, and the second pass gives 0x3CC9742C, not the residue. Get the order wrong and the magic constant silently stops working, which is exactly the kind of bug this check exists to catch.",
-   "The lab runs the residue check over a million random buffers, including empty messages and the empty-plus-four-zero-bytes case, with zero mismatches, at about 208 MiB/s. The table and bitwise implementations agree on every case, so the constant is a property of the algorithm, not of one implementation. In one sentence: append the checksum and re-check against one constant; the bit-flip is what makes the constant nonzero, and the byte order is what makes it work at all."
-  ],
-  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue",
-  "layers": {
-   "ISA": {
-    "applies": false,
-    "because": "not here because the residue identity uses plain CRC arithmetic, touching no extension instruction."
-   },
-   "MICROARCH": {
-    "applies": false,
-    "because": "not here because the post is about the checksum construction and its fixed residue; no pipeline, cache, or predictor behavior is measured."
-   },
-   "FIRMWARE": {
-    "applies": false,
-    "because": "not here because checksum validation involves no boot-time M-mode software."
-   },
-   "KERNEL": {
-    "applies": true,
-    "because": "matters because Ethernet hardware and the drivers that validate frame check sequences rely on exactly this residue."
-   },
-   "ALGORITHM": {
-    "applies": true,
-    "because": "matters because the 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA."
-   }
+  {
+    "title": "The Decrement That Leaves Room for the Ceiling",
+    "date": "2026-09-08",
+    "paragraphs": [
+      "Suppose you need the smallest power of two that is at least x. The shape of the answer gives the algorithm away: a power of two in binary is a single 1-bit, so rounding up means finding the highest set bit of x and clearing everything below it. But there is an edge: if x is already a power of two, say 8, which is 0b1000, the highest set bit is already the answer, and any smearing of that bit downward would overshoot to 16.",
+      "The decrement fixes the edge before anything else happens. Set v = x - 1. If x was exactly 8, v is now 7, 0b0111, whose highest set bit sits one below the answer, and the algorithm will climb back to 8. If x was 9, v is 8, 0b1000, and the algorithm climbs to 16. The subtraction turns \"at or below\" into \"strictly below,\" which is exactly what the rest of the construction needs.",
+      "Then smear the top bit downward: each OR with a right-shifted copy doubles how far the highest 1 reaches, so after shifts of 1, 2, 4, 8, 16, and 32, every bit below the top is 1, and v has the form 2^m - 1. One final +1 gives 2^m, the ceiling.",
+      "Every line is the algorithm: the decrement handles the already-a-power-of-two case, the six ORs smear the top bit down through all 64 positions, and the increment lands on the ceiling. All 2^32 32-bit inputs plus targeted 64-bit edge cases verify against a naive loop with zero mismatches, in about half a nanosecond per call. In one sentence: round up by first stepping down, because x - 1 makes the highest set bit safe to smear, and the smear plus one is the ceiling."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/84-round-up-pow2",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the decrement-then-smear construction uses plain shifts, ORs, and one increment, touching no extension instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post derives the round-up construction from the shape of powers of two; implementation behavior never enters."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because rounding up involves no boot-time M-mode software."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters because buddy-style page allocators round every request size up to a power of two with exactly this smear."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because the decrement-then-smear identity is pure bit arithmetic, identical on every ISA."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/84-round-up-pow2/PROOF.md"
+    }
   },
-  "evidence": {
-   "label": "proof log",
-   "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/82-crc32-residue/PROOF.md"
+  {
+    "title": "The Checksum That Always Lands on 0x2144DF1C",
+    "date": "2026-09-07",
+    "paragraphs": [
+      "Three lines that verify any buffer against corruption:",
+      "Compute the CRC-32 of a message, append the four checksum bytes in little-endian order, and checksum the whole thing again. The result is always 0x2144DF1C, for every message. Ethernet hardware has relied on this since the 1980s: instead of recomputing and comparing against a stored value, the receiver checks one constant.",
+      "The reason it lands on a nonzero constant instead of zero is the bit-flip. This CRC variant inverts every bit of the register before returning it, so the appended bytes are not the raw remainder of the message; they are the remainder with every bit flipped. Re-checking therefore does not cancel to zero the way a plain remainder would. The fixed pre- and post-inversions steer every message, long or empty, to the same nonzero residue.",
+      "Byte order is load-bearing, and the lab proves it with a control: append the checksum big-endian instead, and the second pass gives 0x3CC9742C, not the residue. Get the order wrong and the magic constant silently stops working, which is exactly the kind of bug this check exists to catch.",
+      "The lab runs the residue check over a million random buffers, including empty messages and the empty-plus-four-zero-bytes case, with zero mismatches, at about 208 MiB/s. The table and bitwise implementations agree on every case, so the constant is a property of the algorithm, not of one implementation. In one sentence: append the checksum and re-check against one constant; the bit-flip is what makes the constant nonzero, and the byte order is what makes it work at all."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not here because the residue identity uses plain CRC arithmetic, touching no extension instruction."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because the post is about the checksum construction and its fixed residue; no pipeline, cache, or predictor behavior is measured."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not here because checksum validation involves no boot-time M-mode software."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters because Ethernet hardware and the drivers that validate frame check sequences rely on exactly this residue."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters because the 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/82-crc32-residue/PROOF.md"
+    }
   }
- }
 ]

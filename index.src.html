@@ -932,6 +932,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Twelve Bits the Walk Never Touches</h3>
+          <!-- LAYER-STRIP:the-twelve-bits-the-walk-never-touches -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 04:04 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Take a physical page number, say 0x80000, and an offset, say 0xabc. The physical address is 0x80000abc: the page number shifted left by 12, ORed with the offset. A physical page number names which 4 KiB page holds your byte; the offset is the low 12 bits, which pick the byte inside that page. Everything this lab proves hangs on that split.</p>
+          <p>The part that keeps pulling me back is not the arithmetic, it is what the arithmetic refuses to do. A page-table walk never rewrites the low bits of your address. The privileged specification says it plainly in section 4.3.2: the page offset of the physical address equals the page offset of the virtual address. The tables decide which page your data lives on; the offset rides through the whole walk untouched.</p>
+          <p>It generalizes beautifully, and the invariant is the same at every scale. When the walk finds its leaf one level up, a 2 MiB megapage, the pass-through window grows: the upper page-number bits shift by 21 and the low 21 bits of the virtual address are copied verbatim, with the hardware faulting on a misaligned superpage if the low 9 bits of the page number are not zero. At two levels up, a 1 GiB page, the top bits shift by 30 and 30 bits of your address ride through, the low 18 required zero. Translation replaces the page number and copies everything below it untouched. The bigger the page, the more of your address the hardware trusts you with.</p>
+          <p>The code is the insight here:</p>
+          <pre><code>uint64_t phys_addr_from_ppn(uint64_t ppn, uint64_t offset) {
+    return ((ppn &amp; 0xFFFFFFFFFFFULL) &lt;&lt; 12) | (offset &amp; 0xFFFULL);
+}</code></pre>
+          <p>Three lines. The shift moves page-number bit k to address bit k plus 12; the masks make the contract explicit, 44 bits for the page number, 12 for the offset, and anything above those widths is never read, so a stray high bit in a caller cannot leak into the address; the OR recombines two disjoint fields, so no carry can cross between them. Your xv6 walk() always descends to level 0, so every mapping it builds is exactly the 4 KiB case this formula covers.</p>
+          <p>The test is deliberately built nothing like the code it checks. The oracle never shifts a whole field: it walks destination bits 0 through 55 and sets each one individually from a single-bit extraction, so it shares no structure with the implementation and cannot share its bugs. 60,331,824 checks, roughly one for every second in almost two years, zero mismatches, and the checksum 235e187d99433244 identical across three builds. One conversion costs 4.275 nanoseconds, best observed, about the time light takes to cross four feet of a room. The honest boundary: the lab proves the 4 KiB case. The megapage forms above are verified against the spec text, not yet against a differential oracle, so they are the next rung, not a claimed proof.</p>
+          <p>One sentence to carry away: the page walk replaces the page number and copies everything below it untouched, and the bigger the page, the more of the address rides through.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/136-pte-to-phys-addr" target="_blank" rel="noopener">lab/136-pte-to-phys-addr</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Gate With Three Locks</h3>
           <!-- LAYER-STRIP:the-gate-with-three-locks -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 03:06 EDT</time></p>
