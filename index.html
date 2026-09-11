@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-010713">
+  <meta name="build-version" content="v20260911-010759">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -2944,7 +2944,7 @@ assert(check == 0x2144DF1C);</code></pre>
     "layers": {
       "ISA": {
         "applies": true,
-        "because": "the lab works the boundary between the cpop instruction and its software emulation: what the ISA guarantees, which extension carries it, and catching the compiler if it silently crosses over"
+        "because": "the SWAR sequence computes the population count the Zbb cpop instruction specifies, checked against the compiler builtin on 10,000,133 inputs; the disassembly check verifies no POPCNT shortcut was emitted, so the benchmark measures the software sequence and the test is not circular"
       },
       "MICROARCH": {
         "applies": false,
@@ -11130,8 +11130,8 @@ assert(check == 0x2144DF1C);</code></pre>
     "id": "lab-115-clz-fp",
     "layers": {
       "ISA": {
-        "applies": false,
-        "because": "not here because the 10,065,537-check bench runs in a host user-space process against software, never a RISC-V instruction."
+        "applies": true,
+        "because": "the float-exponent construction computes exactly the leading-zero count the Zbb clz instruction specifies, including 64 for an all-zero input, checked against the compiler builtin on 10,065,537 inputs; no clz instruction is ever executed"
       },
       "MICROARCH": {
         "applies": false,
@@ -12013,139 +12013,119 @@ assert(check == 0x2144DF1C);</code></pre>
       // renderer below activates on this map.
       const WIGMORE = {
   "swar-popcount-64|ISA": {
+    "item": "swar-popcount-64",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "the SWAR sequence computes the population count the Zbb cpop instruction specifies, checked against the compiler builtin on 10,000,133 inputs; the disassembly check verifies no POPCNT shortcut was emitted, so the benchmark measures the software sequence and the test is not circular",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "the SWAR sequence computes the population count the Zbb cpop instruction specifies, checked against the compiler builtin on 10,000,133 inputs; the disassembly check verifies no POPCNT shortcut was emitted, so the benchmark measures the software sequence and the test is not circular"
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "lab/17-bitcount/PROOF.md records 10,000,133 differential comparisons of the SWAR popcount against __builtin_popcountll on the x86_64 host, with 0 mismatches.",
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The lab's disassembly check verifies the compiler did not replace the SWAR mask sequence with a POPCNT instruction, so the two sides of the comparison are genuinely independent and the benchmark measures the software sequence.",
+        "source": {
+          "cite": "proof log",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "The ISA manual defines cpop in the Zbb extension: population count of the source register.",
+        "source": {
+          "cite": "riscv-isa-manual, Bit Manipulation Extensions chapter, Zbb",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The SWAR code is judged against the operation the ISA defines, with the builtin oracle standing in for the specified behavior, and the disassembly check keeps the two sides of the comparison independent."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "If the compiler silently emits POPCNT for the SWAR code, the differential test becomes circular, POPCNT tested against POPCNT, and proves nothing. Crossing the boundary unknowingly is the failure mode."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "A software construction that implements exactly what an ISA instruction specifies engages the ISA layer through specification correspondence, even when the instruction never executes."
+      },
+      {
+        "kind": "generalization",
+        "n": 8,
+        "text": "A layer matters to a lab when the lab's method depends on a boundary that layer defines and the characteristic failure modes live at that boundary."
+      },
+      {
+        "kind": "explanation",
+        "n": 9,
+        "text": "The lab ran on an x86_64 host and never executed a POPCNT instruction, so one could argue no ISA is involved."
+      },
+      {
+        "kind": "refutation",
+        "n": 10,
+        "text": "The verified claims are about specified behavior and the binary's instruction stream, both instruction-layer matters: what cpop means comes from the ISA, and the no-POPCNT assertion constrains which instructions the binary may contain. No extension-detection or trap behavior is claimed."
+      }
+    ],
     "inferences": [
       {
         "from": [
           2,
           4
         ],
-        "note": "The check in (4) is what keeps the 10M comparisons in (2) honest.",
+        "to": [
+          5
+        ],
+        "via": [
+          7
+        ],
         "strength": "strong",
+        "note": "The 10M checks in (2) test the code against the specified cpop behavior in (4); by the correspondence principle in (7) that is ISA engagement, part of (5)."
+      },
+      {
+        "from": [
+          3
+        ],
         "to": [
           5
         ],
         "via": [
           6
-        ]
+        ],
+        "strength": "normal",
+        "note": "The disassembly check in (3) guards the circularity failure mode in (6), keeping the comparison honest, part of (5)."
       },
       {
         "from": [
-          4
-        ],
-        "note": "The disassembly check is the boundary toolkit in action: it enforces (5).",
-        "strength": "normal",
-        "to": [
           5
+        ],
+        "to": [
+          1
         ],
         "via": [
           8
-        ]
-      },
-      {
-        "from": [
-          3
         ],
-        "note": "Extension membership is load-bearing: get it wrong and the instruction traps.",
-        "strength": "normal",
-        "to": [
-          1
-        ],
-        "via": [
-          7
-        ]
-      },
-      {
-        "from": [
-          5,
-          3
-        ],
-        "note": "The method depends on the ISA-defined boundary, and the failure modes live at the ISA level.",
         "strength": "strong",
-        "to": [
-          1
-        ],
-        "via": [
-          9
-        ]
+        "note": "The method is answerable to the ISA-defined operation and its instruction boundary in (5); by the layer-matters principle in (8) the ISA layer is engaged, which is the probandum in (1)."
       }
-    ],
-    "item": "swar-popcount-64",
-    "keyList": [
-      {
-        "kind": "probandum",
-        "n": 1,
-        "text": "the lab works the boundary between the cpop instruction and its software emulation: what the ISA guarantees, which extension carries it, and catching the compiler if it silently crosses over"
-      },
-      {
-        "kind": "evidence",
-        "n": 2,
-        "source": {
-          "cite": "lab/17-bitcount/PROOF.md, run-output section",
-          "tier": "lab",
-          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
-        },
-        "text": "lab/17-bitcount/PROOF.md records 10,000,133 differential comparisons of the SWAR popcount against __builtin_popcountll on the x86_64 host, with 0 mismatches."
-      },
-      {
-        "kind": "evidence",
-        "n": 3,
-        "source": {
-          "cite": "riscv-isa-manual, Bit Manipulation Extensions chapter, Zbb / cpop",
-          "tier": "spec",
-          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
-        },
-        "text": "The ISA manual defines cpop in the Zbb extension: population count of the source register. Zbb is an extension, not base ISA, so its presence varies by chip."
-      },
-      {
-        "kind": "evidence",
-        "n": 4,
-        "source": {
-          "cite": "lab/17-bitcount/PROOF.md, disassembly-check section",
-          "tier": "lab",
-          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/17-bitcount/PROOF.md"
-        },
-        "text": "The lab's disassembly check verifies the compiler did not replace the SWAR mask sequence with a cpop instruction (the POPCNT shortcut), so the two sides of the comparison are genuinely independent."
-      },
-      {
-        "kind": "penultimate",
-        "n": 5,
-        "text": "The lab's method depends on the two sides of the comparison staying on opposite sides of the instruction/emulation boundary."
-      },
-      {
-        "kind": "generalization",
-        "n": 6,
-        "text": "If the compiler silently emits cpop for the SWAR code, the differential test becomes circular, cpop tested against cpop, and proves nothing. Crossing the boundary unknowingly is the failure mode."
-      },
-      {
-        "kind": "generalization",
-        "n": 7,
-        "text": "The complementary failure mode is assuming cpop where Zbb is absent: the instruction raises an illegal-instruction trap on chips without the extension."
-      },
-      {
-        "kind": "generalization",
-        "n": 8,
-        "text": "The working tools for this boundary are the ISA manual (which extension owns the instruction), the disassembler (what the compiler actually emitted), and QEMU with extensions toggled (does it trap without Zbb)."
-      },
-      {
-        "kind": "generalization",
-        "n": 9,
-        "text": "A layer matters to a lab when the lab's method depends on a boundary that layer defines and the characteristic failure modes live at that boundary."
-      },
-      {
-        "kind": "explanation",
-        "n": 10,
-        "text": "The lab ran on an x86_64 host and never executed a RISC-V instruction, so one could argue no RISC-V ISA is involved."
-      },
-      {
-        "kind": "refutation",
-        "n": 11,
-        "refutes": 10,
-        "text": "The lab's method is about the boundary, not about where each side ran: the differential test needs the two sides to stay independent, and the disassembly check enforces that. The ISA manual defines which instructions exist and which extension carries them, so asking whether the compiler crossed the boundary is an ISA question even though the run happened on a host. Real-hardware execution would add timing, which is a microarchitecture question, not an ISA one."
-      }
-    ],
-    "kind": "card",
-    "probandum": "the lab works the boundary between the cpop instruction and its software emulation: what the ISA guarantees, which extension carries it, and catching the compiler if it silently crosses over",
-    "slot": "ISA"
+    ]
   },
   "swar-popcount-64|FIRMWARE": {
     "inferences": [
@@ -21054,45 +21034,89 @@ assert(check == 0x2144DF1C);</code></pre>
     ]
   },
   "lab-115-clz-fp|ISA": {
-    "kind": "card",
     "item": "lab-115-clz-fp",
+    "kind": "card",
     "slot": "ISA",
-    "probandum": "not here because the 10,065,537-check bench runs in a host user-space process against software, never a RISC-V instruction.",
+    "probandum": "the float-exponent construction computes exactly the leading-zero count the Zbb clz instruction specifies, including 64 for an all-zero input, checked against the compiler builtin on 10,065,537 inputs; no clz instruction is ever executed",
     "keyList": [
       {
-        "n": 1,
         "kind": "probandum",
-        "text": "not here because the 10,065,537-check bench runs in a host user-space process against software, never a RISC-V instruction."
+        "n": 1,
+        "text": "the float-exponent construction computes exactly the leading-zero count the Zbb clz instruction specifies, including 64 for an all-zero input, checked against the compiler builtin on 10,065,537 inputs; no clz instruction is ever executed"
       },
       {
-        "n": 2,
         "kind": "evidence",
-        "text": "The 10,065,537-check bench runs in a host user-space process against software, never a RISC-V instruction.",
+        "n": 2,
+        "text": "lab/115-clz-fp/PROOF.md records 10,065,537 differential checks of clz64_fp against __builtin_clzll, 0 mismatches, with x = 0 pinned to 64 by contract.",
         "source": {
-          "cite": "PROOF.md test record",
+          "cite": "proof log",
           "tier": "lab",
           "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/115-clz-fp/PROOF.md"
         }
       },
       {
+        "kind": "evidence",
         "n": 3,
+        "text": "The ISA manual defines clz in the Zbb extension: it counts the leading zeros of the source register, returning XLEN for an all-zero input.",
+        "source": {
+          "cite": "riscv-isa-manual, Bit Manipulation Extensions chapter, Zbb",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The construction is judged against the operation the ISA defines: the builtin oracle stands in for the specified clz behavior, edge cases included."
+      },
+      {
         "kind": "generalization",
-        "text": "The ISA slot is earned only when an instruction, CSR, or trap is the subject of the claim."
+        "n": 5,
+        "text": "A software construction that implements exactly what an ISA instruction specifies engages the ISA layer through specification correspondence, even when the instruction never executes."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A layer matters to a lab when the lab's method depends on a boundary that layer defines and the characteristic failure modes live at that boundary."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "The lab ran on a host machine and never executed a clz instruction, so one could argue the ISA is uninvolved."
+      },
+      {
+        "kind": "refutation",
+        "n": 8,
+        "text": "The claim is not about execution but about specified behavior: the lab asserts its C code computes what Zbb clz specifies, and that assertion is checkable only against the ISA definition of the operation."
       }
     ],
     "inferences": [
       {
         "from": [
-          2
+          2,
+          3
+        ],
+        "to": [
+          4
         ],
         "via": [
-          3
+          5
+        ],
+        "strength": "strong",
+        "note": "The 10M checks in (2) test the code against the specified clz behavior in (3); by the correspondence principle in (5) that is ISA engagement, giving (4)."
+      },
+      {
+        "from": [
+          4
         ],
         "to": [
           1
         ],
+        "via": [
+          6
+        ],
         "strength": "strong",
-        "note": "Software construction, no ISA surface under test."
+        "note": "The method is answerable to the ISA-defined operation in (4); by the layer-matters principle in (6) the ISA layer is engaged, which is the probandum in (1)."
       }
     ]
   },
