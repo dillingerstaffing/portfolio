@@ -104524,6 +104524,1086 @@
           "note": "With the architectural-subject objection in (8) answered by (9), (5) plus (7) yields the lit verdict in (1)."
         }
       ]
+    },
+    {
+      "item": "src-medeleg-breakpoint",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Matters at ISA because medeleg is the privileged machine contract for trap delegation: bit 3 selects the destination for breakpoint traps, and the proof shows the same S-mode ebreak arriving in M-mode with mcause 0x3 when the bit is clear and in S-mode with scause 0x3 when the bit is set.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at ISA because medeleg is the privileged machine contract for trap delegation: bit 3 selects the destination for breakpoint traps, and the proof shows the same S-mode ebreak arriving in M-mode with mcause 0x3 when the bit is clear and in S-mode with scause 0x3 when the bit is set."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records the medeleg write/readback pairs and the per-phase trap records: phase 1 traps once in M-mode with mcause 0x3 and mepc at the ebreak, phase 2 traps once in S-mode with scause 0x3 and sepc at the ebreak.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-medeleg-breakpoint proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-breakpoint/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verification performs the exact CSR writes the machine contract describes and reads back the contract's defined outcomes, the ISA slot claim is established."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The logged readbacks and trap records match the delegation contract bit 3 defines."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-breakpoint",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof asserts trap destinations, cause codes, and exact trap pcs across 3 byte-identical runs, never timing. Moving cache or pipeline behavior changes when the ebreak traps, never whether medeleg bit 3 selects M-mode or S-mode, and the 14 checks assert only the routing.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the proof asserts trap destinations, cause codes, and exact trap pcs across 3 byte-identical runs, never timing. Moving cache or pipeline behavior changes when the ebreak traps, never whether medeleg bit 3 selects M-mode or S-mode, and the 14 checks assert only the routing."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records trap destinations, cause codes, and trap pcs across 3 byte-identical runs; no timing, pipeline, cache, or predictor quantity is measured.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-medeleg-breakpoint proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-breakpoint/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when the verification measures none of that layer's quantities and the verified claim is invariant under changes to them."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The 14 checks assert routing only, which microarchitectural variation cannot change."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-breakpoint",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Matters at FIRMWARE because trap delegation is configured by M-mode boot firmware: the proof is exactly that firmware-level act, writing medeleg bit 3, dropping to S-mode, and executing the ebreak, so the claim leans on boot-time machine-mode configuration.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at FIRMWARE because trap delegation is configured by M-mode boot firmware: the proof is exactly that firmware-level act, writing medeleg bit 3, dropping to S-mode, and executing the ebreak, so the claim leans on boot-time machine-mode configuration."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log shows M-mode boot code writing medeleg bit 3, installing the trap vectors, and dropping to S-mode before the ebreak executes.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-medeleg-breakpoint proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-breakpoint/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified claim depends on boot-time machine-mode configuration, the firmware slot claim is established."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Delegation is programmed by M-mode firmware, exactly what the log records."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-breakpoint",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Not at KERNEL because no kernel subsystem takes part in the claim: the S-mode handler is a test stub recording scause and sepc, not a scheduler or memory manager, and the routing verdict holds identically under any kernel.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at KERNEL because no kernel subsystem takes part in the claim: the S-mode handler is a test stub recording scause and sepc, not a scheduler or memory manager, and the routing verdict holds identically under any kernel."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log's S-mode handler records scause and sepc only; no scheduler, virtual memory, driver, or syscall path participates in the 14 checks.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-medeleg-breakpoint proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-breakpoint/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when no subsystem of that layer takes part in the verified claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The routing verdict is identical under any kernel because no kernel mechanism is exercised."
+        }
+      ]
+    },
+    {
+      "item": "src-medeleg-breakpoint",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because selecting a trap destination through a delegation CSR is a hardware register contract stated in RISC-V privileged terms (medeleg, mcause, scause). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because selecting a trap destination through a delegation CSR is a hardware register contract stated in RISC-V privileged terms (medeleg, mcause, scause). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified claim names medeleg, mcause, and scause, which have no meaning outside the RISC-V privileged architecture; no portable computation is specified.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-medeleg-breakpoint proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-breakpoint/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim that cannot be restated without its ISA-specific terms fails the identical-on-every-ISA test, so the algorithm slot stays dim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Trap-destination selection is a register contract, not a portable computation."
+        }
+      ]
+    },
+    {
+      "item": "user-dupshared",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Not at ISA because the module runs ordinary RISC-V user instructions (load, store, ecall) and the verified property is the kernel's descriptor table behavior, not an ISA-defined instruction or CSR.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ISA because the module runs ordinary RISC-V user instructions (load, store, ecall) and the verified property is the kernel's descriptor table behavior, not an ISA-defined instruction or CSR."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records fd numbers, byte counts, and byte-exact contents; the only ISA involvement is ordinary user-mode load, store, and ecall instructions.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-dupshared proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when the verified property belongs to a higher layer's data structure and the ISA contributes only the execution substrate."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Descriptor sharing is a kernel property, not an instruction or CSR behavior."
+        }
+      ]
+    },
+    {
+      "item": "user-dupshared",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof asserts descriptor numbers, byte counts, and byte-exact contents, never timing. Cache or pipeline differences change how fast the writes land, never whether dup shares the offset, and the 7 checks assert only the sharing.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the proof asserts descriptor numbers, byte counts, and byte-exact contents, never timing. Cache or pipeline differences change how fast the writes land, never whether dup shares the offset, and the 7 checks assert only the sharing."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records descriptor numbers, byte counts, and byte contents across 3 byte-identical runs; no timing quantity is measured.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-dupshared proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when the verification measures none of that layer's quantities and the verified claim is invariant under changes to them."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The 7 checks assert sharing only, which microarchitectural variation cannot change."
+        }
+      ]
+    },
+    {
+      "item": "user-dupshared",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Not at FIRMWARE because the test runs entirely in xv6 user space; no M-mode firmware facility takes part: no PMP entry, no trap delegation, no SBI call.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at FIRMWARE because the test runs entirely in xv6 user space; no M-mode firmware facility takes part: no PMP entry, no trap delegation, no SBI call."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log shows a user-space program running on xv6; no PMP entry, trap delegation, or SBI call is configured or exercised.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-dupshared proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when no facility of that layer takes part in the verified claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The whole experiment lives above the M-mode firmware boundary."
+        }
+      ]
+    },
+    {
+      "item": "user-dupshared",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because the mechanism is the kernel's file descriptor table: dup installs a second descriptor naming the same open file description, so both descriptors share one offset, and the proof observes it directly as contiguous A-then-B bytes.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at KERNEL because the mechanism is the kernel's file descriptor table: dup installs a second descriptor naming the same open file description, so both descriptors share one offset, and the proof observes it directly as contiguous A-then-B bytes."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records the 64-byte A-then-B readback, which is exactly the observable signature of two descriptors sharing one file offset in the kernel's open file description.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-dupshared proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verification measures exactly the stated layer's data structure and reads back conforming values, the slot claim is established."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The logged bytes match the shared-offset contract dup implements."
+        }
+      ]
+    },
+    {
+      "item": "user-dupshared",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the claim is about an OS kernel data structure, the shared file offset in the open file description, not a pure computational mechanism portable across ISAs.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because the claim is about an OS kernel data structure, the shared file offset in the open file description, not a pure computational mechanism portable across ISAs."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified claim is about the kernel's open file description, an OS data structure with no ISA-independent statement.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-dupshared proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim that cannot be restated without its OS-specific terms fails the identical-on-every-ISA test, so the algorithm slot stays dim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Shared file offsets are a kernel mechanism, not a portable computation."
+        }
+      ]
+    },
+    {
+      "item": "src-satp-mode-warl",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Matters at ISA because satp.MODE is the privileged machine contract for address translation: the MODE field names which translation scheme is active, and the proof publishes the measured legal set on this hart (Bare, Sv39, Sv48, and Sv57 stick; reserved 15 is ignored) plus a working Sv39 translation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at ISA because satp.MODE is the privileged machine contract for address translation: the MODE field names which translation scheme is active, and the proof publishes the measured legal set on this hart (Bare, Sv39, Sv48, and Sv57 stick; reserved 15 is ignored) plus a working Sv39 translation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records the write/readback pair for each probed MODE: 0 reads back 0, 8 reads back 8 with a through-translation canary read matching the expected value, 9 reads back 9, 10 reads back 10, and 15 reads back the prior value unchanged.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-satp-mode-warl proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verification performs the exact CSR writes the machine contract describes and reads back the contract's defined outcomes, the ISA slot claim is established."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The logged readbacks pin the MODE legal set the contract leaves to the implementation."
+        }
+      ]
+    },
+    {
+      "item": "src-satp-mode-warl",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof asserts MODE readbacks and one through-translation read across 3 byte-identical runs, never timing. Cache or TLB behavior changes how fast the canary read returns, never which MODE values the WARL field accepts, and the 19 checks assert only the acceptance.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the proof asserts MODE readbacks and one through-translation read across 3 byte-identical runs, never timing. Cache or TLB behavior changes how fast the canary read returns, never which MODE values the WARL field accepts, and the 19 checks assert only the acceptance."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records MODE readbacks and one canary read across 3 byte-identical runs; no timing, pipeline, cache, or TLB quantity is measured.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-satp-mode-warl proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when the verification measures none of that layer's quantities and the verified claim is invariant under changes to them."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The 19 checks assert acceptance only, which microarchitectural variation cannot change."
+        }
+      ]
+    },
+    {
+      "item": "src-satp-mode-warl",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Matters at FIRMWARE because satp is programmed by M-mode boot firmware when it sets up address translation: the proof is exactly that firmware-level act, probing the MODE field in M-mode and building the page table, so the claim leans on boot-time machine-mode configuration.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at FIRMWARE because satp is programmed by M-mode boot firmware when it sets up address translation: the proof is exactly that firmware-level act, probing the MODE field in M-mode and building the page table, so the claim leans on boot-time machine-mode configuration."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log shows M-mode code probing the MODE field, building the Sv39 page table, and enabling translation before dropping to S-mode.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-satp-mode-warl proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified claim depends on boot-time machine-mode configuration, the firmware slot claim is established."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "satp programming is M-mode firmware work, exactly what the log records."
+        }
+      ]
+    },
+    {
+      "item": "src-satp-mode-warl",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Not at KERNEL because no kernel subsystem takes part in the claim: the page table is built by the test's own M-mode code, not by a kernel memory manager, and the MODE legal set holds identically under any kernel.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at KERNEL because no kernel subsystem takes part in the claim: the page table is built by the test's own M-mode code, not by a kernel memory manager, and the MODE legal set holds identically under any kernel."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log's page table is built by the test's own M-mode code; no kernel memory manager, scheduler, or syscall path participates in the 19 checks.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-satp-mode-warl proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when no subsystem of that layer takes part in the verified claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The MODE legal set is identical under any kernel because no kernel mechanism is exercised."
+        }
+      ]
+    },
+    {
+      "item": "src-satp-mode-warl",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the MODE legal set is a hardware register contract stated in RISC-V privileged terms (satp, Sv39, Sv48, Sv57). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because the MODE legal set is a hardware register contract stated in RISC-V privileged terms (satp, Sv39, Sv48, Sv57). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified claim names satp and the Sv39, Sv48, and Sv57 schemes, which have no meaning outside the RISC-V privileged architecture; no portable computation is specified.",
+          "source": {
+            "tier": "lab",
+            "cite": "src-satp-mode-warl proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim that cannot be restated without its ISA-specific terms fails the identical-on-every-ISA test, so the algorithm slot stays dim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "MODE acceptance is a register contract, not a portable computation."
+        }
+      ]
+    },
+    {
+      "item": "user-fileoffindep",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Not at ISA because the claim is about xv6's file table, not the machine contract: no instruction's behavior is asserted, and the offsets would behave identically on any RISC-V implementation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ISA because the claim is about xv6's file table, not the machine contract: no instruction's behavior is asserted, and the offsets would behave identically on any RISC-V implementation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records no instruction's behavior: the 7 checks assert fd numbers, byte-exact readbacks, and checksum equality, all properties of the xv6 file table.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-fileoffindep proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when the verified claim asserts nothing about the machine contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The offsets behave identically on any RISC-V implementation because no ISA mechanism is exercised."
+        }
+      ]
+    },
+    {
+      "item": "user-fileoffindep",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof asserts byte-exact readbacks across 3 byte-identical runs, never timing. Pipeline or cache behavior changes how fast the reads return, never which bytes they return or where each descriptor's offset points.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the proof asserts byte-exact readbacks across 3 byte-identical runs, never timing. Pipeline or cache behavior changes how fast the reads return, never which bytes they return or where each descriptor's offset points."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records byte-exact readbacks across 3 byte-identical runs; no timing, pipeline, cache, or memory-hierarchy quantity is measured.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-fileoffindep proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when the verification measures none of that layer's quantities and the verified claim is invariant under changes to them."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Which bytes each descriptor reads cannot change with microarchitectural variation."
+        }
+      ]
+    },
+    {
+      "item": "user-fileoffindep",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Not at FIRMWARE because no boot firmware, trap vector, or machine-mode configuration takes part: the whole test runs in xv6 user space on top of an already-booted kernel.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at FIRMWARE because no boot firmware, trap vector, or machine-mode configuration takes part: the whole test runs in xv6 user space on top of an already-booted kernel."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log's test runs entirely in xv6 user space; no M-mode code, trap vector, or boot configuration participates in the 7 checks.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-fileoffindep proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A layer slot stays dim when no mechanism of that layer takes part in the verified claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The kernel is already booted before the test starts; firmware's job is done."
+        }
+      ]
+    },
+    {
+      "item": "user-fileoffindep",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because the file offset lives in the kernel's open file table: each open installs its own struct file with its own off field, and the proof verifies that kernel data structure's behavior directly, that two opens never share position.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at KERNEL because the file offset lives in the kernel's open file table: each open installs its own struct file with its own off field, and the proof verifies that kernel data structure's behavior directly, that two opens never share position."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log shows two opens of the same path returning fd 3 and fd 4, with reads through each descriptor returning bytes from that descriptor's own offset, proving each open installed its own struct file with its own off field.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-fileoffindep proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified claim is a direct property of a kernel data structure, the kernel slot claim is established."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Per-descriptor offsets are exactly what the open file table exists to provide."
+        }
+      ]
+    },
+    {
+      "item": "user-fileoffindep",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the claim is a property of xv6's file-table implementation, stated in kernel terms (descriptors, offsets, open file descriptions). It is not an ISA-independent computation, so it fails the identical-on-every-ISA test.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because the claim is a property of xv6's file-table implementation, stated in kernel terms (descriptors, offsets, open file descriptions). It is not an ISA-independent computation, so it fails the identical-on-every-ISA test."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified claim is stated in kernel terms (descriptors, offsets, open file descriptions) and describes xv6's file-table implementation, not a portable computation.",
+          "source": {
+            "tier": "lab",
+            "cite": "user-fileoffindep proof log, spec rows",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V privileged architecture defines the CSRs, trap delegation, and exception codes this card's claim is stated in.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim that cannot be restated without its implementation-specific terms fails the identical-on-every-ISA test, so the algorithm slot stays dim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Offset bookkeeping is kernel mechanism, not algorithm."
+        }
+      ]
     }
   ]
 }

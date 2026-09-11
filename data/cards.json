@@ -14927,5 +14927,233 @@
       "label": "proof log",
       "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
     }
+  },
+  {
+    "id": "src-medeleg-breakpoint",
+    "kicker": "RISCV PRIV",
+    "title": "medeleg bit 3 routes the breakpoint trap to S-mode",
+    "summary": "A bare-metal RISC-V program executes the same S-mode ebreak in two phases. With medeleg bit 3 clear, the ebreak traps in M-mode with mcause 0x3 and mepc exactly at the ebreak; with the bit set, it traps in S-mode with scause 0x3 and sepc exactly at the ebreak. A quiet window with all interrupt enables clear leaves both trap counts unchanged.",
+    "checks": 14,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/medeleg-breakpoint/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-breakpoint/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 checks on QEMU 8.2.2: bit clear routes the S-mode ebreak to M-mode with mcause 0x3 and mepc at the ebreak; bit set routes it to S-mode with scause 0x3 and sepc at the ebreak; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x934b460eeaf296e0, over the trap counts, cause codes, trap pcs, and medeleg readbacks, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode bare metal dropping to S-mode"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / medeleg-breakpoint",
+    "terminalLabel": "Verified medeleg breakpoint routing QEMU output",
+    "terminalOutput": "medeleg-breakpoint-route: breakpoint trap destination switch test\nboot: medeleg=0x0\nphase1: medeleg-write=0x0 readback=0x0\nphase2: medeleg bit3 set readback=0x8\np1: m_traps=1 mcause=0x3 mepc=0x800002d4 expected=0x800002d4 mstatus_mpp=1 mtval=0x0 s_traps=0\np2: s_traps=1 scause=0x3 sepc=0x80000392 expected=0x80000392 sstatus_spp=1 stval=0x0 m_traps=1\nquiet: m_traps=1 s_traps=1\nchecksum=0x934b460eeaf296e0\nRESULT: PASS (checks=14)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because medeleg is the privileged machine contract for trap delegation: bit 3 selects the destination for breakpoint traps, and the proof shows the same S-mode ebreak arriving in M-mode with mcause 0x3 when the bit is clear and in S-mode with scause 0x3 when the bit is set."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts trap destinations, cause codes, and exact trap pcs across 3 byte-identical runs, never timing. Moving cache or pipeline behavior changes when the ebreak traps, never whether medeleg bit 3 selects M-mode or S-mode, and the 14 checks assert only the routing."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because trap delegation is configured by M-mode boot firmware: the proof is exactly that firmware-level act, writing medeleg bit 3, dropping to S-mode, and executing the ebreak, so the claim leans on boot-time machine-mode configuration."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because no kernel subsystem takes part in the claim: the S-mode handler is a test stub recording scause and sepc, not a scheduler or memory manager, and the routing verdict holds identically under any kernel."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because selecting a trap destination through a delegation CSR is a hardware register contract stated in RISC-V privileged terms (medeleg, mcause, scause). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test."
+      }
+    },
+    "portability": null,
+    "stressItems": 14
+  },
+  {
+    "id": "user-dupshared",
+    "kicker": "XV6",
+    "title": "dup shares the file offset between descriptors",
+    "summary": "An xv6 user-space test opens a file, dups its descriptor, writes a fixed 32-byte pattern through each descriptor, closes both, reopens the file, and reads it back. All 64 bytes are the first pattern followed by the second, byte-exact, proving one shared offset: the write through the second descriptor started where the first left off. A read past the end returns 0.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/dupshared.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 in-program checks on QEMU 8.2.2: open lands on fd 3, dup returns fd 4, each 32-byte write returns 32, the 64-byte readback is A-then-B byte-exact, a read past the end returns 0, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x24322B881E690C23, identical across 3 runs and recomputed on the host to the same value"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 userspace"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / dupshared",
+    "terminalLabel": "Verified dupshared QEMU output",
+    "terminalOutput": "$ dupshared\ncheck 1: open returned fd 3, as expected\ncheck 2: dup returned fd 4, the lowest free slot\ncheck 3: wrote 32 bytes of pattern A through fd 3\ncheck 4: wrote 32 bytes of pattern B through fd 4\ncheck 5: read back 64 bytes, matches 64 bytes written\ncheck 6: all 64 bytes match A-then-B, 0 mismatches\ncheck 7: read past end returns 0, EOF is sticky\nchecksum: 0x24322B881E690C23\nchecks: 7 mismatches: 0\nPASS: dup shares the file offset, writes through both fds are contiguous",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the module runs ordinary RISC-V user instructions (load, store, ecall) and the verified property is the kernel's descriptor table behavior, not an ISA-defined instruction or CSR."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts descriptor numbers, byte counts, and byte-exact contents, never timing. Cache or pipeline differences change how fast the writes land, never whether dup shares the offset, and the 7 checks assert only the sharing."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test runs entirely in xv6 user space; no M-mode firmware facility takes part: no PMP entry, no trap delegation, no SBI call."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the mechanism is the kernel's file descriptor table: dup installs a second descriptor naming the same open file description, so both descriptors share one offset, and the proof observes it directly as contiguous A-then-B bytes."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim is about an OS kernel data structure, the shared file offset in the open file description, not a pure computational mechanism portable across ISAs."
+      }
+    },
+    "portability": null,
+    "stressItems": 7
+  },
+  {
+    "id": "src-satp-mode-warl",
+    "kicker": "RISCV PRIV",
+    "title": "satp MODE probe: Sv39, Sv48, Sv57 stick; reserved 15 ignored",
+    "summary": "A bare-metal RISC-V program probes which satp MODE values the hart implements by writing Bare, Sv39, Sv48, Sv57, and a reserved encoding and reading each back. Sv39, Sv48, and Sv57 all stick on QEMU 8.2.2; the reserved encoding leaves the register untouched, pinning the whole-write-ignored rule. For Sv39 the proof goes further: it builds a minimal page table, enables translation, and reads a known canary through the new mapping before restoring Bare.",
+    "checks": 19,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/satp-mode-warl/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/satp-mode-warl/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "19 checks on QEMU 8.2.2: Bare writes read back identical; Sv39, Sv48, and Sv57 writes all stick; the reserved MODE 15 write has no effect; the Sv39 through-translation canary reads the expected value; 0 traps; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x8844670da10ebc2d, over the write/readback pairs, the canary read, and the trap count, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode bare metal with an S-mode translation proof"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / satp-mode-warl",
+    "terminalLabel": "Verified satp MODE probe QEMU output",
+    "terminalOutput": "satp MODE WARL probe (Bare/Sv39/Sv48/Sv57/reserved)\nprobe MODE=0 (Bare): write=0x0 readback=0x0\nprobe MODE=8 (Sv39): write=0x8000000000000000 readback=0x8000000000000000 STUCK\nprobe MODE=9 (Sv48): write=0x9000000000000000 readback=0x9000000000000000 STUCK\nprobe MODE=10 (Sv57): write=0xa000000000000000 readback=0xa000000000000000 STUCK\nprobe MODE=15 (reserved): write=0xf000000000000000 readback=0xa000000000000000 NO EFFECT\nthrough-translation read: VA=0x80003110 got=0xc0ffee11deadbeef expected=0xc0ffee11deadbeef\ntraps observed = 0\nchecks: 19 mismatches: 0\nchecksum: 0x8844670da10ebc2d",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because satp.MODE is the privileged machine contract for address translation: the MODE field names which translation scheme is active, and the proof publishes the measured legal set on this hart (Bare, Sv39, Sv48, and Sv57 stick; reserved 15 is ignored) plus a working Sv39 translation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts MODE readbacks and one through-translation read across 3 byte-identical runs, never timing. Cache or TLB behavior changes how fast the canary read returns, never which MODE values the WARL field accepts, and the 19 checks assert only the acceptance."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because satp is programmed by M-mode boot firmware when it sets up address translation: the proof is exactly that firmware-level act, probing the MODE field in M-mode and building the page table, so the claim leans on boot-time machine-mode configuration."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because no kernel subsystem takes part in the claim: the page table is built by the test's own M-mode code, not by a kernel memory manager, and the MODE legal set holds identically under any kernel."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the MODE legal set is a hardware register contract stated in RISC-V privileged terms (satp, Sv39, Sv48, Sv57). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test."
+      }
+    },
+    "portability": null,
+    "stressItems": 19
+  },
+  {
+    "id": "user-fileoffindep",
+    "kicker": "XV6",
+    "title": "Two opens of one file keep independent offsets",
+    "summary": "An xv6 user-space test opens the same file twice and proves each descriptor carries its own file offset. It writes a pattern of A bytes through the first descriptor, then reads through the second and gets the A bytes back from offset 0, not from the first descriptor's position. It then writes B bytes through the second descriptor and reads through the first, getting the B bytes back, which shows the first descriptor's offset never moved. Both readbacks are verified against values recomputed independently on the host.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/fileoffindep.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks on QEMU 8.2.2: two opens of the same path return fd 3 and fd 4; 32 A bytes written through fd 3 read back byte-exact through fd 4 from offset 0; 32 B bytes written through fd 4 read back byte-exact through fd 3; both FNV-1a checksums match host recomputation; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xCCE196BF4BEB4B1E, the FNV-1a fold of the two per-pattern checksums (0x2D90D329EE4C2823 and 0x8CE713CF2ECE4783), identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, no kernel changes"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / fileoffindep",
+    "terminalLabel": "Verified xv6 file-offset QEMU output",
+    "terminalOutput": "$ fileoffindep\ncheck 1: first open returned fd 3, as expected\ncheck 2: second open returned fd 4, the lowest free slot\ncheck 3: wrote 32 bytes of pattern A through fd 3\ncheck 4: read 32 bytes through fd 4, matches pattern A\ncheck 5: wrote 32 bytes of pattern B through fd 4\ncheck 6: read 32 bytes through fd 3, matches pattern B\nchecksum 1: 0x2D90D329EE4C2823\nchecksum 2: 0x8CE713CF2ECE4783\ncheck 7: checksums match host recomputation\nchecks: 7 mismatches: 0\nPASS: each open descriptor keeps its own offset; fd 3 and fd 4 advance independently",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the claim is about xv6's file table, not the machine contract: no instruction's behavior is asserted, and the offsets would behave identically on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts byte-exact readbacks across 3 byte-identical runs, never timing. Pipeline or cache behavior changes how fast the reads return, never which bytes they return or where each descriptor's offset points."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because no boot firmware, trap vector, or machine-mode configuration takes part: the whole test runs in xv6 user space on top of an already-booted kernel."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the file offset lives in the kernel's open file table: each open installs its own struct file with its own off field, and the proof verifies that kernel data structure's behavior directly, that two opens never share position."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim is a property of xv6's file-table implementation, stated in kernel terms (descriptors, offsets, open file descriptions). It is not an ISA-independent computation, so it fails the identical-on-every-ISA test."
+      }
+    },
+    "portability": null,
+    "stressItems": 7
   }
 ]
