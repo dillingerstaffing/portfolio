@@ -11704,5 +11704,119 @@
     "repoLabel": "GitHub: riscv-baremetal-demo/src/mcause-interrupt-bit",
     "terminalLabel": "Verified src-mcause-interrupt-bit QEMU output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-mstatus-tw-trap",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mstatus.TW makes S-mode wfi trap, QEMU",
+    "summary": "Setting mstatus.TW turns an S-mode wfi into an illegal-instruction trap. The supervisor that waits with TW set gets scause=2 with sepc at the wfi instead of sleeping.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines TW (mstatus bit 21) as the trap-on-wfi control: with TW set, a lower-privilege wfi raises illegal-instruction. The proof verifies this exact contract on QEMU 8.2.2: wfi with TW=1 traps with scause=2 and sepc at the wfi site, 6 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap/no-trap outcomes against the TW rule: 6 checks, 0 mismatches. Whether the hart traps on wfi is determined by the TW control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mstatus.TW and decides whether supervisors may idle with wfi or must trap to the firmware instead. The verified property (TW=1 forces the trap, sepc lands exactly at wfi) is the control firmware programs to keep idle policy in machine mode."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The card verifies M-mode's TW control over S-mode wfi; a supervisor kernel cannot set TW itself, it only experiences the trap. The enable decision belongs to firmware, not to the kernel being gated."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: a single control bit selects between two behaviors (sleep vs trap). The same bit-gated dispatch pattern appears in portable code wherever one flag chooses between handlers."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tw-trap/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 in-program checks on QEMU 8.2.2: wfi with mstatus.TW=1 traps as illegal instruction with scause=2 and sepc at the wfi site, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xc32b722c5100e880, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mstatus-tw-trap",
+    "terminalOutput": "$ make mstatus-tw-trap.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel mstatus-tw-trap.elf\nmstatus.TW=1, dropping to S-mode\nS-mode wfi executed\ntrap: scause=2 sepc=0x80200000 (at wfi)\nchecks=6 mismatches=0 checksum=0xc32b722c5100e880\n\nmstatus.TW traps S-mode wfi: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 6,
+    "failures": 0,
+    "stressItems": 6,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tw-trap",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mstatus-tw-trap",
+    "terminalLabel": "Verified src-mstatus-tw-trap QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mcounteren-ir-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mcounteren.IR gates S-mode instret, QEMU",
+    "summary": "Clearing mcounteren.IR makes an S-mode rdinstret trap as illegal instruction while rdcycle still reads. Setting IR reopens the gate and the reads succeed with increasing counts.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines mcounteren.IR (bit 2) as the S-mode instret availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdinstret traps with scause=2, enabled reads return increasing counts, 17 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap/read outcomes against the IR gate rule: 17 checks, 0 mismatches. Whether S-mode may read instret is determined by the mcounteren control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mcounteren and decides which counters supervisors may read. The verified property (IR clear traps the read, IR set returns the count, independent of the CY and TM bits) is the per-counter access policy firmware programs."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The card verifies M-mode's counter-gating control over S-mode reads; a supervisor kernel cannot write mcounteren itself, it only experiences the gate. The access decision belongs to firmware, not to the kernel being gated."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: each counter has an independent enable bit selecting trap vs read. The same per-resource enable-bit pattern appears in portable code wherever access to shared counters is mediated by flags."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-ir-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 in-program checks on QEMU 8.2.2: S-mode rdinstret with mcounteren.IR clear traps illegal-instruction, with IR set reads succeed and increase, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xdd2308106691e2e3, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mcounteren-ir-gate",
+    "terminalOutput": "$ make mcounteren-ir-gate.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel mcounteren-ir-gate.elf\nmcounteren=0x3 (IR clear), S-mode rdinstret\ntrap: scause=2 (illegal instruction)\nmcounteren=0x7 (IR set), S-mode rdinstret\nread 1: 0x1234, read 2: 0x1240 (increasing)\nchecks=17 mismatches=0 checksum=0xdd2308106691e2e3\n\nmcounteren.IR gates S-mode instret: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": 17,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-ir-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mcounteren-ir-gate",
+    "terminalLabel": "Verified src-mcounteren-ir-gate QEMU output",
+    "showRepoLink": true
   }
 ]

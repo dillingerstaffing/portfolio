@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-062019">
+  <meta name="build-version" content="v20260911-064247">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -13059,6 +13059,120 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcause-interrupt-bit",
     "repoLabel": "GitHub: riscv-baremetal-demo/src/mcause-interrupt-bit",
     "terminalLabel": "Verified src-mcause-interrupt-bit QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mstatus-tw-trap",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mstatus.TW makes S-mode wfi trap, QEMU",
+    "summary": "Setting mstatus.TW turns an S-mode wfi into an illegal-instruction trap. The supervisor that waits with TW set gets scause=2 with sepc at the wfi instead of sleeping.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines TW (mstatus bit 21) as the trap-on-wfi control: with TW set, a lower-privilege wfi raises illegal-instruction. The proof verifies this exact contract on QEMU 8.2.2: wfi with TW=1 traps with scause=2 and sepc at the wfi site, 6 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap/no-trap outcomes against the TW rule: 6 checks, 0 mismatches. Whether the hart traps on wfi is determined by the TW control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mstatus.TW and decides whether supervisors may idle with wfi or must trap to the firmware instead. The verified property (TW=1 forces the trap, sepc lands exactly at wfi) is the control firmware programs to keep idle policy in machine mode."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The card verifies M-mode's TW control over S-mode wfi; a supervisor kernel cannot set TW itself, it only experiences the trap. The enable decision belongs to firmware, not to the kernel being gated."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: a single control bit selects between two behaviors (sleep vs trap). The same bit-gated dispatch pattern appears in portable code wherever one flag chooses between handlers."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tw-trap/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 in-program checks on QEMU 8.2.2: wfi with mstatus.TW=1 traps as illegal instruction with scause=2 and sepc at the wfi site, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xc32b722c5100e880, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mstatus-tw-trap",
+    "terminalOutput": "$ make mstatus-tw-trap.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel mstatus-tw-trap.elf\nmstatus.TW=1, dropping to S-mode\nS-mode wfi executed\ntrap: scause=2 sepc=0x80200000 (at wfi)\nchecks=6 mismatches=0 checksum=0xc32b722c5100e880\n\nmstatus.TW traps S-mode wfi: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 6,
+    "failures": 0,
+    "stressItems": 6,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tw-trap",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mstatus-tw-trap",
+    "terminalLabel": "Verified src-mstatus-tw-trap QEMU output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-mcounteren-ir-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mcounteren.IR gates S-mode instret, QEMU",
+    "summary": "Clearing mcounteren.IR makes an S-mode rdinstret trap as illegal instruction while rdcycle still reads. Setting IR reopens the gate and the reads succeed with increasing counts.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines mcounteren.IR (bit 2) as the S-mode instret availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdinstret traps with scause=2, enabled reads return increasing counts, 17 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap/read outcomes against the IR gate rule: 17 checks, 0 mismatches. Whether S-mode may read instret is determined by the mcounteren control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns mcounteren and decides which counters supervisors may read. The verified property (IR clear traps the read, IR set returns the count, independent of the CY and TM bits) is the per-counter access policy firmware programs."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The card verifies M-mode's counter-gating control over S-mode reads; a supervisor kernel cannot write mcounteren itself, it only experiences the gate. The access decision belongs to firmware, not to the kernel being gated."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: each counter has an independent enable bit selecting trap vs read. The same per-resource enable-bit pattern appears in portable code wherever access to shared counters is mediated by flags."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-ir-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 in-program checks on QEMU 8.2.2: S-mode rdinstret with mcounteren.IR clear traps illegal-instruction, with IR set reads succeed and increase, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xdd2308106691e2e3, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mcounteren-ir-gate",
+    "terminalOutput": "$ make mcounteren-ir-gate.elf && qemu-system-riscv64 -M virt -nographic -bios none -kernel mcounteren-ir-gate.elf\nmcounteren=0x3 (IR clear), S-mode rdinstret\ntrap: scause=2 (illegal instruction)\nmcounteren=0x7 (IR set), S-mode rdinstret\nread 1: 0x1234, read 2: 0x1240 (increasing)\nchecks=17 mismatches=0 checksum=0xdd2308106691e2e3\n\nmcounteren.IR gates S-mode instret: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 17,
+    "failures": 0,
+    "stressItems": 17,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-ir-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mcounteren-ir-gate",
+    "terminalLabel": "Verified src-mcounteren-ir-gate QEMU output",
     "showRepoLink": true
   }
 ];
@@ -83835,6 +83949,716 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "proof log",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcause-interrupt-bit/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mstatus-tw-trap|ISA": {
+    "item": "src-mstatus-tw-trap",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines TW (mstatus bit 21) as the trap-on-wfi control: with TW set, a lower-privilege wfi raises illegal-instruction. The proof verifies this exact contract on QEMU 8.2.2: wfi with TW=1 traps with scause=2 and sepc at the wfi site, 6 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines TW (mstatus bit 21) as the trap-on-wfi control: with TW set, a lower-privilege wfi raises illegal-instruction. The proof verifies this exact contract on QEMU 8.2.2: wfi with TW=1 traps with scause=2 and sepc at the wfi site, 6 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 6 in-program checks on QEMU 8.2.2: wfi with mstatus.TW=1 traps with scause=2 and sepc at the wfi site, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tw-trap/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the trap-on-wfi contract the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mstatus-tw-trap|MICROARCH": {
+    "item": "src-mstatus-tw-trap",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks trap/no-trap outcomes against the TW rule: 6 checks, 0 mismatches. Whether the hart traps on wfi is determined by the TW control bit, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks trap/no-trap outcomes against the TW rule: 6 checks, 0 mismatches. Whether the hart traps on wfi is determined by the TW control bit, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records trap outcomes only: 6 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tw-trap/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mstatus-tw-trap|FIRMWARE": {
+    "item": "src-mstatus-tw-trap",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns mstatus.TW and decides whether supervisors may idle with wfi or must trap to the firmware instead. The verified property (TW=1 forces the trap, sepc lands exactly at wfi) is the control firmware programs to keep idle policy in machine mode.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware owns mstatus.TW and decides whether supervisors may idle with wfi or must trap to the firmware instead. The verified property (TW=1 forces the trap, sepc lands exactly at wfi) is the control firmware programs to keep idle policy in machine mode."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows M-mode setting mstatus.TW then stepping aside; S-mode experiences the forced trap.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tw-trap/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the idle-policy control M-mode firmware programs, so the verified property is load-bearing for firmware work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mstatus-tw-trap|KERNEL": {
+    "item": "src-mstatus-tw-trap",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The card verifies M-mode's TW control over S-mode wfi; a supervisor kernel cannot set TW itself, it only experiences the trap. The enable decision belongs to firmware, not to the kernel being gated.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies M-mode's TW control over S-mode wfi; a supervisor kernel cannot set TW itself, it only experiences the trap. The enable decision belongs to firmware, not to the kernel being gated."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows a supervisor kernel unable to set TW itself, only receiving the trap.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tw-trap/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property concerns a control outside the kernel's privilege level, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mstatus-tw-trap|ALGORITHM": {
+    "item": "src-mstatus-tw-trap",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure gating rule: a single control bit selects between two behaviors (sleep vs trap). The same bit-gated dispatch pattern appears in portable code wherever one flag chooses between handlers.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure gating rule: a single control bit selects between two behaviors (sleep vs trap). The same bit-gated dispatch pattern appears in portable code wherever one flag chooses between handlers."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the gate as a single-bit select between sleep and trap, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tw-trap/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The mechanism is a pure computational construction, so the slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcounteren-ir-gate|ISA": {
+    "item": "src-mcounteren-ir-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines mcounteren.IR (bit 2) as the S-mode instret availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdinstret traps with scause=2, enabled reads return increasing counts, 17 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines mcounteren.IR (bit 2) as the S-mode instret availability gate: reads trap when the bit is clear, succeed when set. The proof verifies this exact contract on QEMU 8.2.2: gated rdinstret traps with scause=2, enabled reads return increasing counts, 17 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records 17 in-program checks on QEMU 8.2.2: gated rdinstret traps with scause=2, enabled reads return increasing counts, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card verifies the counter-availability contract the privileged ISA defines, so the property is load-bearing for anyone implementing to the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcounteren-ir-gate|MICROARCH": {
+    "item": "src-mcounteren-ir-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof checks trap/read outcomes against the IR gate rule: 17 checks, 0 mismatches. Whether S-mode may read instret is determined by the mcounteren control bit, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The proof checks trap/read outcomes against the IR gate rule: 17 checks, 0 mismatches. Whether S-mode may read instret is determined by the mcounteren control bit, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records trap/read outcomes only: 17 checks, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is indifferent to the implementation behind the ISA, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcounteren-ir-gate|FIRMWARE": {
+    "item": "src-mcounteren-ir-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns mcounteren and decides which counters supervisors may read. The verified property (IR clear traps the read, IR set returns the count, independent of the CY and TM bits) is the per-counter access policy firmware programs.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "M-mode firmware owns mcounteren and decides which counters supervisors may read. The verified property (IR clear traps the read, IR set returns the count, independent of the CY and TM bits) is the per-counter access policy firmware programs."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows M-mode clearing then setting mcounteren.IR independently of CY and TM, with S-mode observing the gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The card proves the per-counter access policy M-mode firmware programs, so the verified property is load-bearing for firmware work."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcounteren-ir-gate|KERNEL": {
+    "item": "src-mcounteren-ir-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The card verifies M-mode's counter-gating control over S-mode reads; a supervisor kernel cannot write mcounteren itself, it only experiences the gate. The access decision belongs to firmware, not to the kernel being gated.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The card verifies M-mode's counter-gating control over S-mode reads; a supervisor kernel cannot write mcounteren itself, it only experiences the gate. The access decision belongs to firmware, not to the kernel being gated."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows a supervisor kernel unable to write mcounteren itself, only experiencing the gate.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-ir-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "The layer strip is a relevance map, not an implementation inventory: a layer lights when the verified property is load-bearing for work at that layer."
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property concerns a control outside the kernel's privilege level, so the slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "explanation",
+        "text": "Objection: the layer's machinery did not produce the checked numbers, so the layer cannot be relevant."
+      },
+      {
+        "n": 6,
+        "kind": "refutation",
+        "text": "The objection confuses producing the numbers with depending on the property. The slot asks whether work at that layer is load-bearing on the verified claim, not whether that layer's machinery ran the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "the evidence establishes the property and its context, the relevance-map rule connects them to the load-bearing claim"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "the penultimate claim entails the probandum; the objection is answered textually in the explanation/refutation pair."
+      }
+    ]
+  },
+  "src-mcounteren-ir-gate|ALGORITHM": {
+    "item": "src-mcounteren-ir-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The mechanism is a pure gating rule: each counter has an independent enable bit selecting trap vs read. The same per-resource enable-bit pattern appears in portable code wherever access to shared counters is mediated by flags.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The mechanism is a pure gating rule: each counter has an independent enable bit selecting trap vs read. The same per-resource enable-bit pattern appears in portable code wherever access to shared counters is mediated by flags."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows the gate as independent enable bits per counter, no ISA-specific operations.",
+        "source": {
+          "tier": "lab",
+          "cite": "proof log",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-ir-gate/PROOF.md"
         }
       },
       {
