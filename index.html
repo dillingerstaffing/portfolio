@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260911-003050">
+  <meta name="build-version" content="v20260911-003323">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -11166,6 +11166,71 @@ assert(check == 0x2144DF1C);</code></pre>
     "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/121-cond-neg",
     "repoLabel": "GitHub: systems-lab/lab/121-cond-neg",
     "terminalLabel": "Verified conditional-negation test output",
+    "showRepoLink": true
+  },
+  {
+    "id": "src-scause-bit",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The scause INTERRUPT bit (bit 63) distinguishing interrupts from exceptions is executed under QEMU 8.2.2 on a real RISC-V hart: supervisor timer interrupt reports bit 63 set, load page fault reports bit 63 clear."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not here because QEMU emulates the scause CSR functionally; no cache, pipeline, or predictor behavior is measured in the proof."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "The bare-metal M-mode program delegates supervisor interrupts via mideleg, arms a supervisor timer interrupt, and triggers a supervisor load fault at an unmapped address, recording scause for each trap."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not here because no scheduler, virtual memory, or driver layer runs; the proof exercises scause trap reporting only, with no OS kernel code."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The INTERRUPT-bit probe pattern (comparing bit 63 across an interrupt and an exception) is a pure verification mechanism, portable to every RISC-V hart."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/scause-bit/PROOF.md"
+    },
+    "portability": null,
+    "kicker": "RISC-V PRIVILEGED ARCH",
+    "title": "scause INTERRUPT-Bit Probe",
+    "summary": "The scause INTERRUPT bit distinguishes async interrupts from sync exceptions on a real hart: a supervisor timer interrupt traps with bit 63 set while a supervisor load page fault traps with bit 63 clear, each with the expected cause code.",
+    "specRows": [
+      [
+        "CHECKS",
+        "18"
+      ],
+      [
+        "MISMATCHES",
+        "0"
+      ],
+      [
+        "TIMER SCAUSE",
+        "0x8000000000000005, bit 63 set"
+      ],
+      [
+        "FAULT SCAUSE",
+        "0x000000000000000d, bit 63 clear"
+      ],
+      [
+        "VERDICT",
+        "PASS x3 runs"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / scause-bit",
+    "terminalOutput": "$ make run-scause-bit\nchecks .................. 18\nmismatches .............. 0\ntimer interrupt ......... scause 0x8000000000000005\nload page fault ......... scause 0x000000000000000d\nRESULT: PASS x3 runs\n\nscause INTERRUPT-bit probe, 0 mismatches",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 18,
+    "failures": 0,
+    "stressItems": 18,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/scause-bit",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/scause-bit",
+    "terminalLabel": "Verified scause-bit QEMU output",
     "showRepoLink": true
   }
 ];
