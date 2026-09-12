@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Division That Always Answers",
+    "slug": "the-division-that-always-answers",
+    "date": "2026-09-12",
+    "description": "RISC-V integer division answers every input, division by zero included: quotient all ones, remainder the dividend, no trap, no flag. An eight-case program on QEMU reads the manual's corner-case table back to itself. The spec says why: this would be the only arithmetic trap in the standard ISA.",
+    "paragraphs": [
+      "I wrote an eight-case assembly program this morning and read its answers off the virt UART on QEMU 8.2.2. Signed 10 divided by 0: all bits set, which reads as -1. Unsigned 10 divided by 0: all bits set, two to the 64th minus one. Signed and unsigned remainder of 10 by 0: both hand back the dividend, 10. The most-negative 64-bit integer divided by -1: the most-negative integer itself, with a zero remainder. A 32-bit divw of the most-negative 32-bit integer by -1: sign-extended 0x80000000. And the sanity case, 22 divided by 7: 3. No trap fired, no flag was set, the exception handler was never consulted. Eight answers to eight questions, three of them questions mathematics refuses to dignify.",
+      "This is not emulator generosity. It is the contract, printed in the unprivileged manual's division corner-case table. The quotient of division by zero has all bits set. The remainder of division by zero equals the dividend. Signed division overflow, which can only happen when the most-negative integer is divided by -1, yields the dividend as the quotient and zero as the remainder. The hardware answers exactly what the table says, on every input, without exception.",
+      "The manual says why, in one of the most honest sentences in the whole spec. The designers considered raising exceptions on integer divide by zero, but this would be the only arithmetic trap in the standard ISA. Floating-point exceptions set flags and write default values but never trap, and the integer side refuses to be the exception to that rule. Where a language standard mandates that divide-by-zero changes control flow, a single branch instruction after the divide is enough, one the manual notes should be very predictably not taken. And all-ones is the natural value for divider circuitry to produce, for both signed and unsigned, which simplifies the hardware. The refusal to trap and the all-ones answer are the same decision: keep the divider dumb and honest.",
+      "That leaves the alternatives, and they both lose something. x86's idiv, as I understand it, raises a divide-error fault on these inputs: the processor stops the world and hands you to a trap handler, because x86 carries the tradition of interrupts as the answer to arithmetic distress. Floating-point division answers differently again: it completes the operation and leaves the NV flag as a receipt, which was the subject of an earlier note. RISC-V's integer division takes the third path: no trap, no flag, just the defined answer.",
+      "The practical shape of this is worth naming. Because div and rem are total functions, defined on every input pair, the edge case stops being special and becomes just another value to compute with. Code that divides can reason about divisor zero as arithmetic on the answers, all ones and the dividend, instead of exception handling around the call. The hardware promises the table, and the table promises no surprises.",
+      "One sentence to keep: ordinary arithmetic never traps in RISC-V, so division by zero gets an answer instead of an exception, all ones for the quotient and the dividend for the remainder."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "bare-metal repo: the QEMU virt conventions the eight-case program ran under",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified properties are the division corner cases the unprivileged specification's table defines: the quotient of division by zero has all bits set, the remainder of division by zero equals the dividend, and signed overflow, only possible when the most-negative integer is divided by -1, yields the dividend as quotient and zero as remainder. The post verifies the instruction's answers against the manual's table on every input."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the verified property is implementation-invariant: the same eight answers come back on QEMU 8.2.2 and on any RV64 core, since the spec table fixes the outputs; the post verifies the div and rem contract, not how any divider circuitry produces all-ones."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the verified property holds in every privilege mode with no enable gate: no firmware register opens or closes the division answers, and the eight cases ran without consulting any machine-mode service."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the verified property removes a trap class the kernel would otherwise handle: the div instructions cannot fault on any input, so a RISC-V kernel carries no divide-error handler and its trap path never receives arithmetic distress from ordinary division."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because the verified properties are the portable edge-case contract that code reasoning about division depends on: every input has a defined answer with no trap and no flag, so divisor-zero handling can rely on the all-ones quotient and dividend remainder without a guarding branch."
+      }
+    }
+  },
+  {
     "title": "The ID Card Inside Your CPU",
     "slug": "the-id-card-inside-your-cpu",
     "date": "2026-09-12",

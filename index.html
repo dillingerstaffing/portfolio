@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-191133">
+  <meta name="build-version" content="v20260912-201151">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,25 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-division-that-always-answers/">The Division That Always Answers</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">bare-metal repo: the QEMU virt conventions the eight-case program ran under <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are the division corner cases the unprivileged specification's table defines: the quotient of division by zero has all bits set, the remainder of division by zero equals the dividend, and signed overflow, only possible when the most-negative integer is divided by -1, yields the dividend as quotient and zero as remainder. The post verifies the instruction's answers against the manual's table on every input.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified property is implementation-invariant: the same eight answers come back on QEMU 8.2.2 and on any RV64 core, since the spec table fixes the outputs; the post verifies the div and rem contract, not how any divider circuitry produces all-ones.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the verified property holds in every privilege mode with no enable gate: no firmware register opens or closes the division answers, and the eight cases ran without consulting any machine-mode service.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the verified property removes a trap class the kernel would otherwise handle: the div instructions cannot fault on any input, so a RISC-V kernel carries no divide-error handler and its trap path never receives arithmetic distress from ordinary division.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the verified properties are the portable edge-case contract that code reasoning about division depends on: every input has a defined answer with no trap and no flag, so divisor-zero handling can rely on the all-ones quotient and dividend remainder without a guarding branch.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 16:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I wrote an eight-case assembly program this morning and read its answers off the virt UART on QEMU 8.2.2. Signed 10 divided by 0: all bits set, which reads as -1. Unsigned 10 divided by 0: all bits set, two to the 64th minus one. Signed and unsigned remainder of 10 by 0: both hand back the dividend, 10. The most-negative 64-bit integer divided by -1: the most-negative integer itself, with a zero remainder. A 32-bit divw of the most-negative 32-bit integer by -1: sign-extended 0x80000000. And the sanity case, 22 divided by 7: 3. No trap fired, no flag was set, the exception handler was never consulted. Eight answers to eight questions, three of them questions mathematics refuses to dignify.</p>
+          <pre><code>    li   a0, 10
+    li   a1, 0
+    div  s0, a0, a1
+    jal  ra, print</code></pre>
+          <p>This is not emulator generosity. It is the contract, printed in the unprivileged manual&#x27;s division corner-case table. The quotient of division by zero has all bits set. The remainder of division by zero equals the dividend. Signed division overflow, which can only happen when the most-negative integer is divided by -1, yields the dividend as the quotient and zero as the remainder. The hardware answers exactly what the table says, on every input, without exception.</p>
+          <p>The manual says why, in one of the most honest sentences in the whole spec. The designers considered raising exceptions on integer divide by zero, but this would be the only arithmetic trap in the standard ISA. Floating-point exceptions set flags and write default values but never trap, and the integer side refuses to be the exception to that rule. Where a language standard mandates that divide-by-zero changes control flow, a single branch instruction after the divide is enough, one the manual notes should be very predictably not taken. And all-ones is the natural value for divider circuitry to produce, for both signed and unsigned, which simplifies the hardware. The refusal to trap and the all-ones answer are the same decision: keep the divider dumb and honest.</p>
+          <p>That leaves the alternatives, and they both lose something. x86&#x27;s idiv, as I understand it, raises a divide-error fault on these inputs: the processor stops the world and hands you to a trap handler, because x86 carries the tradition of interrupts as the answer to arithmetic distress. Floating-point division answers differently again: it completes the operation and leaves the NV flag as a receipt, which was the subject of an earlier note. RISC-V&#x27;s integer division takes the third path: no trap, no flag, just the defined answer.</p>
+          <p>The practical shape of this is worth naming. Because div and rem are total functions, defined on every input pair, the edge case stops being special and becomes just another value to compute with. Code that divides can reason about divisor zero as arithmetic on the answers, all ones and the dividend, instead of exception handling around the call. The hardware promises the table, and the table promises no surprises.</p>
+          <p>One sentence to keep: ordinary arithmetic never traps in RISC-V, so division by zero gets an answer instead of an exception, all ones for the quotient and the dividend for the remainder.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-id-card-inside-your-cpu/">The ID Card Inside Your CPU</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">bare-metal repo: the QEMU virt conventions the read ran under <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are the misa CSR semantics the privileged specification defines: MXL equals 2 maps to RV64, twenty-six bits name the extension alphabet A through Z, G is the IMAFD plus Zicsr plus Zifencei shorthand with no G bit stored, and the WARL extensions field reverts cleared extensions to reserved behavior. The post verifies register semantics from the spec text.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified property is implementation-invariant: the same sixteen digits come back on QEMU 8.2.2 and on any RV64 core with these extensions; the post verifies the register's contract, not how any core implements it.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the verified properties are the ones boot code consumes: one CSR read names the whole machine for firmware that did not choose the chip, and the sign-bit bootstrap derives MXLEN as two to the power of (MXL plus 4) before the firmware knows the register width it stands on.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the verified property is privilege-invariance: the register is unreadable below machine mode, so kernel code reaches misa only through environment calls; the post verifies the machine-mode gate, which holds identically for every kernel.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the decode is a table lookup against the manual, not a portable computation: no invariant survives translation out of the RISC-V register encoding, and the hand decode checks a contract, not a mathematical property.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 15:10 EDT</time></p>
@@ -147100,6 +147119,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "Arithmetic over a defined bit layout is lookup, not algorithm: the truth comes from the manual's table, not from a mathematical property of the numbers."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-division-that-always-answers|ISA": {
+    "item": "the-division-that-always-answers",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified properties are the division corner cases the unprivileged specification's table defines: the quotient of division by zero has all bits set, the remainder of division by zero equals the dividend, and signed overflow, only possible when the most-negative integer is divided by -1, yields the dividend as quotient and zero as remainder. The post verifies the instruction's answers against the manual's table on every input.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified properties are the division corner cases the unprivileged specification's table defines: the quotient of division by zero has all bits set, the remainder of division by zero equals the dividend, and signed overflow, only possible when the most-negative integer is divided by -1, yields the dividend as quotient and zero as remainder. The post verifies the instruction's answers against the manual's table on every input."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: an eight-case bare-metal program (div, divu, rem, remu of 10 by 0; INT_MIN64 divided by -1 and its remainder; divw INT_MIN32 by -1; sanity 22 by 7) printed all-ones quotient, dividend remainder, INT_MIN64 quotient with zero remainder, and sign-extended 0x80000000 over the virt UART on QEMU 8.2.2, with no trap and no flag; the unprivileged manual's division corner-case table, verified against the current document this run, prescribes exactly these answers.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Division That Always Answers, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-division-that-always-answers/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are the division answers from the manual's corner-case table: all-ones quotient and dividend remainder on division by zero, dividend quotient and zero remainder on INT_MIN divided by -1, read back from hardware that traps on none of them."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is what an instruction is defined to answer on every input, the ISA slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A corner-case table is contract text: the manual prescribes the answer, and the eight-case readback is the lookup."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the program only ran on QEMU, not on silicon, so this is an emulator property, not an ISA property."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The answers are what the spec table prescribes, so any conforming core produces them; QEMU is the witness, the manual is the authority."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-division-that-always-answers|MICROARCH": {
+    "item": "the-division-that-always-answers",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the verified property is implementation-invariant: the same eight answers come back on QEMU 8.2.2 and on any RV64 core, since the spec table fixes the outputs; the post verifies the div and rem contract, not how any divider circuitry produces all-ones.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the verified property is implementation-invariant: the same eight answers come back on QEMU 8.2.2 and on any RV64 core, since the spec table fixes the outputs; the post verifies the div and rem contract, not how any divider circuitry produces all-ones."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: the same eight cases read back the same answers with no implementation detail probed, no pipeline, cache, or divider design measured; the program read outputs only, and the spec table fixes those outputs for every implementation.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Division That Always Answers, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-division-that-always-answers/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are contract outputs, not implementation behavior: the same answers are owed by every implementation, and nothing about the runs distinguishes one divider design from another."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is owed identically by every implementation, the Microarch slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A contract that pins the outputs removes the implementation from the question: the answers are the same whether the divider is dumb or clever."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that all-ones being the natural value for divider circuitry is a microarchitectural claim, and the post leans on it."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The post reports the manual's own hardware-simplification remark as motive, not as a measured claim; the verified property is the table answers, which are identical under any divider."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-division-that-always-answers|FIRMWARE": {
+    "item": "the-division-that-always-answers",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because the verified property holds in every privilege mode with no enable gate: no firmware register opens or closes the division answers, and the eight cases ran without consulting any machine-mode service.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because the verified property holds in every privilege mode with no enable gate: no firmware register opens or closes the division answers, and the eight cases ran without consulting any machine-mode service."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: the eight cases executed with no CSR read, no SBI call, and no privilege-mode change anywhere in the program; the division answers arrive with no firmware register involved.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Division That Always Answers, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-division-that-always-answers/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are mode-invariant instruction answers: div and rem need no enabling register and no firmware service, so there is no firmware gate for the analysis to turn on."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property needs no firmware enable gate and no machine-mode service, the Firmware slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "An instruction whose answers are fixed by the spec leaves firmware with nothing to decide: no knob, no gate, no role."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that firmware sets up the machine the program ran on, so firmware is load-bearing for every answer."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The setup is never the argument: firmware built the room, but the answers were fixed by the ISA contract before firmware existed."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-division-that-always-answers|KERNEL": {
+    "item": "the-division-that-always-answers",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the verified property removes a trap class the kernel would otherwise handle: the div instructions cannot fault on any input, so a RISC-V kernel carries no divide-error handler and its trap path never receives arithmetic distress from ordinary division.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the verified property removes a trap class the kernel would otherwise handle: the div instructions cannot fault on any input, so a RISC-V kernel carries no divide-error handler and its trap path never receives arithmetic distress from ordinary division."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: no trap fired across all eight cases, including the three inputs mathematics refuses to dignify; the post contrasts this with x86 idiv's divide-error fault, as I understand it, so the kernel's trap path never sees what RISC-V cannot raise.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Division That Always Answers, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-division-that-always-answers/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are the absence of a trap: eight inputs that fault on x86 produce eight answers on RISC-V, which means the kernel's trap path provably never sees a division exception."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is the absence of an exception the kernel would otherwise catch, the Kernel slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A missing trap is a design fact about the kernel's trap surface: what the ISA cannot raise, the kernel cannot be asked to handle."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the kernel never appears in the experiment, so lighting Kernel smuggles in an untested claim."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The claim tested is exactly the kernel-relevant one, that no input faults: the negative result is the whole point, and the kernel inherits the ISA's guarantee."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-division-that-always-answers|ALGORITHM": {
+    "item": "the-division-that-always-answers",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "matters at Algorithm because the verified properties are the portable edge-case contract that code reasoning about division depends on: every input has a defined answer with no trap and no flag, so divisor-zero handling can rely on the all-ones quotient and dividend remainder without a guarding branch.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Algorithm because the verified properties are the portable edge-case contract that code reasoning about division depends on: every input has a defined answer with no trap and no flag, so divisor-zero handling can rely on the all-ones quotient and dividend remainder without a guarding branch."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: the eight cases confirm div and rem are total on every input pair, with the manual's note, verified against the current document this run, that where a language standard mandates divide-by-zero change control flow, a single branch after the divide is enough.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Division That Always Answers, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-division-that-always-answers/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are total functions: div and rem are defined on every input pair, so edge-case reasoning is arithmetic on the answers, not exception handling around the call."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property turns a partial operation into a total one, the Algorithm slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A defined answer on every input is the algorithm's best friend: the edge case stops being special and becomes just another value to compute with."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the post measures hardware instructions, not an algorithm, so Algorithm has no seat."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The contract is what portable code depends on: the guarantee that division by zero returns values, not exceptions, is load-bearing for every algorithm that divides."
       }
     ],
     "inferences": [
