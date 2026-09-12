@@ -16122,5 +16122,117 @@
     "repoLabel": "GitHub: systems-lab/lab/127-sat-shl",
     "terminalLabel": "Verified lab-127-sat-shl host output",
     "showRepoLink": true
+  },
+  {
+    "id": "src-fflags-dz-divide-by-zero",
+    "kicker": "fflags DZ bit sets on fdiv.d 1.0/0.0; others stay 0",
+    "title": "fflags DZ (divide-by-zero) accrual on fdiv.d",
+    "summary": "M-mode program clearing fcsr.fflags, executing fdiv.d on 1.0 and +0.0, and verifying the DZ bit sets with no other accrued flag moving, the quotient reading +inf, then clearing back to zero.",
+    "checks": 14,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/fflags-dz-divide-by-zero",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-dz-divide-by-zero/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 checks on QEMU 8.2.2: fdiv.d on 1.0 and +0.0 sets fflags DZ with no other flag moving, the quotient reads +inf, clearing restores zero, across 3 byte-identical runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xc2e49a3a15e82680, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with FS enabled"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / fflags-dz-divide-by-zero",
+    "terminalLabel": "Verified src fflags-dz QEMU output",
+    "terminalOutput": "$ fflags-dz-divide-by-zero\nbefore: fcsr=0x0 fflags=0x0 frm=0\nafter : fcsr=0x8 fflags=0x8 frm=0\nquotient bits=0x7ff0000000000000\ncleared: fcsr=0x0 fflags=0x0 frm=0\ntraps: count=0\ntriple fcsr: before=0x0 after=0x8 cleared=0x0\nchecks=14 mismatches=0\nchecksum=0xc2e49a3a15e82680\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The F extension defines the accrued exception flags including DZ for divide-by-zero, so the observed set is the machine contract in action."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is hardware flag accrual on a divide-by-zero operation, not a software algorithm."
+      }
+    }
+  },
+  {
+    "id": "user-wait-reaps",
+    "kicker": "XV6",
+    "title": "wait reaps the zombie child exactly once, then returns -1",
+    "summary": "An xv6 user-space test forks a child that exits immediately, checks the first wait returns the child's pid with its exit status, and checks the second wait returns -1, proving the zombie was reaped exactly once.",
+    "checks": 4,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount",
+    "repoLabel": "GitHub: xv6-getscount/user/waitreaps.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4 checks on QEMU 8.2.2: fork returns child pid 4, the first wait returns pid 4 with the child's status 0, and the second wait returns -1, so the zombie was reaped exactly once; 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xC777C4C1B3F15DF, the FNV-1a fold of the fork pid, reaped pid, status, and second wait return, identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 user space, no kernel changes"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / waitreaps",
+    "terminalLabel": "Verified xv6 wait QEMU output",
+    "terminalOutput": "$ waitreaps\ncheck 1: fork returned child pid 4\ncheck 2: first wait returned pid 4, the reaped child\ncheck 3: reaped status 0, the child's exit code\ncheck 4: second wait returned -1, the zombie was reaped exactly once\nchecksum: 0xC777C4C1B3F15DF\nwait-reap results: child=4 reaped=4 status=0 secondwait=-1\nchecks: 4 mismatches: 0\nPASS: wait() reaped the zombie child exactly once, then returned -1",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the claim is about xv6's zombie reaping, not the machine contract: the module asserts wait() return values, which would behave identically on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts wait() return values across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the reaps return, never which values they report."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the wait sequence never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the verified property is the wait() reaping contract: the first wait must collect the single zombie child exactly once and the second must report -1, and the module checks both return values."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim depends on xv6's sys_wait and proc-state bookkeeping, not a portable mechanism: it states what this kernel does with a zombie child, not a computation another ISA could share."
+      }
+    },
+    "portability": null,
+    "stressItems": null
   }
 ]

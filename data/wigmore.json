@@ -112528,6 +112528,532 @@
           "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
         }
       ]
+    },
+    {
+      "item": "src-fflags-dz-divide-by-zero",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "The F extension defines the accrued exception flags including DZ for divide-by-zero, so the observed set is the machine contract in action.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The F extension defines the accrued exception flags including DZ for divide-by-zero, so the observed set is the machine contract in action."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "14 checks, 0 mismatches: clearing fcsr.fflags then executing fdiv.d on 1.0 and +0.0 set fcsr to 0x8 (DZ only) with NX, UF, OF, and NV clear; the quotient read 0x7FF0000000000000 (+inf); clearing again restored 0x0, across 3 byte-identical QEMU 8.2.2 runs.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-dz-divide-by-zero/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The RISC-V ISA manual's F extension defines the fflags accrued exception flags, including DZ for divide-by-zero, and their accrual on divide-by-zero operations.",
+          "source": {
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The observed flag set is exactly the accrual the machine contract specifies for a divide-by-zero."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The ISA layer lights when the verified claim is the machine contract observed in action."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim through the stated warrant."
+        },
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-dz-divide-by-zero",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module's assertions are fcsr read triples (before, after, cleared) plus the quotient bit pattern; no timing is measured and no memory hierarchy or pipeline state is varied.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-dz-divide-by-zero/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Flag accrual is a CSR write by the hart, independent of implementation timing or structure."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at MICROARCH when the verified property is a CSR behavior with no timing or structural component."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim through the stated warrant."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-dz-divide-by-zero",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module sets mstatus.FS to Initial and clears fcsr.fflags from M-mode before the divide; a lower privilege cannot touch these fields, and with FS off the divide would trap.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-dz-divide-by-zero/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The floating-point state the test exercises is established by machine-mode software."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "The FIRMWARE layer lights when the verified behavior depends on machine-mode setup."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim through the stated warrant."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-dz-divide-by-zero",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "The module runs bare metal with no operating system; no kernel mechanisms are involved.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module runs bare metal in M-mode with no operating system present, per the module PROOF.md.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-dz-divide-by-zero/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "With no OS, the property cannot be load-bearing for kernel work."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at KERNEL when no kernel mechanisms are involved."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim through the stated warrant."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "src-fflags-dz-divide-by-zero",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "The property is hardware flag accrual on a divide-by-zero operation, not a software algorithm.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The property is hardware flag accrual on a divide-by-zero operation, not a software algorithm."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The test executes a real fdiv.d and reads the hart's accrued flags; no software construction computes the result.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-dz-divide-by-zero/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "There is no software mechanism here to be portable: the claim is about what the hart records."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim is dim at ALGORITHM when the verified property is a hardware behavior with no software construction."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim through the stated warrant."
+        },
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "user-wait-reaps",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Not at ISA because the claim is about xv6's zombie reaping, not the machine contract: the module asserts wait() return values, which would behave identically on any RISC-V implementation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ISA because the claim is about xv6's zombie reaping, not the machine contract: the module asserts wait() return values, which would behave identically on any RISC-V implementation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log's checks are wait() return values (pid 4, pid 4, status 0, -1); no instruction semantics, CSR, trap, or memory-model property is asserted.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A claim whose checks would read the same on any implementation of the ISA does not depend on the machine contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "user-wait-reaps",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof asserts wait() return values across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the reaps return, never which values they report.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the proof asserts wait() return values across 3 byte-identical runs, never timing: pipeline or cache behavior changes how fast the reaps return, never which values they report."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "No timing measurement appears in the proof log; the checksum folds the four return values only.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A verification that never measures timing cannot depend on implementation behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "user-wait-reaps",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the wait sequence never consults a machine-mode register, and no boot-time configuration takes part.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the wait sequence never consults a machine-mode register, and no boot-time configuration takes part."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log shows the program calling fork, wait, and exit from user space with no machine-mode register reads or writes.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A user-space observation that consults no boot-time state does not depend on firmware."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "user-wait-reaps",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because the verified property is the wait() reaping contract: the first wait must collect the single zombie child exactly once and the second must report -1, and the module checks both return values.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at KERNEL because the verified property is the wait() reaping contract: the first wait must collect the single zombie child exactly once and the second must report -1, and the module checks both return values."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records fork returning pid 4, the first wait returning pid 4 with status 0, and the second wait returning -1, with the program exercising xv6's sys_wait and sys_exit path.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "When the property under test is the exact reaping rule of a kernel subsystem, the claim lives at KERNEL."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
+    },
+    {
+      "item": "user-wait-reaps",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the claim depends on xv6's sys_wait and proc-state bookkeeping, not a portable mechanism: it states what this kernel does with a zombie child, not a computation another ISA could share.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because the claim depends on xv6's sys_wait and proc-state bookkeeping, not a portable mechanism: it states what this kernel does with a zombie child, not a computation another ISA could share."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The checks are wait() return values on this kernel's process table; no portable computation is claimed.",
+          "source": {
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A claim that depends on one kernel's implementation states that kernel's behavior, not a portable mechanism."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the verdict warrant yields the slot's lit/dim verdict."
+        }
+      ]
     }
   ]
 }
