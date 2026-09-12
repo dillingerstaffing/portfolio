@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-141241">
+  <meta name="build-version" content="v20260912-150914">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-high-word-you-never-multiply-for/">The High Word You Never Multiply For</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-high-word-you-never-multiply-for|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property lives in the C abstract machine, not in any instruction set: the checks are a differential test between two C functions, the candidate and the compiler's own wider arithmetic, so no opcode, encoding, or extension behavior is in the verification loop.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-high-word-you-never-multiply-for|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the high word is a pure function of the two inputs: the splitting identity and unsigned wrap-around are fixed by the language's semantics, the checks compare arithmetic results rather than timing or cache state, and no implementation choice can change which high word the oracle produces.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-high-word-you-never-multiply-for|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the verification loop touches none of firmware's duties: no boot code, no trap delegation, no memory protection, no supervisor interface. Both sides of the differential check are ordinary C functions, the candidate and the compiler's wider arithmetic.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-high-word-you-never-multiply-for|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because no kernel mechanism is exercised or needed: the checks are a deterministic userspace differential test, both sides pure functions of their inputs, and the verdict would hold under any kernel.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-high-word-you-never-multiply-for|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the verified property is a portable computational mechanism: the 32-bit splitting identity with carry detection by single comparison works anywhere unsigned 64-bit wrap-around holds, and the checks judge it against exact arithmetic rather than against a hardware counter.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 11:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Multiply 0x100000001 by itself. The true answer is 2^64 + 2^33 + 1, so the top 64 bits are exactly 1. A small C module computes that 1 without ever forming the 128-bit product, and without any 128-bit type in the implementation. This note is about the high word of a 64-by-64 unsigned multiply, built from four 32-bit partial products and two carry bits.</p>
+          <p>The obvious attempt is (a * b) &gt;&gt; 64. It fails before it starts. In C, a * b on two uint64_t values is a 64-bit multiply: the top bits are gone by the time the shift runs. You cannot shift what the type has already discarded. Every partial product has to fit inside 64 bits from the start, which is exactly what the construction guarantees.</p>
+          <p>Split each operand into 32-bit halves: a = ah*2^32 + al, b = bh*2^32 + bl. Then a*b = ah*bh*2^64 + (al*bh + ah*bl)*2^32 + al*bl. That is grade-school long multiplication in base 2^32, and every partial product is 32 bits by 32 bits, so each lands safely inside a uint64_t. The high word is p3 + (m1 &lt;&lt; 32) + (mid &gt;&gt; 32) + c, where mid = p1 + p2 is the middle sum computed in wrapping arithmetic.</p>
+          <p>The two carry bits are the whole insight, and they are four lines of source, quoted verbatim from the module&#x27;s header:</p>
+          <pre><code>uint64_t mid = p1 + p2;
+uint64_t m1 = (mid &lt; p1);   /* 1 iff p1 + p2 wrapped */
+uint64_t s = (mid &lt;&lt; 32) + p0;
+uint64_t c = (s &lt; p0);      /* 1 iff (mid &lt;&lt; 32) + p0 wrapped */</code></pre>
+          <p>Unsigned addition in C wraps modulo 2^64, so a sum that carried is strictly smaller than either addend. That turns carry detection into a single comparison each: mid &lt; p1 is true exactly when p1 + p2 wrapped, s &lt; p0 exactly when the low-side sum wrapped. No branch, no wider type. Just the comparison reading off the wrap the arithmetic already did.</p>
+          <p>A note on what this is not. The module does use hardware multiplies: four 32-by-32 ones, one per partial product, exactly as the construction requires. What never appears is the width. The implementation contains no 128-bit type, the binary links no __umulti3 library routine, and there is no single full-width multiply of the original operands. The unsigned __int128 type lives only in the test file, as the exact oracle every check judges against. The honest frame is not multiplication without a multiplier. It is the high 64 bits of a 128-bit product without ever forming one.</p>
+          <p>The verification is honestly sliced. The backlog plan asked for exhaustive 24-bit pairs, 2^48 cases, months of single-core compute, so the shipped slice is the largest fully verifiable one: all 16,777,216 twelve-bit pairs, ten million fixed-seed 64-bit random pairs, and 4,420 directed edges including powers of two from 2^0 to 2^63. That is 26,781,636 differential checks against the oracle, zero mismatches, and the checksum of all result words is identical across the -O0, -O2, and ASan+UBSan builds. The far end of the range is where the carry accounting earns its keep: (2^64 - 1)^2 has high word 2^64 - 2, both carry lanes firing, and the suite hits it.</p>
+          <p>This is the complement of an earlier note, the one that built the low half of a product without a multiplier. That was the bottom word; this is the top word. The signed sibling needs sign-correction subtracts of the full unsigned operand; the unsigned high word needs only the splitting identity plus carry accounting. One sentence to keep: when the product is wider than the register, split the work so every carry is named, detected by one comparison, and checked.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/140-mulhi-unsigned" target="_blank" rel="noopener">lab/140-mulhi-unsigned</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-receipt-for-the-bit-that-fell-off/">The Receipt for the Bit That Fell Off</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified property is the F-extension's inexact contract: IEEE 754 defines inexact as the rounded result differing from the mathematically exact one, RISC-V accrues it in fflags bit 0 with no trap, and the module's 0x01-after-inexact versus 0x00-after-exact pair shows the contract firing exactly when the exact sum needs 54 bits and the format holds 53.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the property is implementation-invariant: the inexact definition, the NX bit position, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (with FS Off an FP instruction raises illegal-instruction), and the trap counter stays 0 across both phases.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write for a rounding, an inexact operation is detected by polling fflags after the fact, and the module's zero trap count is that discipline holding.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the eighteen checks are CSR readback assertions judged against the spec's text and the module's analytic derivation, and Kahan summation enters the post as the named customer, not as a verified computation.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 10:10 EDT</time></p>
@@ -145094,6 +145116,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "Consumption is not verification: the layer lights when the post's verified property is load-bearing for work at the layer, and what the post verifies is the flag, not the sum."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-high-word-you-never-multiply-for|ISA": {
+    "item": "the-high-word-you-never-multiply-for",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "not at ISA because the verified property lives in the C abstract machine, not in any instruction set: the checks are a differential test between two C functions, the candidate and the compiler's own wider arithmetic, so no opcode, encoding, or extension behavior is in the verification loop.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at ISA because the verified property lives in the C abstract machine, not in any instruction set: the checks are a differential test between two C functions, the candidate and the compiler's own wider arithmetic, so no opcode, encoding, or extension behavior is in the verification loop."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "All 26,781,636 checks are a differential test between mulhi_u64 and the compiler's unsigned __int128 product, both compiled from C; the PROOF.md honest-disassembly section confirms no full-width multiply of the original operands.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/140-mulhi-unsigned PROOF.md, dillingerstaffing/systems-lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The test judges a C-level construction against C-level arithmetic, so the layer that owns instruction encodings and extensions has no claim on the verdict."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A differential test lights the layer its two sides both live on: here both sides are C, so the argument lands on the portable mechanism."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the construction is motivated by missing 128-bit multiply support, which sounds like an instruction-set concern."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Motivation is not verification: the ISA-mapping test asks whether a machine instruction is executed and compared, and here none is; the construction proves the mechanism portably instead of invoking it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-high-word-you-never-multiply-for|MICROARCH": {
+    "item": "the-high-word-you-never-multiply-for",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the high word is a pure function of the two inputs: the splitting identity and unsigned wrap-around are fixed by the language's semantics, the checks compare arithmetic results rather than timing or cache state, and no implementation choice can change which high word the oracle produces.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the high word is a pure function of the two inputs: the splitting identity and unsigned wrap-around are fixed by the language's semantics, the checks compare arithmetic results rather than timing or cache state, and no implementation choice can change which high word the oracle produces."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The checks compare result words against exact arithmetic: 26,781,636 differential cases, FNV-1a checksum 0x75e84e7a670bf3fc identical across -O0, -O2, and ASan+UBSan builds, and the 4.862 ns figure is reported as work plus overhead, never as a verdict.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/140-mulhi-unsigned PROOF.md, dillingerstaffing/systems-lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verdict is about which word is correct, not how fast it arrives: identical checksums across three builds show the answer does not move with the build."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Throughput numbers are context, not claims: they light no layer unless the post argues from them."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that 4.862 ns per pair is a microarchitectural measurement."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The post never argues from the timing: the checks judge correctness against exact arithmetic, and the throughput line is one clause of lab proof-of-work."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-high-word-you-never-multiply-for|FIRMWARE": {
+    "item": "the-high-word-you-never-multiply-for",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because the verification loop touches none of firmware's duties: no boot code, no trap delegation, no memory protection, no supervisor interface. Both sides of the differential check are ordinary C functions, the candidate and the compiler's wider arithmetic.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because the verification loop touches none of firmware's duties: no boot code, no trap delegation, no memory protection, no supervisor interface. Both sides of the differential check are ordinary C functions, the candidate and the compiler's wider arithmetic."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module is a header-only C function built with the host compiler; PROOF.md shows three host builds and a differential test, with no boot, trap, or protection mechanism anywhere in the loop.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/140-mulhi-unsigned PROOF.md, dillingerstaffing/systems-lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The only contract in play is the language's unsigned wrap rule; firmware's contracts with the machine are not invoked anywhere in the verification."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The parties to a differential test decide the layers: two C functions put the argument above firmware, not in it."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that every program runs above firmware, so firmware always participates."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Participation is not load-bearing: the layer lights when the verified property depends on work at the layer, and the high word depends on arithmetic, not on any firmware mechanism."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-high-word-you-never-multiply-for|KERNEL": {
+    "item": "the-high-word-you-never-multiply-for",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because no kernel mechanism is exercised or needed: the checks are a deterministic userspace differential test, both sides pure functions of their inputs, and the verdict would hold under any kernel.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because no kernel mechanism is exercised or needed: the checks are a deterministic userspace differential test, both sides pure functions of their inputs, and the verdict would hold under any kernel."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test is a single userspace process running a differential loop; PROOF.md records no syscall, schedule, or memory-management behavior under test, only arithmetic results.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/140-mulhi-unsigned PROOF.md, dillingerstaffing/systems-lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "A deterministic function of the inputs gives the same verdict wherever it runs, so the kernel is transport, not argument."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Determinism is the tell: a pure function of the inputs leaves no room for the layer to influence the verdict."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the oracle itself is compiled and run by the host toolchain, which sits on a kernel."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The toolchain is the instrument, not the subject: the checks judge the candidate's arithmetic against exact arithmetic, and no kernel behavior enters the comparison."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-high-word-you-never-multiply-for|ALGORITHM": {
+    "item": "the-high-word-you-never-multiply-for",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "matters at Algorithm because the verified property is a portable computational mechanism: the 32-bit splitting identity with carry detection by single comparison works anywhere unsigned 64-bit wrap-around holds, and the checks judge it against exact arithmetic rather than against a hardware counter.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Algorithm because the verified property is a portable computational mechanism: the 32-bit splitting identity with carry detection by single comparison works anywhere unsigned 64-bit wrap-around holds, and the checks judge it against exact arithmetic rather than against a hardware counter."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The construction is four 32x32 partial products plus two carry comparisons, with no platform-specific code; 26,781,636 differential checks against the __int128 oracle pass with zero mismatches.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/140-mulhi-unsigned PROOF.md, dillingerstaffing/systems-lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The post proves a computation, not a contract: the identity plus the wrap rule is the mechanism, and the checks show it holds across the whole sliced input space."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Portability is a property argued in this slot: where the mechanism runs unchanged, the layer is lit."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the checks ran on one host, so the claim is host-bound."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The host is the instrument: the verified property is the identity plus C's unsigned wrap rule, both of which the standard fixes, so the mechanism travels with the language."
       }
     ],
     "inferences": [

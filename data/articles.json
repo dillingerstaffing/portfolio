@@ -1,5 +1,48 @@
 [
   {
+    "title": "The High Word You Never Multiply For",
+    "slug": "the-high-word-you-never-multiply-for",
+    "date": "2026-09-12",
+    "description": "Two 64-bit values multiply to a 128-bit product, and standard C has no 128-bit type. Split both operands into 32-bit halves, form four small partial products, and name each carry with a single unsigned comparison: the high word of the product, proved against a wider oracle.",
+    "paragraphs": [
+      "Multiply 0x100000001 by itself. The true answer is 2^64 + 2^33 + 1, so the top 64 bits are exactly 1. A small C module computes that 1 without ever forming the 128-bit product, and without any 128-bit type in the implementation. This note is about the high word of a 64-by-64 unsigned multiply, built from four 32-bit partial products and two carry bits.",
+      "The obvious attempt is (a * b) >> 64. It fails before it starts. In C, a * b on two uint64_t values is a 64-bit multiply: the top bits are gone by the time the shift runs. You cannot shift what the type has already discarded. Every partial product has to fit inside 64 bits from the start, which is exactly what the construction guarantees.",
+      "Split each operand into 32-bit halves: a = ah*2^32 + al, b = bh*2^32 + bl. Then a*b = ah*bh*2^64 + (al*bh + ah*bl)*2^32 + al*bl. That is grade-school long multiplication in base 2^32, and every partial product is 32 bits by 32 bits, so each lands safely inside a uint64_t. The high word is p3 + (m1 << 32) + (mid >> 32) + c, where mid = p1 + p2 is the middle sum computed in wrapping arithmetic.",
+      "The two carry bits are the whole insight, and they are four lines of source, quoted verbatim from the module's header:",
+      "Unsigned addition in C wraps modulo 2^64, so a sum that carried is strictly smaller than either addend. That turns carry detection into a single comparison each: mid < p1 is true exactly when p1 + p2 wrapped, s < p0 exactly when the low-side sum wrapped. No branch, no wider type. Just the comparison reading off the wrap the arithmetic already did.",
+      "A note on what this is not. The module does use hardware multiplies: four 32-by-32 ones, one per partial product, exactly as the construction requires. What never appears is the width. The implementation contains no 128-bit type, the binary links no __umulti3 library routine, and there is no single full-width multiply of the original operands. The unsigned __int128 type lives only in the test file, as the exact oracle every check judges against. The honest frame is not multiplication without a multiplier. It is the high 64 bits of a 128-bit product without ever forming one.",
+      "The verification is honestly sliced. The backlog plan asked for exhaustive 24-bit pairs, 2^48 cases, months of single-core compute, so the shipped slice is the largest fully verifiable one: all 16,777,216 twelve-bit pairs, ten million fixed-seed 64-bit random pairs, and 4,420 directed edges including powers of two from 2^0 to 2^63. That is 26,781,636 differential checks against the oracle, zero mismatches, and the checksum of all result words is identical across the -O0, -O2, and ASan+UBSan builds. The far end of the range is where the carry accounting earns its keep: (2^64 - 1)^2 has high word 2^64 - 2, both carry lanes firing, and the suite hits it.",
+      "This is the complement of an earlier note, the one that built the low half of a product without a multiplier. That was the bottom word; this is the top word. The signed sibling needs sign-correction subtracts of the full unsigned operand; the unsigned high word needs only the splitting identity plus carry accounting. One sentence to keep: when the product is wider than the register, split the work so every carry is named, detected by one comparison, and checked."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/140-mulhi-unsigned",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because the verified property lives in the C abstract machine, not in any instruction set: the checks are a differential test between two C functions, the candidate and the compiler's own wider arithmetic, so no opcode, encoding, or extension behavior is in the verification loop."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the high word is a pure function of the two inputs: the splitting identity and unsigned wrap-around are fixed by the language's semantics, the checks compare arithmetic results rather than timing or cache state, and no implementation choice can change which high word the oracle produces."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the verification loop touches none of firmware's duties: no boot code, no trap delegation, no memory protection, no supervisor interface. Both sides of the differential check are ordinary C functions, the candidate and the compiler's wider arithmetic."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because no kernel mechanism is exercised or needed: the checks are a deterministic userspace differential test, both sides pure functions of their inputs, and the verdict would hold under any kernel."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because the verified property is a portable computational mechanism: the 32-bit splitting identity with carry detection by single comparison works anywhere unsigned 64-bit wrap-around holds, and the checks judge it against exact arithmetic rather than against a hardware counter."
+      }
+    }
+  },
+  {
     "title": "The Receipt for the Bit That Fell Off",
     "slug": "the-receipt-for-the-bit-that-fell-off",
     "date": "2026-09-12",
