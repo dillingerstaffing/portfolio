@@ -961,6 +961,7 @@
           </div>
         </div>
       </header>
+      <div id="frk-blog-panel-slot"></div>
 
 
       <article class="research-note">
@@ -3366,6 +3367,7 @@ if ('serviceWorker' in navigator) {
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
   </script>
   <script src="/portfolio/feed/feed-ranker.js"></script>
+  <script src="/portfolio/feed/feed-ranker-console.js"></script>
   <script>
   (() => {
     // Blog listing: NEWEST (default, authored order) or FOR YOU (the shared
@@ -3400,16 +3402,38 @@ if ('serviceWorker' in navigator) {
     const rows = Array.from(section.querySelectorAll('article.research-note'))
       .map(itemFor).filter(Boolean);
 
+    // Session-only hides: while learning is paused, dismissing hides the
+    // post for this session without writing to the profile.
+    const sessionHidden = new Set();
+    const learningPaused = () => {
+      try { return FeedRanker.profile.isPaused(); } catch (e) { return false; }
+    };
+    let frk = null;
+    let frkWhyKey = '';
+    function frkSync() {
+      if (!frk) return;
+      const mode = sortEl.querySelector('button.is-active').dataset.sort;
+      const key = mode + '|' + rows
+        .filter(({ el }) => el.style.display !== 'none')
+        .map(({ item }) => item.id).join(',');
+      if (key !== frkWhyKey) { frkWhyKey = key; frk.sync(); }
+      else { frk.refresh(); }
+    }
+
     // Dismiss buttons are injected at runtime so new posts need no markup changes.
     rows.forEach(({ el, item }) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'research-dismiss';
       btn.setAttribute('aria-label', 'Hide this post');
-      btn.textContent = '\u00d7';
+      btn.textContent = '×';
       btn.addEventListener('click', (ev) => {
         ev.preventDefault();
-        FeedRanker.feedback.recordDismiss(item);
+        if (learningPaused()) {
+          sessionHidden.add(item.id);
+        } else {
+          FeedRanker.feedback.recordDismiss(item);
+        }
         applySort();
       });
       el.appendChild(btn);
@@ -3418,9 +3442,10 @@ if ('serviceWorker' in navigator) {
     function applySort() {
       const seen = (FeedRanker.profile.load() || {}).seen || {};
       const mode = sortEl.querySelector('button.is-active').dataset.sort;
-      let order = rows.filter(({ item }) => seen[item.id] !== 'dismissed');
+      const isHidden = (item) => seen[item.id] === 'dismissed' || sessionHidden.has(item.id);
+      let order = rows.filter(({ item }) => !isHidden(item));
       rows.forEach(({ el, item }) => {
-        el.style.display = seen[item.id] === 'dismissed' ? 'none' : '';
+        el.style.display = isHidden(item) ? 'none' : '';
       });
       if (mode === 'foryou') {
         const ranked = FeedRanker.rank(order.map((r) => r.item));
@@ -3428,6 +3453,7 @@ if ('serviceWorker' in navigator) {
         order = ranked.map((it) => byId.get(it.id)).filter(Boolean);
       }
       order.forEach(({ el }) => section.appendChild(el));
+      frkSync();
     }
 
     sortEl.addEventListener('click', (ev) => {
@@ -3436,6 +3462,23 @@ if ('serviceWorker' in navigator) {
       sortEl.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b === btn));
       applySort();
     });
+
+    if (FeedRanker.console) {
+      frk = FeedRanker.console.mount({
+        buttonHost: sortEl,
+        panelHost: document.getElementById('frk-blog-panel-slot'),
+        getMode: () => sortEl.querySelector('button.is-active').dataset.sort,
+        getItems: () => rows
+          .filter(({ el }) => el.style.display !== 'none')
+          .map(({ el, item }) => ({ id: item.id, item, el })),
+        rerank: () => applySort(),
+        placeWhy: (entry, b) => {
+          b.style.top = '52px';
+          b.style.right = '36px';
+          entry.el.appendChild(b);
+        }
+      });
+    }
 
     applySort(); // hide anything already dismissed
   })();

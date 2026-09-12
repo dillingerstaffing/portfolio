@@ -1105,6 +1105,21 @@ def build_feed_page(feed, stamp, template):
   const sorts = [...document.querySelectorAll('.feed-sort button')];
   const canRank = typeof FeedRanker !== 'undefined';
   let topic = 'all', sort = 'newest', q = '';
+  // Session-only hides: while learning is paused, dismissing hides the
+  // item for this session without writing to the profile.
+  const sessionHidden = new Set();
+  function learningPaused() {
+    if (!canRank || !FeedRanker.profile) return false;
+    try { return FeedRanker.profile.isPaused(); } catch (e) { return false; }
+  }
+  let frk = null;
+  let frkWhyKey = '';
+  function frkSync() {
+    if (!frk) return;
+    const key = sort + '|' + rows.filter(r => !r.hidden).map(r => r.dataset.id).join(',');
+    if (key !== frkWhyKey) { frkWhyKey = key; frk.sync(); }
+    else { frk.refresh(); }
+  }
   function rowItem(r) {
     return {
       id: r.dataset.id,
@@ -1127,7 +1142,7 @@ def build_feed_page(feed, stamp, template):
     for (const r of rows) {
       const okTopic = topic === 'all' || r.dataset.topics.split(' ').includes(topic);
       const okQ = !q || r.dataset.search.includes(q);
-      const show = okTopic && okQ && seen[r.dataset.id] !== 'dismissed';
+      const show = okTopic && okQ && seen[r.dataset.id] !== 'dismissed' && !sessionHidden.has(r.dataset.id);
       r.hidden = !show;
       if (show) visible.push(r);
     }
@@ -1154,6 +1169,7 @@ def build_feed_page(feed, stamp, template):
     for (const r of shown) list.appendChild(r);
     count.textContent = 'SHOWING ' + shown.length + ' OF ' + rows.length;
     empty.hidden = shown.length > 0;
+    frkSync();
   }
   search.addEventListener('input', () => {
     q = search.value.trim().toLowerCase();
@@ -1209,10 +1225,29 @@ def build_feed_page(feed, stamp, template):
         ev.stopPropagation();
         const r = d.closest('.feed-row-wrap');
         if (!r) return;
-        try { FeedRanker.feedback.recordDismiss(rowItem(r)); } catch (e) {}
+        if (learningPaused()) {
+          sessionHidden.add(r.dataset.id);
+        } else {
+          try { FeedRanker.feedback.recordDismiss(rowItem(r)); } catch (e) {}
+        }
         apply();
       });
     }
+  }
+  if (canRank && FeedRanker.console) {
+    frk = FeedRanker.console.mount({
+      buttonHost: document.querySelector('.feed-sort'),
+      panelHost: document.getElementById('frk-panel-slot'),
+      getMode: () => sort,
+      getItems: () => rows.filter(r => !r.hidden)
+        .map(r => ({ id: r.dataset.id, item: rowItem(r), el: r })),
+      rerank: () => apply(),
+      placeWhy: (entry, b) => {
+        b.style.top = '8px';
+        b.style.right = '38px';
+        entry.el.appendChild(b);
+      }
+    });
   }
   apply();
 
@@ -1316,6 +1351,7 @@ def build_feed_page(feed, stamp, template):
         <span id="feed-count" class="feed-count" aria-live="polite"></span>
       </div>
     </div>
+    <div class="frame" id="frk-panel-slot"></div>
     <section class="frame feed-list" aria-label="Curated reading">
       <div id="feed-rows">
         {"".join(rows)}
@@ -1352,6 +1388,7 @@ def build_feed_page(feed, stamp, template):
     <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">\u2197</span></a></span>
   </footer>
   <script src="feed-ranker.js"></script>
+  <script src="feed-ranker-console.js"></script>
   <script>{js}</script>
   <script>
     if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('/portfolio/sw.js'); }}
