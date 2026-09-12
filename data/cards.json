@@ -15996,5 +15996,131 @@
         "because": "The property is directed-rounding behavior of the hardware divider, not a software algorithm."
       }
     }
+  },
+  {
+    "id": "lab-119-onesc-add",
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "16-bit one's-complement adder",
+    "summary": "A 16-bit add that folds its carry back in. The sum wraps in 16-bit arithmetic, the single lost carry bit is recovered from the wrap itself (a wrapped sum smaller than one addend means a carry escaped), and that bit is added back, so 0xFFFF + 0xFFFF yields 0xFFFF instead of zero. An independent loop-folding reference, which reduces the 32-bit sum one carry at a time, agreed with the adder on every input it was checked against.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "No instruction in the RISC-V base ISA or the standard extensions performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and the carry is discarded, never folded back. The verified claim is about the C construction under the unsigned wraparound contract, which is identical on every ISA, so the machine contract adds nothing."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares adder outputs against a loop-folding reference over 10065536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict. The 3.14 ns figure is a measured cost, not part of the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap. Extension detection and machine-mode setup live above it, untouched by a 16-bit add."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "One's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack. The sibling card lab-47-ones-complement-sum ships the IPv4 checksum built on exactly this adder, and this card pins the adder itself."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "10065536 inputs checked against the loop-folding reference, the 32-bit sum reduced one carry at a time, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "65536 directed carry-forcing pairs with one operand at 0xFFFF, 10000000 fixed-seed random pairs, the 0xFFFF + 0xFFFF edge pinned to 0xFFFF"
+      ],
+      [
+        "CHECKSUM",
+        "12261447224700235540, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "3.14 ns/pair at -O2, best of 5 rounds, the timed loop includes one splitmix64 step per pair"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 119-onesc-add",
+    "terminalOutput": "$ make\ngcc -std=c11 -Wall -Wextra -Werror -D_POSIX_C_SOURCE=199309L -O2 -o test_onesc_add_o2 test_onesc_add.c onesc_add.c\n$ ./test_onesc_add_o2\nedge_pins: 4 checked, onesc_add(0xFFFF, 0xFFFF) = 0xFFFF\ndirected_65536=65536 random_pairs=10000000 total=10065536 mismatches=0\nchecksum=12261447224700235540\nthroughput: pairs=100000000 best_of_5 ns_total=314361173 ns_per_pair=3.14 sink=16386899863180\nPASS",
+    "verificationEnvironment": "Host",
+    "checks": 10065536,
+    "failures": 0,
+    "stressItems": 10065536,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/119-onesc-add",
+    "repoLabel": "GitHub: systems-lab/lab/119-onesc-add",
+    "terminalLabel": "Verified lab-119-onesc-add host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-127-sat-shl",
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "Branchless saturating 64-bit shift-left",
+    "summary": "A left shift that saturates to all-ones instead of silently losing bits. The shift amount is masked to 0-63 so no shift ever runs with an out-of-range count, the bits that would shift out are found with a two-step shift that stays defined at every amount, and a 0/1 mask merges the shifted value with all-ones exactly when overflow was detected. An independent conditional implementation agreed on every input, and a programmatic scan of the compiled object found no conditional jump in the saturating path.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "No RISC-V instruction saturates on shift: sll and sllw truncate the shifted-out bits silently, and no standard extension adds a saturating shift. The verified claim is the branchless C construction checked against a conditional C reference, with no instruction execution anywhere in the proof, so the machine contract adds nothing."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares function outputs against a conditional reference over 5194304 cases and scans the emitted object for conditional jumps: both are value and code-shape claims, not pipeline, cache, or predictor behavior. The 6.199 ns figure is a measured cost, not part of the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The function runs entirely in user space: it configures no trap vector, CSR, or privilege level, takes no trap, and touches no machine-mode state. Nothing firmware configures stands between the input and the claim."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The demo is one self-contained arithmetic function checked against a conditional reference: it enters no kernel, touches no syscall, driver, or scheduler state, and no kernel behavior was measured. The branchlessness is a compiler code-shape claim, not a claim about any kernel path."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "Saturating shift-left is a pure computational mechanism: overflow is exactly the mathematical fact that the bits shifted out are nonzero, and the construction uses only unsigned-arithmetic masks and shifts, so it ports to every ISA while the identity holds."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "5194304 inputs checked against a conditional reference, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "all 64 shift amounts 0..63 times every 16-bit value, plus 1000000 fixed-seed random pairs with amounts 0..127"
+      ],
+      [
+        "CHECKSUM",
+        "10430319035230998775, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "CODE SHAPE",
+        "the -O2 object holds 0 conditional jumps in the saturating path, decisions via setne and cmove only"
+      ],
+      [
+        "BENCHMARK",
+        "6.199 ns/value at -O2, best of 5 trials, the timed loop includes the PRNG steps"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 127-sat-shl",
+    "terminalOutput": "$ make run\ngcc -std=c11 -Wall -Wextra -Werror -D_POSIX_C_SOURCE=199309L -O2 -o test_satshl_o2 test_satshl.c satshl.c\n$ ./test_satshl_o2\nsweep_k=0..63 sweep_x=0..65535 random_pairs=1000000 total=5194304 mismatches=0\nchecksum=10430319035230998775\nthroughput: best_of_5 trials values=20000000 ns_per_value=6.199 sink=8804416366858687454\nPASS\n$ make disasm\nconditional_jumps=0 PASS",
+    "verificationEnvironment": "Host",
+    "checks": 5194304,
+    "failures": 0,
+    "stressItems": 5194304,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/127-sat-shl",
+    "repoLabel": "GitHub: systems-lab/lab/127-sat-shl",
+    "terminalLabel": "Verified lab-127-sat-shl host output",
+    "showRepoLink": true
   }
 ]

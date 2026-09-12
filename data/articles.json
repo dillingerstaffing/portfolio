@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Register That Never Interrupts You",
+    "slug": "the-register-that-never-interrupts-you",
+    "date": "2026-09-11",
+    "description": "The fcsr register steers every floating-point operation with a rounding mode and remembers what went wrong with five sticky flags, and it never raises a trap. Four bare-metal modules prove both halves of the contract on QEMU.",
+    "paragraphs": [
+      "One third has no exact double, so the true quotient of 1.0 divided by 3.0 sits between two adjacent doubles, one ulp apart. A new module ran fdiv.d 1.0/3.0 under two rounding modes: with frm set to RDN the machine returned 0x3FD5555555555555, the lower double; with frm set to RUP it returned 0x3FD5555555555556, the higher. The mode steered the answer, not the other way around.",
+      "The register that steers it is fcsr, the floating-point control and status register. It has two jobs in 32 bits. Bits 7:5 are frm, the dynamic rounding mode. Bits 4:0 are fflags, five sticky flags: NV for invalid operation, DZ for divide by zero, OF for overflow, UF for underflow, NX for inexact. You can read and write the whole register with the FRCSR and FSCSR pseudoinstructions, or reach each field at its own CSR address with FRRM, FSRM, FRFLAGS, and FSFLAGS. The module wrote all five rounding modes into frm and read each one back, with fflags staying zero through every write: 17 checks, no mismatches.",
+      "Every floating-point instruction carries its own 3-bit rm field, and that is the second steering wheel. Encode it as 111 and you get DYN, meaning ask frm. Encode anything else and the instruction's own choice wins over frm, whatever frm says. A second module proved it: static-RNE fdiv.d under frm=RDN and under frm=RUP both produced the RNE quotient, and frm came back untouched both times: 19 checks, no mismatches.",
+      "Why two mechanisms instead of one? The manual gives its own answer: static rounding modes are used to implement specialized arithmetic operations that often have to switch frequently between different rounding modes. The engineering reason underneath is global state. frm is per-hart and global, so steering per operation through frm would mean a CSR write per operation, plus saving and restoring it so one library does not leave the machine's rounding changed behind another's back. A static rm puts the choice inside the instruction: no churn, no footgun. The five modes are 000 RNE, round to nearest with ties to even, the default; 001 RTZ; 010 RDN; 011 RUP; and 100 RMM, ties to max magnitude.",
+      "Then the flags, which do the opposite of interrupting: they accrue. Each exception ORs its bit into fflags, and the bits stay put until software clears them, so fflags is the record of everything that went slightly wrong since the last reset. Two modules are the clean demonstration. Dividing 1.0 by 3.0 sets only NX, because rounding was the only thing that happened. Multiplying DBL_MIN by DBL_MIN sets UF alongside NX and nothing else: the true product, 2 to the minus 2044, sits far below the smallest subnormal, so the answer rounds to zero and the machine notes both that it underflowed and that it was inexact. The discipline is clear, compute, read:",
+      "And the why-not that completes the picture. The base ISA does not generate a trap when a floating-point exception flag sets; the F extension requires explicit checks of the flags in software. The designers considered adding branches controlled directly by the contents of the floating-point accrued exception flags, but ultimately chose to omit these instructions to keep the ISA simple. Other architectures let you unmask a flag and take a trap. RISC-V chose poll over interrupt, simple over clever. Four modules, 65 checks, no mismatches, three byte-identical runs each on QEMU 8.2.2, with the FS gate open. One sentence to carry away: floating-point control on RISC-V is a steering wheel you can hold for a single instruction and a receipt book that never interrupts."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/frm-rounding-write",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified content is the unprivileged ISA's own F-extension contract: the five frm encodings, the five fflags bits with their mnemonics, the static-rm-beats-frm rule, and the no-trap discipline are stated in the F-extension chapter, and four bare-metal modules probed each one against those statements with 65 checks, so the argument binds every compliant hart."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the verified properties are architectural constants: the frm encodings, the flag definitions, and the static-override rule are fixed bit-for-bit in the ISA text, so no implementation choice changes a readback, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because the modules run in M-mode, firmware's own privilege level: the sequence reads the boot mstatus, moves FS from Off to Initial before any floating-point instruction, and restores fcsr to zero at the end, which is the enable, configure, and leave-no-trace discipline that M-mode boot code follows around the floating-point unit."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the kernel's context switch carries fcsr with the thirty-two floating-point registers: frm must be restored so a process keeps its rounding mode, fflags must be saved and cleared so one process's inexact does not accuse another, and the no-trap discipline fixes the kernel's contract with user space as poll, never interrupt."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the verified claim is a hardware register contract read back from one machine model, not a portable computation: the frm write-readback pairs and the accrued flags are facts about QEMU 8.2.2's floating-point unit, judged against the spec's text, and no host-independent computation can reproduce a CSR readback."
+      }
+    }
+  },
+  {
     "title": "The Four Legal Ways to See Memory",
     "slug": "the-four-legal-ways-to-see-memory",
     "date": "2026-09-11",

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-000113">
+  <meta name="build-version" content="v20260912-001019">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-register-that-never-interrupts-you/">The Register That Never Interrupts You</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified content is the unprivileged ISA's own F-extension contract: the five frm encodings, the five fflags bits with their mnemonics, the static-rm-beats-frm rule, and the no-trap discipline are stated in the F-extension chapter, and four bare-metal modules probed each one against those statements with 65 checks, so the argument binds every compliant hart.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified properties are architectural constants: the frm encodings, the flag definitions, and the static-override rule are fixed bit-for-bit in the ISA text, so no implementation choice changes a readback, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the modules run in M-mode, firmware's own privilege level: the sequence reads the boot mstatus, moves FS from Off to Initial before any floating-point instruction, and restores fcsr to zero at the end, which is the enable, configure, and leave-no-trace discipline that M-mode boot code follows around the floating-point unit.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the kernel's context switch carries fcsr with the thirty-two floating-point registers: frm must be restored so a process keeps its rounding mode, fflags must be saved and cleared so one process's inexact does not accuse another, and the no-trap discipline fixes the kernel's contract with user space as poll, never interrupt.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is a hardware register contract read back from one machine model, not a portable computation: the frm write-readback pairs and the accrued flags are facts about QEMU 8.2.2's floating-point unit, judged against the spec's text, and no host-independent computation can reproduce a CSR readback.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 20:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>One third has no exact double, so the true quotient of 1.0 divided by 3.0 sits between two adjacent doubles, one ulp apart. A new module ran fdiv.d 1.0/3.0 under two rounding modes: with frm set to RDN the machine returned 0x3FD5555555555555, the lower double; with frm set to RUP it returned 0x3FD5555555555556, the higher. The mode steered the answer, not the other way around.</p>
+          <p>The register that steers it is fcsr, the floating-point control and status register. It has two jobs in 32 bits. Bits 7:5 are frm, the dynamic rounding mode. Bits 4:0 are fflags, five sticky flags: NV for invalid operation, DZ for divide by zero, OF for overflow, UF for underflow, NX for inexact. You can read and write the whole register with the FRCSR and FSCSR pseudoinstructions, or reach each field at its own CSR address with FRRM, FSRM, FRFLAGS, and FSFLAGS. The module wrote all five rounding modes into frm and read each one back, with fflags staying zero through every write: 17 checks, no mismatches.</p>
+          <p>Every floating-point instruction carries its own 3-bit rm field, and that is the second steering wheel. Encode it as 111 and you get DYN, meaning ask frm. Encode anything else and the instruction&#x27;s own choice wins over frm, whatever frm says. A second module proved it: static-RNE fdiv.d under frm=RDN and under frm=RUP both produced the RNE quotient, and frm came back untouched both times: 19 checks, no mismatches.</p>
+          <p>Why two mechanisms instead of one? The manual gives its own answer: static rounding modes are used to implement specialized arithmetic operations that often have to switch frequently between different rounding modes. The engineering reason underneath is global state. frm is per-hart and global, so steering per operation through frm would mean a CSR write per operation, plus saving and restoring it so one library does not leave the machine&#x27;s rounding changed behind another&#x27;s back. A static rm puts the choice inside the instruction: no churn, no footgun. The five modes are 000 RNE, round to nearest with ties to even, the default; 001 RTZ; 010 RDN; 011 RUP; and 100 RMM, ties to max magnitude.</p>
+          <p>Then the flags, which do the opposite of interrupting: they accrue. Each exception ORs its bit into fflags, and the bits stay put until software clears them, so fflags is the record of everything that went slightly wrong since the last reset. Two modules are the clean demonstration. Dividing 1.0 by 3.0 sets only NX, because rounding was the only thing that happened. Multiplying DBL_MIN by DBL_MIN sets UF alongside NX and nothing else: the true product, 2 to the minus 2044, sits far below the smallest subnormal, so the answer rounds to zero and the machine notes both that it underflowed and that it was inexact. The discipline is clear, compute, read:</p>
+          <pre><code>csrw fcsr, x0   # clear both fields
+...             # the arithmetic under test
+frflags t0      # the receipt</code></pre>
+          <p>And the why-not that completes the picture. The base ISA does not generate a trap when a floating-point exception flag sets; the F extension requires explicit checks of the flags in software. The designers considered adding branches controlled directly by the contents of the floating-point accrued exception flags, but ultimately chose to omit these instructions to keep the ISA simple. Other architectures let you unmask a flag and take a trap. RISC-V chose poll over interrupt, simple over clever. Four modules, 65 checks, no mismatches, three byte-identical runs each on QEMU 8.2.2, with the FS gate open. One sentence to carry away: floating-point control on RISC-V is a steering wheel you can hold for a single instruction and a receipt book that never interrupts.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/frm-rounding-write" target="_blank" rel="noopener">src/frm-rounding-write</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-four-legal-ways-to-see-memory/">The Four Legal Ways to See Memory</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-four-legal-ways-to-see-memory|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified content is the privileged specification's own contract: the four legal MODE encodings are the spec's Table 114, quoted verbatim from the pinned release, and the validator reproduces that table in C with two independently shaped implementations, so the argument binds every compliant RV64 hart rather than one machine.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-four-legal-ways-to-see-memory|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because legality of the encoding is an architectural constant: the spec's table is identical on every compliant hart, and the module draws the spec's own line between legality and support, so implementation differences can only narrow the accepted subset, never enlarge the legal universe.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-four-legal-ways-to-see-memory|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because boot firmware is the layer that actually chooses a MODE when it brings the machine up: selecting 8 versus 11 versus 15 is a firmware decision made before any kernel exists, and this validator is the machine-checkable form of the rule that choice must not violate.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-four-legal-ways-to-see-memory|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the supervisor kernel installs address spaces through satp: the legality table bounds every satp value a kernel can legitimately write, so the MODE a supervisor may select on any compliant hart comes from this table of four.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-four-legal-ways-to-see-memory|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the verification is a portable computational argument: a range predicate and a hand-transcribed table are two independent computations of the same legality function, and their agreement on all sixteen in-domain values plus six out-of-domain probes is a verdict comparison reproducible on any host.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 19:26 EDT</time></p>
@@ -129161,6 +129181,441 @@ assert(check == 0x2144DF1C);</code></pre>
           1
         ],
         "strength": "strong"
+      }
+    ]
+  },
+  "the-register-that-never-interrupts-you|ISA": {
+    "item": "the-register-that-never-interrupts-you",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified content is the unprivileged ISA's own F-extension contract: the five frm encodings, the five fflags bits with their mnemonics, the static-rm-beats-frm rule, and the no-trap discipline are stated in the F-extension chapter, and four bare-metal modules probed each one against those statements with 65 checks, so the argument binds every compliant hart.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified content is the unprivileged ISA's own F-extension contract: the five frm encodings, the five fflags bits with their mnemonics, the static-rm-beats-frm rule, and the no-trap discipline are stated in the F-extension chapter, and four bare-metal modules probed each one against those statements with 65 checks, so the argument binds every compliant hart."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The frm-rounding-write PROOF.md logs all five frm modes, RNE=0, RTZ=1, RDN=2, RUP=3, RMM=4, written with csrw fcsr and read back equal with fflags staying zero: 17 checks, 0 mismatches, checksum 0x44951e60b5903b3c.",
+        "source": {
+          "cite": "src/frm-rounding-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The unprivileged ISA F-extension chapter defines fcsr bits 7:5 as frm and bits 4:0 as the accrued flags NV, DZ, OF, UF, NX, and states that the base ISA does not generate a trap on a flag setting while the F extension requires explicit software checks.",
+        "source": {
+          "cite": "RISC-V unprivileged ISA, F extension",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The modules' measured behaviors are the F-extension's specified contract, checked against the manual's own text rather than one machine's habits."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A register contract reproduced by probing against the specification's text is a claim about the architecture."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ISA layer lights when the verified property is the machine contract that every compliant hart honors."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the frm readbacks were measured on QEMU, so they are model facts, not ISA facts."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The verdicts are comparisons against the manual's specified encodings and rules, not measurements of a machine: a readback either equals the written mode or it does not, which is why the checksums agree across runs."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured readbacks in (2) and the specified contract in (3) establish per (5) that the verified content is the architecture's own, giving (4)."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-register-that-never-interrupts-you|MICROARCH": {
+    "item": "the-register-that-never-interrupts-you",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the verified properties are architectural constants: the frm encodings, the flag definitions, and the static-override rule are fixed bit-for-bit in the ISA text, so no implementation choice changes a readback, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the verified properties are architectural constants: the frm encodings, the flag definitions, and the static-override rule are fixed bit-for-bit in the ISA text, so no implementation choice changes a readback, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md requires the frm field, bits 7:5, to equal the written mode and fflags to read zero after every write: a bit-exact contract with no timing or implementation-dependent component.",
+        "source": {
+          "cite": "src/frm-rounding-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The unprivileged ISA fixes the rounding-mode encodings and the flag meanings in its tables, and states the static-rm-override rule as architecture, admitting no per-implementation variation.",
+        "source": {
+          "cite": "RISC-V unprivileged ISA, F extension",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Every verified property is fixed by the architecture's text, so the readbacks report the contract, not the machine."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "An architecturally fixed contract is invariant across implementations."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Microarch layer stays dim when the verified property is an architectural constant that no implementation choice can change."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the quotients came out of QEMU's floating-point unit, which is an implementation."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The quotients were judged against the rounding the manual mandates, not against another implementation's structure: any compliant unit must produce the same bits."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured readbacks in (2) and the specified contract in (3) establish per (5) that the verified content is the architecture's own, giving (4)."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-register-that-never-interrupts-you|FIRMWARE": {
+    "item": "the-register-that-never-interrupts-you",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because the modules run in M-mode, firmware's own privilege level: the sequence reads the boot mstatus, moves FS from Off to Initial before any floating-point instruction, and restores fcsr to zero at the end, which is the enable, configure, and leave-no-trace discipline that M-mode boot code follows around the floating-point unit.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because the modules run in M-mode, firmware's own privilege level: the sequence reads the boot mstatus, moves FS from Off to Initial before any floating-point instruction, and restores fcsr to zero at the end, which is the enable, configure, and leave-no-trace discipline that M-mode boot code follows around the floating-point unit."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The frm-rounding-write sequence reads the boot mstatus, requires FS at 0 (Off), sets FS to Initial with csrs before any floating-point instruction, and ends by restoring fcsr to 0x00 with a final readback.",
+        "source": {
+          "cite": "src/frm-rounding-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The dynamic-vs-static module runs its probes in M-mode, the privilege level of machine-mode firmware, and requires the trap counter to stay at zero across the whole run.",
+        "source": {
+          "cite": "src/frm-dynamic-vs-static/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The modules exercise exactly the enable, configure, and restore discipline that M-mode code follows around the floating-point unit."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Machine-mode code that touches the floating-point unit must enable it, configure it, and clean up what it changed."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Firmware layer lights when the verified discipline is the one boot code must follow."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the modules are tests, not firmware, and prove nothing about boot code."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The claim is about the discipline the hardware demands of any M-mode code that touches the unit: the trap at Off, the Initial requirement, and the restore are enforced by the machine, not by the test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured readbacks in (2) and the specified contract in (3) establish per (5) that the verified content is the architecture's own, giving (4)."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-register-that-never-interrupts-you|KERNEL": {
+    "item": "the-register-that-never-interrupts-you",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the kernel's context switch carries fcsr with the thirty-two floating-point registers: frm must be restored so a process keeps its rounding mode, fflags must be saved and cleared so one process's inexact does not accuse another, and the no-trap discipline fixes the kernel's contract with user space as poll, never interrupt.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the kernel's context switch carries fcsr with the thirty-two floating-point registers: frm must be restored so a process keeps its rounding mode, fflags must be saved and cleared so one process's inexact does not accuse another, and the no-trap discipline fixes the kernel's contract with user space as poll, never interrupt."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The fflags modules prove flags accrue across operations and persist until a csrw clears them: NX alone after 1.0/3.0, UF with NX after DBL_MIN times DBL_MIN, each with zero as the cleared readback.",
+        "source": {
+          "cite": "src/fflags-nx-inexact and src/fflags-uf-underflow PROOF.md files",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-inexact/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The manual states the accrued flags record conditions since the field was last reset by software, and that the base ISA generates no trap when a flag sets, so polling is the only channel.",
+        "source": {
+          "cite": "RISC-V unprivileged ISA, F extension",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "fcsr is per-hart mutable state that survives a context switch only if the kernel carries it, and the no-trap rule fixes the kernel's side of the contract."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Per-hart control state that software can mutate must be saved and restored by whoever multiplexes the hart."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property constrains how the kernel multiplexes the machine."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the modules never ran a kernel and verified no context switch."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The lit claim is about what the verified properties demand of kernel code, not about a measured switch: sticky flags plus no traps force the save, clear, and poll discipline on any kernel that offers floating point."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured readbacks in (2) and the specified contract in (3) establish per (5) that the verified content is the architecture's own, giving (4)."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-register-that-never-interrupts-you|ALGORITHM": {
+    "item": "the-register-that-never-interrupts-you",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the verified claim is a hardware register contract read back from one machine model, not a portable computation: the frm write-readback pairs and the accrued flags are facts about QEMU 8.2.2's floating-point unit, judged against the spec's text, and no host-independent computation can reproduce a CSR readback.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the verified claim is a hardware register contract read back from one machine model, not a portable computation: the frm write-readback pairs and the accrued flags are facts about QEMU 8.2.2's floating-point unit, judged against the spec's text, and no host-independent computation can reproduce a CSR readback."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every verdict in the four modules is a CSR readback from the QEMU 8.2.2 model: frm equals the written mode, fflags equals the expected bit pattern, quotients equal the expected hex words.",
+        "source": {
+          "cite": "src/frm-rounding-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The checksums, 0x44951e60b5903b3c, 0xb3d407b627e1c2b2, 0xaaf26cfb83385742, and 0x694ad22729ed2d16, sign runs of one machine model, not a portable computation.",
+        "source": {
+          "cite": "the four fcsr family PROOF.md files",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The proofs are hardware probes of one model's register, not computations reproducible on any host."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A CSR readback cannot be recomputed on a machine without that CSR."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Algorithm layer stays dim when the verified claim is a hardware measurement rather than a portable mechanism."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the RDN versus RUP quotients are pure computations any host could repeat."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The quotients alone are portable, but the article's claim is that the hardware's frm steered them: the steering is the probe, and the probe needs the register."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The measured readbacks in (2) and the specified contract in (3) establish per (5) that the verified content is the architecture's own, giving (4)."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
       }
     ]
   }
