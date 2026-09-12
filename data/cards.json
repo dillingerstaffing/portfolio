@@ -17866,5 +17866,115 @@
     },
     "portability": null,
     "stressItems": 7
+  },
+  {
+    "id": "src-mstatus-sd-summary",
+    "kicker": "SD is the read-only Dirty summary",
+    "title": "The Bit That Watches the Float State",
+    "summary": "A bare-metal RISC-V program that proves mstatus.SD is the read-only summary bit for the FS field. SD reads 1 exactly when FS is Dirty after an fadd.d, 0 otherwise, and no software write can set it.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines SD as the read-only summary of the FS field; the card proves the exact Dirty correspondence."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because SD summarization is an architectural rule on CSR state, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware reads SD to decide whether floating-point state needs saving on a context switch."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because lazy FPU context switching keys off the Dirty state SD summarizes; the kernel must trust the summary."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a CSR summary invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sd-summary/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "15 checks against the SD summary invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "SD=1 exactly when FS=Dirty after fadd.d, 0 traps"
+      ],
+      [
+        "CHECKSUM",
+        "0xcd8421132251ca67, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-sd-summary",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "mstatus-sd-summary: mstatus.SD tracks the FS Dirty state<br>after-fadd: mstatus=0x8000000a00006000 FS=3 SD=1 f0bits=0x400e000000000000<br>sd-probe: mstatus=0xa00002000 SD=0 FS=1 (expect SD=0 FS=1)<br>traps=0<br>checks=15 mismatches=0<br>checksum=0xcd8421132251ca67<br>RESULT: PASS",
+    "terminalName": "qemu / riscv64 / mstatus-sd-summary.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 15,
+    "failures": 0
+  },
+  {
+    "id": "src-mcounteren-cy-u-read",
+    "kicker": "mcounteren.CY gates U-mode rdcycle",
+    "title": "The Gate on the Cycle Counter",
+    "summary": "A bare-metal RISC-V program that proves mcounteren.CY gates U-mode rdcycle. With CY set the read succeeds with increasing samples; with CY clear the same read raises illegal-instruction and the destination keeps its sentinel.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines mcounteren.CY as the M-level gate on U-mode cycle reads; the card proves both directions of the gate."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because counter gating is an architectural access rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware owns mcounteren; the gate is its policy for exposing cycle counts to user mode."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because the card proves the M-level hardware gate, not any kernel scheduling or timing policy."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is an access-control invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "22 checks against the counter-gate invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "CY set: rdcycle succeeds; CY clear: illegal-instruction with scause 0x2, sentinel preserved"
+      ],
+      [
+        "CHECKSUM",
+        "0x0f857e15c046194f, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-u-read",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "mcounteren.CY gates U-mode rdcycle\nphase A: rdcycle succeeds with CY set\nphase B: rdcycle traps illegal-instruction with CY clear\nchecksum = 0x0f857e15c046194f\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / mcounteren-cy-u-read.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 22,
+    "failures": 0
   }
 ]
