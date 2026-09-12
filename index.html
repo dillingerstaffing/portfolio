@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-050050">
+  <meta name="build-version" content="v20260912-050851">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-division-that-isnt/">The Division That Isn't</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified content is the F/D chapters' invalid-operation contract: 0.0/0.0 raises NV alone, the quotient is the canonical quiet NaN, and no trap fires. The module probes all three halves against the manual's statements: the fcsr triple 0x0 to 0x10 to 0x0, the 0x7FF8000000000000 quotient readback, and the trap counter at zero. The canonical-NaN wording and the payload-refusal reasoning are the spec's own.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the values under test are architectural constants: the NV definition, the canonical NaN pattern, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback. The proof never times anything, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (Off would raise illegal-instruction), installs an M-mode trap handler as the witness, and reads the trap counter back at zero. That is the enable, arm, and leave-no-trace discipline of M-mode boot code around the floating-point unit.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write, an invalid operation is detected by polling fflags after the computation, and fflags is per-hart state the context switch must save and clear so one process's invalid never accuses another.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the fourteen checks are CSR readback assertions judged against the spec's text, and no host-independent computation can reproduce an fcsr readback. The indeterminate-form mathematics motivates the rule, but the proof targets the flag, not the math.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 01:15 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Clear fcsr to 0x00, execute one fdiv.d of 0.0 by 0.0, read fcsr back: 0x10. The NV bit, bit 4, stands alone: NX, UF, OF, and DZ all clear, the rounding mode still RNE, the trap counter at zero. The quotient comes back as 0x7FF8000000000000. Fourteen checks, zero mismatches, three byte-identical runs on QEMU 8.2.2. But the interesting half of this proof is not the checks; it is why the standard declares this operation invalid in the first place.</p>
+          <p>Divide 1.0 by 0.0 and the answer is honest: positive infinity, with the DZ flag raised. The earlier divide-by-zero module probed exactly that case. But 0.0 divided by 0.0 has no answer, because the limit depends on how you approach it: x over x tends to 1, 2x over x tends to 2, x-squared over x tends to 0. The arithmetic cannot name a number, so it must not name one. Infinity minus infinity, infinity times zero, and the square root of a negative number sit in the same box, and IEEE 754 gathers them all under one heading: invalid operation.</p>
+          <p>The obvious design would be to stop the machine: raise a trap and hand the program an exception. SPARC did exactly that, with hardware trap-enable modes for each flag. RISC-V refused the wire. Its rule is quieter: return a NaN, set the NV bit, keep going. And a NaN is not evasive, it is engineered. Feed a NaN into further arithmetic and a NaN comes back out, so the error rides the data all the way to wherever you finally look. Finish the work, then read the receipt. One register that remembers, no wire that interrupts. The NaN you get is always the canonical one, 0x7FF8000000000000 for a double: positive sign, all significand bits clear except the quiet bit, in the manual&#x27;s own words. Carrying the error&#x27;s origin in payload bits was considered and refused: the manual states plainly that it would have raised the hardware cost, and since payloads are optional in the standard they cannot be used in portable code.</p>
+          <p>The module is built so the only floating-point actor in the room is the FPU. It compiles for rv64imac_zicsr, which has no F or D, so the C compiler cannot even name the float registers; the operands travel from integer registers through fmv.d.x, and the divide runs inside volatile in-asm so the compiler cannot fold 0.0/0.0 at compile time. A bare fdiv.d assembles with the dynamic rounding mode, so the source spells out the ,rne. The whole divide is five lines:</p>
+          <pre><code>__asm__ volatile(
+    &quot;fmv.d.x f2, %1\n\t&quot;   /* +0.0 as a bit pattern, into f2 */
+    &quot;fmv.d.x f3, %2\n\t&quot;   /* +0.0 as a bit pattern, into f3 */
+    &quot;fdiv.d f1, f2, f3, rne\n\t&quot; /* the real instruction under test */
+    &quot;fmv.x.d %0, f1\n\t&quot;); /* quotient back through an integer register */</code></pre>
+          <p>Fourteen checks proved three things at once: the operation admits it has no answer, the bit remembers that it happened, and the machine never stops. One sentence to carry away: an operation with no answer returns a value that admits it, sets a bit that remembers it, and lets the machine keep going.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fflags-nv-invalid" target="_blank" rel="noopener">src/fflags-nv-invalid</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-switch-with-nothing-behind-it/">The Switch With Nothing Behind It</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because menvcfg is a privileged CSR whose bit 62 the spec defines as the Svpbmt enable; the module proves the WARL contract holds, writing 1 reads back 0 on a hart without the extension, and the PBMT vocabulary the bit gates is PTE bits 62:61 in leaf entries.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the legalization is an architectural choice visible to software, not a pipeline, cache, or predictor behavior: the proof reads back register values, never times anything, and the verdict would be identical on any microarchitecture implementing the same privileged spec.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because menvcfg is M-mode only, so only machine-mode firmware can probe the WARL field or flip the enable; the article's lesson is that firmware must measure rather than assume, and the henvcfg read-only-zero rule is the same privilege ladder M-mode enforces everywhere.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because menvcfg is unreachable from S-mode: a supervisor kernel can neither set PBMTE nor observe its readback, so the verified legalization is identical no matter what the kernel does, and the PBMT field the OS would use sits behind a gate the kernel cannot touch.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism is under test: the six checks are register readback assertions, and the FNV-1a checksum only collapses the measured values into one checkable number, so the verdict would stand under any other hash.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 00:11 EDT</time></p>
@@ -138653,6 +138674,441 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "the-division-that-isnt|ISA": {
+    "item": "the-division-that-isnt",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified content is the F/D chapters' invalid-operation contract: 0.0/0.0 raises NV alone, the quotient is the canonical quiet NaN, and no trap fires. The module probes all three halves against the manual's statements: the fcsr triple 0x0 to 0x10 to 0x0, the 0x7FF8000000000000 quotient readback, and the trap counter at zero. The canonical-NaN wording and the payload-refusal reasoning are the spec's own.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified content is the F/D chapters' invalid-operation contract: 0.0/0.0 raises NV alone, the quotient is the canonical quiet NaN, and no trap fires. The module probes all three halves against the manual's statements: the fcsr triple 0x0 to 0x10 to 0x0, the 0x7FF8000000000000 quotient readback, and the trap counter at zero. The canonical-NaN wording and the payload-refusal reasoning are the spec's own."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the fcsr triple 0x0 to 0x10 to 0x0 across the 0.0/0.0 divide, the quotient readback 0x7FF8000000000000, and a trap counter of 0.",
+        "source": {
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V specification's F/D chapters state the invalid-operation contract: a quiet NaN result, the NV flag raised, no trap; the canonical NaN has a positive sign and all significand bits clear except the quiet bit.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about specified floating-point behavior, provable only against the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim proved from an instruction's specified flag behavior is a claim about the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ISA layer lights when the verified property is the specified behavior of an instruction or its flag side effects."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the module only observes a QEMU model, not silicon."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The contract under test is what the spec requires of any implementation; the module asserts only what the spec and this hart guarantee, and QEMU's answer is one legal answer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-division-that-isnt|MICROARCH": {
+    "item": "the-division-that-isnt",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the values under test are architectural constants: the NV definition, the canonical NaN pattern, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback. The proof never times anything, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the values under test are architectural constants: the NV definition, the canonical NaN pattern, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback. The proof never times anything, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md reports only register readbacks and bit patterns: fcsr values, the quotient bits, the trap count. No measurement in the proof times anything.",
+        "source": {
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V specification fixes the NV definition, the canonical NaN pattern, and the accrue-without-trapping rule in the ISA text, leaving no implementation choice that could change a readback.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The claim is decided by comparing readbacks to specified constants, so it carries no information about any pipeline, cache, or predictor."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A test that only compares register readbacks to specified constants cannot discriminate between microarchitectures."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Microarch layer stays dim when the verified property would read identically on every implementation of the same spec."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that different FPUs might implement the divide differently."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "Any difference an implementation introduced would be a spec violation, so the verdict follows the contract, not the model."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-division-that-isnt|FIRMWARE": {
+    "item": "the-division-that-isnt",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (Off would raise illegal-instruction), installs an M-mode trap handler as the witness, and reads the trap counter back at zero. That is the enable, arm, and leave-no-trace discipline of M-mode boot code around the floating-point unit.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (Off would raise illegal-instruction), installs an M-mode trap handler as the witness, and reads the trap counter back at zero. That is the enable, arm, and leave-no-trace discipline of M-mode boot code around the floating-point unit."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the M-mode sequence: boot mstatus read, FS moved from Off to Initial before any floating-point instruction, an M-mode trap handler installed as the witness, and the trap counter read back at 0.",
+        "source": {
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification makes mstatus.FS gate all floating-point use: with FS Off, an FP instruction raises illegal-instruction, so M-mode code must enable the unit before touching it.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is load-bearing for the code that enables and configures the floating-point unit at the machine's highest privilege level."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Setup and teardown discipline around a gated hardware unit is firmware work: enable before use, witness during, leave no trace after."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Firmware layer lights when the verified property is load-bearing for machine-mode enable, configure, or witness duties."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that fcsr itself is accessible at every privilege level."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The register is, but the FS enable gate and the M-mode trap witness are not: the experiment's scaffolding is firmware's, even where the register is everyone's."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-division-that-isnt|KERNEL": {
+    "item": "the-division-that-isnt",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write, an invalid operation is detected by polling fflags after the computation, and fflags is per-hart state the context switch must save and clear so one process's invalid never accuses another.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write, an invalid operation is detected by polling fflags after the computation, and fflags is per-hart state the context switch must save and clear so one process's invalid never accuses another."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the trap counter at 0 after the divide: the invalid operation raised NV in fflags and never entered a trap handler.",
+        "source": {
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V specification's F/D chapters require accrued exception flags with no trap wire: detection is by explicit software checks of fflags.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property fixes what a kernel must and must not do around floating-point exceptions: no trap path, poll the flags, save and clear per hart."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A hardware discipline of poll-never-interrupt sets the kernel's contract with user space: the kernel fields nothing and accounts per process."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property is load-bearing for the kernel's exception-path design or its per-process state duties."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that xv6-class kernels run with the FPU off and never touch fflags."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "That choice is itself the contract this property informs: knowing the invalid operation cannot trap is what lets a kernel safely ignore the whole exception class."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-division-that-isnt|ALGORITHM": {
+    "item": "the-division-that-isnt",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the fourteen checks are CSR readback assertions judged against the spec's text, and no host-independent computation can reproduce an fcsr readback. The indeterminate-form mathematics motivates the rule, but the proof targets the flag, not the math.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the fourteen checks are CSR readback assertions judged against the spec's text, and no host-independent computation can reproduce an fcsr readback. The indeterminate-form mathematics motivates the rule, but the proof targets the flag, not the math."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md's fourteen checks are assertions on CSR readbacks: fcsr before, during, and after the divide, the quotient bit pattern, the trap count.",
+        "source": {
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V specification's F/D chapters describe the flag contract as specified behavior of the FPU, not as a computational procedure a program implements.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified claim is about what the hardware reports, not about a computation the reader could reimplement."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A test whose verdict is a register readback cannot be reproduced by a host-independent algorithm."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Algorithm layer stays dim when no computational mechanism is under test, whatever mathematics motivates the rule."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the indeterminate-form argument is itself algorithmic mathematics."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "It motivates the rule but the checks never execute it: the proof targets the flag the hardware raises, not the limit the analysis takes."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
       }
     ]
   }

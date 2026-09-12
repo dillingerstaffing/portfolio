@@ -949,6 +949,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Division That Isn't</h3>
+          <!-- LAYER-STRIP:the-division-that-isnt -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 01:15 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Clear fcsr to 0x00, execute one fdiv.d of 0.0 by 0.0, read fcsr back: 0x10. The NV bit, bit 4, stands alone: NX, UF, OF, and DZ all clear, the rounding mode still RNE, the trap counter at zero. The quotient comes back as 0x7FF8000000000000. Fourteen checks, zero mismatches, three byte-identical runs on QEMU 8.2.2. But the interesting half of this proof is not the checks; it is why the standard declares this operation invalid in the first place.</p>
+          <p>Divide 1.0 by 0.0 and the answer is honest: positive infinity, with the DZ flag raised. The earlier divide-by-zero module probed exactly that case. But 0.0 divided by 0.0 has no answer, because the limit depends on how you approach it: x over x tends to 1, 2x over x tends to 2, x-squared over x tends to 0. The arithmetic cannot name a number, so it must not name one. Infinity minus infinity, infinity times zero, and the square root of a negative number sit in the same box, and IEEE 754 gathers them all under one heading: invalid operation.</p>
+          <p>The obvious design would be to stop the machine: raise a trap and hand the program an exception. SPARC did exactly that, with hardware trap-enable modes for each flag. RISC-V refused the wire. Its rule is quieter: return a NaN, set the NV bit, keep going. And a NaN is not evasive, it is engineered. Feed a NaN into further arithmetic and a NaN comes back out, so the error rides the data all the way to wherever you finally look. Finish the work, then read the receipt. One register that remembers, no wire that interrupts. The NaN you get is always the canonical one, 0x7FF8000000000000 for a double: positive sign, all significand bits clear except the quiet bit, in the manual&#x27;s own words. Carrying the error&#x27;s origin in payload bits was considered and refused: the manual states plainly that it would have raised the hardware cost, and since payloads are optional in the standard they cannot be used in portable code.</p>
+          <p>The module is built so the only floating-point actor in the room is the FPU. It compiles for rv64imac_zicsr, which has no F or D, so the C compiler cannot even name the float registers; the operands travel from integer registers through fmv.d.x, and the divide runs inside volatile in-asm so the compiler cannot fold 0.0/0.0 at compile time. A bare fdiv.d assembles with the dynamic rounding mode, so the source spells out the ,rne. The whole divide is five lines:</p>
+          <pre><code>__asm__ volatile(
+    &quot;fmv.d.x f2, %1\n\t&quot;   /* +0.0 as a bit pattern, into f2 */
+    &quot;fmv.d.x f3, %2\n\t&quot;   /* +0.0 as a bit pattern, into f3 */
+    &quot;fdiv.d f1, f2, f3, rne\n\t&quot; /* the real instruction under test */
+    &quot;fmv.x.d %0, f1\n\t&quot;); /* quotient back through an integer register */</code></pre>
+          <p>Fourteen checks proved three things at once: the operation admits it has no answer, the bit remembers that it happened, and the machine never stops. One sentence to carry away: an operation with no answer returns a value that admits it, sets a bit that remembers it, and lets the machine keep going.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fflags-nv-invalid" target="_blank" rel="noopener">src/fflags-nv-invalid</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Switch With Nothing Behind It</h3>
           <!-- LAYER-STRIP:the-switch-with-nothing-behind-it -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 00:11 EDT</time></p>
