@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-171035">
+  <meta name="build-version" content="v20260912-181142">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-eight-bytes-that-became-four/">The Eight Bytes That Became Four</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">bare-metal repo: the object files where the relaxation was observed <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are what the psABI contract says the call sequence may become: AUIPC plus JALR relaxes to a single JAL inside minus one mebibyte to plus one mebibyte minus two, and R_RISCV_CALL_PLT names the destination while R_RISCV_RELAX names nothing at all. The post verifies relocation semantics from the spec text.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because no pipeline, cache, or predictor behavior was measured or is at issue: the before and after are linker-time bytes, and the distance test is a static layout check, not a property of any core.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no privilege contract enters: the relocation table, the auipc and jalr encodings, and the psABI rule live entirely in the build toolchain and the ELF contract, needing no trap, no delegation, and no machine-mode enable gate.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because no address translation, scheduling, or syscall behavior is verified: the shrink happens before the program ever runs, and the addresses the linker rewrites are link-time layout facts, not runtime mappings.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the mechanism is a toolchain rewrite, not a portable computation: no invariant survives translation out of the RISC-V toolchain, and the range test is a linker policy on instruction bytes, not a mathematical property.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 14:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Disassemble a RISC-V object file and look at a call. Where the C source had one function call, you find two instructions: auipc ra, 0x0 followed by jalr ra. Eight bytes of conservative reach. Link the same objects with the default linker and disassemble again. The pair is gone, and in its place stands one instruction: jal 80000016 &lt;target&gt;, encoding 0x00e000ef. The .text section shrank from 40 bytes to 36, exactly the four bytes the auipc had cost. Run the link a second time with --no-relax and the pair survives, both instructions standing where the compiler left them. The control experiment is what turns the observation into an argument.</p>
+          <pre><code>auipc   ra, 0x0      ; R_RISCV_CALL_PLT -&gt; target()
+jalr    ra           ; R_RISCV_RELAX -&gt; *ABS*
+
+linked, relaxation on:
+
+jal     80000016 &lt;target&gt;      ; 0x00e000ef
+.text: 40 bytes -&gt; 36 bytes</code></pre>
+          <p>The compiler writes the call that works everywhere because it writes blind. target() lives in another translation unit, and at compile time its address is genuinely unknowable. So the compiler emits the sequence that reaches anywhere: auipc covers plus or minus two gigabytes, jalr carries the low twelve bits, and together they can call any address in a flat four-gigabyte window. To ask for a short jump at compile time is to ask the compiler to know the layout, the one thing it cannot see.</p>
+          <p>The linker is the one moment in the whole toolchain when someone sees the entire layout at once. The RISC-V ELF psABI names the rule: an AUIPC plus JALR pair may be relaxed to a single JAL when the procedure sits within minus one mebibyte to plus one mebibyte minus two of the call site. When that distance test passes, the linker deletes the auipc and stitches the jump. Nothing else moves except the bytes after the deleted instruction, whose addresses the linker fixes up. Eight bytes in, four bytes out, decided by a range check.</p>
+          <p>How does the linker know it is allowed to touch the sequence at all? The relocation table says so. The auipc line carries two relocations. R_RISCV_CALL_PLT names target(), the destination. R_RISCV_RELAX points at *ABS*, absolute nothing. It names no destination at all. The relaxation annotation is a permission slip taped to the instruction sequence itself, separate from the relocation that says where the call goes. The address answers where. The slip answers whether the sequence may be rewritten.</p>
+          <p>Two footnotes from the spec text, both confirmed in the same session. First, R_RISCV_CALL itself is deprecated; the psABI says to use R_RISCV_CALL_PLT instead, and the compiler obliged, emitting CALL_PLT even for a plain static non-PIC call. Second, the assembler manual notes that a region marked .option relax emits R_RISCV_RELAX even when the linker would not relax. The sequence asks. The linker answers. The mark is a request, not a promise.</p>
+          <p>One sentence to keep: the compiler writes the call that works everywhere, and the linker, once it finally knows the addresses, writes the call that was always meant.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-register-that-is-always-zero/">The Register That Is Always Zero</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/smp/spinlock.c" target="_blank" rel="noopener">spin_unlock in spinlock.c clears the lock with sw zero, 0(%0) <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are instruction encodings and their architecturally defined semantics: mv a0,a1 assembles to addi a0,a1,0 and disassembles as 0x00058513, the nop, ret, neg, and csrr idioms are writes to x0 ignored or reads from x0 as zero, and the manual's own sentences fix the canonical NOP and its cost rationale. The post verifies what the contract says the mnemonics mean.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the post's only implementation-adjacent sentence, the manual's claim that ADDI is the cheapest NOP across a range of systems, arrives as a rationale quoted from the spec and never as a measured property of any pipeline or core: the verified facts are assembler input and disassembler output, identical on every implementation that honors the contract.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no privilege-level contract enters the argument: csrr a3,mstatus appears only as an encoding idiom, csrrs with rs1 set to x0 so the read happens without a write, and the verified properties, assembler and disassembler behavior plus spec sentences, need no trap, no delegation, and no machine-mode enable gate.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the argument never leaves user-visible assembler and contract text: no scheduling decision, no address mapping, and no syscall or driver behavior is verified anywhere in the post, and the question it answers is what the mnemonics mean, not what the supervisor does.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because every idiom is x0 semantics made concrete: each line names the zero register as a source or a destination of a RISC-V instruction, so the family cannot survive translation to another instruction set as a portable mechanism. The mnemonics differ; the contract's zero is what they share.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 13:05 EDT</time></p>
@@ -146299,6 +146321,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "The principle is portable; the verified properties are not. The note verifies encodings and mnemonics, not the principle, so the slot judges the idioms as shown, which are RISC-V all the way down."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-eight-bytes-that-became-four|ISA": {
+    "item": "the-eight-bytes-that-became-four",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified properties are what the psABI contract says the call sequence may become: AUIPC plus JALR relaxes to a single JAL inside minus one mebibyte to plus one mebibyte minus two, and R_RISCV_CALL_PLT names the destination while R_RISCV_RELAX names nothing at all. The post verifies relocation semantics from the spec text.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified properties are what the psABI contract says the call sequence may become: AUIPC plus JALR relaxes to a single JAL inside minus one mebibyte to plus one mebibyte minus two, and R_RISCV_CALL_PLT names the destination while R_RISCV_RELAX names nothing at all. The post verifies relocation semantics from the spec text."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The object-file disassembly read firsthand: the auipc line carries R_RISCV_CALL_PLT naming the symbol target and R_RISCV_RELAX pointing at absolute nothing, the linked binary shows a single jal to the target with encoding 0x00e000ef, the text section 40 bytes to 36, and the no-relax control leaves the pair standing. The psABI deprecation of R_RISCV_CALL and the dot-option relax sentence were read from the spec text.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Eight Bytes That Became Four, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-eight-bytes-that-became-four/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are relocation semantics from the spec text: which annotation names the destination, which names nothing, and the exact range inside which the pair may become one instruction."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is a contract-level rule about how machine code may be rewritten, the ISA slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A relocation that points at absolute nothing is itself contract text: the permission to rewrite lives in the object file format, which is what the psABI governs."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that no instruction was ever executed, so this is linker behavior, not ISA."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The psABI is the contract between the toolchain and the instruction set: the range rule and the relocation semantics constrain every conforming linker, which is exactly what an ISA claim is."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-eight-bytes-that-became-four|MICROARCH": {
+    "item": "the-eight-bytes-that-became-four",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because no pipeline, cache, or predictor behavior was measured or is at issue: the before and after are linker-time bytes, and the distance test is a static layout check, not a property of any core.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because no pipeline, cache, or predictor behavior was measured or is at issue: the before and after are linker-time bytes, and the distance test is a static layout check, not a property of any core."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The object-file disassembly read firsthand: the auipc line carries R_RISCV_CALL_PLT naming the symbol target and R_RISCV_RELAX pointing at absolute nothing, the linked binary shows a single jal to the target with encoding 0x00e000ef, the text section 40 bytes to 36, and the no-relax control leaves the pair standing. The psABI deprecation of R_RISCV_CALL and the dot-option relax sentence were read from the spec text.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Eight Bytes That Became Four, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-eight-bytes-that-became-four/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are bytes on disk before and after linking: the shrink is decided by a static distance check over the layout, and nothing about fetch, decode, or execution was measured."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is decided entirely at link time with no execution involved, no microarchitectural slot applies."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A distance check over a static layout is a build-time property: it is identical on every core that honors the contract, because no core ever sees the unrelaxed bytes."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that one instruction instead of two changes fetch and decode behavior on real cores."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The post never claims a measured microarchitectural effect: it claims the bytes changed, and the range rule that authorized the change. The fetch implication is left unstated, as it should be."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-eight-bytes-that-became-four|FIRMWARE": {
+    "item": "the-eight-bytes-that-became-four",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because no privilege contract enters: the relocation table, the auipc and jalr encodings, and the psABI rule live entirely in the build toolchain and the ELF contract, needing no trap, no delegation, and no machine-mode enable gate.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because no privilege contract enters: the relocation table, the auipc and jalr encodings, and the psABI rule live entirely in the build toolchain and the ELF contract, needing no trap, no delegation, and no machine-mode enable gate."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The object-file disassembly read firsthand: the auipc line carries R_RISCV_CALL_PLT naming the symbol target and R_RISCV_RELAX pointing at absolute nothing, the linked binary shows a single jal to the target with encoding 0x00e000ef, the text section 40 bytes to 36, and the no-relax control leaves the pair standing. The psABI deprecation of R_RISCV_CALL and the dot-option relax sentence were read from the spec text.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Eight Bytes That Became Four, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-eight-bytes-that-became-four/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts live in the object file and the ELF contract: relocation tables, assembler directives, and the psABI text, with no trap, delegation, or privilege gate anywhere in the argument."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When no privilege-level contract enters the verified facts, the Firmware slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The relaxation decision is made by the linker before the program exists as a running image: firmware only meets the program after the bytes are final."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that firmware toolchains link bare-metal code, so the linker is firmware-adjacent."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Proximity is not involvement: the rule would fire identically for a userspace binary, a kernel, or firmware, and the post verifies none of their privilege behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-eight-bytes-that-became-four|KERNEL": {
+    "item": "the-eight-bytes-that-became-four",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because no address translation, scheduling, or syscall behavior is verified: the shrink happens before the program ever runs, and the addresses the linker rewrites are link-time layout facts, not runtime mappings.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because no address translation, scheduling, or syscall behavior is verified: the shrink happens before the program ever runs, and the addresses the linker rewrites are link-time layout facts, not runtime mappings."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The object-file disassembly read firsthand: the auipc line carries R_RISCV_CALL_PLT naming the symbol target and R_RISCV_RELAX pointing at absolute nothing, the linked binary shows a single jal to the target with encoding 0x00e000ef, the text section 40 bytes to 36, and the no-relax control leaves the pair standing. The psABI deprecation of R_RISCV_CALL and the dot-option relax sentence were read from the spec text.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Eight Bytes That Became Four, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-eight-bytes-that-became-four/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are link-time layout facts: the addresses the linker rewrites are decided before any page table, scheduler, or syscall exists."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is established before the program runs, the Kernel slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A linker fixing up addresses after deleting an instruction is not address translation: no satp, no page walk, no runtime mapping is verified anywhere in the post."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the addresses involved are virtual addresses, which are the kernel's business."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The addresses are virtual in name only at link time: they are layout slots the linker assigns, and no running kernel ever verified or translated them in this experiment."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-eight-bytes-that-became-four|ALGORITHM": {
+    "item": "the-eight-bytes-that-became-four",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the mechanism is a toolchain rewrite, not a portable computation: no invariant survives translation out of the RISC-V toolchain, and the range test is a linker policy on instruction bytes, not a mathematical property.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the mechanism is a toolchain rewrite, not a portable computation: no invariant survives translation out of the RISC-V toolchain, and the range test is a linker policy on instruction bytes, not a mathematical property."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The object-file disassembly read firsthand: the auipc line carries R_RISCV_CALL_PLT naming the symbol target and R_RISCV_RELAX pointing at absolute nothing, the linked binary shows a single jal to the target with encoding 0x00e000ef, the text section 40 bytes to 36, and the no-relax control leaves the pair standing. The psABI deprecation of R_RISCV_CALL and the dot-option relax sentence were read from the spec text.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Eight Bytes That Became Four, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-eight-bytes-that-became-four/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are a toolchain rewrite authorized by a range policy: nothing in the argument is a portable computation with an invariant that survives leaving the RISC-V toolchain."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the mechanism is a build-tool rewrite rather than a computation, the Algorithm slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Portability requires the idea to survive translation: the minus-one-mebibyte range is a property of the RISC-V psABI, meaningless outside it."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the range test is arithmetic, hence algorithmic."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Arithmetic in service of a policy is not the mechanism: the insight is the permission-slip split in the relocation design, and a range check alone is not a portable invariant."
       }
     ],
     "inferences": [

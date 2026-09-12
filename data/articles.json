@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Eight Bytes That Became Four",
+    "slug": "the-eight-bytes-that-became-four",
+    "date": "2026-09-12",
+    "description": "Every call in a RISC-V object file starts as two instructions, auipc plus jalr: eight bytes that can reach anywhere. The linker deletes one when the target is close, and the pair becomes a single jal. How R_RISCV_RELAX marks the sequence that may shrink, and the 1 MB range rule that decides.",
+    "paragraphs": [
+      "Disassemble a RISC-V object file and look at a call. Where the C source had one function call, you find two instructions: auipc ra, 0x0 followed by jalr ra. Eight bytes of conservative reach. Link the same objects with the default linker and disassemble again. The pair is gone, and in its place stands one instruction: jal 80000016 <target>, encoding 0x00e000ef. The .text section shrank from 40 bytes to 36, exactly the four bytes the auipc had cost. Run the link a second time with --no-relax and the pair survives, both instructions standing where the compiler left them. The control experiment is what turns the observation into an argument.",
+      "The compiler writes the call that works everywhere because it writes blind. target() lives in another translation unit, and at compile time its address is genuinely unknowable. So the compiler emits the sequence that reaches anywhere: auipc covers plus or minus two gigabytes, jalr carries the low twelve bits, and together they can call any address in a flat four-gigabyte window. To ask for a short jump at compile time is to ask the compiler to know the layout, the one thing it cannot see.",
+      "The linker is the one moment in the whole toolchain when someone sees the entire layout at once. The RISC-V ELF psABI names the rule: an AUIPC plus JALR pair may be relaxed to a single JAL when the procedure sits within minus one mebibyte to plus one mebibyte minus two of the call site. When that distance test passes, the linker deletes the auipc and stitches the jump. Nothing else moves except the bytes after the deleted instruction, whose addresses the linker fixes up. Eight bytes in, four bytes out, decided by a range check.",
+      "How does the linker know it is allowed to touch the sequence at all? The relocation table says so. The auipc line carries two relocations. R_RISCV_CALL_PLT names target(), the destination. R_RISCV_RELAX points at *ABS*, absolute nothing. It names no destination at all. The relaxation annotation is a permission slip taped to the instruction sequence itself, separate from the relocation that says where the call goes. The address answers where. The slip answers whether the sequence may be rewritten.",
+      "Two footnotes from the spec text, both confirmed in the same session. First, R_RISCV_CALL itself is deprecated; the psABI says to use R_RISCV_CALL_PLT instead, and the compiler obliged, emitting CALL_PLT even for a plain static non-PIC call. Second, the assembler manual notes that a region marked .option relax emits R_RISCV_RELAX even when the linker would not relax. The sequence asks. The linker answers. The mark is a request, not a promise.",
+      "One sentence to keep: the compiler writes the call that works everywhere, and the linker, once it finally knows the addresses, writes the call that was always meant."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "bare-metal repo: the object files where the relaxation was observed",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified properties are what the psABI contract says the call sequence may become: AUIPC plus JALR relaxes to a single JAL inside minus one mebibyte to plus one mebibyte minus two, and R_RISCV_CALL_PLT names the destination while R_RISCV_RELAX names nothing at all. The post verifies relocation semantics from the spec text."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because no pipeline, cache, or predictor behavior was measured or is at issue: the before and after are linker-time bytes, and the distance test is a static layout check, not a property of any core."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because no privilege contract enters: the relocation table, the auipc and jalr encodings, and the psABI rule live entirely in the build toolchain and the ELF contract, needing no trap, no delegation, and no machine-mode enable gate."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because no address translation, scheduling, or syscall behavior is verified: the shrink happens before the program ever runs, and the addresses the linker rewrites are link-time layout facts, not runtime mappings."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the mechanism is a toolchain rewrite, not a portable computation: no invariant survives translation out of the RISC-V toolchain, and the range test is a linker policy on instruction bytes, not a mathematical property."
+      }
+    }
+  },
+  {
     "title": "The Register That Is Always Zero",
     "slug": "the-register-that-is-always-zero",
     "date": "2026-09-12",
