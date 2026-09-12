@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-090803">
+  <meta name="build-version" content="v20260912-091235">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-promise-the-compiler-is-allowed-to-break/">The Promise the Compiler Is Allowed to Break</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/10-from-scratch-memcpy/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the C compiler's aliasing contract, and it holds identically on any ISA with a conforming compiler: the same five lines return 1.0 or 0.0 depending only on the flag, while no instruction encoding, register, or trap semantic is what changed.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the register-pressure argument is about what the compiler may keep in registers, and the observed split is identical on any pipeline, cache, or predictor: the mechanism under test is the optimizer's assumption, not the machine's execution of it.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the experiment is a hosted-toolchain C program whose aliasing property is fixed at compile time, before any firmware runs: boot code, PMP, and SBI are downstream of the question, and the 1.0-versus-0.0 split is the same whether the program runs on bare metal or under an OS.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the kernel is the systems program that lives inside this rule: it reinterprets DMA buffers and packet headers constantly, so it compiles the entire tree with -fno-strict-aliasing (line 610 of the top-level Makefile, verified against the torvalds/linux master tree), trading register pressure for certainty where the rule would cost the most.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the portable spelling is a pure computational mechanism: copy the bytes through character-type access into an object already declared as the destination type, then read it normally, a discipline whose ground truth is the from-scratch memcpy lab's 1,004,160 differential cases with zero mismatches.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 05:09 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>This function asks one question and gets two different answers, and the only thing that changes is a compiler flag. Here are all five lines:</p>
+          <pre><code>float f(float *a, int *b) {
+    *a = 1.0f;
+    *b = 0;
+    return *a;
+}</code></pre>
+          <p>Call it with both pointers aimed at the same integer. With -O2 -fstrict-aliasing it returns 1.0; with -O2 -fno-strict-aliasing the identical source returns 0.0. The integer itself reads 0 either way. I re-measured both cases this morning on gcc 13.3, x86-64. Only the answer changes. The disassembly tells the story: under strict aliasing the compiler stores 1.0 to *a, stores 0 to *b, and returns the constant without ever reloading *a. It decided a store through an int pointer could not have touched the float. It was wrong about the program and right about the contract.</p>
+          <p>That contract is C11 section 6.5, paragraph 7: an object may only be accessed through an lvalue of a compatible type, a signed or unsigned counterpart, an aggregate containing one, or a character type. Anything else, and the compiler is licensed to pretend it never happened. The rule buys something real. If the compiler had to assume every int* might alias every float*, it would reload values from memory after every store, and most of what -O2 buys would evaporate. The rule is the price of keeping hot values in registers. So how do you legally mean "these exact bytes, but as another type"? Copy them into an object that already is that type:</p>
+          <pre><code>int i = 0;
+float x;
+memcpy(&amp;x, &amp;i, sizeof x);</code></pre>
+          <p>The write goes through character-type access, which the rule explicitly allows, and the read goes through the object&#x27;s own declared type, which is always allowed. The from-scratch memcpy lab, 1,004,160 differential cases against libc with zero mismatches, is the primitive this whole discipline rests on. Union punning works on GCC and Clang as documented practice, but memcpy is the spelling the standard itself blesses. The Linux kernel, which reinterprets DMA buffers and packet headers for a living, compiles its entire tree with -fno-strict-aliasing: line 610 of the top-level Makefile, verified this morning against the master tree. For systems code that constantly reinterprets memory, certainty is worth the register pressure. Scope, honestly held: one function, one compiler, one flag pair, all re-measured firsthand for this post. One sentence to carry away: the compiler may believe two pointers of different types never touch the same bytes, so the only portable way to say "these bytes, but as another type" is to copy them into an object that already is that type.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/10-from-scratch-memcpy" target="_blank" rel="noopener">lab/10-from-scratch-memcpy</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-bouncer-on-the-stopwatch/">The Bouncer on the Stopwatch</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified property is the privileged ISA's own rule: mcounteren.CY is the M-level gate on U-mode cycle reads, and the module proves both directions, reads succeed when the bit is set and the same read traps with scause 2 when it is clear.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the gate is an architectural access rule, and the observed outcomes, a trap versus two increasing samples, are identical on any pipeline, cache, or predictor that implements the privileged spec: the proof asserts nothing about how the read is implemented, only whether it is permitted.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because M-mode firmware owns mcounteren, and the experiment is written as that firmware: it sets and clears CY itself and performs the real M to S to U drops, so the gate is the firmware's own policy for exposing the cycle counter to user mode.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the verified property is the M-level hardware gate on a counter read, and the S-mode code exists only to reach U-mode where the gate bites: no supervisor timing or scheduling policy is under test, and the same gate would bite under any kernel.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism is under test: the claim is an access-control invariant, one bit deciding whether a read is permitted, and the converse-pair experiment design is a testing method, not an algorithm.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 04:10 EDT</time></p>
@@ -958,7 +980,8 @@
           <p>At boot, mcounteren reads back 0x0: user mode may see nothing, and nobody granted it. The experiment sets bit 0, CY, then drops from M-mode through S-mode down to user mode and reads the cycle counter twice: no trap, two strictly increasing samples, the door open. Then it clears that one bit, drops to user mode again, and runs the same instruction. This time the machine traps with scause 2, illegal instruction, sepc pointing exactly at the rdcycle site, and the destination register still holding its 0xdeadbeefdeadbeef sentinel, proof the read never happened. Twenty-two checks, zero mismatches, three byte-identical runs under QEMU 8.2.2. One bit decides whether a user process may know what time it is.</p>
           <p>Why would a machine hide the time from its own programs? The unprivileged manual says it plainly: "Some execution environments might prohibit access to counters to impede timing side-channel attacks." A cycle counter is an oracle. Diffing two timestamps around someone else&#x27;s code measures what that code did, and measured-then-inferred has a dark literature behind it: keystroke intervals, memory access patterns, the Spectre-era classics. So the privileged ISA puts the bouncer in M-mode. The obvious alternative is to hand back a zero or a clamped value, but a silent zero is a lie the program cannot detect, so the ISA refuses it: a clear CY bit raises illegal instruction, the architectural equivalent of the door staying shut. The manual is careful about what hiding is and is not. "The settings in this register only control accessibility. The act of reading or writing this register does not affect the underlying counters, which continue to increment even when not accessible." The clock still ticks; you simply may not ask it the time. An earlier module proved the brake pedal, mcountinhibit, which stops the clock. This one proves the bouncer, which bars the door. Stopping versus hiding: two different promises, same family.</p>
           <p>The experiment earns its verdict one gate at a time. Two gates sit in series on the road from user code to the cycle counter, the M-level mcounteren and the S-level scounteren, so the module pins the S-level gate open, held set and read back as 0x1 before each phase, and wiggles only the M-level one. A mirror-image module did the reverse, holding the M-level gate open while toggling the S-level one. A single experiment can only blame one gate when the other is nailed open, so the two arrive as a converse pair. And the failure carries its own proof inside the success. The phase-B payload loads the destination register with a sentinel before attempting the read, so a completed read would have overwritten it. The trap alone says the instruction faulted; the untouched register says the read never happened:</p>
-          <pre><code>li t0, 0xdeadbeefdeadbeef\nrdcycle t0</code></pre>
+          <pre><code>li t0, 0xdeadbeefdeadbeef
+rdcycle t0</code></pre>
           <p>Scope, honestly held: this verifies QEMU 8.2.2&#x27;s model of the gate, not silicon, and the gate only bites below M-mode, which is why both phases run through two real privilege drops, M to S to U, instead of asserting anything from the top. One sentence to carry away: time is a hardware resource, and one bit in one register is the bouncer who decides which rings of privilege get to see it.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-u-read" target="_blank" rel="noopener">src/mcounteren-cy-u-read</a></p>
         </div>
@@ -972,7 +995,11 @@
         <div class="research-body">
           <p>Fill an xv6 pipe with exactly 512 bytes, the whole buffer, and write one more byte. The call does not return. It comes back 40 ticks later, when the child finally drains the pipe, and all 513 bytes arrive byte-exact: seven checks, zero mismatches, three byte-identical runs under QEMU. No one inside the kernel told the test the write slept. It proved the block from outside, with nothing but the uptime tick counter for a stopwatch.</p>
           <p>The determinism is choreography. The parent fills the pipe before the fork, so the fill can never block by accident. Then it spins on the tick counter until a fresh tick edge, captures t0 microseconds after the edge, and only then forks: both sides inherit one absolute deadline, t0 plus 40. The child touches nothing until that tick; the parent&#x27;s second write is issued in tick t0, so it must wait the full 40. An early revision captured t0 after the fork, and the count jittered between 39 and 40 where a tick boundary fell between the fork and the write. The fix was not a bigger gate. It was putting the boundary where it belongs. The capture is four lines of C:</p>
-          <pre><code>te = (uint64)uptime();\nwhile ((uint64)uptime() == te)\n  ;\nt0 = (uint64)uptime();\npid = fork();</code></pre>
+          <pre><code>te = (uint64)uptime();
+while ((uint64)uptime() == te)
+  ;
+t0 = (uint64)uptime();
+pid = fork();</code></pre>
           <p>On the kernel side the rule is small: when the buffer is full, pipewrite wakes the reader and sleeps on its own nwrite channel, and the reader&#x27;s piperead answers with a wakeup on that same channel when it drains. No polling, no timeout, no retry. And underneath that is a design argument I keep turning over. The writer cannot spin for the reader, because the reader may be asleep or unscheduled, and burning cycles while the only party that can make progress is not running is how a machine does nothing expensively. My ring buffers spin, and rightly so: known parties, nanosecond stakes. The kernel&#x27;s pipe sleeps, because the kernel serves parties it has never met.</p>
           <p>Scope, honestly held: one byte past full, one child, one fixed 513-byte pattern. No partial writes, no multiple writers, no read-side blocking, and the PROOF.md says so. One sentence to carry away: a kernel block can never be watched from user space, so you prove it by measuring precisely what the machine did not do while you waited.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf.c" target="_blank" rel="noopener">user/pipebuf.c</a></p>
@@ -989,7 +1016,9 @@
           <p>sret is the second half of the trap contract. When it executes, privilege is restored from sstatus.SPP, interrupt enable from SPIE, and the program counter from sepc. All three are supervisor-owned state. In U-mode there is no supervisor trap to return from, and no legal way to have built that state, so the ISA does not define the behavior. It refuses the instruction. The formal Sail model of the privileged architecture writes the rule as a bare match: in user mode, sret goes straight to handle_illegal(). No conditions, no escape hatch.</p>
           <p>There is a mirror image in the same manual. The TSR bit in mstatus lets M-mode forbid even S-mode from executing sret, so a hypervisor can intercept it and emulate the missing extension. Returning from a trap is itself a gated privilege. And the night&#x27;s neighboring module, mstatus-tvm-trap, probes the gate next door: the TVM bit makes S-mode writes to satp and sfence.vma trap to M-mode. Taken together the pair maps who is allowed to come back from where.</p>
           <p>The discipline held, too. medeleg was written 0 and read back 0, so the trap could not be delegated away from M-mode; it had to land where the handler was waiting. And the mtval check does not compare the trap&#x27;s evidence against a constant anyone typed from memory. It reads the actual instruction word at mepc and compares the two measured values against each other:</p>
-          <pre><code>unsigned long word_at_mepc = *(volatile unsigned int *)mepc;\ncheck(mtval == word_at_mepc,\n      &quot;mtval does not match the word at mepc&quot;);</code></pre>
+          <pre><code>unsigned long word_at_mepc = *(volatile unsigned int *)mepc;
+check(mtval == word_at_mepc,
+      &quot;mtval does not match the word at mepc&quot;);</code></pre>
           <p>Eighteen checks, zero mismatches, checksum 0x802872738f9db42a identical across three byte-identical runs on QEMU 8.2.2. One sentence to carry away: sret is a key cut for a lock user mode never had, and the ISA&#x27;s answer to the wrong hands on it is immediate and total, an illegal instruction, the trap delivered to M-mode, the offending bytes echoed in the evidence register.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sret-to-umode-fault" target="_blank" rel="noopener">src/sret-to-umode-fault</a></p>
         </div>
@@ -143091,6 +143120,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "The converse pair is a testing method for isolating blame, not a computational mechanism under test; no algorithm's correctness is asserted."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-promise-the-compiler-is-allowed-to-break|ISA": {
+    "item": "the-promise-the-compiler-is-allowed-to-break",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "not at ISA because the verified property is the C compiler's aliasing contract, and it holds identically on any ISA with a conforming compiler: the same five lines return 1.0 or 0.0 depending only on the flag, while no instruction encoding, register, or trap semantic is what changed.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at ISA because the verified property is the C compiler's aliasing contract, and it holds identically on any ISA with a conforming compiler: the same five lines return 1.0 or 0.0 depending only on the flag, while no instruction encoding, register, or trap semantic is what changed."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The experiment compiled one five-line function twice on gcc 13.3, x86-64: -O2 -fstrict-aliasing returned 1.0, -O2 -fno-strict-aliasing returned 0.0, the integer reading 0 either way. The only variable was the compiler flag; no instruction, register, or trap semantic changed between the two runs.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Promise the Compiler Is Allowed to Break, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-promise-the-compiler-is-allowed-to-break/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is a contract between the C abstract machine and the optimizer, not a property of any instruction set."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test whose outcome varies only with a compiler flag proves a property of the toolchain, not of the target."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The ISA layer lights when the verified property is the specified behavior of an instruction, CSR, or trap; a compiler contract identical across targets leaves it dim."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the disassembly shows real x86-64 instructions, so the ISA is involved."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The instructions are evidence of the compiler's decision, not the property under test: the verdict, 1.0 versus 0.0, follows from the flag, and the same split appears for any target the compiler supports."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-promise-the-compiler-is-allowed-to-break|MICROARCH": {
+    "item": "the-promise-the-compiler-is-allowed-to-break",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the register-pressure argument is about what the compiler may keep in registers, and the observed split is identical on any pipeline, cache, or predictor: the mechanism under test is the optimizer's assumption, not the machine's execution of it.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the register-pressure argument is about what the compiler may keep in registers, and the observed split is identical on any pipeline, cache, or predictor: the mechanism under test is the optimizer's assumption, not the machine's execution of it."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The 1.0-versus-0.0 split was measured on an x86-64 host, but the property is the optimizer's assumption that two typed pointers do not alias: the compiled strict binary returns the constant 1.0 without touching memory, so no pipeline, cache, or predictor behavior can change the verdict.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Promise the Compiler Is Allowed to Break, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-promise-the-compiler-is-allowed-to-break/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is what the compiler is allowed to assume, not how any microarchitecture executes the resulting code."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verdict is fixed before execution begins, varying the machine cannot move it."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Microarch layer lights when pipelines, caches, predictors, or the memory hierarchy are load-bearing for the claim; a compile-time assumption leaves it dim."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that register pressure, the rule's stated price, is a microarchitectural concern."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Register pressure motivates the rule, but the experiment verifies the assumption, not its cost: nothing was measured about allocation, spills, or any pipeline."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-promise-the-compiler-is-allowed-to-break|FIRMWARE": {
+    "item": "the-promise-the-compiler-is-allowed-to-break",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because the experiment is a hosted-toolchain C program whose aliasing property is fixed at compile time, before any firmware runs: boot code, PMP, and SBI are downstream of the question, and the 1.0-versus-0.0 split is the same whether the program runs on bare metal or under an OS.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because the experiment is a hosted-toolchain C program whose aliasing property is fixed at compile time, before any firmware runs: boot code, PMP, and SBI are downstream of the question, and the 1.0-versus-0.0 split is the same whether the program runs on bare metal or under an OS."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The experiment is a hosted C program compiled by the system toolchain: the aliasing verdict is fixed at compile time, before any boot code, PMP configuration, or SBI call runs.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Promise the Compiler Is Allowed to Break, demonstration",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-promise-the-compiler-is-allowed-to-break/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property belongs to the compilation of the program, not to any firmware that later loads or runs it."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A property settled at compile time is invariant across everything that happens after the binary exists."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Firmware layer lights when boot, dispatch, PMP, or SBI behavior is load-bearing for the claim; a compile-time language rule leaves it dim."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that systems code like this often runs on bare metal, where firmware is the whole environment."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The environment does not enter the verdict: the same source and flag produce the same answer on bare metal or under an OS, because the decision was made by the compiler."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-promise-the-compiler-is-allowed-to-break|KERNEL": {
+    "item": "the-promise-the-compiler-is-allowed-to-break",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the kernel is the systems program that lives inside this rule: it reinterprets DMA buffers and packet headers constantly, so it compiles the entire tree with -fno-strict-aliasing (line 610 of the top-level Makefile, verified against the torvalds/linux master tree), trading register pressure for certainty where the rule would cost the most.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the kernel is the systems program that lives inside this rule: it reinterprets DMA buffers and packet headers constantly, so it compiles the entire tree with -fno-strict-aliasing (line 610 of the top-level Makefile, verified against the torvalds/linux master tree), trading register pressure for certainty where the rule would cost the most."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Line 610 of the Linux top-level Makefile reads KBUILD_CFLAGS += -fno-strict-aliasing, verified against the torvalds/linux master tree: the kernel opts its entire build out of the rule.",
+        "source": {
+          "tier": "reference",
+          "cite": "Linux kernel top-level Makefile, line 610",
+          "url": "https://github.com/torvalds/linux/blob/master/Makefile"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The kernel is the canonical systems program that pays the rule's price, reinterpreting memory too constantly to accept the compiler's assumption."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A tree-wide compiler opt-out names the layer where a language rule costs the most."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property governs how kernel or systems code must be written; the kernel's own build flag is that verdict."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the Makefile line is a build-system fact, not a verified behavior."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The line is the kernel's recorded engineering decision about exactly this rule, and the article's claim is that decision and its reason, not a behavior the experiment re-proves."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-promise-the-compiler-is-allowed-to-break|ALGORITHM": {
+    "item": "the-promise-the-compiler-is-allowed-to-break",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "matters at Algorithm because the portable spelling is a pure computational mechanism: copy the bytes through character-type access into an object already declared as the destination type, then read it normally, a discipline whose ground truth is the from-scratch memcpy lab's 1,004,160 differential cases with zero mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Algorithm because the portable spelling is a pure computational mechanism: copy the bytes through character-type access into an object already declared as the destination type, then read it normally, a discipline whose ground truth is the from-scratch memcpy lab's 1,004,160 differential cases with zero mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The from-scratch memcpy lab's PROOF.md records 1,004,160 differential cases against libc memcpy with 0 mismatches: the byte-copy primitive the portable spelling rests on is verified exhaustively.",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/10-from-scratch-memcpy/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/10-from-scratch-memcpy/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The portable type-pun is a pure computational mechanism: move bytes through character-type access into a declared destination object, then read it normally."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A mechanism whose correctness argument uses only the language's type rules is portable to every conforming implementation."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Algorithm layer lights when the verified property is a pure computational mechanism with its portability argued; the memcpy spelling is exactly that."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that memcpy is a library function, not an algorithm."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The mechanism is the discipline, copy into a declared destination object, and the lab verifies the primitive it depends on; the library call is the spelling, not the argument."
       }
     ],
     "inferences": [

@@ -1,5 +1,44 @@
 [
   {
+    "title": "The Promise the Compiler Is Allowed to Break",
+    "slug": "the-promise-the-compiler-is-allowed-to-break",
+    "date": "2026-09-12",
+    "description": "Compile the same five lines of C with and without -fstrict-aliasing, and gcc returns two different answers to the same question. The rule behind it is C11 6.5p7, and the portable way out is memcpy.",
+    "paragraphs": [
+      "This function asks one question and gets two different answers, and the only thing that changes is a compiler flag. Here are all five lines:",
+      "Call it with both pointers aimed at the same integer. With -O2 -fstrict-aliasing it returns 1.0; with -O2 -fno-strict-aliasing the identical source returns 0.0. The integer itself reads 0 either way. I re-measured both cases this morning on gcc 13.3, x86-64. Only the answer changes. The disassembly tells the story: under strict aliasing the compiler stores 1.0 to *a, stores 0 to *b, and returns the constant without ever reloading *a. It decided a store through an int pointer could not have touched the float. It was wrong about the program and right about the contract.",
+      "That contract is C11 section 6.5, paragraph 7: an object may only be accessed through an lvalue of a compatible type, a signed or unsigned counterpart, an aggregate containing one, or a character type. Anything else, and the compiler is licensed to pretend it never happened. The rule buys something real. If the compiler had to assume every int* might alias every float*, it would reload values from memory after every store, and most of what -O2 buys would evaporate. The rule is the price of keeping hot values in registers. So how do you legally mean \"these exact bytes, but as another type\"? Copy them into an object that already is that type:",
+      "The write goes through character-type access, which the rule explicitly allows, and the read goes through the object's own declared type, which is always allowed. The from-scratch memcpy lab, 1,004,160 differential cases against libc with zero mismatches, is the primitive this whole discipline rests on. Union punning works on GCC and Clang as documented practice, but memcpy is the spelling the standard itself blesses. The Linux kernel, which reinterprets DMA buffers and packet headers for a living, compiles its entire tree with -fno-strict-aliasing: line 610 of the top-level Makefile, verified this morning against the master tree. For systems code that constantly reinterprets memory, certainty is worth the register pressure. Scope, honestly held: one function, one compiler, one flag pair, all re-measured firsthand for this post. One sentence to carry away: the compiler may believe two pointers of different types never touch the same bytes, so the only portable way to say \"these bytes, but as another type\" is to copy them into an object that already is that type."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/10-from-scratch-memcpy",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/10-from-scratch-memcpy/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because the verified property is the C compiler's aliasing contract, and it holds identically on any ISA with a conforming compiler: the same five lines return 1.0 or 0.0 depending only on the flag, while no instruction encoding, register, or trap semantic is what changed."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the register-pressure argument is about what the compiler may keep in registers, and the observed split is identical on any pipeline, cache, or predictor: the mechanism under test is the optimizer's assumption, not the machine's execution of it."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the experiment is a hosted-toolchain C program whose aliasing property is fixed at compile time, before any firmware runs: boot code, PMP, and SBI are downstream of the question, and the 1.0-versus-0.0 split is the same whether the program runs on bare metal or under an OS."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the kernel is the systems program that lives inside this rule: it reinterprets DMA buffers and packet headers constantly, so it compiles the entire tree with -fno-strict-aliasing (line 610 of the top-level Makefile, verified against the torvalds/linux master tree), trading register pressure for certainty where the rule would cost the most."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because the portable spelling is a pure computational mechanism: copy the bytes through character-type access into an object already declared as the destination type, then read it normally, a discipline whose ground truth is the from-scratch memcpy lab's 1,004,160 differential cases with zero mismatches."
+      }
+    }
+  },
+  {
     "title": "The Bouncer on the Stopwatch",
     "slug": "the-bouncer-on-the-stopwatch",
     "date": "2026-09-12",

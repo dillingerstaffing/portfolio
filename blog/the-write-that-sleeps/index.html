@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-090803" />
+  <meta name="build-version" content="v20260912-091235" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The Write That Sleeps &middot; Blog &middot; Chris Dillinger</title>
@@ -804,7 +804,11 @@
         <div class="research-body">
           <p>Fill an xv6 pipe with exactly 512 bytes, the whole buffer, and write one more byte. The call does not return. It comes back 40 ticks later, when the child finally drains the pipe, and all 513 bytes arrive byte-exact: seven checks, zero mismatches, three byte-identical runs under QEMU. No one inside the kernel told the test the write slept. It proved the block from outside, with nothing but the uptime tick counter for a stopwatch.</p>
           <p>The determinism is choreography. The parent fills the pipe before the fork, so the fill can never block by accident. Then it spins on the tick counter until a fresh tick edge, captures t0 microseconds after the edge, and only then forks: both sides inherit one absolute deadline, t0 plus 40. The child touches nothing until that tick; the parent&#x27;s second write is issued in tick t0, so it must wait the full 40. An early revision captured t0 after the fork, and the count jittered between 39 and 40 where a tick boundary fell between the fork and the write. The fix was not a bigger gate. It was putting the boundary where it belongs. The capture is four lines of C:</p>
-          <pre><code>te = (uint64)uptime();\nwhile ((uint64)uptime() == te)\n  ;\nt0 = (uint64)uptime();\npid = fork();</code></pre>
+          <pre><code>te = (uint64)uptime();
+while ((uint64)uptime() == te)
+  ;
+t0 = (uint64)uptime();
+pid = fork();</code></pre>
           <p>On the kernel side the rule is small: when the buffer is full, pipewrite wakes the reader and sleeps on its own nwrite channel, and the reader&#x27;s piperead answers with a wakeup on that same channel when it drains. No polling, no timeout, no retry. And underneath that is a design argument I keep turning over. The writer cannot spin for the reader, because the reader may be asleep or unscheduled, and burning cycles while the only party that can make progress is not running is how a machine does nothing expensively. My ring buffers spin, and rightly so: known parties, nanosecond stakes. The kernel&#x27;s pipe sleeps, because the kernel serves parties it has never met.</p>
           <p>Scope, honestly held: one byte past full, one child, one fixed 513-byte pattern. No partial writes, no multiple writers, no read-side blocking, and the PROOF.md says so. One sentence to carry away: a kernel block can never be watched from user space, so you prove it by measuring precisely what the machine did not do while you waited.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf.c" target="_blank" rel="noopener">user/pipebuf.c</a></p>
