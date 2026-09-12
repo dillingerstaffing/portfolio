@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-010404">
+  <meta name="build-version" content="v20260912-020456">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,29 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-adder-that-folds-its-carry-back/">The Adder That Folds Its Carry Back</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because no RISC-V instruction performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and discards the carry, so the verified claim is the C construction under the unsigned wraparound contract, which is identical on every ISA, and the machine contract adds nothing.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the proof compares adder outputs against a loop-folding reference over 10,065,536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict, and the 3.14 ns figure is a measured cost, not part of the proof.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap, so nothing firmware configures stands between the inputs and the claim.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because one's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 21:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Add 0xFFFF to 0xFFFF. On paper the true sum is 0x1FFFE: the low sixteen bits are 0xFFFE, and one carry escapes off the top. Ordinary addition drops it and answers 0xFFFE. One&#x27;s-complement addition walks the carry around to the front and adds it back in: 0xFFFE plus 1 is 0xFFFF. In one&#x27;s complement there are two zeros, 0x0000 and 0xFFFF, so the folded sum is telling you that negative zero plus negative zero is negative zero. The fold has a name: the end-around carry.</p>
+          <p>The construction recovers the escaped carry without ever holding a wider register. In sixteen-bit wraparound arithmetic, the wrapped sum comes back smaller than an addend exactly when the true seventeen-bit sum overflowed, so the comparison itself yields the carry as a 0 or 1. The whole thing is three lines:</p>
+          <pre><code>uint16_t onesc_add(uint16_t a, uint16_t b)
+{
+    uint16_t s = (uint16_t)(a + b);
+    uint16_t carry = (uint16_t)(s &lt; a);
+    return (uint16_t)(s + carry);
+}</code></pre>
+          <p>The reference it was checked against is deliberately a different shape: it takes the full 32-bit sum and folds the high half back in a loop, the RFC 1071 form, sharing no arithmetic with the code under test. Two shapes agreeing on just over ten million input pairs with zero mismatches: sixty-five thousand directed pairs that force the carry, ten million random pairs, the 0xFFFF plus 0xFFFF edge pinned. The result checksum is identical across the -O0, -O2, and sanitizer builds.</p>
+          <p>This arithmetic exists because the Internet runs on it. Every IP, TCP, and UDP header is checksummed with a 16-bit one&#x27;s-complement sum, and RFC 1071 states the rule plainly: &quot;On a 2&#x27;s complement machine, the 1&#x27;s complement sum must be computed by means of an &#x27;end around carry&#x27;, i.e., any overflows from the most significant bits are added into the least significant bits.&quot; The reason is byte order. The RFC&#x27;s argument is one of the prettiest in networking: sum the words with every byte swapped, and you get the same sum with its bytes swapped, because the carries run the same in both orders, from bit 15 to bit 0 and from bit 7 to bit 8. The end-around carry is the load-bearing quirk. Without the wrap from bit 15 back to bit 0, a byte swap would not commute with the carry, and a little-endian machine would disagree with a big-endian one about the same packet.</p>
+          <p>You can watch the failure on paper. Add 0x00FF and 0x0001 in ordinary arithmetic: 0x0100, and byte-swapped that is 0x0001. Now swap the words first and add: 0xFF00 plus 0x0100 wraps to 0x0000 in sixteen bits. Two different answers for the same bytes. Fold the carry back and the disagreement vanishes: 0xFF00 plus 0x0100 wraps to 0x0000, the escaped carry folds in, and you get 0x0001, exactly the swapped sum. That is why the whole Internet folds its carries back: so any machine, in either byte order, can verify any packet.</p>
+          <p>The discipline around it is just as clean. To send: clear the checksum field, sum the words, complement the sum, store it. To verify: sum everything including the field, and expect all ones, negative zero. Anything else means the bytes changed in transit. The whole proof runs about three nanoseconds a pair, with the input generation inside the timed loop, so ten million pairs finish in about a thirtieth of a second. One sentence to carry away: the carry is never thrown away, it is walked around to the front and added back in, and that single quirk is what lets every machine on the Internet agree on whether a packet survived the trip.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/119-onesc-add" target="_blank" rel="noopener">lab/119-onesc-add</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-register-that-never-interrupts-you/">The Register That Never Interrupts You</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-write/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified content is the unprivileged ISA's own F-extension contract: the five frm encodings, the five fflags bits with their mnemonics, the static-rm-beats-frm rule, and the no-trap discipline are stated in the F-extension chapter, and four bare-metal modules probed each one against those statements with 65 checks, so the argument binds every compliant hart.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified properties are architectural constants: the frm encodings, the flag definitions, and the static-override rule are fixed bit-for-bit in the ISA text, so no implementation choice changes a readback, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the modules run in M-mode, firmware's own privilege level: the sequence reads the boot mstatus, moves FS from Off to Initial before any floating-point instruction, and restores fcsr to zero at the end, which is the enable, configure, and leave-no-trace discipline that M-mode boot code follows around the floating-point unit.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the kernel's context switch carries fcsr with the thirty-two floating-point registers: frm must be restored so a process keeps its rounding mode, fflags must be saved and cleared so one process's inexact does not accuse another, and the no-trap discipline fixes the kernel's contract with user space as poll, never interrupt.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-register-that-never-interrupts-you|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is a hardware register contract read back from one machine model, not a portable computation: the frm write-readback pairs and the accrued flags are facts about QEMU 8.2.2's floating-point unit, judged against the spec's text, and no host-independent computation can reproduce a CSR readback.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 20:10 EDT</time></p>
@@ -131928,6 +131951,441 @@ assert(check == 0x2144DF1C);</code></pre>
           1
         ],
         "strength": "strong"
+      }
+    ]
+  },
+  "the-adder-that-folds-its-carry-back|ISA": {
+    "item": "the-adder-that-folds-its-carry-back",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "not at ISA because no RISC-V instruction performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and discards the carry, so the verified claim is the C construction under the unsigned wraparound contract, which is identical on every ISA, and the machine contract adds nothing.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at ISA because no RISC-V instruction performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and discards the carry, so the verified claim is the C construction under the unsigned wraparound contract, which is identical on every ISA, and the machine contract adds nothing."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The lab-119 PROOF.md pins the construction to the C unsigned-wraparound contract: the escaped carry is recovered from the wraparound identity alone, a wrapped sum smaller than an addend means the true sum overflowed, with no instruction, CSR, or trap anywhere in the proof.",
+        "source": {
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The RISC-V base integer ISA specifies ADD as a wrapping add that discards the carry out of the most significant bit: no base or standard-extension instruction performs addition with end-around carry.",
+        "source": {
+          "cite": "RISC-V unprivileged ISA",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about C unsigned arithmetic, provable without invoking any machine instruction semantics."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim proved from a language-level arithmetic contract is not a claim about the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ISA layer stays dim when the verified property would hold identically on every ISA honoring the same language contract."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the adder is intended to run on RISC-V hardware, so the ISA must matter."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "Running on a machine is not depending on its contract: the proof invokes no instruction semantics, so no ISA text could change the verdict."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-adder-that-folds-its-carry-back|MICROARCH": {
+    "item": "the-adder-that-folds-its-carry-back",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the proof compares adder outputs against a loop-folding reference over 10,065,536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict, and the 3.14 ns figure is a measured cost, not part of the proof.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the proof compares adder outputs against a loop-folding reference over 10,065,536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict, and the 3.14 ns figure is a measured cost, not part of the proof."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md logs 10,065,536 value comparisons against the loop-folding oracle with 0 mismatches: the verdict is a pure function of the input pairs, with no timing or implementation state in the claim.",
+        "source": {
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The 3.14 ns per pair figure is reported as a benchmark over a timed loop that includes the input-generation step, explicitly fenced off from the correctness verdict.",
+        "source": {
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Every checked case reduces to comparing two 16-bit values, so no pipeline, cache, or predictor behavior can move the verdict."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A proof by value comparison is invariant across implementations."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Microarch layer stays dim when the verification compares values rather than implementation behavior."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the benchmark timing is itself a microarchitectural measurement."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The timing is reported as cost and fenced off from the correctness claim, which the verdict never depends on."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-adder-that-folds-its-carry-back|FIRMWARE": {
+    "item": "the-adder-that-folds-its-carry-back",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because the adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap, so nothing firmware configures stands between the inputs and the claim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because the adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap, so nothing firmware configures stands between the inputs and the claim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md environment is a host build with gcc on x86_64: the build log configures no trap vector, CSR, or privilege level, and the test exercises none.",
+        "source": {
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The function under test takes two 16-bit inputs and returns one 16-bit value: its entire interface is arithmetic, with no machine-mode state among its inputs or outputs.",
+        "source": {
+          "cite": "lab/119-onesc-add/onesc_add.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/onesc_add.c"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "No firmware-configured state appears in the function inputs, outputs, or proof, so firmware cannot affect the claim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A pure function of its arguments is invariant across everything outside its arguments."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Firmware layer stays dim when the verified code configures and touches no machine-mode state."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that on real hardware the code would run under firmware-configured privilege."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The proof ran on the host in user space, and the claim is about the arithmetic, which no privilege level can alter."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-adder-that-folds-its-carry-back|KERNEL": {
+    "item": "the-adder-that-folds-its-carry-back",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because one's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because one's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "RFC 1071 defines the Internet checksum as the 16-bit one's-complement sum of the header words, computed with end-around carry, and requires it for IP, TCP, and UDP headers.",
+        "source": {
+          "cite": "RFC 1071, Computing the Internet Checksum",
+          "tier": "spec",
+          "url": "https://www.rfc-editor.org/rfc/rfc1071"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The lab-119 PROOF.md identifies its oracle as the RFC 1071 form, 32-bit accumulation with repeated high-half folding, sharing no arithmetic with the tested code.",
+        "source": {
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The adder is the exact operation the networking stack checksum performs, so the kernel header verification depends on this carry fold being right."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A mechanism that a kernel subsystem computes verbatim is load-bearing for work at the kernel layer."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property is the operation a kernel subsystem performs."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the lab itself runs in user space and never touches a kernel."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The strip is a relevance map, not an implementation inventory: the property matters at the kernel layer because the kernel checksum is this adder, wherever the proof ran."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-adder-that-folds-its-carry-back|ALGORITHM": {
+    "item": "the-adder-that-folds-its-carry-back",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "matters at Algorithm because the end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Algorithm because the end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The construction uses only the wraparound contract of unsigned arithmetic: a wrapped sum smaller than an addend detects the escaped carry, which is added back, with no wider type, intrinsic, or platform header.",
+        "source": {
+          "cite": "lab/119-onesc-add/onesc_add.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/onesc_add.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The PROOF.md result checksum is identical across -O0, -O2, and ASan+UBSan builds on the host: the verified identity does not depend on the compiler, the optimization level, or the instrumentation.",
+        "source": {
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified identity depends only on unsigned wraparound, which C guarantees on every platform, so the construction ports with the claim intact."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A mechanism proved from a portable language contract is a portable mechanism."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Algorithm layer lights when the core verified claim is a pure computational mechanism portable across ISAs."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the proof ran on a single host compiler, x86_64 gcc 13.3."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The oracle shares no arithmetic with the code, and the identity under test is a mathematical fact about wraparound, not a fact about the compiler."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
       }
     ]
   }

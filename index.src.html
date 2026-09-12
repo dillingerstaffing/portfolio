@@ -949,6 +949,29 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Adder That Folds Its Carry Back</h3>
+          <!-- LAYER-STRIP:the-adder-that-folds-its-carry-back -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 21:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Add 0xFFFF to 0xFFFF. On paper the true sum is 0x1FFFE: the low sixteen bits are 0xFFFE, and one carry escapes off the top. Ordinary addition drops it and answers 0xFFFE. One&#x27;s-complement addition walks the carry around to the front and adds it back in: 0xFFFE plus 1 is 0xFFFF. In one&#x27;s complement there are two zeros, 0x0000 and 0xFFFF, so the folded sum is telling you that negative zero plus negative zero is negative zero. The fold has a name: the end-around carry.</p>
+          <p>The construction recovers the escaped carry without ever holding a wider register. In sixteen-bit wraparound arithmetic, the wrapped sum comes back smaller than an addend exactly when the true seventeen-bit sum overflowed, so the comparison itself yields the carry as a 0 or 1. The whole thing is three lines:</p>
+          <pre><code>uint16_t onesc_add(uint16_t a, uint16_t b)
+{
+    uint16_t s = (uint16_t)(a + b);
+    uint16_t carry = (uint16_t)(s &lt; a);
+    return (uint16_t)(s + carry);
+}</code></pre>
+          <p>The reference it was checked against is deliberately a different shape: it takes the full 32-bit sum and folds the high half back in a loop, the RFC 1071 form, sharing no arithmetic with the code under test. Two shapes agreeing on just over ten million input pairs with zero mismatches: sixty-five thousand directed pairs that force the carry, ten million random pairs, the 0xFFFF plus 0xFFFF edge pinned. The result checksum is identical across the -O0, -O2, and sanitizer builds.</p>
+          <p>This arithmetic exists because the Internet runs on it. Every IP, TCP, and UDP header is checksummed with a 16-bit one&#x27;s-complement sum, and RFC 1071 states the rule plainly: &quot;On a 2&#x27;s complement machine, the 1&#x27;s complement sum must be computed by means of an &#x27;end around carry&#x27;, i.e., any overflows from the most significant bits are added into the least significant bits.&quot; The reason is byte order. The RFC&#x27;s argument is one of the prettiest in networking: sum the words with every byte swapped, and you get the same sum with its bytes swapped, because the carries run the same in both orders, from bit 15 to bit 0 and from bit 7 to bit 8. The end-around carry is the load-bearing quirk. Without the wrap from bit 15 back to bit 0, a byte swap would not commute with the carry, and a little-endian machine would disagree with a big-endian one about the same packet.</p>
+          <p>You can watch the failure on paper. Add 0x00FF and 0x0001 in ordinary arithmetic: 0x0100, and byte-swapped that is 0x0001. Now swap the words first and add: 0xFF00 plus 0x0100 wraps to 0x0000 in sixteen bits. Two different answers for the same bytes. Fold the carry back and the disagreement vanishes: 0xFF00 plus 0x0100 wraps to 0x0000, the escaped carry folds in, and you get 0x0001, exactly the swapped sum. That is why the whole Internet folds its carries back: so any machine, in either byte order, can verify any packet.</p>
+          <p>The discipline around it is just as clean. To send: clear the checksum field, sum the words, complement the sum, store it. To verify: sum everything including the field, and expect all ones, negative zero. Anything else means the bytes changed in transit. The whole proof runs about three nanoseconds a pair, with the input generation inside the timed loop, so ten million pairs finish in about a thirtieth of a second. One sentence to carry away: the carry is never thrown away, it is walked around to the front and added back in, and that single quirk is what lets every machine on the Internet agree on whether a packet survived the trip.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/119-onesc-add" target="_blank" rel="noopener">lab/119-onesc-add</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Register That Never Interrupts You</h3>
           <!-- LAYER-STRIP:the-register-that-never-interrupts-you -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 20:10 EDT</time></p>
