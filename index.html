@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-024825">
+  <meta name="build-version" content="v20260912-031632">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-signal-that-xv6-never-sends/">The Signal That xv6 Never Sends</a></h3>
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 23:14 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Make a pipe, close the read end, and write sixteen bytes. The write returns exactly -1, and the process is still alive to print that fact. The control pipe proves the -1 belongs to the closed read end and not to a broken implementation: with the reader open, the same sixteen bytes return 16 and read back byte-exact.</p>
+          <p>A pipe is a two-party contract, and with no reader the bytes have nowhere to go. So who tells the writer? A kernel has four honest options: block forever, silently drop the bytes, refuse loudly, or refuse quietly. Blocking is a hang, the quietest failure of all. Dropping the bytes silently is worse, because most programs never check write&#x27;s return value, and corruption nobody notices is worse than an error. That leaves the two refusals, and POSIX chose the loud one.</p>
+          <p>The spec says a write to a pipe &quot;not open for reading by any process&quot; fails with EPIPE, and &quot;a SIGPIPE signal shall also be sent to the thread.&quot; Two deliveries, the signal and the error. Linux&#x27;s fs/pipe.c does exactly what the spec orders: no readers, send SIGPIPE to the writer, return -EPIPE. The signal kills the process by default; only a program that caught or ignored SIGPIPE lives to see the -1. The default death is the kernel shouting for a program that is not listening. EPIPE is the polite fallback for the programs that asked to handle it.</p>
+          <p>xv6 cannot shout. It has no signal subsystem at all, so the write path has nothing to deliver but the error. In kernel/pipe.c, before a single byte is copied, the write loop checks two things: is anyone still listening, and has this process already been marked for death:</p>
+          <pre><code>if (pi-&gt;readopen == 0 || killed(pr)) {
+  release(&amp;pi-&gt;lock);
+  return -1;
+}</code></pre>
+          <p>readopen counts the open read ends; killed is the per-process death flag. When the last reader is gone, the loop drops the lock and returns -1. The -1 is the SIGPIPE, in the only language xv6 speaks. Which is why the module&#x27;s &quot;writer is not killed&quot; check is the load-bearing one: on Linux the writer dies unless it asked otherwise, on xv6 there is nothing that could kill it, and the proof shows the writer living to read its own error.</p>
+          <p>Nine checks, zero mismatches, one FNV-1a checksum byte-identical across three QEMU 8.2.2 runs. One sentence to carry away: a pipe with no reader is a letter with no address; Linux shouts and then hands you a note, xv6 just hands you the note.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c" target="_blank" rel="noopener">user/pipewrclosed.c</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-adder-that-folds-its-carry-back/">The Adder That Folds Its Carry Back</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because no RISC-V instruction performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and discards the carry, so the verified claim is the C construction under the unsigned wraparound contract, which is identical on every ISA, and the machine contract adds nothing.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the proof compares adder outputs against a loop-folding reference over 10,065,536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict, and the 3.14 ns figure is a measured cost, not part of the proof.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap, so nothing firmware configures stands between the inputs and the claim.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because one's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-adder-that-folds-its-carry-back|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 21:12 EDT</time></p>
@@ -1633,6 +1653,7 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
         <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-checksum-that-always-lands-on-0x2144df1c/">The Checksum That Always Lands on 0x2144DF1C</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/82-crc32-residue/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not here because the residue identity uses plain CRC arithmetic, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not here because the post is about the checksum construction and its fixed residue; no pipeline, cache, or predictor behavior is measured.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not here because checksum validation involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters because Ethernet hardware and the drivers that validate frame check sequences rely on exactly this residue.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters because the 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA.</p></div></div>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the write syscall's contract, refuse with -1 and leave the writer alive, which is identical on every machine the kernel could run on: the proof compares behavior against POSIX and the kernel source, never against the machine manual.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because every check compares a syscall return value against its expected value, so the verdict depends only on the observed values and not on how the machine produced them: the proof is a value test, not a timing test.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the claim lives entirely in the kernel and its userland test: the pipe write path touches no trap vector or privilege register beneath the kernel, so nothing configured under the kernel stands between the syscall and the -1.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the property under test is the kernel's write-to-pipe contract: Linux's fs/pipe.c answers a readerless pipe with a signal plus an error, xv6's kernel/pipe.c answers with the error alone, and the module verifies the xv6 side.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the claim is a kernel interface decision, how a write reports a missing reader, not a computational mechanism: FNV-1a only collapses the measured values into one checkable number, and the -1 verdict would stand under any other hash.</p></div></div>
           <p class="research-date"><time datetime="2026-09-07">2026-09-07 09:15 EDT</time></p>
         </div>
         <div class="research-body">
@@ -18294,6 +18315,116 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with forkoffset test\n\nchild writes 32 bytes via inherited fd 3, exits 42\nparent writes 32 bytes, file holds 64 contiguous\nRESULT: PASS",
     "terminalName": "qemu / xv6 / forkoffset",
     "terminalLabel": "Verified xv6 test output"
+  },
+  {
+    "id": "src-menvcfg-pbmte-write",
+    "kicker": "PBMTE bit 62 does not stick on QEMU virt",
+    "title": "The WARL Bit That Legalizes to Zero",
+    "summary": "A bare-metal M-mode RISC-V program that probes the menvcfg.PBMTE bit 62 write/readback contract. It writes 1 to bit 62 and reads back 0, proving the bit is WARL-legalized to zero on QEMU virt because page-based memory types are not implemented.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because menvcfg is a privileged CSR whose WARL fields the spec allows implementations to legalize; the card proves bit 62 reads back 0 after writing 1."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the legalization is an architectural choice, not a pipeline or cache behavior under test."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode software must probe WARL fields rather than assume them; writing PBMTE on a hart without Svpbmt support must be detected, not trusted."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because menvcfg is M-mode only; supervisor kernels cannot observe or depend on this bit."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a CSR legalization invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks against WARL readback invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Write 1 to bit 62, read back 0, confirmed across 3 runs"
+      ],
+      [
+        "CHECKSUM",
+        "0xb162675eda645223, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-pbmte-write",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel menvcfg-pbmte-write.elf\n\nmenvcfg.PBMTE bit 62: wrote 1, read 0 (WARL legalized)\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / menvcfg-pbmte-write.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 6,
+    "failures": 0
+  },
+  {
+    "id": "user-getpidunique",
+    "kicker": "Four processes, four distinct pids",
+    "title": "The Process IDs That Cannot Collide",
+    "summary": "An xv6 user-space test proving the kernel assigns unique process IDs. A parent forks three children and asserts all four pids are pairwise distinct and nonzero, with each child exiting only after verifying its own pid differs from its siblings.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because process IDs are a kernel abstraction; no instruction defines them."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because pid assignment happens in kernel data structures, not in hardware."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because process management is a kernel concern; firmware never sees pids."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because the pid allocator's uniqueness invariant is what lets the kernel distinguish processes for signaling, waiting, and scheduling."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the mechanism is a specific kernel counter, not a portable computational pattern."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks against pid uniqueness invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Parent plus 3 children, 4 pairwise-distinct nonzero pids"
+      ],
+      [
+        "CHECKSUM",
+        "0xEE21A7602C5F5347, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with getpidunique test\n\nparent pid, 3 children: 4 distinct nonzero pids\nRESULT: PASS",
+    "terminalName": "qemu / xv6 / getpidunique",
+    "terminalLabel": "Verified xv6 test output",
+    "checks": 6,
+    "failures": 0
   }
 ];
       const CHIPS_BY_KEY = {
@@ -133460,6 +133591,871 @@ assert(check == 0x2144DF1C);</code></pre>
         "note": "The evidence establishes the probandum via the generalization."
       }
     ]
+  },
+  "src-menvcfg-pbmte-write|ISA": {
+    "kind": "card",
+    "item": "src-menvcfg-pbmte-write",
+    "slot": "ISA",
+    "probandum": "matters at ISA because menvcfg is a privileged CSR whose WARL fields the spec allows implementations to legalize; the card proves bit 62 reads back 0 after writing 1.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because menvcfg is a privileged CSR whose WARL fields the spec allows implementations to legalize; the card proves bit 62 reads back 0 after writing 1."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-menvcfg-pbmte-write|MICROARCH": {
+    "kind": "card",
+    "item": "src-menvcfg-pbmte-write",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the legalization is an architectural choice, not a pipeline or cache behavior under test.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the legalization is an architectural choice, not a pipeline or cache behavior under test."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-menvcfg-pbmte-write|FIRMWARE": {
+    "kind": "card",
+    "item": "src-menvcfg-pbmte-write",
+    "slot": "FIRMWARE",
+    "probandum": "matters at firmware because M-mode software must probe WARL fields rather than assume them; writing PBMTE on a hart without Svpbmt support must be detected, not trusted.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at firmware because M-mode software must probe WARL fields rather than assume them; writing PBMTE on a hart without Svpbmt support must be detected, not trusted."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-menvcfg-pbmte-write|KERNEL": {
+    "kind": "card",
+    "item": "src-menvcfg-pbmte-write",
+    "slot": "KERNEL",
+    "probandum": "not at kernel because menvcfg is M-mode only; supervisor kernels cannot observe or depend on this bit.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at kernel because menvcfg is M-mode only; supervisor kernels cannot observe or depend on this bit."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-menvcfg-pbmte-write|ALGORITHM": {
+    "kind": "card",
+    "item": "src-menvcfg-pbmte-write",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a CSR legalization invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a CSR legalization invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-getpidunique|ISA": {
+    "kind": "card",
+    "item": "user-getpidunique",
+    "slot": "ISA",
+    "probandum": "not at ISA because process IDs are a kernel abstraction; no instruction defines them.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at ISA because process IDs are a kernel abstraction; no instruction defines them."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/getpidunique-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-getpidunique|MICROARCH": {
+    "kind": "card",
+    "item": "user-getpidunique",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because pid assignment happens in kernel data structures, not in hardware.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because pid assignment happens in kernel data structures, not in hardware."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/getpidunique-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-getpidunique|FIRMWARE": {
+    "kind": "card",
+    "item": "user-getpidunique",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because process management is a kernel concern; firmware never sees pids.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because process management is a kernel concern; firmware never sees pids."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/getpidunique-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-getpidunique|KERNEL": {
+    "kind": "card",
+    "item": "user-getpidunique",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because the pid allocator's uniqueness invariant is what lets the kernel distinguish processes for signaling, waiting, and scheduling.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because the pid allocator's uniqueness invariant is what lets the kernel distinguish processes for signaling, waiting, and scheduling."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/getpidunique-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-getpidunique|ALGORITHM": {
+    "kind": "card",
+    "item": "user-getpidunique",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because the mechanism is a specific kernel counter, not a portable computational pattern.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because the mechanism is a specific kernel counter, not a portable computational pattern."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/getpidunique-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "the-signal-that-xv6-never-sends|ISA": {
+    "item": "the-signal-that-xv6-never-sends",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "not at ISA because the verified property is the write syscall's contract, refuse with -1 and leave the writer alive, which is identical on every machine the kernel could run on: the proof compares behavior against POSIX and the kernel source, never against the machine manual.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at ISA because the verified property is the write syscall's contract, refuse with -1 and leave the writer alive, which is identical on every machine the kernel could run on: the proof compares behavior against POSIX and the kernel source, never against the machine manual."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The pipewrclosed.c header comment states the module's contract as 'xv6 has no SIGPIPE; the error comes back as an ordinary return value': the claim is about the syscall's return value, not about any machine behavior.",
+        "source": {
+          "cite": "user/pipewrclosed.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "POSIX defines the readerless-write contract as EPIPE plus a SIGPIPE delivery to the thread: the oracle for the behavior is an operating-system interface standard, not a hardware manual.",
+        "source": {
+          "cite": "POSIX.1 write(3p)",
+          "tier": "spec",
+          "url": "https://manpages.opensuse.org/Tumbleweed/man-pages-posix/write.3p.en.html"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about the write syscall's contract, provable without invoking any machine-level semantics."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim proved from an operating-system interface contract is not a claim about the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ISA layer stays dim when the verified property would hold identically on every machine the kernel could run on."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the test runs on RISC-V under QEMU, so the ISA must matter."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "Running on a machine is not depending on its contract: the proof invokes no machine semantics, so no manual text could change the verdict."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-signal-that-xv6-never-sends|MICROARCH": {
+    "item": "the-signal-that-xv6-never-sends",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because every check compares a syscall return value against its expected value, so the verdict depends only on the observed values and not on how the machine produced them: the proof is a value test, not a timing test.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because every check compares a syscall return value against its expected value, so the verdict depends only on the observed values and not on how the machine produced them: the proof is a value test, not a timing test."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every check in pipewrclosed.c asserts a return value: the refused write returns -1, the control write returns 16, the control read returns 16 byte-exact, and the fresh pipe lands on fds 3 and 4.",
+        "source": {
+          "cite": "user/pipewrclosed.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The module folds the measured values into one FNV-1a checksum and requires 0 mismatches; the PASS verdict is a comparison of values across runs, and no check measures a duration.",
+        "source": {
+          "cite": "PROOF.md pipewrclosed section",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verdict is decided by comparing observed values to expected values; no measured timing participates in any check."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim decided by value comparison alone is not a claim about the machine's speed or structure."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Microarch layer stays dim when the proof's verdict cannot change with the machine's timing."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the proof ran under QEMU emulation, whose timing differs from silicon."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "Timing differences change nothing here because no check measures time: identical values give identical verdicts whatever produced them."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-signal-that-xv6-never-sends|FIRMWARE": {
+    "item": "the-signal-that-xv6-never-sends",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because the claim lives entirely in the kernel and its userland test: the pipe write path touches no trap vector or privilege register beneath the kernel, so nothing configured under the kernel stands between the syscall and the -1.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because the claim lives entirely in the kernel and its userland test: the pipe write path touches no trap vector or privilege register beneath the kernel, so nothing configured under the kernel stands between the syscall and the -1."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "kernel/pipe.c pipewrite runs entirely in the kernel: it takes the pipe spinlock, checks readopen, releases the lock, and returns -1, touching no configuration beneath the kernel.",
+        "source": {
+          "cite": "kernel/pipe.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/pipe.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The module states that no kernel code was changed and the test exercises xv6's existing pipe write path from user space: the claim lives at and above the kernel.",
+        "source": {
+          "cite": "user/pipewrclosed.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "No state configured beneath the kernel appears in the function inputs, outputs, or proof, so that layer cannot affect the claim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim whose whole mechanism sits inside the kernel is not a claim about the firmware beneath it."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Firmware layer stays dim when the verified property would hold identically whatever sits under the kernel."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the kernel itself runs on firmware, so the firmware is in the picture."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "Being in the picture is not being load-bearing: nothing the firmware configures can change the -1, so the layer stays dim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-signal-that-xv6-never-sends|KERNEL": {
+    "item": "the-signal-that-xv6-never-sends",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the property under test is the kernel's write-to-pipe contract: Linux's fs/pipe.c answers a readerless pipe with a signal plus an error, xv6's kernel/pipe.c answers with the error alone, and the module verifies the xv6 side.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the property under test is the kernel's write-to-pipe contract: Linux's fs/pipe.c answers a readerless pipe with a signal plus an error, xv6's kernel/pipe.c answers with the error alone, and the module verifies the xv6 side."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "xv6's side: kernel/pipe.c pipewrite releases the lock and returns -1 when readopen is 0, the error-only refusal the module asserts.",
+        "source": {
+          "cite": "kernel/pipe.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/pipe.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Linux's side: the POSIX write specification orders both deliveries for a pipe not open for reading by any process, fail with EPIPE, and a SIGPIPE signal shall also be sent to the thread.",
+        "source": {
+          "cite": "POSIX.1 write(3p)",
+          "tier": "spec",
+          "url": "https://manpages.opensuse.org/Tumbleweed/man-pages-posix/write.3p.en.html"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The property under test is exactly how two kernels implement the same write-to-pipe contract, so the kernel layer is where the claim lives."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim about how a kernel implements a syscall contract is a claim about the Kernel layer."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property is the kernel's own behavior, not merely its environment."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the syscall is also a user-visible interface, so the claim could sit elsewhere."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The interface is the kernel's promise: both refusals are kernel code, so the layer that matters is the one that wrote them."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-signal-that-xv6-never-sends|ALGORITHM": {
+    "item": "the-signal-that-xv6-never-sends",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the claim is a kernel interface decision, how a write reports a missing reader, not a computational mechanism: FNV-1a only collapses the measured values into one checkable number, and the -1 verdict would stand under any other hash.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the claim is a kernel interface decision, how a write reports a missing reader, not a computational mechanism: FNV-1a only collapses the measured values into one checkable number, and the -1 verdict would stand under any other hash."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module's core assertion is write(p[1], wbuf, 16) == -1 after close(p[0]): a kernel interface refusal, verified by syscall return values, not by any computed identity.",
+        "source": {
+          "cite": "user/pipewrclosed.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "FNV-1a appears only at the end of the program, folding the measured values into one checksum for the transcript: it proves the numbers, it is not what the numbers prove.",
+        "source": {
+          "cite": "user/pipewrclosed.c",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "No arithmetic identity is verified; the claim is a policy decision in kernel/pipe.c, so no computational mechanism is load-bearing."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim about an interface policy is not a claim about a computational mechanism."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Algorithm layer stays dim when the proof would stand with the hash replaced by any other value-collapsing function."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that FNV-1a is an algorithm and the module depends on it."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "Depending on a tool is not depending on its mechanism: the checksum only transports the verdict, it cannot change it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
   }
 };
       // Exposed for the tooltip renderer, which lives in its own script
@@ -134072,7 +135068,8 @@ assert(check == 0x2144DF1C);</code></pre>
         .join('');
 
       document.querySelector('.approach').innerHTML = PROCESS_STEPS
-        .map((step, index) => `<article class="step"><strong>${padNumber(index + 1)}</strong><h3>${step.title}</h3><p>${step.description}</p></article>`)
+        .map((step, index) => `<article class="step"><strong>${padNumber(index + 1)}</strong><h3>${step.title}</h3><p>${step.description}</p></article>
+`)
         .join('');
 
       document.getElementById('contact-brief-title').textContent = `PUT THESE ${numberWord(CONTACT_BRIEF_ITEMS.length).toUpperCase()} THINGS IN YOUR EMAIL`;

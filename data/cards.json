@@ -16560,5 +16560,115 @@
     "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with forkoffset test\n\nchild writes 32 bytes via inherited fd 3, exits 42\nparent writes 32 bytes, file holds 64 contiguous\nRESULT: PASS",
     "terminalName": "qemu / xv6 / forkoffset",
     "terminalLabel": "Verified xv6 test output"
+  },
+  {
+    "id": "src-menvcfg-pbmte-write",
+    "kicker": "PBMTE bit 62 does not stick on QEMU virt",
+    "title": "The WARL Bit That Legalizes to Zero",
+    "summary": "A bare-metal M-mode RISC-V program that probes the menvcfg.PBMTE bit 62 write/readback contract. It writes 1 to bit 62 and reads back 0, proving the bit is WARL-legalized to zero on QEMU virt because page-based memory types are not implemented.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because menvcfg is a privileged CSR whose WARL fields the spec allows implementations to legalize; the card proves bit 62 reads back 0 after writing 1."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the legalization is an architectural choice, not a pipeline or cache behavior under test."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode software must probe WARL fields rather than assume them; writing PBMTE on a hart without Svpbmt support must be detected, not trusted."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because menvcfg is M-mode only; supervisor kernels cannot observe or depend on this bit."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a CSR legalization invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks against WARL readback invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Write 1 to bit 62, read back 0, confirmed across 3 runs"
+      ],
+      [
+        "CHECKSUM",
+        "0xb162675eda645223, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-pbmte-write",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel menvcfg-pbmte-write.elf\n\nmenvcfg.PBMTE bit 62: wrote 1, read 0 (WARL legalized)\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / menvcfg-pbmte-write.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 6,
+    "failures": 0
+  },
+  {
+    "id": "user-getpidunique",
+    "kicker": "Four processes, four distinct pids",
+    "title": "The Process IDs That Cannot Collide",
+    "summary": "An xv6 user-space test proving the kernel assigns unique process IDs. A parent forks three children and asserts all four pids are pairwise distinct and nonzero, with each child exiting only after verifying its own pid differs from its siblings.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because process IDs are a kernel abstraction; no instruction defines them."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because pid assignment happens in kernel data structures, not in hardware."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because process management is a kernel concern; firmware never sees pids."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because the pid allocator's uniqueness invariant is what lets the kernel distinguish processes for signaling, waiting, and scheduling."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the mechanism is a specific kernel counter, not a portable computational pattern."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks against pid uniqueness invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Parent plus 3 children, 4 pairwise-distinct nonzero pids"
+      ],
+      [
+        "CHECKSUM",
+        "0xEE21A7602C5F5347, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/getpidunique.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with getpidunique test\n\nparent pid, 3 children: 4 distinct nonzero pids\nRESULT: PASS",
+    "terminalName": "qemu / xv6 / getpidunique",
+    "terminalLabel": "Verified xv6 test output",
+    "checks": 6,
+    "failures": 0
   }
 ]

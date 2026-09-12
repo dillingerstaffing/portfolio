@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Signal That xv6 Never Sends",
+    "slug": "the-signal-that-xv6-never-sends",
+    "date": "2026-09-11",
+    "description": "A pipe with no reader leaves the writer's bytes with nowhere to go. Linux answers with a signal and an error; xv6 answers with just the error, because it has no signals to send.",
+    "paragraphs": [
+      "Make a pipe, close the read end, and write sixteen bytes. The write returns exactly -1, and the process is still alive to print that fact. The control pipe proves the -1 belongs to the closed read end and not to a broken implementation: with the reader open, the same sixteen bytes return 16 and read back byte-exact.",
+      "A pipe is a two-party contract, and with no reader the bytes have nowhere to go. So who tells the writer? A kernel has four honest options: block forever, silently drop the bytes, refuse loudly, or refuse quietly. Blocking is a hang, the quietest failure of all. Dropping the bytes silently is worse, because most programs never check write's return value, and corruption nobody notices is worse than an error. That leaves the two refusals, and POSIX chose the loud one.",
+      "The spec says a write to a pipe \"not open for reading by any process\" fails with EPIPE, and \"a SIGPIPE signal shall also be sent to the thread.\" Two deliveries, the signal and the error. Linux's fs/pipe.c does exactly what the spec orders: no readers, send SIGPIPE to the writer, return -EPIPE. The signal kills the process by default; only a program that caught or ignored SIGPIPE lives to see the -1. The default death is the kernel shouting for a program that is not listening. EPIPE is the polite fallback for the programs that asked to handle it.",
+      "xv6 cannot shout. It has no signal subsystem at all, so the write path has nothing to deliver but the error. In kernel/pipe.c, before a single byte is copied, the write loop checks two things: is anyone still listening, and has this process already been marked for death:",
+      "readopen counts the open read ends; killed is the per-process death flag. When the last reader is gone, the loop drops the lock and returns -1. The -1 is the SIGPIPE, in the only language xv6 speaks. Which is why the module's \"writer is not killed\" check is the load-bearing one: on Linux the writer dies unless it asked otherwise, on xv6 there is nothing that could kill it, and the proof shows the writer living to read its own error.",
+      "Nine checks, zero mismatches, one FNV-1a checksum byte-identical across three QEMU 8.2.2 runs. One sentence to carry away: a pipe with no reader is a letter with no address; Linux shouts and then hands you a note, xv6 just hands you the note."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because the verified property is the write syscall's contract, refuse with -1 and leave the writer alive, which is identical on every machine the kernel could run on: the proof compares behavior against POSIX and the kernel source, never against the machine manual."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because every check compares a syscall return value against its expected value, so the verdict depends only on the observed values and not on how the machine produced them: the proof is a value test, not a timing test."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the claim lives entirely in the kernel and its userland test: the pipe write path touches no trap vector or privilege register beneath the kernel, so nothing configured under the kernel stands between the syscall and the -1."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the property under test is the kernel's write-to-pipe contract: Linux's fs/pipe.c answers a readerless pipe with a signal plus an error, xv6's kernel/pipe.c answers with the error alone, and the module verifies the xv6 side."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the claim is a kernel interface decision, how a write reports a missing reader, not a computational mechanism: FNV-1a only collapses the measured values into one checkable number, and the -1 verdict would stand under any other hash."
+      }
+    }
+  },
+  {
     "title": "The Adder That Folds Its Carry Back",
     "slug": "the-adder-that-folds-its-carry-back",
     "date": "2026-09-11",
