@@ -667,6 +667,34 @@ def node_check_scripts(html_text):
 
 SITE_URL = "https://dillingerstaffing.github.io/portfolio"
 SITE_PATH = "/portfolio"
+
+# Dwell-gated read for blog permalink pages: a quick open-and-back records
+# nothing; 15s of visible dwell records one read in the shared profile.
+# Plain string (not an f-string) so the JS braces stay literal.
+DWELL_SCRIPT = """  <script src="__SITE_PATH__/feed/feed-ranker.js"></script>
+  <script>
+  (function () {
+    if (typeof FeedRanker === 'undefined' || !FeedRanker.dwell || !FeedRanker.blog) return;
+    var m = location.pathname.match(/\\/blog\\/([a-z0-9-]+)\\/?$/);
+    if (!m) return;
+    var root = document.querySelector('main .research-note') || document.querySelector('main');
+    if (!root) return;
+    var h3 = root.querySelector('h3');
+    var dt = root.querySelector('time[datetime]');
+    var paras = [];
+    var ps = root.querySelectorAll('.research-body p');
+    for (var i = 0; i < ps.length && i < 3; i++) paras.push(ps[i].textContent);
+    var item = FeedRanker.blog.adapt({
+      slug: m[1],
+      title: h3 ? h3.textContent : document.title,
+      date: dt ? dt.getAttribute('datetime') : '',
+      description: '',
+      paragraphs: paras
+    });
+    FeedRanker.dwell.track(item);
+  })();
+  </script>
+"""
 OG_IMAGE = SITE_URL + "/og-image.png"
 OG_IMAGE_ALT = ("Chris Dillinger: freelance low-level C, RISC-V, and OS kernel "
                 "systems programmer")
@@ -768,6 +796,7 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
           "mainEntityOfPage": url}
     ld_json = json.dumps(ld, ensure_ascii=False)
     json.loads(ld_json)  # never ship malformed JSON-LD
+    dwell = DWELL_SCRIPT.replace("__SITE_PATH__", SITE_PATH)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -804,7 +833,8 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
 {block}
   </main>
   <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; All field notes</a></footer>
-{wig_script}</body>
+{wig_script}
+{dwell}</body>
 </html>
 """
 
@@ -1142,12 +1172,37 @@ def build_feed_page(feed, stamp, template):
     apply();
   });
   if (canRank) {
+    // Outbound reads are bounce-aware. Clicking out only notes the
+    // departure time; when the tab becomes visible again, an absence
+    // under 10s is a bounce (no signal) and a longer one records the
+    // read. The departure timestamp survives a reload via session storage.
+    const ABS_PREFIX = 'feed-ranker/absence/v1:';
+    function noteDepart(id) {
+      try { sessionStorage.setItem(ABS_PREFIX + id, String(Date.now())); } catch (e) {}
+    }
+    function settleAbsences() {
+      if (!FeedRanker.dwell) return;
+      const nowMs = Date.now();
+      for (const r of rows) {
+        const id = r.dataset.id;
+        let t = null;
+        try { t = sessionStorage.getItem(ABS_PREFIX + id); } catch (e) {}
+        if (t === null || t === undefined) continue;
+        try { sessionStorage.removeItem(ABS_PREFIX + id); } catch (e) {}
+        if (FeedRanker.dwell.absenceResult(Number(t), nowMs) === 'read') {
+          try { FeedRanker.feedback.recordRead(rowItem(r)); } catch (e) {}
+        }
+      }
+    }
     for (const r of rows) {
       const link = r.querySelector('.feed-row');
-      if (link) link.addEventListener('click', () => {
-        try { FeedRanker.feedback.recordRead(rowItem(r)); } catch (e) {}
-      });
+      if (link) link.addEventListener('click', () => noteDepart(r.dataset.id));
     }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') settleAbsences();
+    });
+    window.addEventListener('pageshow', settleAbsences);
+    settleAbsences();
     for (const d of document.querySelectorAll('.feed-dismiss')) {
       d.addEventListener('click', (ev) => {
         ev.preventDefault();

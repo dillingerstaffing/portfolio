@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-203349" />
+  <meta name="build-version" content="v20260912-205037" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The Bit That Reroutes a Trap &middot; Blog &middot; Chris Dillinger</title>
@@ -537,6 +537,18 @@
     .research-note h3 { margin: 0; max-width: 480px; font: 500 clamp(26px, 3vw, 39px)/1.08 var(--display); letter-spacing: -.02em; }
     .research-note h3 a { color: inherit; text-decoration: none; }
     .research-note h3 a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+    .research-sort { display: inline-flex; border: 1px solid var(--line); margin-top: 22px; }
+    .research-sort button { background: transparent; border: 0; color: var(--dim);
+      font: 500 10px/1 var(--mono); letter-spacing: .12em; padding: 10px 14px;
+      cursor: pointer; border-radius: 0; }
+    .research-sort button + button { border-left: 1px solid var(--line); }
+    .research-sort button.is-active { color: var(--black); background: var(--acid); }
+    .research-note { position: relative; }
+    .research-dismiss { position: absolute; top: 52px; right: 0; background: transparent;
+      border: 0; color: var(--dim); font: 400 13px/1 var(--mono); cursor: pointer;
+      padding: 4px 8px; opacity: 0; }
+    .research-note:hover .research-dismiss, .research-dismiss:focus-visible { opacity: 1; }
+    .research-dismiss:hover { color: var(--ink); }
     /* Per-post permalink pages, generated at build time under blog/<slug>/. */
     .post-crumb { max-width: 1180px; margin: 0 auto; padding: 26px 24px 0; font: 500 11px/1.6 var(--mono); letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
     .post-crumb a { color: var(--acid); text-decoration: none; }
@@ -1081,5 +1093,29 @@ check(s_regs[2] == SCAUSE_S_ECALL,
       window.addEventListener('scroll', () => { if (l1 || l2) closeAll(); }, { passive: true });
       window.addEventListener('resize', () => { if (l1 || l2) closeAll(); });
     })();
-  </script></body>
+  </script>
+  <script src="/portfolio/feed/feed-ranker.js"></script>
+  <script>
+  (function () {
+    if (typeof FeedRanker === 'undefined' || !FeedRanker.dwell || !FeedRanker.blog) return;
+    var m = location.pathname.match(/\/blog\/([a-z0-9-]+)\/?$/);
+    if (!m) return;
+    var root = document.querySelector('main .research-note') || document.querySelector('main');
+    if (!root) return;
+    var h3 = root.querySelector('h3');
+    var dt = root.querySelector('time[datetime]');
+    var paras = [];
+    var ps = root.querySelectorAll('.research-body p');
+    for (var i = 0; i < ps.length && i < 3; i++) paras.push(ps[i].textContent);
+    var item = FeedRanker.blog.adapt({
+      slug: m[1],
+      title: h3 ? h3.textContent : document.title,
+      date: dt ? dt.getAttribute('datetime') : '',
+      description: '',
+      paragraphs: paras
+    });
+    FeedRanker.dwell.track(item);
+  })();
+  </script>
+</body>
 </html>

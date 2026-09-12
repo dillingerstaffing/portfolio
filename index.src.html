@@ -578,6 +578,18 @@
     .research-note h3 { margin: 0; max-width: 480px; font: 500 clamp(26px, 3vw, 39px)/1.08 var(--display); letter-spacing: -.02em; }
     .research-note h3 a { color: inherit; text-decoration: none; }
     .research-note h3 a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+    .research-sort { display: inline-flex; border: 1px solid var(--line); margin-top: 22px; }
+    .research-sort button { background: transparent; border: 0; color: var(--dim);
+      font: 500 10px/1 var(--mono); letter-spacing: .12em; padding: 10px 14px;
+      cursor: pointer; border-radius: 0; }
+    .research-sort button + button { border-left: 1px solid var(--line); }
+    .research-sort button.is-active { color: var(--black); background: var(--acid); }
+    .research-note { position: relative; }
+    .research-dismiss { position: absolute; top: 52px; right: 0; background: transparent;
+      border: 0; color: var(--dim); font: 400 13px/1 var(--mono); cursor: pointer;
+      padding: 4px 8px; opacity: 0; }
+    .research-note:hover .research-dismiss, .research-dismiss:focus-visible { opacity: 1; }
+    .research-dismiss:hover { color: var(--ink); }
     /* Per-post permalink pages, generated at build time under blog/<slug>/. */
     .post-crumb { max-width: 1180px; margin: 0 auto; padding: 26px 24px 0; font: 500 11px/1.6 var(--mono); letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
     .post-crumb a { color: var(--acid); text-decoration: none; }
@@ -943,6 +955,10 @@
         <div>
           <h2 id="blog-title">Blog</h2>
           <p class="research-intro">Short notes on C, RISC-V, and systems internals.</p>
+          <div class="research-sort" role="group" aria-label="Sort field notes">
+            <button type="button" class="is-active" data-sort="newest">NEWEST</button>
+            <button type="button" data-sort="foryou">FOR YOU</button>
+          </div>
         </div>
       </header>
 
@@ -3348,6 +3364,81 @@ if ('serviceWorker' in navigator) {
   </script>
   <script>
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+  </script>
+  <script src="/portfolio/feed/feed-ranker.js"></script>
+  <script>
+  (() => {
+    // Blog listing: NEWEST (default, authored order) or FOR YOU (the shared
+    // ranking profile). Dismissed posts stay out of both. Clicking into a
+    // post records nothing by itself; the read is earned by dwell time on
+    // the post page.
+    const section = document.getElementById('blog');
+    if (!section || typeof FeedRanker === 'undefined') return;
+    const sortEl = section.querySelector('.research-sort');
+    if (!sortEl) return;
+
+    function itemFor(el) {
+      const link = el.querySelector('a.research-permalink');
+      const m = link && link.getAttribute('href').match(/\/blog\/([a-z0-9-]+)\/?$/);
+      if (!m) return null;
+      const paras = [];
+      el.querySelectorAll('.research-body p').forEach((p, i) => { if (i < 3) paras.push(p.textContent); });
+      const dt = el.querySelector('time[datetime]');
+      const h3 = el.querySelector('h3');
+      return {
+        el,
+        item: FeedRanker.blog.adapt({
+          slug: m[1],
+          title: h3 ? h3.textContent : '',
+          date: dt ? dt.getAttribute('datetime') : '',
+          description: '',
+          paragraphs: paras
+        })
+      };
+    }
+
+    const rows = Array.from(section.querySelectorAll('article.research-note'))
+      .map(itemFor).filter(Boolean);
+
+    // Dismiss buttons are injected at runtime so new posts need no markup changes.
+    rows.forEach(({ el, item }) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'research-dismiss';
+      btn.setAttribute('aria-label', 'Hide this post');
+      btn.textContent = '\u00d7';
+      btn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        FeedRanker.feedback.recordDismiss(item);
+        applySort();
+      });
+      el.appendChild(btn);
+    });
+
+    function applySort() {
+      const seen = (FeedRanker.profile.load() || {}).seen || {};
+      const mode = sortEl.querySelector('button.is-active').dataset.sort;
+      let order = rows.filter(({ item }) => seen[item.id] !== 'dismissed');
+      rows.forEach(({ el, item }) => {
+        el.style.display = seen[item.id] === 'dismissed' ? 'none' : '';
+      });
+      if (mode === 'foryou') {
+        const ranked = FeedRanker.rank(order.map((r) => r.item));
+        const byId = new Map(order.map((r) => [r.item.id, r]));
+        order = ranked.map((it) => byId.get(it.id)).filter(Boolean);
+      }
+      order.forEach(({ el }) => section.appendChild(el));
+    }
+
+    sortEl.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('button[data-sort]');
+      if (!btn) return;
+      sortEl.querySelectorAll('button').forEach((b) => b.classList.toggle('is-active', b === btn));
+      applySort();
+    });
+
+    applySort(); // hide anything already dismissed
+  })();
   </script>
 </body>
 </html>
