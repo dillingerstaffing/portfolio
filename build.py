@@ -898,7 +898,7 @@ FEED_CSS = """
   border-bottom: 1px solid var(--line); color: var(--dim); font-size: 11px;
   letter-spacing: .14em; display: flex; gap: 20px; flex-wrap: wrap; }
 .feed-controls { position: sticky; top: 68px; z-index: 40;
-  background: rgba(12, 15, 13, .96); border-bottom: 1px solid var(--line); }
+  background: #0c0f0d; border-bottom: 1px solid var(--line); }
 .feed-controls-inner { display: flex; align-items: center; gap: 12px;
   flex-wrap: wrap; padding-block: 12px; }
 #feed-search { flex: 1 1 220px; max-width: 340px; background: var(--panel);
