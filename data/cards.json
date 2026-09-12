@@ -17047,5 +17047,60 @@
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 17,
     "failures": 0
+  },
+  {
+    "id": "user-forkclose",
+    "kicker": "Fork copies the descriptor table, close stays independent",
+    "title": "The File Descriptor That Fork Duplicates",
+    "summary": "An xv6 user-space test proving fork copies the file descriptor table with independent close semantics. The child closes its copy of the fd while the parent keeps writing through its own copy, and the file still receives the parent's bytes.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because file descriptor duplication is an OS abstraction; no instruction defines it."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the duplication happens in kernel memory structures, not in hardware."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because fork and file tables are kernel constructs; machine-mode firmware never sees them."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because fork's fd table copy semantics determine whether a child's close affects the parent's open files."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the mechanism is a specific kernel data structure choice, not a portable computational pattern."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkclose-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks against fd duplication invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Child closes fd, parent writes 32 bytes, file holds parent bytes"
+      ],
+      [
+        "CHECKSUM",
+        "0xE79BD0145CA8EB94, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkclose.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with forkclose test\n\nchild closes fd, parent writes 32 bytes: file holds 32\nRESULT: PASS",
+    "terminalName": "qemu / xv6 / forkclose",
+    "terminalLabel": "Verified xv6 test output",
+    "checks": 6,
+    "failures": 0
   }
 ]
