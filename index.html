@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-033858">
+  <meta name="build-version" content="v20260912-035854">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -18747,6 +18747,61 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "Not at ALGORITHM because the claim depends on xv6's wait implementation scanning the process table in pid order, not a portable computation: it states what this kernel does with zombies, not a mechanism another ISA could share."
       }
     }
+  },
+  {
+    "id": "src-mip-msip-write",
+    "kicker": "Software cannot pend a machine interrupt through mip",
+    "title": "The Interrupt Bit That Ignores Your Write",
+    "summary": "A bare-metal M-mode RISC-V program that attempts to write mip.MSIP (bit 3) from software and records what the hardware does. The write is ignored: mip stays unchanged, while a control proves the CSR write path works fine on the neighboring SSIP bit.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec reserves MSIP for platform-driven delivery; the card proves software writes to the bit are ignored on QEMU virt."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the ignore behavior is an architectural/platform choice, not a pipeline or cache effect."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode code that wants to pend a machine software interrupt must write the CLINT msip MMIO register, not the mip CSR; writing mip is a silent no-op."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because mip is M-mode only; supervisor software never touches this bit."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a CSR write-ignore invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 checks against write-ignore invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Software writes to MSIP leave mip unchanged, 0 traps in 1M-iteration window"
+      ],
+      [
+        "CHECKSUM",
+        "0x283c26a67ca35455, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mip-msip-write",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mip-msip-write.elf\n\ncsrsi mip,2: SSIP sets, readback 0x82\ncsrsi mip,8: MSIP ignored, readback 0x80\ntraps in 1M window: 0\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / mip-msip-write.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 17,
+    "failures": 0
   }
 ];
       const CHIPS_BY_KEY = {
@@ -136046,6 +136101,221 @@ assert(check == 0x2144DF1C);</code></pre>
           1
         ],
         "strength": "strong"
+      }
+    ]
+  },
+  "src-mip-msip-write|ISA": {
+    "kind": "card",
+    "item": "src-mip-msip-write",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the privileged spec reserves MSIP for platform-driven delivery; the card proves software writes to the bit are ignored on QEMU virt.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the privileged spec reserves MSIP for platform-driven delivery; the card proves software writes to the bit are ignored on QEMU virt."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mip-msip-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mip-msip-write|MICROARCH": {
+    "kind": "card",
+    "item": "src-mip-msip-write",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the ignore behavior is an architectural/platform choice, not a pipeline or cache effect.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the ignore behavior is an architectural/platform choice, not a pipeline or cache effect."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mip-msip-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mip-msip-write|FIRMWARE": {
+    "kind": "card",
+    "item": "src-mip-msip-write",
+    "slot": "FIRMWARE",
+    "probandum": "matters at firmware because M-mode code that wants to pend a machine software interrupt must write the CLINT msip MMIO register, not the mip CSR; writing mip is a silent no-op.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at firmware because M-mode code that wants to pend a machine software interrupt must write the CLINT msip MMIO register, not the mip CSR; writing mip is a silent no-op."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mip-msip-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mip-msip-write|KERNEL": {
+    "kind": "card",
+    "item": "src-mip-msip-write",
+    "slot": "KERNEL",
+    "probandum": "not at kernel because mip is M-mode only; supervisor software never touches this bit.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at kernel because mip is M-mode only; supervisor software never touches this bit."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mip-msip-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mip-msip-write|ALGORITHM": {
+    "kind": "card",
+    "item": "src-mip-msip-write",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a CSR write-ignore invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a CSR write-ignore invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mip-msip-write/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mip-msip-write/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
       }
     ]
   }
