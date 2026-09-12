@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-004010">
+  <meta name="build-version" content="v20260912-010404">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -17945,6 +17945,120 @@ assert(check == 0x2144DF1C);</code></pre>
     },
     "portability": null,
     "stressItems": null
+  },
+  {
+    "id": "lab-140-mulhi-unsigned",
+    "kicker": "Unsigned multiply-high across the full 64-bit range",
+    "title": "Branchless 64-bit unsigned mulhi",
+    "summary": "C implementation computing the high 64 bits of an unsigned 128-bit product, checked against the compiler's __int128 across the full input space.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "RISC-V's mulhu instruction computes exactly this operation, so the C version is checked against the hardware instruction's result."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test compares result values; no pipeline or multiplier internals are measured."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The module runs as a Host userspace program; no firmware mechanisms are involved."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs in userspace with no kernel interaction; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The portable C decomposition of a 128-bit product into 64-bit halves is the algorithm being verified."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "26781636 inputs checked against __int128 oracle, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "4.862 ns/pair at -O2, best of 5"
+      ],
+      [
+        "CHECKSUM",
+        "0x75e84e7a670bf3fc, identical across builds"
+      ],
+      [
+        "ENVIRONMENT",
+        "Host"
+      ]
+    ],
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab",
+    "repoLabel": "dillingerstaffing/systems-lab lab/140-mulhi-unsigned",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 26781636,
+    "failures": 0
+  },
+  {
+    "id": "src-cbo-zero-gate",
+    "kicker": "QEMU traps cbo.zero as illegal, menvcfg bit 7 stays writable",
+    "title": "cbo.zero instruction probe under QEMU",
+    "summary": "M-mode probe executing cbo.zero under QEMU 8.2.2, recording the illegal-instruction trap (mcause 0x2) with mepc at the instruction, and verifying menvcfg bit 7 remains writable.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "cbo.zero is a Zicboz instruction whose trap behavior on unsupported hardware is defined by the privileged architecture."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "QEMU does not execute the instruction; the probe records trap behavior, not implementation internals."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software sets menvcfg and handles the trap, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is trap behavior on an unimplemented instruction, not a computational mechanism."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cbo-zero-gate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "1 check on QEMU 8.2.2: cbo.zero traps with mcause 0x2, mepc at the instruction, menvcfg bit 7 writable, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x300b72994b2592ed, identical across runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/cbo-zero-gate",
+    "showRepoLink": true,
+    "terminalOutput": "",
+    "terminalName": "",
+    "terminalLabel": "",
+    "checks": 1,
+    "failures": 0
   }
 ];
       const CHIPS_BY_KEY = {
@@ -131191,6 +131305,629 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The evidence plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-140-mulhi-unsigned|ISA": {
+    "item": "lab-140-mulhi-unsigned",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "RISC-V's mulhu instruction computes exactly this operation, so the C version is checked against the hardware instruction's result.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "RISC-V's mulhu instruction computes exactly this operation, so the C version is checked against the hardware instruction's result."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "26781636 inputs checked against __int128 oracle with 0 mismatches; the C mulhi matches the hardware mulhu result.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The RISC-V ISA defines mulhu as the unsigned multiply-high instruction.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The C version computes what mulhu computes."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim that matches a hardware instruction's result engages the ISA layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-140-mulhi-unsigned|MICROARCH": {
+    "item": "lab-140-mulhi-unsigned",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The test compares result values; no pipeline or multiplier internals are measured.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The test compares result values; no pipeline or multiplier internals are measured."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log compares result values; no pipeline or multiplier internals were measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The measurement surface is result values only."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at MICROARCH when verification compares values and measures no implementation detail."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-140-mulhi-unsigned|FIRMWARE": {
+    "item": "lab-140-mulhi-unsigned",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The module runs as a Host userspace program; no firmware mechanisms are involved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The module runs as a Host userspace program; no firmware mechanisms are involved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module runs as a Host userspace program; no firmware mechanisms appear in the proof log.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "With no firmware in the loop, the property cannot be load-bearing there."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at FIRMWARE when no firmware mechanisms are involved."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-140-mulhi-unsigned|KERNEL": {
+    "item": "lab-140-mulhi-unsigned",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The module runs in userspace with no kernel interaction; no kernel mechanisms are involved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The module runs in userspace with no kernel interaction; no kernel mechanisms are involved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module runs in userspace with no syscalls beyond the test harness; no kernel mechanisms are exercised.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "With no kernel interaction, the property cannot be load-bearing for kernel work."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at KERNEL when no kernel mechanisms are involved."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-140-mulhi-unsigned|ALGORITHM": {
+    "item": "lab-140-mulhi-unsigned",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The portable C decomposition of a 128-bit product into 64-bit halves is the algorithm being verified.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The portable C decomposition of a 128-bit product into 64-bit halves is the algorithm being verified."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verified property is the 128-bit product decomposition into 64-bit halves, a portable computation.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/140-mulhi-unsigned/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The decomposition is the computational mechanism under test."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim engages ALGORITHM when the property is a portable computational mechanism."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-cbo-zero-gate|ISA": {
+    "item": "src-cbo-zero-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "cbo.zero is a Zicboz instruction whose trap behavior on unsupported hardware is defined by the privileged architecture.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "cbo.zero is a Zicboz instruction whose trap behavior on unsupported hardware is defined by the privileged architecture."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "cbo.zero trapped with mcause 0x2 (illegal instruction); QEMU 8.2.2 does not execute it.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cbo-zero-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The privileged architecture defines illegal-instruction trap behavior for unimplemented extensions.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The trap is the ISA's defined response to an unimplemented instruction."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim about trap behavior on an unimplemented instruction engages the ISA layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-cbo-zero-gate|MICROARCH": {
+    "item": "src-cbo-zero-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "QEMU does not execute the instruction; the probe records trap behavior, not implementation internals.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "QEMU does not execute the instruction; the probe records trap behavior, not implementation internals."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "QEMU does not execute cbo.zero; the probe records the trap, not execution internals.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cbo-zero-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "No implementation internals were measured."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at MICROARCH when the instruction is not executed and no internals are measured."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-cbo-zero-gate|FIRMWARE": {
+    "item": "src-cbo-zero-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Machine-mode software sets menvcfg and handles the trap, which is firmware's privilege.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Machine-mode software sets menvcfg and handles the trap, which is firmware's privilege."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Machine-mode software programs menvcfg and receives the trap; the proof log shows the setup.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cbo-zero-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "menvcfg and trap handling are machine-mode firmware privileges.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Trap setup and handling are firmware's job."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A verified claim about menvcfg programming and trap receipt engages FIRMWARE."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-cbo-zero-gate|KERNEL": {
+    "item": "src-cbo-zero-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The module runs bare metal with no operating system; no kernel mechanisms are involved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module runs bare metal in M-mode with no operating system present.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cbo-zero-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "With no OS, the property cannot be load-bearing for kernel work."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at KERNEL when no kernel mechanisms are involved."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-cbo-zero-gate|ALGORITHM": {
+    "item": "src-cbo-zero-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The property is trap behavior on an unimplemented instruction, not a computational mechanism.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The property is trap behavior on an unimplemented instruction, not a computational mechanism."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verified property is which trap the hart takes on cbo.zero, an ISA behavior not a computation.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/cbo-zero-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "Trap behavior is machine behavior, not a computational mechanism."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim is dim at ALGORITHM when the property is hardware behavior rather than portable computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "normal"
+      },
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
       }
     ]
   }
