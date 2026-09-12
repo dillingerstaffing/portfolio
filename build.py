@@ -940,14 +940,8 @@ FEED_CSS = """
 .feed-go { color: var(--dim); font-size: 20px; line-height: 1; padding-top: 4px;
   transition: transform .18s ease, color .18s ease; }
 .feed-empty { padding: 48px 0; color: var(--dim); font-size: 13px; }
-.feed-policy { border: 1px solid var(--line); background: var(--panel);
-  padding: clamp(26px, 4vw, 46px);
-  margin-bottom: clamp(56px, 8vw, 110px); }
-.feed-policy h2 { font: 600 clamp(28px, 4vw, 44px)/1 var(--display);
-  letter-spacing: -0.03em; margin: 0; }
-.feed-policy p { color: var(--muted); font-size: 13px; max-width: 700px;
-  margin: 16px 0 0; }
-.feed-policy a { color: var(--acid); }
+.feed-tip { color: var(--dim); font-size: 13px; padding: 28px 0 8px; }
+.feed-tip a { color: var(--acid); }
 footer.frame { display: flex; justify-content: space-between; gap: 16px;
   flex-wrap: wrap; padding-block: 28px; border-top: 1px solid var(--line);
   color: var(--dim); font-size: 11px; letter-spacing: .06em; }
@@ -1043,8 +1037,8 @@ def build_feed_page(feed, stamp, template):
     days_ahead = (7 - latest_added.weekday()) % 7 or 7
     next_pass = latest_added + datetime.timedelta(days=days_ahead)
 
-    desc = ("The Signal Wire: the week's highest-signal reading for low-level "
-            "engineers. RISC-V, kernels, hardware, and tooling, curated by hand.")
+    desc = ("The Signal Wire: the week's reading for low-level "
+            "engineers. RISC-V, kernels, hardware, and tooling, updated every Monday.")
     url = f"{SITE_URL}/feed/"
     ld = {"@context": "https://schema.org", "@type": "CollectionPage",
           "name": "The Signal Wire",
@@ -1137,9 +1131,9 @@ def build_feed_page(feed, stamp, template):
     <section class="frame feed-masthead" aria-labelledby="feed-title">
       <p class="feed-kicker"><span class="signal" aria-hidden="true"></span>FEED</p>
       <h1 id="feed-title">The Signal Wire.</h1>
-      <p class="feed-lede">The week&rsquo;s highest-signal reading for low-level
+      <p class="feed-lede">The week&rsquo;s reading for low-level
       engineers: RISC-V, kernels, hardware, and the tooling around them.
-      Curated by hand, every Monday. No quotas, no filler.</p>
+      Updated every Monday.</p>
       <div class="feed-meta">
         <span>{len(feed)} ITEMS</span>
         <span>CURATED {fmt_feed_date(latest_added.isoformat())}</span>
@@ -1167,15 +1161,7 @@ def build_feed_page(feed, stamp, template):
       </div>
       <p id="feed-empty" class="feed-empty" hidden>The wire is quiet under
       this filter. Try clearing the search.</p>
-    </section>
-    <section class="frame feed-policy" aria-labelledby="feed-policy-title">
-      <h2 id="feed-policy-title">The bar.</h2>
-      <p>An item ships here only if a working engineer would spend ten minutes
-      on it. There is no quota: a quiet week ships a short wire, and filler
-      never ships. Every brief is written by hand for this page, never copied
-      from the article and never generated. Sources are primary where they
-      exist, and items age out as the field moves on.</p>
-      <p>Spotted something that clears the bar?
+      <p class="feed-tip">Spotted something?
       <a href="mailto:shipthisgroup@gmail.com?subject=Feed%20suggestion">Send it over</a>.</p>
     </section>
   </main>
