@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-070149">
+  <meta name="build-version" content="v20260912-070853">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,21 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-write-that-sleeps/">The Write That Sleeps</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the kernel's scheduling decision, when a full pipe makes a write sleep, and that decision is identical for the same kernel on any instruction set: the proof asserts nothing about any instruction's specified behavior, and no ISA rule distinguishes a sleeping write from a returning one.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the measured quantity is scheduler time in whole timer ticks, forty of them against a thirty-tick gate: pipeline, cache, and predictor effects live orders of magnitude below the gate, so no implementation detail could change whether the verdict passes. The timing the module measured is kernel-visible, not machine-visible.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the measured path never leaves the kernel: the sleep and the wakeup happen between user processes and xv6's scheduler, with no privilege register, trap vector, or SBI call under the kernel under test. Nothing configured beneath the kernel stands between the syscall and the stall.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the property under test is the kernel's own pipe scheduling contract: a full pipe makes pipewrite sleep on the nwrite channel instead of spinning, and piperead wakes that channel when it drains. The module proves the block from outside the kernel with the uptime tick counter as a stopwatch, 40 ticks against a 30-tick gate, the shadow of a sleep measured in time.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the claim is a kernel scheduling decision, when a write sleeps for a reader, not a computational mechanism: the tick-edge choreography that makes the measurement repeatable is craft around the claim, not the claim itself, and the FNV-1a fold only collapses the measured values into one checkable number.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 03:07 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Fill an xv6 pipe with exactly 512 bytes, the whole buffer, and write one more byte. The call does not return. It comes back 40 ticks later, when the child finally drains the pipe, and all 513 bytes arrive byte-exact: seven checks, zero mismatches, three byte-identical runs under QEMU. No one inside the kernel told the test the write slept. It proved the block from outside, with nothing but the uptime tick counter for a stopwatch.</p>
+          <p>The determinism is choreography. The parent fills the pipe before the fork, so the fill can never block by accident. Then it spins on the tick counter until a fresh tick edge, captures t0 microseconds after the edge, and only then forks: both sides inherit one absolute deadline, t0 plus 40. The child touches nothing until that tick; the parent&#x27;s second write is issued in tick t0, so it must wait the full 40. An early revision captured t0 after the fork, and the count jittered between 39 and 40 where a tick boundary fell between the fork and the write. The fix was not a bigger gate. It was putting the boundary where it belongs. The capture is four lines of C:</p>
+          <pre><code>te = (uint64)uptime();\nwhile ((uint64)uptime() == te)\n  ;\nt0 = (uint64)uptime();\npid = fork();</code></pre>
+          <p>On the kernel side the rule is small: when the buffer is full, pipewrite wakes the reader and sleeps on its own nwrite channel, and the reader&#x27;s piperead answers with a wakeup on that same channel when it drains. No polling, no timeout, no retry. And underneath that is a design argument I keep turning over. The writer cannot spin for the reader, because the reader may be asleep or unscheduled, and burning cycles while the only party that can make progress is not running is how a machine does nothing expensively. My ring buffers spin, and rightly so: known parties, nanosecond stakes. The kernel&#x27;s pipe sleeps, because the kernel serves parties it has never met.</p>
+          <p>Scope, honestly held: one byte past full, one child, one fixed 513-byte pattern. No partial writes, no multiple writers, no read-side blocking, and the PROOF.md says so. One sentence to carry away: a kernel block can never be watched from user space, so you prove it by measuring precisely what the machine did not do while you waited.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf.c" target="_blank" rel="noopener">user/pipebuf.c</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-return-with-nothing-to-return-from/">The Return With Nothing to Return From</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified content is the privileged architecture's own contract for sret: executed in U-mode it traps as illegal instruction with mcause=2, mepc at the sret site, trapped mstatus.MPP=0, and the faulting instruction word in mtval. The module probed all four with real CSR reads against the manual's supervisor-instruction text, the Sail model's bare user-mode match clause that routes straight to the illegal-instruction handler, and the SPP/SPIE/sepc restore semantics the control phase exercised from S-mode.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the refusal is a contract rule about register state, identical on every conforming implementation: the proof measured no timing and no pipeline, cache, or predictor behavior, and no microarchitectural choice could change whether the trap fires or what the CSRs read back. The QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the trap's destination is firmware's decision: medeleg was written 0 and read back 0 so the illegal-instruction trap could not be delegated away, and the M-mode handler recorded mcause, mepc, mtval, and mstatus before jumping to the C continuation. On this machine the receiver, the delegation lock, and the scripted drop into U-mode are all M-mode operations.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because sret is the supervisor trap return path the kernel walks on every trap exit: privilege restored from SPP, interrupt enable from SPIE, the program counter from sepc. The module proved the gate in both directions, S-mode sret works with control_ok=1, U-mode sret traps with mcause=2, so a kernel knows exactly where its return instruction is legal and what the hardware does when user code reaches for it.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the sret refusal is the architecture's privilege mechanism, not a portable technique: with no privilege modes and no return-from-trap instruction the claim has nothing to mean, and nothing in the verified behavior travels to another machine.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 02:10 EDT</time></p>
@@ -141745,6 +141760,386 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "the-write-that-sleeps|ISA": {
+    "item": "the-write-that-sleeps",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "not at ISA because the verified property is the kernel's scheduling decision, when a full pipe makes a write sleep, and that decision is identical for the same kernel on any instruction set: the proof asserts nothing about any instruction's specified behavior, and no ISA rule distinguishes a sleeping write from a returning one.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at ISA because the verified property is the kernel's scheduling decision, when a full pipe makes a write sleep, and that decision is identical for the same kernel on any instruction set: the proof asserts nothing about any instruction's specified behavior, and no ISA rule distinguishes a sleeping write from a returning one."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the pipebuf protocol: a 512-byte fill, one more byte, 40 measured ticks of block against a 30-tick gate, 7 checks, 0 mismatches, 3 byte-identical QEMU runs. Every assertion is about kernel scheduling behavior; none is about any instruction's specified semantics.",
+        "source": {
+          "cite": "user/pipebuf-PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about the kernel's scheduling decision, statable and provable without any instruction-level invariant."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test that asserts no instruction-level property proves no ISA-level property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The ISA layer lights when the verified property is the specified behavior of an instruction, including its privilege gate."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the module runs on a RISC-V QEMU."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Running on RISC-V does not make a kernel scheduling test about the ISA; QEMU is the harness, and the same kernel ported to another ISA would block the same way."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-write-that-sleeps|MICROARCH": {
+    "item": "the-write-that-sleeps",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the measured quantity is scheduler time in whole timer ticks, forty of them against a thirty-tick gate: pipeline, cache, and predictor effects live orders of magnitude below the gate, so no implementation detail could change whether the verdict passes. The timing the module measured is kernel-visible, not machine-visible.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the measured quantity is scheduler time in whole timer ticks, forty of them against a thirty-tick gate: pipeline, cache, and predictor effects live orders of magnitude below the gate, so no implementation detail could change whether the verdict passes. The timing the module measured is kernel-visible, not machine-visible."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md measures block time in whole uptime ticks: 40 ticks against a 30-tick gate, with the exact count pinned by the tick-edge capture discipline. No check times anything at pipeline, cache, or predictor scale.",
+        "source": {
+          "cite": "user/pipebuf-PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The claim is decided by comparing a tick count against a gate ten ticks wide, so it carries no information about any pipeline, cache, or predictor."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test whose margin is whole scheduler ticks cannot discriminate between microarchitectures."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Microarch layer stays dim when the verified property would read identically on every implementation of the same spec."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that QEMU's timing is not silicon timing."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The gate has ten ticks of slack precisely so the verdict does not depend on the model's timing fidelity; it measures kernel scheduling, not the machine."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-write-that-sleeps|FIRMWARE": {
+    "item": "the-write-that-sleeps",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because the measured path never leaves the kernel: the sleep and the wakeup happen between user processes and xv6's scheduler, with no privilege register, trap vector, or SBI call under the kernel under test. Nothing configured beneath the kernel stands between the syscall and the stall.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because the measured path never leaves the kernel: the sleep and the wakeup happen between user processes and xv6's scheduler, with no privilege register, trap vector, or SBI call under the kernel under test. Nothing configured beneath the kernel stands between the syscall and the stall."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md exercises only the user-to-kernel path: pipe, write, fork, uptime, wait. No check reads or writes any privilege register, trap vector, or firmware interface.",
+        "source": {
+          "cite": "user/pipebuf-PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The sleep, the wakeup, and the measurement all happen between user processes and the kernel scheduler, with no firmware boundary crossed."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test that never crosses beneath the kernel proves nothing about the layer beneath it."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Firmware layer stays dim when nothing the proof measured crosses the boundary beneath the kernel."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the trap into the kernel passes through firmware-owned vectors."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The trap path is the kernel's own; nothing configured under the kernel varies the block, so firmware is not load-bearing for the verdict."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-write-that-sleeps|KERNEL": {
+    "item": "the-write-that-sleeps",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the property under test is the kernel's own pipe scheduling contract: a full pipe makes pipewrite sleep on the nwrite channel instead of spinning, and piperead wakes that channel when it drains. The module proves the block from outside the kernel with the uptime tick counter as a stopwatch, 40 ticks against a 30-tick gate, the shadow of a sleep measured in time.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the property under test is the kernel's own pipe scheduling contract: a full pipe makes pipewrite sleep on the nwrite channel instead of spinning, and piperead wakes that channel when it drains. The module proves the block from outside the kernel with the uptime tick counter as a stopwatch, 40 ticks against a 30-tick gate, the shadow of a sleep measured in time."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the kernel-side rule under test: with the pipe full, pipewrite sleeps on the nwrite channel until piperead's wakeup on the same channel, and the user-space test proves the sleep by its shadow in time, 40 ticks against the 30-tick gate.",
+        "source": {
+          "cite": "user/pipebuf-PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The property is the kernel's own pipe scheduling contract, verified end to end from user space."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test that proves a kernel scheduling rule by measuring its observable effect is a claim about kernel behavior."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property is the kernel's own scheduling or interface contract."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the test never inspects kernel state directly."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "That is the point of the discipline: the block is real exactly because nothing but the stall can explain the 40 ticks, so the kernel's contract is what the measurement proves."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-write-that-sleeps|ALGORITHM": {
+    "item": "the-write-that-sleeps",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the claim is a kernel scheduling decision, when a write sleeps for a reader, not a computational mechanism: the tick-edge choreography that makes the measurement repeatable is craft around the claim, not the claim itself, and the FNV-1a fold only collapses the measured values into one checkable number.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the claim is a kernel scheduling decision, when a write sleeps for a reader, not a computational mechanism: the tick-edge choreography that makes the measurement repeatable is craft around the claim, not the claim itself, and the FNV-1a fold only collapses the measured values into one checkable number."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md separates the claim from the craft: the claim is the 40-tick block on a full pipe, while the tick-edge capture, the shared absolute deadline, and the FNV-1a stream fold are the measurement machinery that makes the claim checkable.",
+        "source": {
+          "cite": "user/pipebuf-PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The claim is a kernel scheduling decision, when a write sleeps for a reader; the deterministic timing discipline is craft around the claim, not a computational mechanism under test."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test whose mechanism is measurement craft, not computation, proves a system property, not an algorithmic one."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Algorithm layer lights when the verified property is a computational mechanism, not a system decision."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the deadline choreography is itself an algorithm."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The choreography removes timing noise; it computes nothing about pipes, and the verdict would stand under any other deterministic schedule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
       }
     ]
   }

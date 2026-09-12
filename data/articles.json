@@ -1,5 +1,44 @@
 [
   {
+    "title": "The Write That Sleeps",
+    "slug": "the-write-that-sleeps",
+    "date": "2026-09-12",
+    "description": "Fill an xv6 pipe to exactly 512 bytes, write one more byte, and the write does not return for 40 ticks. A user-space proof of a kernel sleep, measured with the uptime tick counter as the stopwatch.",
+    "paragraphs": [
+      "Fill an xv6 pipe with exactly 512 bytes, the whole buffer, and write one more byte. The call does not return. It comes back 40 ticks later, when the child finally drains the pipe, and all 513 bytes arrive byte-exact: seven checks, zero mismatches, three byte-identical runs under QEMU. No one inside the kernel told the test the write slept. It proved the block from outside, with nothing but the uptime tick counter for a stopwatch.",
+      "The determinism is choreography. The parent fills the pipe before the fork, so the fill can never block by accident. Then it spins on the tick counter until a fresh tick edge, captures t0 microseconds after the edge, and only then forks: both sides inherit one absolute deadline, t0 plus 40. The child touches nothing until that tick; the parent's second write is issued in tick t0, so it must wait the full 40. An early revision captured t0 after the fork, and the count jittered between 39 and 40 where a tick boundary fell between the fork and the write. The fix was not a bigger gate. It was putting the boundary where it belongs. The capture is four lines of C:",
+      "On the kernel side the rule is small: when the buffer is full, pipewrite wakes the reader and sleeps on its own nwrite channel, and the reader's piperead answers with a wakeup on that same channel when it drains. No polling, no timeout, no retry. And underneath that is a design argument I keep turning over. The writer cannot spin for the reader, because the reader may be asleep or unscheduled, and burning cycles while the only party that can make progress is not running is how a machine does nothing expensively. My ring buffers spin, and rightly so: known parties, nanosecond stakes. The kernel's pipe sleeps, because the kernel serves parties it has never met.",
+      "Scope, honestly held: one byte past full, one child, one fixed 513-byte pattern. No partial writes, no multiple writers, no read-side blocking, and the PROOF.md says so. One sentence to carry away: a kernel block can never be watched from user space, so you prove it by measuring precisely what the machine did not do while you waited."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf.c",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because the verified property is the kernel's scheduling decision, when a full pipe makes a write sleep, and that decision is identical for the same kernel on any instruction set: the proof asserts nothing about any instruction's specified behavior, and no ISA rule distinguishes a sleeping write from a returning one."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the measured quantity is scheduler time in whole timer ticks, forty of them against a thirty-tick gate: pipeline, cache, and predictor effects live orders of magnitude below the gate, so no implementation detail could change whether the verdict passes. The timing the module measured is kernel-visible, not machine-visible."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the measured path never leaves the kernel: the sleep and the wakeup happen between user processes and xv6's scheduler, with no privilege register, trap vector, or SBI call under the kernel under test. Nothing configured beneath the kernel stands between the syscall and the stall."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the property under test is the kernel's own pipe scheduling contract: a full pipe makes pipewrite sleep on the nwrite channel instead of spinning, and piperead wakes that channel when it drains. The module proves the block from outside the kernel with the uptime tick counter as a stopwatch, 40 ticks against a 30-tick gate, the shadow of a sleep measured in time."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the claim is a kernel scheduling decision, when a write sleeps for a reader, not a computational mechanism: the tick-edge choreography that makes the measurement repeatable is craft around the claim, not the claim itself, and the FNV-1a fold only collapses the measured values into one checkable number."
+      }
+    }
+  },
+  {
     "title": "The Return With Nothing to Return From",
     "slug": "the-return-with-nothing-to-return-from",
     "date": "2026-09-12",
