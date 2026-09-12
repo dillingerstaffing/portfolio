@@ -1199,6 +1199,7 @@ def build_feed_page(feed, stamp, template):
     function settleAbsences() {
       if (!FeedRanker.dwell) return;
       const nowMs = Date.now();
+      let learned = false;
       for (const r of rows) {
         const id = r.dataset.id;
         let t = null;
@@ -1206,9 +1207,14 @@ def build_feed_page(feed, stamp, template):
         if (t === null || t === undefined) continue;
         try { sessionStorage.removeItem(ABS_PREFIX + id); } catch (e) {}
         if (FeedRanker.dwell.absenceResult(Number(t), nowMs) === 'read') {
-          try { FeedRanker.feedback.recordRead(rowItem(r)); } catch (e) {}
+          try { FeedRanker.feedback.recordRead(rowItem(r)); learned = true; } catch (e) {}
         }
       }
+      // A read that lands while the console panel is open refreshes it
+      // live; otherwise the counts sit stale until the panel is reopened.
+      // The feed order itself is left alone: re-sorting the list under the
+      // reader uninvited would be worse than a stale order.
+      if (learned) frkSync();
     }
     for (const r of rows) {
       const link = r.querySelector('.feed-row');
