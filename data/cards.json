@@ -17754,5 +17754,60 @@
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 29,
     "failures": 0
+  },
+  {
+    "id": "src-sstatus-spp-u-trap",
+    "kicker": "sstatus.SPP records the pre-trap privilege",
+    "title": "The Bit That Remembers Where You Came From",
+    "summary": "A bare-metal RISC-V program that proves sstatus.SPP records the privilege mode before a trap. M-mode delegates user ecalls to S-mode via medeleg bit 8, mrets into a U-mode payload, and the S-mode handler observes SPP=0 with scause 0x8.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines sstatus.SPP as the previous-privilege record written on trap entry; the card proves a U-mode ecall lands in S-mode with SPP=0."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because SPP recording on trap entry is an architectural rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware owns medeleg; delegating user ecalls to S-mode is the firmware trap-routing decision under test."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because the card proves the hardware trap-entry record, not any kernel scheduling or memory policy; the S-mode handler only observes what the ISA wrote."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a trap-entry invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp-u-trap/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "8 checks against the SPP trap-entry invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "U-mode ecall traps to S-mode with SPP=0, scause 0x8, sepc 0x80000288, 0 M-mode traps"
+      ],
+      [
+        "CHECKSUM",
+        "0x904390c30350859, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-spp-u-trap",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "sstatus-spp-u-trap: sstatus.SPP record on delegated U-mode ecall trap<br>deleg: boot_medeleg=0x0 medeleg=0x100<br>trap: spp=0 scause=0x8 sepc=0x80000288<br>cksum=0x904390c30350859<br>m-traps=0<br>RESULT: PASS",
+    "terminalName": "qemu / riscv64 / sstatus-spp-u-trap.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 8,
+    "failures": 0
   }
 ]

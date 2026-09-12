@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-064414">
+  <meta name="build-version" content="v20260912-065846">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -19566,6 +19566,61 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "qemu / riscv64 / frm-rounding-static.elf",
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 29,
+    "failures": 0
+  },
+  {
+    "id": "src-sstatus-spp-u-trap",
+    "kicker": "sstatus.SPP records the pre-trap privilege",
+    "title": "The Bit That Remembers Where You Came From",
+    "summary": "A bare-metal RISC-V program that proves sstatus.SPP records the privilege mode before a trap. M-mode delegates user ecalls to S-mode via medeleg bit 8, mrets into a U-mode payload, and the S-mode handler observes SPP=0 with scause 0x8.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines sstatus.SPP as the previous-privilege record written on trap entry; the card proves a U-mode ecall lands in S-mode with SPP=0."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because SPP recording on trap entry is an architectural rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware owns medeleg; delegating user ecalls to S-mode is the firmware trap-routing decision under test."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because the card proves the hardware trap-entry record, not any kernel scheduling or memory policy; the S-mode handler only observes what the ISA wrote."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a trap-entry invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp-u-trap/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "8 checks against the SPP trap-entry invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "U-mode ecall traps to S-mode with SPP=0, scause 0x8, sepc 0x80000288, 0 M-mode traps"
+      ],
+      [
+        "CHECKSUM",
+        "0x904390c30350859, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-spp-u-trap",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "sstatus-spp-u-trap: sstatus.SPP record on delegated U-mode ecall trap<br>deleg: boot_medeleg=0x0 medeleg=0x100<br>trap: spp=0 scause=0x8 sepc=0x80000288<br>cksum=0x904390c30350859<br>m-traps=0<br>RESULT: PASS",
+    "terminalName": "qemu / riscv64 / sstatus-spp-u-trap.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 8,
     "failures": 0
   }
 ];
@@ -141188,6 +141243,221 @@ assert(check == 0x2144DF1C);</code></pre>
         "kind": "generalization",
         "n": 3,
         "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sstatus-spp-u-trap|ISA": {
+    "kind": "card",
+    "item": "src-sstatus-spp-u-trap",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the privileged spec defines sstatus.SPP as the previous-privilege record written on trap entry; the card proves a U-mode ecall lands in S-mode with SPP=0.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the privileged spec defines sstatus.SPP as the previous-privilege record written on trap entry; the card proves a U-mode ecall lands in S-mode with SPP=0."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "RISC-V ISA manual, privileged architecture: sstatus.SPP written on trap entry",
+        "source": {
+          "tier": "spec",
+          "cite": "riscv-spec.pdf",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sstatus-spp-u-trap|MICROARCH": {
+    "kind": "card",
+    "item": "src-sstatus-spp-u-trap",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because SPP recording on trap entry is an architectural rule, not a pipeline implementation detail.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because SPP recording on trap entry is an architectural rule, not a pipeline implementation detail."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: invariant holds identically across runs, no implementation behavior varies",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-spp-u-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp-u-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sstatus-spp-u-trap|FIRMWARE": {
+    "kind": "card",
+    "item": "src-sstatus-spp-u-trap",
+    "slot": "FIRMWARE",
+    "probandum": "matters at firmware because M-mode firmware owns medeleg; delegating user ecalls to S-mode is the firmware trap-routing decision under test.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at firmware because M-mode firmware owns medeleg; delegating user ecalls to S-mode is the firmware trap-routing decision under test."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: boot_medeleg=0x0, medeleg=0x100 set by M-mode setup",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-spp-u-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp-u-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sstatus-spp-u-trap|KERNEL": {
+    "kind": "card",
+    "item": "src-sstatus-spp-u-trap",
+    "slot": "KERNEL",
+    "probandum": "not at kernel because the card proves the hardware trap-entry record, not any kernel scheduling or memory policy; the S-mode handler only observes what the ISA wrote.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at kernel because the card proves the hardware trap-entry record, not any kernel scheduling or memory policy; the S-mode handler only observes what the ISA wrote."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: handler records SPP/scause/sepc written by hardware, no kernel policy varies",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-spp-u-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp-u-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sstatus-spp-u-trap|ALGORITHM": {
+    "kind": "card",
+    "item": "src-sstatus-spp-u-trap",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a trap-entry invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a trap-entry invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: 8 checks against the trap-entry invariant, 0 mismatches",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-spp-u-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-spp-u-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
       }
     ],
     "inferences": [
