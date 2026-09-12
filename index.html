@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-131423">
+  <meta name="build-version" content="v20260912-141241">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,24 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-receipt-for-the-bit-that-fell-off/">The Receipt for the Bit That Fell Off</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified property is the F-extension's inexact contract: IEEE 754 defines inexact as the rounded result differing from the mathematically exact one, RISC-V accrues it in fflags bit 0 with no trap, and the module's 0x01-after-inexact versus 0x00-after-exact pair shows the contract firing exactly when the exact sum needs 54 bits and the format holds 53.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the property is implementation-invariant: the inexact definition, the NX bit position, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (with FS Off an FP instruction raises illegal-instruction), and the trap counter stays 0 across both phases.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write for a rounding, an inexact operation is detected by polling fflags after the fact, and the module's zero trap count is that discipline holding.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-receipt-for-the-bit-that-fell-off|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the eighteen checks are CSR readback assertions judged against the spec's text and the module's analytic derivation, and Kahan summation enters the post as the named customer, not as a verified computation.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 10:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Add 1.0 to 10^16 and watch the 1 disappear. A bare-metal module ran a single fadd.d on the pair (1e16, 1.0) and read the result bits back: 0x4341C37937E08000, which is exactly 1e16. The +1 vanished without a trace in the result. But it left a receipt. The fcsr register read exactly 0x01 afterward: the NX bit set, the other four exception flags clear. The operation rounded, and the hardware said so in one bit.</p>
+          <p>The module states the flag layout in two lines of its source:</p>
+          <pre><code>#define FFLAGS_NX  0x01UL   // fcsr bit 0: inexact
+#define FFLAGS_ALL 0x1FUL   // fcsr bits 4:0: NV|DZ|OF|UF|NX</code></pre>
+          <p>The vanishing is arithmetic, not a bug, and it is worth doing by hand once. 10^16 factors as 2^16 times 5^16, and 5^16 is 152587890625, so 1e16 is exactly representable as a double: exponent field 0x434, a 53-bit significand whose least significant bit is even. It sits in the binade from 2^53 to 2^54, where representable doubles stand 2 apart. The exact sum 10^16 + 1 sits exactly halfway between 10^16 and 10^16 + 2, and round-to-nearest-ties-to-even picks the even neighbor: 10^16 itself. The exact answer needed 54 significant bits; the format carries 53. A host-side check agrees: 1e16 + 1.0 is bit-identical to 1e16.</p>
+          <p>So why does the machine keep a flag for this instead of rounding silently, or instead of trapping? Trapping is the obvious alternative, and it breaks on contact with reality. Inexact results are routine: 1.0/3.0 rounds every single time, and a trap per rounding would fire constantly through ordinary arithmetic, which is why the ISA chose a no-trap discipline for these flags. Silence is the other alternative, and it breaks the programs that need to know. Kahan&#x27;s compensated summation exists precisely to recover the rounding error and feed it back into the sum, and it cannot recover what it cannot see. The flag is the middle path: accrue, don&#x27;t interrupt. NX sets, the program keeps running, and whoever cares reads the receipt afterward.</p>
+          <p>The module proved the receipt is exact, not approximate. After clearing fcsr to 0x00, the inexact add left (fcsr &amp; 0x1f) == 0x01: NX set, and NV, DZ, OF, and UF all clear, which is the whole point of the isolation. Nothing else had cause to move: both operands were finite positive normals, the result was finite and nowhere near the subnormal range or the overflow threshold, and no division or invalid operation was involved. The control ran fadd.d on (1.0, 2.0): the exact sum 3.0 is representable, the result bits came back 0x4008000000000000, and fcsr read exactly 0x00. No flag moved at all. Eighteen checks, zero mismatches, three byte-identical runs under QEMU 8.2.2, and the trap counter stayed at 0.</p>
+          <p>This is the complement of an earlier note on this blog, the one about 0.0 divided by 0.0. That was the operation with no answer, and the NV flag marked the refusal. This one is the operation with an answer that cannot be written down. One sentence to keep: when the exact answer needs more bits than the format holds, the hardware keeps the best approximation and leaves you a one-bit receipt for what fell off.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fflags-nx-only" target="_blank" rel="noopener">src/fflags-nx-only</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-bridge-that-doesnt-translate/">The Bridge That Doesn't Translate</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-bridge-that-doesnt-translate|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified property is an instruction contract: FMV.D.X copies 64 bits from the integer register file to the floating-point file without interpreting them, the manual promises the bits are not modified and noncanonical NaN payloads are preserved, and the post's 1.0 versus 4607182418800017408.0 pair shows the contract is what separates a transport from a translation.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-bridge-that-doesnt-translate|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the promise is implementation-invariant: whether a core renames the two register files together or apart, and through which pipeline it issues the move, the observable result is the same unchanged 64 bits, and the post verifies the contract, not any implementation's choice of how to honor it.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-bridge-that-doesnt-translate|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the move is privilege-invariant: it executes identically at every privilege level with no trap, no SBI call, and no PMP entry involved, and nothing firmware configures changes what the instruction promises about the bits.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-bridge-that-doesnt-translate|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the property is policy-invariant: the kernel's work is managing when the floating-point file is live, the mstatus.FS bookkeeping the post cites, and that lifetime policy is orthogonal to the crossing itself, which moves bits identically whether it runs in a user process, a trap handler, or a bare-metal binary.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-bridge-that-doesnt-translate|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the post computes nothing: FMV is a move, not a computation, and the discipline it teaches, knowing whether you want the bits or what they mean, is a property of one instruction's contract, independent of any algorithm that later consumes the bits.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 09:13 EDT</time></p>
@@ -144696,6 +144714,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "The choice is real, but the post verifies the instruction that implements it, not the decision procedure: the claim is that the bits survive, and that is settled by the manual's sentence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-receipt-for-the-bit-that-fell-off|ISA": {
+    "item": "the-receipt-for-the-bit-that-fell-off",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified property is the F-extension's inexact contract: IEEE 754 defines inexact as the rounded result differing from the mathematically exact one, RISC-V accrues it in fflags bit 0 with no trap, and the module's 0x01-after-inexact versus 0x00-after-exact pair shows the contract firing exactly when the exact sum needs 54 bits and the format holds 53.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified property is the F-extension's inexact contract: IEEE 754 defines inexact as the rounded result differing from the mathematically exact one, RISC-V accrues it in fflags bit 0 with no trap, and the module's 0x01-after-inexact versus 0x00-after-exact pair shows the contract firing exactly when the exact sum needs 54 bits and the format holds 53."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module's PROOF.md publishes the measured pair: after fadd.d(1e16, 1.0) the fcsr readback is exactly 0x01 with NV/DZ/OF/UF clear, and after fadd.d(1.0, 2.0) it is exactly 0x00; the analytic derivation shows the exact sum 10^16 + 1 needs 54 significant bits.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only PROOF.md, dillingerstaffing/riscv-baremetal-demo",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The flag fires exactly on the boundary the format draws: representable exact sum, silence; unrepresentable exact sum, one bit."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is an instruction's architecturally defined semantics, the ISA slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A contract about when a flag must set is settled by the spec's text and a probe of the CSR, not by any implementation."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that a single flag bit is too small a thing to hang an ISA verdict on."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The size of the signal is the point: the whole contract is that one bit moves and four do not, and the module's eighteen checks assert exactly that."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-receipt-for-the-bit-that-fell-off|MICROARCH": {
+    "item": "the-receipt-for-the-bit-that-fell-off",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the property is implementation-invariant: the inexact definition, the NX bit position, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the property is implementation-invariant: the inexact definition, the NX bit position, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The RISC-V ISA manual fixes the F-extension flag semantics in the unprivileged text: which bit accrues on inexact, and that no trap is taken, are architectural statements.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, unprivileged: F extension, floating-point exception flags",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "Two different cores may round through different pipelines, but both must set the same bit on the same inexact operation."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every implementation choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Spec-fixed behavior is implementation-independent by definition; measuring it on one core does not make it about that core."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the QEMU runs make this a claim about an emulator."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The runs are the witness, not the claim: the claim is the contract text, and the emulator is checked against it, which is why the post's numbers are readbacks judged against the manual."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-receipt-for-the-bit-that-fell-off|FIRMWARE": {
+    "item": "the-receipt-for-the-bit-that-fell-off",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (with FS Off an FP instruction raises illegal-instruction), and the trap counter stays 0 across both phases.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (with FS Off an FP instruction raises illegal-instruction), and the trap counter stays 0 across both phases."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md check list requires boot mstatus FS to read 0 (Off), the csrs to Initial with an exact readback and no other bit moved, and the trap counter to stay 0 through both phases.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only PROOF.md, dillingerstaffing/riscv-baremetal-demo",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The enable gate and the privilege level are the firmware half of the experiment: without FS set, the first fadd.d would have raised illegal-instruction instead of rounding."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer lights when the verified property depends on work done at that layer's privilege level."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Setup that the hardware demands before the property can be observed belongs to the layer that performs it."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that moving FS is just boilerplate before the real measurement."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The boilerplate is load-bearing: it is the difference between measuring the flag contract and measuring a trap, and the module asserts the gate explicitly rather than assuming it."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-receipt-for-the-bit-that-fell-off|KERNEL": {
+    "item": "the-receipt-for-the-bit-that-fell-off",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write for a rounding, an inexact operation is detected by polling fflags after the fact, and the module's zero trap count is that discipline holding.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write for a rounding, an inexact operation is detected by polling fflags after the fact, and the module's zero trap count is that discipline holding."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module installs a counting M-mode trap handler as a safety net and requires its counter to stay 0; the measured read sequence shows fcsr moving from 0x0 to 0x1 to 0x0 with no trap fired.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only PROOF.md, dillingerstaffing/riscv-baremetal-demo",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "No trap means no handler to write, no exception path to audit, and no kernel involvement between the rounding and the readback: polling is the whole interface."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer lights when the verified property determines what work that layer does or does not have to do."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A discipline of not interrupting is a contract with the kernel as much as with the program: both sides rely on the quiet."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the module runs in M-mode, where there is no kernel above it to contract with."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The contract is about the absence it guarantees at every level: the same no-trap rule is what lets an S-mode kernel leave floating-point arithmetic alone, and the M-mode run proves the silence is the hardware's, not the kernel's."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-receipt-for-the-bit-that-fell-off|ALGORITHM": {
+    "item": "the-receipt-for-the-bit-that-fell-off",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the eighteen checks are CSR readback assertions judged against the spec's text and the module's analytic derivation, and Kahan summation enters the post as the named customer, not as a verified computation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the eighteen checks are CSR readback assertions judged against the spec's text and the module's analytic derivation, and Kahan summation enters the post as the named customer, not as a verified computation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "All eighteen checks are CSR readback assertions: fcsr values, result bit patterns, and the trap counter, judged against the spec's text and the hand derivation of the 54-bit exact sum.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only PROOF.md, dillingerstaffing/riscv-baremetal-demo",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The post verifies a contract about one CSR, not a computation: Kahan summation is named as the reason the contract matters, but no summation is implemented or measured."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Naming a customer is motivation, not verification: the claim's evidence decides the layer, not the post's asides."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that Kahan summation consumes exactly this signal, which should light the layer."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Consumption is not verification: the layer lights when the post's verified property is load-bearing for work at the layer, and what the post verifies is the flag, not the sum."
       }
     ],
     "inferences": [

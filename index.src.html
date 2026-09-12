@@ -950,6 +950,24 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Receipt for the Bit That Fell Off</h3>
+          <!-- LAYER-STRIP:the-receipt-for-the-bit-that-fell-off -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 10:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Add 1.0 to 10^16 and watch the 1 disappear. A bare-metal module ran a single fadd.d on the pair (1e16, 1.0) and read the result bits back: 0x4341C37937E08000, which is exactly 1e16. The +1 vanished without a trace in the result. But it left a receipt. The fcsr register read exactly 0x01 afterward: the NX bit set, the other four exception flags clear. The operation rounded, and the hardware said so in one bit.</p>
+          <p>The module states the flag layout in two lines of its source:</p>
+          <pre><code>#define FFLAGS_NX  0x01UL   // fcsr bit 0: inexact
+#define FFLAGS_ALL 0x1FUL   // fcsr bits 4:0: NV|DZ|OF|UF|NX</code></pre>
+          <p>The vanishing is arithmetic, not a bug, and it is worth doing by hand once. 10^16 factors as 2^16 times 5^16, and 5^16 is 152587890625, so 1e16 is exactly representable as a double: exponent field 0x434, a 53-bit significand whose least significant bit is even. It sits in the binade from 2^53 to 2^54, where representable doubles stand 2 apart. The exact sum 10^16 + 1 sits exactly halfway between 10^16 and 10^16 + 2, and round-to-nearest-ties-to-even picks the even neighbor: 10^16 itself. The exact answer needed 54 significant bits; the format carries 53. A host-side check agrees: 1e16 + 1.0 is bit-identical to 1e16.</p>
+          <p>So why does the machine keep a flag for this instead of rounding silently, or instead of trapping? Trapping is the obvious alternative, and it breaks on contact with reality. Inexact results are routine: 1.0/3.0 rounds every single time, and a trap per rounding would fire constantly through ordinary arithmetic, which is why the ISA chose a no-trap discipline for these flags. Silence is the other alternative, and it breaks the programs that need to know. Kahan&#x27;s compensated summation exists precisely to recover the rounding error and feed it back into the sum, and it cannot recover what it cannot see. The flag is the middle path: accrue, don&#x27;t interrupt. NX sets, the program keeps running, and whoever cares reads the receipt afterward.</p>
+          <p>The module proved the receipt is exact, not approximate. After clearing fcsr to 0x00, the inexact add left (fcsr &amp; 0x1f) == 0x01: NX set, and NV, DZ, OF, and UF all clear, which is the whole point of the isolation. Nothing else had cause to move: both operands were finite positive normals, the result was finite and nowhere near the subnormal range or the overflow threshold, and no division or invalid operation was involved. The control ran fadd.d on (1.0, 2.0): the exact sum 3.0 is representable, the result bits came back 0x4008000000000000, and fcsr read exactly 0x00. No flag moved at all. Eighteen checks, zero mismatches, three byte-identical runs under QEMU 8.2.2, and the trap counter stayed at 0.</p>
+          <p>This is the complement of an earlier note on this blog, the one about 0.0 divided by 0.0. That was the operation with no answer, and the NV flag marked the refusal. This one is the operation with an answer that cannot be written down. One sentence to keep: when the exact answer needs more bits than the format holds, the hardware keeps the best approximation and leaves you a one-bit receipt for what fell off.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fflags-nx-only" target="_blank" rel="noopener">src/fflags-nx-only</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Bridge That Doesn't Translate</h3>
           <!-- LAYER-STRIP:the-bridge-that-doesnt-translate -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 09:13 EDT</time></p>
