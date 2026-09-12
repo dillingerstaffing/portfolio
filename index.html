@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-051620">
+  <meta name="build-version" content="v20260912-052817">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -19329,6 +19329,116 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "qemu / riscv64 / mstatus-tvm-trap.elf",
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 19,
+    "failures": 0
+  },
+  {
+    "id": "src-mstatus-mprv-load",
+    "kicker": "MPRV makes M-mode loads obey MPP",
+    "title": "The Bit That Borrows Another Privilege",
+    "summary": "A bare-metal M-mode RISC-V program that proves mstatus.MPRV gates M-mode loads to the MPP privilege level. With MPRV=1 and MPP=U the load traps against a deny-all PMP region; with MPP=M it succeeds.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines MPRV as the modify-privilege control for M-mode memory accesses; the card proves loads honor MPP when set."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because MPRV privilege substitution is an architectural rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware uses MPRV to probe user memory safely; it must know the PMP check applies."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because MPRV is an M-mode-only control; supervisor kernels cannot set or depend on it."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a privilege-control invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "20 checks against MPRV privilege invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "MPRV=1/MPP=U traps with mcause 0x5, MPRV=1/MPP=M succeeds"
+      ],
+      [
+        "CHECKSUM",
+        "0xcaa47691de34383c, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-mprv-load",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mstatus-mprv-load.elf\n\nMPRV=1/MPP=U: trap mcause=0x5; MPP=M: success\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / mstatus-mprv-load.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 20,
+    "failures": 0
+  },
+  {
+    "id": "user-pipebuf",
+    "kicker": "A full pipe blocks the writer",
+    "title": "The Pipe That Waits",
+    "summary": "An xv6 user-space test proving a write past a full 512-byte pipe blocks until the reader drains it. The writer stalls exactly 40 ticks while the child sleeps, then all 513 bytes arrive byte-exact.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because pipe blocking is a kernel scheduling policy, not a hardware contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the pipe buffer is pure software state, not a pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because pipe I/O happens in the running kernel, not at boot time."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because pipe backpressure is a kernel subsystem and the test proves its blocking invariant."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at algorithm because bounded-buffer blocking is a pure computational mechanism the test verifies exhaustively."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks against pipe blocking invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Write past full pipe blocks 40 ticks, 513 bytes byte-exact"
+      ],
+      [
+        "CHECKSUM",
+        "0x54D6734CAFB9C078, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel kernel/kernel\n\npipe full: writer blocked 40 ticks, 513 bytes exact\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / xv6 / pipebuf",
+    "terminalLabel": "Verified xv6 user-space test output",
+    "checks": 7,
     "failures": 0
   }
 ];
@@ -139628,6 +139738,436 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "src/mstatus-tvm-trap/PROOF.md",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-mprv-load|ISA": {
+    "kind": "card",
+    "item": "src-mstatus-mprv-load",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the privileged spec defines MPRV as the modify-privilege control for M-mode memory accesses; the card proves loads honor MPP when set.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the privileged spec defines MPRV as the modify-privilege control for M-mode memory accesses; the card proves loads honor MPP when set."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-load/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-mprv-load|MICROARCH": {
+    "kind": "card",
+    "item": "src-mstatus-mprv-load",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because MPRV privilege substitution is an architectural rule, not a pipeline implementation detail.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because MPRV privilege substitution is an architectural rule, not a pipeline implementation detail."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-load/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-mprv-load|FIRMWARE": {
+    "kind": "card",
+    "item": "src-mstatus-mprv-load",
+    "slot": "FIRMWARE",
+    "probandum": "matters at firmware because M-mode firmware uses MPRV to probe user memory safely; it must know the PMP check applies.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at firmware because M-mode firmware uses MPRV to probe user memory safely; it must know the PMP check applies."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-load/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-mprv-load|KERNEL": {
+    "kind": "card",
+    "item": "src-mstatus-mprv-load",
+    "slot": "KERNEL",
+    "probandum": "not at kernel because MPRV is an M-mode-only control; supervisor kernels cannot set or depend on it.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at kernel because MPRV is an M-mode-only control; supervisor kernels cannot set or depend on it."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-load/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-mprv-load|ALGORITHM": {
+    "kind": "card",
+    "item": "src-mstatus-mprv-load",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a privilege-control invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a privilege-control invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-mprv-load/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-mprv-load/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-pipebuf|ISA": {
+    "kind": "card",
+    "item": "user-pipebuf",
+    "slot": "ISA",
+    "probandum": "not at ISA because pipe blocking is a kernel scheduling policy, not a hardware contract.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at ISA because pipe blocking is a kernel scheduling policy, not a hardware contract."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/pipebuf-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-pipebuf|MICROARCH": {
+    "kind": "card",
+    "item": "user-pipebuf",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the pipe buffer is pure software state, not a pipeline or cache behavior.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the pipe buffer is pure software state, not a pipeline or cache behavior."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/pipebuf-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-pipebuf|FIRMWARE": {
+    "kind": "card",
+    "item": "user-pipebuf",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because pipe I/O happens in the running kernel, not at boot time.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because pipe I/O happens in the running kernel, not at boot time."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/pipebuf-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-pipebuf|KERNEL": {
+    "kind": "card",
+    "item": "user-pipebuf",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because pipe backpressure is a kernel subsystem and the test proves its blocking invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because pipe backpressure is a kernel subsystem and the test proves its blocking invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/pipebuf-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-pipebuf|ALGORITHM": {
+    "kind": "card",
+    "item": "user-pipebuf",
+    "slot": "ALGORITHM",
+    "probandum": "matters at algorithm because bounded-buffer blocking is a pure computational mechanism the test verifies exhaustively.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at algorithm because bounded-buffer blocking is a pure computational mechanism the test verifies exhaustively."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/pipebuf-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"
         }
       },
       {
