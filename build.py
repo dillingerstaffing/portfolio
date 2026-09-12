@@ -50,6 +50,22 @@ WIGMORE_KINDS = ("probandum", "penultimate", "evidence", "generalization",
 WIGMORE_TIERS = ("lab", "spec", "vendor", "reference", "community")
 WIGMORE_STRENGTHS = ("strong", "normal", "weak")
 
+# The Signal Wire (feed page): fixed topic vocabulary for the curated
+# external reading list. data/feed.json carries hand-written, original
+# briefs (never copied article text) for high-signal RISC-V, kernel,
+# hardware, and tooling items. Curated weekly, zero quota.
+FEED_TOPICS = ("riscv-isa", "riscv-hardware", "kernel", "tooling",
+               "embedded", "hardware-hacking")
+FEED_TOPIC_LABELS = {
+    "riscv-isa": "RISC-V ISA",
+    "riscv-hardware": "RISC-V HARDWARE",
+    "kernel": "KERNEL",
+    "tooling": "TOOLING",
+    "embedded": "EMBEDDED",
+    "hardware-hacking": "HARDWARE HACKING",
+}
+FEED_KINDS = ("news", "project", "guide")
+
 
 class BuildError(Exception):
     pass
@@ -100,6 +116,62 @@ def lint_layer_triggers(text, layers, where):
                 warn(f"{where}: prose mentions {pat!r} but {layer} is {state}; "
                      f"check for under-highlighting")
                 break
+
+
+def check_feed(items):
+    # The Signal Wire: a curated external reading list, not a link dump.
+    # Every item needs a hand-written original brief (1 to 3 sentences on
+    # why a working engineer should spend ten minutes on it), a verified
+    # https URL, a real publication date, and topics from the fixed
+    # vocabulary. No quotas, no filler, no copied article text.
+    if not isinstance(items, list) or not items:
+        fail("feed.json must be a non-empty list")
+    seen_ids, seen_urls = set(), set()
+    for it in items:
+        for f in ("id", "title", "url", "source", "published", "added",
+                  "kind", "topics", "signal", "brief"):
+            if f not in it:
+                fail(f"feed item missing field {f}: {it.get('id')}")
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", it["id"]):
+            fail(f"feed item {it['id']}: bad id")
+        if it["id"] in seen_ids:
+            fail(f"duplicate feed id {it['id']}")
+        seen_ids.add(it["id"])
+        title = it["title"]
+        if not isinstance(title, str) or not title.strip() or len(title) > 160:
+            fail(f"feed item {it['id']}: bad title")
+        if "\u2014" in title or any(ch in title for ch in "<>&"):
+            fail(f"feed item {it['id']}: title carries markup or an em dash")
+        u = it["url"]
+        if (not isinstance(u, str) or not u.startswith("https://")
+                or any(ch in u for ch in " '\"<>")):
+            fail(f"feed item {it['id']}: url must be a safe https URL")
+        if u in seen_urls:
+            fail(f"duplicate feed url {u}")
+        seen_urls.add(u)
+        if not isinstance(it["source"], str) or not it["source"].strip() \
+                or len(it["source"]) > 40:
+            fail(f"feed item {it['id']}: bad source")
+        for f in ("published", "added"):
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", it[f]):
+                fail(f"feed item {it['id']}: bad date {it[f]!r}")
+            try:
+                datetime.date.fromisoformat(it[f])
+            except ValueError:
+                fail(f"feed item {it['id']}: impossible date {it[f]!r}")
+        if it["kind"] not in FEED_KINDS:
+            fail(f"feed item {it['id']}: kind must be one of {FEED_KINDS}")
+        if (not isinstance(it["topics"], list) or not it["topics"]
+                or any(t not in FEED_TOPICS for t in it["topics"])):
+            fail(f"feed item {it['id']}: topics must be a non-empty subset "
+                 f"of {FEED_TOPICS}")
+        if not isinstance(it["signal"], int) or not 1 <= it["signal"] <= 5:
+            fail(f"feed item {it['id']}: signal must be an int from 1 to 5")
+        brief = it["brief"]
+        if (not isinstance(brief, str) or not 20 <= len(brief) <= 400
+                or "\u2014" in brief or any(ch in brief for ch in "<>&")):
+            fail(f"feed item {it['id']}: brief must be 20-400 chars of plain "
+                 f"text, no markup, no em dashes")
 
 
 def check_evidence(ev, where):
@@ -305,6 +377,7 @@ def load_data():
         chips = json.loads((DATA / "chips.json").read_text(encoding="utf-8"))
         decisions = json.loads((DATA / "isa-decisions.json").read_text(encoding="utf-8"))
         wigmore = json.loads((DATA / "wigmore.json").read_text(encoding="utf-8"))
+        feed = json.loads((DATA / "feed.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
         fail(f"could not parse data files: {e}")
 
@@ -392,7 +465,12 @@ def load_data():
         print(f"pilot: {len(_pilot_missing_microarch)} items without a MICROARCH "
               f"verdict (expected until the pilot extension is approved)")
 
-    return cards, articles, chips_by_key, decisions, wigmore_by_slot
+    check_feed(feed)
+    # Newest first, so the wire reads like a newspaper, not an archive.
+    feed.sort(key=lambda it: it["published"], reverse=True)
+    print(f"feed: {len(feed)} curated items validated")
+
+    return cards, articles, chips_by_key, decisions, wigmore_by_slot, feed
 
 
 def run_copy_gate(cards, articles):
@@ -630,6 +708,7 @@ def write_sitemap(articles):
         lines.append("  </url>")
 
     entry(SITE_URL + "/", today, "weekly", "1.0")
+    entry(SITE_URL + "/feed/", today, "weekly", "0.9")
     for a in articles:
         entry(f"{SITE_URL}/blog/{a['slug']}/", a["date"], "monthly", "0.8")
     lines.append("</urlset>")
@@ -806,11 +885,323 @@ def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
     return page
 
 
+FEED_CSS = """
+/* ---- The Signal Wire (feed page) ---- */
+.feed-masthead { padding-block: clamp(56px, 8vw, 110px) clamp(28px, 4vw, 48px); }
+.feed-kicker { display: flex; align-items: center; gap: 10px; margin: 0;
+  color: var(--acid); font-size: 11px; letter-spacing: .24em; }
+.feed-masthead h1 { font: 600 clamp(54px, 9vw, 116px)/0.94 var(--display);
+  letter-spacing: -0.045em; margin: 20px 0 0; }
+.feed-lede { color: var(--muted); max-width: 660px; margin: 22px 0 0;
+  font-size: 14px; }
+.feed-meta { margin-top: 30px; padding: 13px 0; border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); color: var(--dim); font-size: 11px;
+  letter-spacing: .14em; display: flex; gap: 20px; flex-wrap: wrap; }
+.feed-controls { position: sticky; top: 68px; z-index: 40;
+  background: rgba(12, 15, 13, .96); border-bottom: 1px solid var(--line); }
+.feed-controls-inner { display: flex; align-items: center; gap: 12px;
+  flex-wrap: wrap; padding-block: 12px; }
+#feed-search { flex: 1 1 220px; max-width: 340px; background: var(--panel);
+  border: 1px solid var(--line); color: var(--ink);
+  font: 400 13px var(--mono); padding: 10px 14px; border-radius: 0; }
+#feed-search:focus { outline: none; border-color: var(--acid); }
+#feed-search::placeholder { color: var(--dim); }
+.feed-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.feed-chip { border: 1px solid var(--line); background: transparent;
+  color: var(--muted); font: 500 10px/1 var(--mono); letter-spacing: .12em;
+  padding: 10px 13px; cursor: pointer; border-radius: 0; }
+.feed-chip:hover { color: var(--ink); border-color: var(--dim); }
+.feed-chip.is-active { color: var(--acid); border-color: var(--acid); }
+.feed-sort { display: flex; border: 1px solid var(--line); margin-left: auto; }
+.feed-sort button { background: transparent; border: 0; color: var(--dim);
+  font: 500 10px/1 var(--mono); letter-spacing: .12em; padding: 10px 14px;
+  cursor: pointer; border-radius: 0; }
+.feed-sort button + button { border-left: 1px solid var(--line); }
+.feed-sort button.is-active { color: var(--black); background: var(--acid); }
+.feed-count { width: 100%; color: var(--dim); font-size: 10px;
+  letter-spacing: .14em; }
+.feed-list { padding-bottom: clamp(40px, 6vw, 80px); }
+.feed-row { display: grid; grid-template-columns: 56px 1fr 28px; gap: 22px;
+  align-items: start; padding: 24px 0; border-bottom: 1px solid var(--line);
+  text-decoration: none; color: inherit; }
+.feed-row:first-child { border-top: 1px solid var(--line); }
+.feed-row:hover .feed-title { color: var(--acid); }
+.feed-row:hover .feed-go { color: var(--acid); transform: translate(2px, -2px); }
+.sig { display: flex; gap: 3px; padding-top: 6px; }
+.sig i { width: 5px; height: 20px; background: var(--line); }
+.sig i.on { background: var(--acid); }
+.feed-kicker-line { display: block; font-size: 10px; letter-spacing: .16em;
+  color: var(--dim); }
+.feed-title { display: block;
+  font: 500 clamp(20px, 2.8vw, 28px)/1.28 var(--display);
+  letter-spacing: -0.01em; margin-top: 9px; }
+.feed-brief { display: block; color: var(--muted); font-size: 13px;
+  line-height: 1.7; max-width: 760px; margin-top: 10px; }
+.feed-go { color: var(--dim); font-size: 20px; line-height: 1; padding-top: 4px;
+  transition: transform .18s ease, color .18s ease; }
+.feed-empty { padding: 48px 0; color: var(--dim); font-size: 13px; }
+.feed-policy { border: 1px solid var(--line); background: var(--panel);
+  padding: clamp(26px, 4vw, 46px);
+  margin-bottom: clamp(56px, 8vw, 110px); }
+.feed-policy h2 { font: 600 clamp(28px, 4vw, 44px)/1 var(--display);
+  letter-spacing: -0.03em; margin: 0; }
+.feed-policy p { color: var(--muted); font-size: 13px; max-width: 700px;
+  margin: 16px 0 0; }
+.feed-policy a { color: var(--acid); }
+footer.frame { display: flex; justify-content: space-between; gap: 16px;
+  flex-wrap: wrap; padding-block: 28px; border-top: 1px solid var(--line);
+  color: var(--dim); font-size: 11px; letter-spacing: .06em; }
+footer.frame .elsewhere a { color: var(--muted); text-decoration: none; }
+footer.frame .elsewhere a:hover { color: var(--acid); }
+@media (max-width: 700px) {
+  .feed-row { grid-template-columns: 1fr; gap: 12px; }
+  .sig { padding-top: 0; }
+  .feed-go { display: none; }
+  .feed-sort { margin-left: 0; }
+}
+"""
+
+
+def fmt_feed_date(iso):
+    d = datetime.date.fromisoformat(iso)
+    return d.strftime("%b %d %Y").upper()
+
+
+def build_feed_page(feed, stamp, template):
+    """Emit the Signal Wire page at feed/index.html.
+
+    A curated external reading list: hand-written original briefs on
+    high-signal RISC-V, kernel, hardware, and tooling items. Rows are
+    rendered server-side with data attributes; a small client script
+    handles search, topic filters, and sorting without any runtime
+    fetching. The page joins sitemap.xml (see write_sitemap).
+    """
+    style_m = re.search(r"<style>(.*?)</style>", template, re.S)
+    if not style_m:
+        fail("no <style> block found for the feed page")
+    css = style_m.group(1)
+    font_links = "\n".join(
+        m.group(0) for m in re.finditer(r"<link[^>]*fonts\.googleapis[^>]*>", template))
+    if not font_links:
+        fail("no google fonts links found for the feed page")
+
+    nav = (
+        '  <header class="frame topline">\n'
+        '    <div class="identity">\n'
+        '      <span class="signal" aria-hidden="true"></span>\n'
+        '      <strong>Chris</strong>\n'
+        '      <span>Low-level systems developer</span>\n'
+        '    </div>\n'
+        '    <nav aria-label="Primary navigation">\n'
+        f'      <a href="{SITE_PATH}/">Home</a>\n'
+        f'      <a href="{SITE_PATH}/#blog">Blog</a>\n'
+        f'      <a href="{SITE_PATH}/feed/" class="is-active" aria-current="page">Feed</a>\n'
+        f'      <a href="{SITE_PATH}/#services">Services</a>\n'
+        f'      <a href="{SITE_PATH}/#contact">Contact</a>\n'
+        '    </nav>\n'
+        '  </header>\n'
+    )
+
+    rows = []
+    for it in feed:
+        sig_cells = "".join(
+            '<i class="on"></i>' if i < it["signal"] else "<i></i>"
+            for i in range(5))
+        kicker = " \u00b7 ".join(
+            [it["kind"].upper()]
+            + [FEED_TOPIC_LABELS[t] for t in it["topics"]]
+            + [it["source"].upper(), fmt_feed_date(it["published"])])
+        search_blob = " ".join([
+            it["title"], it["brief"], it["source"], it["kind"],
+            *[FEED_TOPIC_LABELS[t] for t in it["topics"]],
+        ]).lower().replace('"', "")
+        rows.append(
+            f'<a class="feed-row" href="{html.escape(it["url"], quote=True)}"'
+            f' target="_blank" rel="noopener"'
+            f' data-signal="{it["signal"]}"'
+            f' data-published="{it["published"]}"'
+            f' data-topics="{" ".join(it["topics"])}"'
+            f' data-search="{html.escape(search_blob, quote=True)}">'
+            f'<span class="sig" role="img"'
+            f' aria-label="signal {it["signal"]} of 5">{sig_cells}</span>'
+            f'<span class="feed-main">'
+            f'<span class="feed-kicker-line">{html.escape(kicker)}</span>'
+            f'<span class="feed-title">{html.escape(it["title"])}</span>'
+            f'<span class="feed-brief">{html.escape(it["brief"])}</span>'
+            f"</span>"
+            f'<span class="feed-go" aria-hidden="true">\u2197</span>'
+            f"</a>"
+        )
+
+    chips = ['<button class="feed-chip is-active" type="button" data-topic="all">ALL</button>']
+    for t in FEED_TOPICS:
+        chips.append(
+            f'<button class="feed-chip" type="button" data-topic="{t}">'
+            f"{FEED_TOPIC_LABELS[t]}</button>")
+
+    latest_added = max(datetime.date.fromisoformat(it["added"]) for it in feed)
+    days_ahead = (7 - latest_added.weekday()) % 7 or 7
+    next_pass = latest_added + datetime.timedelta(days=days_ahead)
+
+    desc = ("The Signal Wire: the week's highest-signal reading for low-level "
+            "engineers. RISC-V, kernels, hardware, and tooling, curated by hand.")
+    url = f"{SITE_URL}/feed/"
+    ld = {"@context": "https://schema.org", "@type": "CollectionPage",
+          "name": "The Signal Wire",
+          "description": desc,
+          "author": {"@type": "Person", "name": "Chris Dillinger"},
+          "mainEntityOfPage": url}
+    ld_json = json.dumps(ld, ensure_ascii=False)
+    json.loads(ld_json)
+
+    js = """
+(() => {
+  const rows = [...document.querySelectorAll('.feed-row')];
+  const list = document.getElementById('feed-rows');
+  const search = document.getElementById('feed-search');
+  const count = document.getElementById('feed-count');
+  const empty = document.getElementById('feed-empty');
+  const chips = [...document.querySelectorAll('.feed-chip')];
+  const sorts = [...document.querySelectorAll('.feed-sort button')];
+  let topic = 'all', sort = 'newest', q = '';
+  function apply() {
+    const visible = [];
+    for (const r of rows) {
+      const okTopic = topic === 'all' || r.dataset.topics.split(' ').includes(topic);
+      const okQ = !q || r.dataset.search.includes(q);
+      const show = okTopic && okQ;
+      r.hidden = !show;
+      if (show) visible.push(r);
+    }
+    visible.sort((a, b) => sort === 'signal'
+      ? (Number(b.dataset.signal) - Number(a.dataset.signal))
+        || b.dataset.published.localeCompare(a.dataset.published)
+      : b.dataset.published.localeCompare(a.dataset.published));
+    for (const r of visible) list.appendChild(r);
+    count.textContent = 'SHOWING ' + visible.length + ' OF ' + rows.length;
+    empty.hidden = visible.length > 0;
+  }
+  search.addEventListener('input', () => {
+    q = search.value.trim().toLowerCase();
+    apply();
+  });
+  for (const c of chips) c.addEventListener('click', () => {
+    chips.forEach(x => x.classList.remove('is-active'));
+    c.classList.add('is-active');
+    topic = c.dataset.topic;
+    apply();
+  });
+  for (const s of sorts) s.addEventListener('click', () => {
+    sorts.forEach(x => x.classList.remove('is-active'));
+    s.classList.add('is-active');
+    sort = s.dataset.sort;
+    apply();
+  });
+  apply();
+})();
+"""
+
+    page = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="build-version" content="{stamp}" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#b8f34b" />
+  <title>The Signal Wire &middot; Chris Dillinger</title>
+  <meta name="description" content="{html.escape(desc, quote=True)}" />
+  <link rel="canonical" href="{url}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Chris Dillinger" />
+  <meta property="og:url" content="{url}" />
+  <meta property="og:title" content="The Signal Wire &middot; Chris Dillinger" />
+  <meta property="og:description" content="{html.escape(desc, quote=True)}" />
+  <meta property="og:image" content="{OG_IMAGE}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="{OG_IMAGE_ALT}" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="The Signal Wire &middot; Chris Dillinger" />
+  <meta name="twitter:description" content="{html.escape(desc, quote=True)}" />
+  <meta name="twitter:image" content="{OG_IMAGE}" />
+  <meta name="twitter:image:alt" content="{OG_IMAGE_ALT}" />
+  <script type="application/ld+json">{ld_json}</script>
+{font_links}
+  <style>{css}</style>
+  <style>{FEED_CSS}</style>
+</head>
+<body id="top">
+{nav}
+  <main>
+    <section class="frame feed-masthead" aria-labelledby="feed-title">
+      <p class="feed-kicker"><span class="signal" aria-hidden="true"></span>FEED</p>
+      <h1 id="feed-title">The Signal Wire.</h1>
+      <p class="feed-lede">The week&rsquo;s highest-signal reading for low-level
+      engineers: RISC-V, kernels, hardware, and the tooling around them.
+      Curated by hand, every Monday. No quotas, no filler.</p>
+      <div class="feed-meta">
+        <span>{len(feed)} ITEMS</span>
+        <span>CURATED {fmt_feed_date(latest_added.isoformat())}</span>
+        <span>NEXT PASS {fmt_feed_date(next_pass.isoformat())}</span>
+      </div>
+    </section>
+    <div class="feed-controls">
+      <div class="frame feed-controls-inner">
+        <label class="visually-hidden" for="feed-search">Search the wire</label>
+        <input id="feed-search" type="search" placeholder="Search the wire"
+               autocomplete="off" />
+        <div class="feed-chips" role="group" aria-label="Filter by topic">
+          {"".join(chips)}
+        </div>
+        <div class="feed-sort" role="group" aria-label="Sort the wire">
+          <button type="button" class="is-active" data-sort="newest">NEWEST</button>
+          <button type="button" data-sort="signal">HIGHEST SIGNAL</button>
+        </div>
+        <span id="feed-count" class="feed-count" aria-live="polite"></span>
+      </div>
+    </div>
+    <section class="frame feed-list" aria-label="Curated reading">
+      <div id="feed-rows">
+        {"".join(rows)}
+      </div>
+      <p id="feed-empty" class="feed-empty" hidden>The wire is quiet under
+      this filter. Try clearing the search.</p>
+    </section>
+    <section class="frame feed-policy" aria-labelledby="feed-policy-title">
+      <h2 id="feed-policy-title">The bar.</h2>
+      <p>An item ships here only if a working engineer would spend ten minutes
+      on it. There is no quota: a quiet week ships a short wire, and filler
+      never ships. Every brief is written by hand for this page, never copied
+      from the article and never generated. Sources are primary where they
+      exist, and items age out as the field moves on.</p>
+      <p>Spotted something that clears the bar?
+      <a href="mailto:shipthisgroup@gmail.com?subject=Feed%20suggestion">Send it over</a>.</p>
+    </section>
+  </main>
+  <footer class="frame">
+    <span>Chris / C, firmware, and OS internals</span>
+    <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">\u2197</span></a></span>
+  </footer>
+  <script>{js}</script>
+  <script>
+    if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('/portfolio/sw.js'); }}
+  </script>
+</body>
+</html>
+"""
+    dest = HERE / "feed" / "index.html"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(page, encoding="utf-8")
+    print(f"feed page: {len(feed)} items -> {dest}")
+
+
 def build(systems_lab, baremetal, xv6):
-    cards, articles, chips_by_key, decisions, wigmore_by_slot = load_data()
+    cards, articles, chips_by_key, decisions, wigmore_by_slot, feed = load_data()
     print(f"data OK: {len(cards)} cards, {len(articles)} articles, "
           f"{len(chips_by_key)} chips, "
-          f"{sum(1 for c in cards if c.get('portability'))} portability panels")
+          f"{sum(1 for c in cards if c.get('portability'))} portability panels, "
+          f"{len(feed)} feed items")
 
     run_copy_gate(cards, articles)
     run_why_quality_gate(cards, decisions, wigmore_by_slot, articles)
@@ -866,6 +1257,8 @@ def build(systems_lab, baremetal, xv6):
     sw_path.write_text(sw_text, encoding="utf-8")
 
     page = build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template)
+
+    build_feed_page(feed, stamp, template)
 
     node_check_scripts(page)
 

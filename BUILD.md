@@ -9,6 +9,9 @@ content lives as canonical data in `data/`:
   code link, four-slot layer strip)
 - `data/chips.json` — the chip reference table (keyed by chip key at build
   time for the portability panels)
+- `data/feed.json` — The Signal Wire: curated external reading items (title,
+  url, source, published/added dates, kind, topics, 1-5 signal, and a
+  hand-written original brief). Baked into `feed/index.html` at build time.
 
 `index.src.html` is the page template. `index.html` is generated and is the
 only file GitHub Pages serves. Never edit `index.html` by hand.
