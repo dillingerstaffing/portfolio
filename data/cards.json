@@ -17424,5 +17424,115 @@
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 9,
     "failures": 0
+  },
+  {
+    "id": "src-sret-to-umode-fault",
+    "kicker": "sret in U-mode is an illegal instruction",
+    "title": "The Return That Cannot Happen",
+    "summary": "A bare-metal M-mode RISC-V program that drops to U-mode and executes sret, proving it raises an illegal-instruction trap to M-mode with mcause 0x2 and sepc at the sret site.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec reserves sret for S-mode and above; the card proves U-mode execution traps as illegal."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because privilege checking on sret is an architectural rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware sets up the trap delegation that catches this illegal sret; it must know the trap fires."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because the trap is caught in M-mode before any kernel code runs; supervisor kernels never see it."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a privilege-check invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 checks against U-mode sret trap invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "sret in U-mode traps with mcause 0x2, sepc at the sret site"
+      ],
+      [
+        "CHECKSUM",
+        "0x802872738f9db42a, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sret-to-umode-fault",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel sret-to-umode-fault.elf\n\nsret in U-mode: mcause=0x2, trap to M-mode\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / sret-to-umode-fault.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 18,
+    "failures": 0
+  },
+  {
+    "id": "src-mstatus-tvm-trap",
+    "kicker": "TVM turns S-mode satp writes into traps",
+    "title": "The Bit That Locks the Page Tables",
+    "summary": "A bare-metal M-mode RISC-V program that sets mstatus.TVM, drops to S-mode, and proves satp writes and sfence.vma trap as illegal instructions, giving M-mode exclusive control of virtual memory.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines TVM as the trap-virtual-memory control; the card proves S-mode satp access traps when set."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because TVM trapping is an architectural privilege rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware uses TVM to keep exclusive control of virtual memory; it must know the trap fires reliably."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because a supervisor kernel attempting satp writes under TVM will trap; it must know this bit can block its VM setup."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a privilege-control invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "19 checks against TVM trap invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "S-mode satp write and sfence.vma trap with TVM set, succeed with TVM clear"
+      ],
+      [
+        "CHECKSUM",
+        "0x580db705e095b710, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tvm-trap",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mstatus-tvm-trap.elf\n\nTVM set: satp write traps; TVM clear: succeeds\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / mstatus-tvm-trap.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 19,
+    "failures": 0
   }
 ]

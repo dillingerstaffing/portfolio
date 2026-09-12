@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-050851">
+  <meta name="build-version" content="v20260912-051620">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -19219,6 +19219,116 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "qemu / riscv64 / menvcfg-cbze-write.elf",
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 9,
+    "failures": 0
+  },
+  {
+    "id": "src-sret-to-umode-fault",
+    "kicker": "sret in U-mode is an illegal instruction",
+    "title": "The Return That Cannot Happen",
+    "summary": "A bare-metal M-mode RISC-V program that drops to U-mode and executes sret, proving it raises an illegal-instruction trap to M-mode with mcause 0x2 and sepc at the sret site.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec reserves sret for S-mode and above; the card proves U-mode execution traps as illegal."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because privilege checking on sret is an architectural rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware sets up the trap delegation that catches this illegal sret; it must know the trap fires."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because the trap is caught in M-mode before any kernel code runs; supervisor kernels never see it."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a privilege-check invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "18 checks against U-mode sret trap invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "sret in U-mode traps with mcause 0x2, sepc at the sret site"
+      ],
+      [
+        "CHECKSUM",
+        "0x802872738f9db42a, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sret-to-umode-fault",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel sret-to-umode-fault.elf\n\nsret in U-mode: mcause=0x2, trap to M-mode\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / sret-to-umode-fault.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 18,
+    "failures": 0
+  },
+  {
+    "id": "src-mstatus-tvm-trap",
+    "kicker": "TVM turns S-mode satp writes into traps",
+    "title": "The Bit That Locks the Page Tables",
+    "summary": "A bare-metal M-mode RISC-V program that sets mstatus.TVM, drops to S-mode, and proves satp writes and sfence.vma trap as illegal instructions, giving M-mode exclusive control of virtual memory.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines TVM as the trap-virtual-memory control; the card proves S-mode satp access traps when set."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because TVM trapping is an architectural privilege rule, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because M-mode firmware uses TVM to keep exclusive control of virtual memory; it must know the trap fires reliably."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because a supervisor kernel attempting satp writes under TVM will trap; it must know this bit can block its VM setup."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a privilege-control invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "19 checks against TVM trap invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "S-mode satp write and sfence.vma trap with TVM set, succeed with TVM clear"
+      ],
+      [
+        "CHECKSUM",
+        "0x580db705e095b710, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tvm-trap",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mstatus-tvm-trap.elf\n\nTVM set: satp write traps; TVM clear: succeeds\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / mstatus-tvm-trap.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 19,
     "failures": 0
   }
 ];
@@ -139109,6 +139219,436 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "src-sret-to-umode-fault|ISA": {
+    "kind": "card",
+    "item": "src-sret-to-umode-fault",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the privileged spec reserves sret for S-mode and above; the card proves U-mode execution traps as illegal.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the privileged spec reserves sret for S-mode and above; the card proves U-mode execution traps as illegal."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sret-to-umode-fault|MICROARCH": {
+    "kind": "card",
+    "item": "src-sret-to-umode-fault",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because privilege checking on sret is an architectural rule, not a pipeline implementation detail.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because privilege checking on sret is an architectural rule, not a pipeline implementation detail."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sret-to-umode-fault|FIRMWARE": {
+    "kind": "card",
+    "item": "src-sret-to-umode-fault",
+    "slot": "FIRMWARE",
+    "probandum": "matters at firmware because M-mode firmware sets up the trap delegation that catches this illegal sret; it must know the trap fires.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at firmware because M-mode firmware sets up the trap delegation that catches this illegal sret; it must know the trap fires."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sret-to-umode-fault|KERNEL": {
+    "kind": "card",
+    "item": "src-sret-to-umode-fault",
+    "slot": "KERNEL",
+    "probandum": "not at kernel because the trap is caught in M-mode before any kernel code runs; supervisor kernels never see it.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at kernel because the trap is caught in M-mode before any kernel code runs; supervisor kernels never see it."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-sret-to-umode-fault|ALGORITHM": {
+    "kind": "card",
+    "item": "src-sret-to-umode-fault",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a privilege-check invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a privilege-check invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-tvm-trap|ISA": {
+    "kind": "card",
+    "item": "src-mstatus-tvm-trap",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the privileged spec defines TVM as the trap-virtual-memory control; the card proves S-mode satp access traps when set.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the privileged spec defines TVM as the trap-virtual-memory control; the card proves S-mode satp access traps when set."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-tvm-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-tvm-trap|MICROARCH": {
+    "kind": "card",
+    "item": "src-mstatus-tvm-trap",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because TVM trapping is an architectural privilege rule, not a pipeline implementation detail.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because TVM trapping is an architectural privilege rule, not a pipeline implementation detail."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-tvm-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-tvm-trap|FIRMWARE": {
+    "kind": "card",
+    "item": "src-mstatus-tvm-trap",
+    "slot": "FIRMWARE",
+    "probandum": "matters at firmware because M-mode firmware uses TVM to keep exclusive control of virtual memory; it must know the trap fires reliably.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at firmware because M-mode firmware uses TVM to keep exclusive control of virtual memory; it must know the trap fires reliably."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-tvm-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-tvm-trap|KERNEL": {
+    "kind": "card",
+    "item": "src-mstatus-tvm-trap",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because a supervisor kernel attempting satp writes under TVM will trap; it must know this bit can block its VM setup.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because a supervisor kernel attempting satp writes under TVM will trap; it must know this bit can block its VM setup."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-tvm-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mstatus-tvm-trap|ALGORITHM": {
+    "kind": "card",
+    "item": "src-mstatus-tvm-trap",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a privilege-control invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a privilege-control invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mstatus-tvm-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-tvm-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
       }
     ]
   }
