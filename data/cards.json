@@ -17809,5 +17809,62 @@
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 8,
     "failures": 0
+  },
+  {
+    "id": "user-sbrkzfill",
+    "kicker": "XV6",
+    "title": "newly grown sbrk pages read all zero",
+    "summary": "An xv6 user-space test grows one page with sbrk, scans all 4096 bytes for zeros, tiles a 32-byte canary over the page and reads it back byte-exact, grows a second page and scans it for zeros too, then re-reads the first page to find the canary intact. The canary proves the zero scan ran over real mapped memory, and the intact canary proves the second grow mapped new pages instead of disturbing the first.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkzfill.c",
+    "repoLabel": "GitHub: xv6-getscount/user/sbrkzfill.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkzfill-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 in-program checks on QEMU 8.2.2: sbrk(4096) returns the old break twice, both 4096-byte pages scan to 0 nonzero bytes, the canary tiles and reads back byte-exact, the first-page canary is intact after the second grow, final break advanced by 8192, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xA484B136CCE206F5, identical across 3 runs and recomputed on the host to the same value"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, xv6 userspace"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / sbrkzfill",
+    "terminalLabel": "Verified sbrkzfill QEMU output",
+    "terminalOutput": "$ sbrkzfill\ncheck 1: sbrk(4096) returned old break 0x5000\ncheck 2: first page (4096 bytes) scanned: nonzero=0 sum=0, all zero\ncheck 3: 4096-byte canary tiled over first page, readback byte-exact\ncheck 4: sbrk(4096) returned 0x6000 == 0x5000+4096\ncheck 5: second page (4096 bytes) scanned: nonzero=0 sum=0, all zero\ncheck 6: first-page canary intact after second sbrk, 4096 bytes re-verified\ncheck 7: sbrk(0) reads 0x7000 == 0x5000+8192, sum of grows\nchecksum: 0xA484B136CCE206F5\nchecks: 7 mismatches: 0\nPASS: two fresh sbrk pages read all zero (8192 bytes scanned, 0 nonzero), first-page canary intact after the second grow",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the module runs ordinary RISC-V user instructions (load, store, ecall) and the verified property is the kernel allocator's zeroing, not an ISA-defined instruction or CSR."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts byte contents of fresh pages, never timing. Cache or pipeline differences change how fast the scans run, never whether new pages read zero, and the 7 checks assert only the zeroing and the intact canary."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the test runs entirely in xv6 user space; no M-mode firmware facility takes part: no PMP entry, no trap delegation, no SBI call."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the mechanism is the kernel's page allocator: sbrk grows the process image and kalloc hands out zeroed pages, and the proof observes it directly as 8192 zero bytes across two fresh pages with the first page's canary still byte-exact after the second grow."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim is about an OS kernel data structure, the zeroed pages the allocator hands to a growing process, not a pure computational mechanism portable across ISAs."
+      }
+    },
+    "portability": null,
+    "stressItems": 7
   }
 ]

@@ -121659,6 +121659,221 @@
           "note": "The evidence establishes the probandum via the generalization."
         }
       ]
+    },
+    {
+      "kind": "card",
+      "item": "user-sbrkzfill",
+      "slot": "ISA",
+      "probandum": "Not at ISA because the module runs ordinary RISC-V user instructions (load, store, ecall) and the verified property is the kernel allocator's zeroing, not an ISA-defined instruction or CSR.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ISA because the module runs ordinary RISC-V user instructions (load, store, ecall) and the verified property is the kernel allocator's zeroing, not an ISA-defined instruction or CSR."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The proof asserts zero byte contents of fresh pages; no instruction encoding, CSR field, or trap behavior is the thing under test",
+          "source": {
+            "tier": "lab",
+            "cite": "user/sbrkzfill-PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkzfill-PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "An ISA layer claim holds when the verified observation matches the behavior the machine contract names for that field or instruction."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "user-sbrkzfill",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof asserts byte contents of fresh pages, never timing. Cache or pipeline differences change how fast the scans run, never whether new pages read zero, and the 7 checks assert only the zeroing and the intact canary.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at MICROARCH because the proof asserts byte contents of fresh pages, never timing. Cache or pipeline differences change how fast the scans run, never whether new pages read zero, and the 7 checks assert only the zeroing and the intact canary."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "All 7 checks are byte values, counts, and addresses; no cycle count or latency measurement appears in the proof log",
+          "source": {
+            "tier": "lab",
+            "cite": "user/sbrkzfill-PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkzfill-PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative microarchitecture claim stands when the verification surface contains no timing or implementation-dependent observation that could support the positive claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "user-sbrkzfill",
+      "slot": "FIRMWARE",
+      "probandum": "Not at FIRMWARE because the test runs entirely in xv6 user space; no M-mode firmware facility takes part: no PMP entry, no trap delegation, no SBI call.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at FIRMWARE because the test runs entirely in xv6 user space; no M-mode firmware facility takes part: no PMP entry, no trap delegation, no SBI call."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The test is a user program shipped in fs.img that only issues sbrk and memory reads and writes from user mode",
+          "source": {
+            "tier": "lab",
+            "cite": "user/sbrkzfill-PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkzfill-PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A firmware layer claim holds when M-mode software performs the privileged act under test and the proof observes its effect directly."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "user-sbrkzfill",
+      "slot": "KERNEL",
+      "probandum": "Matters at KERNEL because the mechanism is the kernel's page allocator: sbrk grows the process image and kalloc hands out zeroed pages, and the proof observes it directly as 8192 zero bytes across two fresh pages with the first page's canary still byte-exact after the second grow.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Matters at KERNEL because the mechanism is the kernel's page allocator: sbrk grows the process image and kalloc hands out zeroed pages, and the proof observes it directly as 8192 zero bytes across two fresh pages with the first page's canary still byte-exact after the second grow."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "8192 bytes scanned across two sbrk-grown pages read all zero, the canary proved the memory was mapped and usable, and the canary was intact after the second grow",
+          "source": {
+            "tier": "lab",
+            "cite": "user/sbrkzfill-PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkzfill-PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A kernel layer claim holds when the verified mechanism is a kernel data structure or entry path that kernel code must rely on."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "user-sbrkzfill",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the claim is about an OS kernel data structure, the zeroed pages the allocator hands to a growing process, not a pure computational mechanism portable across ISAs.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not at ALGORITHM because the claim is about an OS kernel data structure, the zeroed pages the allocator hands to a growing process, not a pure computational mechanism portable across ISAs."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The verified property is xv6's kalloc zeroing contract, not a computation with an ISA-independent form",
+          "source": {
+            "tier": "lab",
+            "cite": "user/sbrkzfill-PROOF.md",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkzfill-PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative algorithm claim stands when the verified property is an ISA or kernel contract, not a computation with a portable form."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
     }
   ]
 }
