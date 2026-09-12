@@ -123824,6 +123824,386 @@
           "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
         }
       ]
+    },
+    {
+      "item": "the-fence-the-instruction-cache-never-sees",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "matters at ISA because fence.i is a base-ISA instruction whose semantics are the machine contract: the manual permits an implementation to cache fetched bytes and never read memory for fetches again, so the fence is the architecturally defined moment the data view and the fetch view agree.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at ISA because fence.i is a base-ISA instruction whose semantics are the machine contract: the manual permits an implementation to cache fetched bytes and never read memory for fetches again, so the fence is the architecturally defined moment the data view and the fetch view agree."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The base ISA manual defines FENCE.I as the instruction that orders the instruction stream against prior stores, and separately permits an implementation to cache every fetchable byte at the earliest opportunity and never read main memory for instruction fetches again.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, unprivileged: FENCE.I and the instruction-fetch permission",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The need for the fence follows directly from the contract's permission to never re-read memory for fetches: without it, executing the old bytes is a legal execution."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified property is an instruction's architecturally defined semantics, the ISA slot lights."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The machine contract is what makes the fence both necessary and sufficient; no implementation detail can remove the need for it."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the real action happens in the caches, so this is microarchitecture, not ISA."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The caches decide whether stale bytes are actually fetched on a given core, but the permission for the two views to disagree and the fence that resolves it are both written in the contract, and the post verifies the contract's text."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-fence-the-instruction-cache-never-sees",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "matters at Microarch because the two eyes are the split first-level caches: whether a jump after a store fetches new or stale bytes is decided by the implementation's instruction cache, and the post's QEMU mirror is the same problem in software, translation blocks as a software I-cache with the same invalidation discipline.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at Microarch because the two eyes are the split first-level caches: whether a jump after a store fetches new or stale bytes is decided by the implementation's instruction cache, and the post's QEMU mirror is the same problem in software, translation blocks as a software I-cache with the same invalidation discipline."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The manual's permission is a license granted to implementations: whether a jump after a store fetches new or stale bytes is decided by what the instruction cache actually holds, which varies by core.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, unprivileged: the instruction-fetch caching permission",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The fence's cost and effect, what gets discarded and when the refill happens, live entirely in the implementation's cache machinery."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A property decided by cache behavior is microarchitectural: the ISA slot holds the contract, the Microarch slot holds what cores do with the license."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "QEMU's translation-block cache is the same structure in software, with the same invalidation problem and the same flush discipline, which is why the post's mirror belongs at this layer."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the post never measured a real core's caches."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "True, and the post says so plainly: the microarchitectural claim is the license the contract grants, verified in the manual's text, plus the documented software I-cache in QEMU, not a measurement of any core's caches."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-fence-the-instruction-cache-never-sees",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "not at Firmware because the announcement needs no trap, no SBI call, and no PMP change: any privilege level issues fence.i straight to its own hart's fetch engine, and the post's examples, a JIT, a debugger, and kernel livepatch, announce for themselves rather than asking firmware to do it.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Firmware because the announcement needs no trap, no SBI call, and no PMP change: any privilege level issues fence.i straight to its own hart's fetch engine, and the post's examples, a JIT, a debugger, and kernel livepatch, announce for themselves rather than asking firmware to do it."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "FENCE.I is defined in the unprivileged base integer ISA: any hart issues it directly at any privilege level, with no trap, no supervisor call, and no protection change involved.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, unprivileged: FENCE.I in the base ISA",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The announcement travels from the issuing hart straight to its own fetch engine; firmware is never the messenger."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "An operation that needs no privileged mediation has no firmware in its path."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The Firmware slot lights when boot, SBI, PMP, or trap delegation does load-bearing work for the property; here none of them does."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that machine-mode firmware manages all harts, so a cross-hart announcement must go through it."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "Cross-hart announcement goes through a shared flag in memory plus each hart's own fence.i; the protocol is writer, barrier, flag, reader fence, with firmware nowhere in the chain."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-fence-the-instruction-cache-never-sees",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "matters at Kernel because Linux owns the policy around the announcement: __riscv_flush_icache has ordered user stores against instruction fetches since Linux 4.15, and since 6.10 a prctl lets a process declare whether it may emit fence.i, with the kernel keeping the cache coherent when threads migrate between harts.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at Kernel because Linux owns the policy around the announcement: __riscv_flush_icache has ordered user stores against instruction fetches since Linux 4.15, and since 6.10 a prctl lets a process declare whether it may emit fence.i, with the kernel keeping the cache coherent when threads migrate between harts."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The __riscv_flush_icache manual page documents the interface that enforces ordering between stores and instruction-cache fetches, with history Linux 4.15 and glibc 2.27.",
+          "source": {
+            "tier": "reference",
+            "cite": "__riscv_flush_icache(2) man page: ordering between stores and instruction cache fetches",
+            "url": "https://man7.org/linux/man-pages/man2/riscv_flush_icache.2.html"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "User space cannot be trusted to fence correctly on every hart it might run on, so the OS owns both the syscall and the policy of who may announce."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the OS manages who may announce and keeps the announcement coherent across hart migrations, the property is load-bearing at Kernel."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The Kernel slot lights when the operating system does work the property depends on; here the syscall, the prctl policy, and the migration handling are all kernel work."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the fence itself is unprivileged, so the kernel is optional."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The instruction is unprivileged, but correct multi-hart announcement needs the OS: the 6.10 prctl exists precisely because who may emit fence.i is a policy decision, and hart migration would break a purely user-space protocol."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-fence-the-instruction-cache-never-sees",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "not at Algorithm because the fence computes nothing and moves no data: it only orders two views of the same bytes under one machine contract, and the store, fence.i, jump shape is a protocol for that contract, not a computation that ports to another machine.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Algorithm because the fence computes nothing and moves no data: it only orders two views of the same bytes under one machine contract, and the store, fence.i, jump shape is a protocol for that contract, not a computation that ports to another machine."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "FENCE.I takes no operands and produces no value: its defined effect is ordering the instruction stream against prior stores, not computing anything.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, unprivileged: FENCE.I semantics",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "There is no input-output function here, only an ordering guarantee between two views of the same bytes."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A mechanism that computes nothing and moves no data is not an algorithm, wherever it is deployed."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "The Algorithm slot lights when the verified property is a portable computation; a protocol for one machine contract does not port."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the three-step store, fence, jump shape is a reusable procedure, hence algorithmic."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The shape only means something because this contract lets the two views disagree; it is the contract's shadow, not a portable computation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
     }
   ]
 }

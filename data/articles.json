@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Fence the Instruction Cache Never Sees",
+    "slug": "the-fence-the-instruction-cache-never-sees",
+    "date": "2026-09-12",
+    "description": "A store writes the data eye's view of memory, not the instruction eye's. fence.i is the announcement that makes the CPU's two views of memory agree.",
+    "paragraphs": [
+      "Picture a just-in-time compiler at work. It writes a few dozen bytes of fresh machine code into a buffer, then jumps to the first byte. This should work: the bytes were just stored, and the jump reads them back. On x86, as I understand it, it does work, and that is the trap. Nothing in this picture looks broken until you move it to RISC-V.",
+      "The CPU reads memory with two eyes. The data eye is the load/store engine, filling the data cache. The instruction eye is the fetch engine, filling the instruction cache. When your program stores a new byte, it lands in the data eye's view. The instruction eye may still hold the old bytes it fetched long ago, and the manual blesses the disagreement: a valid implementation may cache every fetchable byte at the earliest opportunity and never read main memory for instruction fetches again. So the jump runs the old bytes. The new code sits in memory, correct under every load you care to run, and the CPU executes something else.",
+      "The obvious repair is to make the hardware keep the two eyes in sync on every store. The RISC-V designers refused, and the refusal is about cost. Keeping the instruction cache coherent with every store would tax every store in every program for an event that almost never happens: almost no program rewrites its own code. So the architecture moved the price to the rare path. Instead of the hardware watching all stores, the software announces the one store that matters. The announcement is one instruction: fence.i.",
+      "The shape is three steps, in this order, and skipping the middle one is the whole bug:",
+      "The stores put the new bytes where loads can see them. The fence orders this hart's instruction stream against those stores (a hart is RISC-V's word for a hardware thread): the fetch engine drops what it cached and looks again. The jump then fetches the new bytes. Across two harts the shape stretches but does not change: the writer stores, issues a write barrier, and sets a flag; the reader sees the flag, issues its own fence.i, and only then executes.",
+      "Everyone who writes code while the machine is running is a customer for this. A JIT compiles a function, fences, and jumps. A debugger overwrites an instruction with ebreak, the breakpoint instruction, and must fence before resuming its target. The kernel patches its own text for livepatch and ftrace. Linux gave user space a system call for it: __riscv_flush_icache, in the kernel since 4.15 with a glibc wrapper since 2.27, which enforces ordering between stores and instruction-cache fetches; in 6.10 a prctl let a process declare whether it may emit fence.i at all, with the kernel keeping the cache coherent when threads migrate between harts. QEMU has the same problem one layer up: it translates guest code into host code and caches the translations, a software instruction cache, so it write-protects the pages holding them and throws translations away when a write lands. Its own docs note that on RISC targets, correctly written software uses barriers and flushes, so the trick would be unnecessary. One honest footnote: none of my bare-metal labs has ever needed this instruction. They write their code once at load time and never modify it, so the two eyes never disagree. This post is mechanism from the manual and the kernel docs, not a measured lab. One sentence to carry away: the CPU reads memory with two eyes, one for data and one for instructions, and fence.i is the moment they agree."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "bare-metal repo: code written once at load, never modified",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because fence.i is a base-ISA instruction whose semantics are the machine contract: the manual permits an implementation to cache fetched bytes and never read memory for fetches again, so the fence is the architecturally defined moment the data view and the fetch view agree."
+      },
+      "MICROARCH": {
+        "applies": true,
+        "because": "matters at Microarch because the two eyes are the split first-level caches: whether a jump after a store fetches new or stale bytes is decided by the implementation's instruction cache, and the post's QEMU mirror is the same problem in software, translation blocks as a software I-cache with the same invalidation discipline."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the announcement needs no trap, no SBI call, and no PMP change: any privilege level issues fence.i straight to its own hart's fetch engine, and the post's examples, a JIT, a debugger, and kernel livepatch, announce for themselves rather than asking firmware to do it."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because Linux owns the policy around the announcement: __riscv_flush_icache has ordered user stores against instruction fetches since Linux 4.15, and since 6.10 a prctl lets a process declare whether it may emit fence.i, with the kernel keeping the cache coherent when threads migrate between harts."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the fence computes nothing and moves no data: it only orders two views of the same bytes under one machine contract, and the store, fence.i, jump shape is a protocol for that contract, not a computation that ports to another machine."
+      }
+    }
+  },
+  {
     "title": "The Referee With Three Masters",
     "slug": "the-referee-with-three-masters",
     "date": "2026-09-12",

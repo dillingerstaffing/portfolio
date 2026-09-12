@@ -950,6 +950,24 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Fence the Instruction Cache Never Sees</h3>
+          <!-- LAYER-STRIP:the-fence-the-instruction-cache-never-sees -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 07:09 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Picture a just-in-time compiler at work. It writes a few dozen bytes of fresh machine code into a buffer, then jumps to the first byte. This should work: the bytes were just stored, and the jump reads them back. On x86, as I understand it, it does work, and that is the trap. Nothing in this picture looks broken until you move it to RISC-V.</p>
+          <p>The CPU reads memory with two eyes. The data eye is the load/store engine, filling the data cache. The instruction eye is the fetch engine, filling the instruction cache. When your program stores a new byte, it lands in the data eye&#x27;s view. The instruction eye may still hold the old bytes it fetched long ago, and the manual blesses the disagreement: a valid implementation may cache every fetchable byte at the earliest opportunity and never read main memory for instruction fetches again. So the jump runs the old bytes. The new code sits in memory, correct under every load you care to run, and the CPU executes something else.</p>
+          <p>The obvious repair is to make the hardware keep the two eyes in sync on every store. The RISC-V designers refused, and the refusal is about cost. Keeping the instruction cache coherent with every store would tax every store in every program for an event that almost never happens: almost no program rewrites its own code. So the architecture moved the price to the rare path. Instead of the hardware watching all stores, the software announces the one store that matters. The announcement is one instruction: fence.i.</p>
+          <p>The shape is three steps, in this order, and skipping the middle one is the whole bug:</p>
+          <pre><code>store the new bytes      # the data eye sees them
+fence.i                  # announce: instruction eye, refresh
+jump to the buffer       # the new bytes run</code></pre>
+          <p>The stores put the new bytes where loads can see them. The fence orders this hart&#x27;s instruction stream against those stores (a hart is RISC-V&#x27;s word for a hardware thread): the fetch engine drops what it cached and looks again. The jump then fetches the new bytes. Across two harts the shape stretches but does not change: the writer stores, issues a write barrier, and sets a flag; the reader sees the flag, issues its own fence.i, and only then executes.</p>
+          <p>Everyone who writes code while the machine is running is a customer for this. A JIT compiles a function, fences, and jumps. A debugger overwrites an instruction with ebreak, the breakpoint instruction, and must fence before resuming its target. The kernel patches its own text for livepatch and ftrace. Linux gave user space a system call for it: __riscv_flush_icache, in the kernel since 4.15 with a glibc wrapper since 2.27, which enforces ordering between stores and instruction-cache fetches; in 6.10 a prctl let a process declare whether it may emit fence.i at all, with the kernel keeping the cache coherent when threads migrate between harts. QEMU has the same problem one layer up: it translates guest code into host code and caches the translations, a software instruction cache, so it write-protects the pages holding them and throws translations away when a write lands. Its own docs note that on RISC targets, correctly written software uses barriers and flushes, so the trick would be unnecessary. One honest footnote: none of my bare-metal labs has ever needed this instruction. They write their code once at load time and never modify it, so the two eyes never disagree. This post is mechanism from the manual and the kernel docs, not a measured lab. One sentence to carry away: the CPU reads memory with two eyes, one for data and one for instructions, and fence.i is the moment they agree.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Referee With Three Masters</h3>
           <!-- LAYER-STRIP:the-referee-with-three-masters -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 06:10 EDT</time></p>
