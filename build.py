@@ -921,10 +921,16 @@ FEED_CSS = """
 .feed-count { width: 100%; color: var(--dim); font-size: 10px;
   letter-spacing: .14em; }
 .feed-list { padding-bottom: clamp(40px, 6vw, 80px); }
+.feed-row-wrap { position: relative; }
+.feed-row-wrap:first-child .feed-row { border-top: 1px solid var(--line); }
+.feed-dismiss { position: absolute; top: 8px; right: 2px; background: transparent;
+  border: 0; color: var(--dim); font: 400 13px/1 var(--mono); cursor: pointer;
+  padding: 4px 8px; opacity: 0; }
+.feed-row-wrap:hover .feed-dismiss, .feed-dismiss:focus-visible { opacity: 1; }
+.feed-dismiss:hover { color: var(--ink); }
 .feed-row { display: grid; grid-template-columns: 56px 1fr 28px; gap: 22px;
   align-items: start; padding: 24px 0; border-bottom: 1px solid var(--line);
   text-decoration: none; color: inherit; }
-.feed-row:first-child { border-top: 1px solid var(--line); }
 .feed-row:hover .feed-title { color: var(--acid); }
 .feed-row:hover .feed-go { color: var(--acid); transform: translate(2px, -2px); }
 .sig { display: flex; gap: 3px; padding-top: 6px; }
@@ -1013,12 +1019,16 @@ def build_feed_page(feed, stamp, template):
             *[FEED_TOPIC_LABELS[t] for t in it["topics"]],
         ]).lower().replace('"', "")
         rows.append(
-            f'<a class="feed-row" href="{html.escape(it["url"], quote=True)}"'
-            f' target="_blank" rel="noopener"'
+            f'<div class="feed-row-wrap"'
+            f' data-id="{html.escape(it["id"], quote=True)}"'
             f' data-signal="{it["signal"]}"'
             f' data-published="{it["published"]}"'
             f' data-topics="{" ".join(it["topics"])}"'
+            f' data-source="{html.escape(it["source"], quote=True)}"'
+            f' data-kind="{html.escape(it["kind"], quote=True)}"'
             f' data-search="{html.escape(search_blob, quote=True)}">'
+            f'<a class="feed-row" href="{html.escape(it["url"], quote=True)}"'
+            f' target="_blank" rel="noopener">'
             f'<span class="sig" role="img"'
             f' aria-label="signal {it["signal"]} of 5">{sig_cells}</span>'
             f'<span class="feed-main">'
@@ -1028,6 +1038,9 @@ def build_feed_page(feed, stamp, template):
             f"</span>"
             f'<span class="feed-go" aria-hidden="true">\u2197</span>'
             f"</a>"
+            f'<button type="button" class="feed-dismiss"'
+            f' aria-label="Dismiss this item">\u00d7</button>'
+            f"</div>"
         )
 
     chips = ['<button class="feed-chip is-active" type="button" data-topic="all">ALL</button>']
@@ -1053,30 +1066,64 @@ def build_feed_page(feed, stamp, template):
 
     js = """
 (() => {
-  const rows = [...document.querySelectorAll('.feed-row')];
+  const rows = [...document.querySelectorAll('.feed-row-wrap')];
   const list = document.getElementById('feed-rows');
   const search = document.getElementById('feed-search');
   const count = document.getElementById('feed-count');
   const empty = document.getElementById('feed-empty');
   const chips = [...document.querySelectorAll('.feed-chip')];
   const sorts = [...document.querySelectorAll('.feed-sort button')];
+  const canRank = typeof FeedRanker !== 'undefined';
   let topic = 'all', sort = 'newest', q = '';
+  function rowItem(r) {
+    return {
+      id: r.dataset.id,
+      url: (r.querySelector('.feed-row') || {}).href || '',
+      topics: (r.dataset.topics || '').split(' ').filter(Boolean),
+      source: r.dataset.source || '',
+      kind: r.dataset.kind || '',
+      signal: Number(r.dataset.signal) || 0,
+      publishedAt: Date.parse(r.dataset.published) || 0
+    };
+  }
+  function dismissedIds() {
+    if (!canRank) return {};
+    try { return FeedRanker.profile.load().seen || {}; }
+    catch (e) { return {}; }
+  }
   function apply() {
+    const seen = dismissedIds();
     const visible = [];
     for (const r of rows) {
       const okTopic = topic === 'all' || r.dataset.topics.split(' ').includes(topic);
       const okQ = !q || r.dataset.search.includes(q);
-      const show = okTopic && okQ;
+      const show = okTopic && okQ && seen[r.dataset.id] !== 'dismissed';
       r.hidden = !show;
       if (show) visible.push(r);
     }
-    visible.sort((a, b) => sort === 'signal'
-      ? (Number(b.dataset.signal) - Number(a.dataset.signal))
-        || b.dataset.published.localeCompare(a.dataset.published)
-      : b.dataset.published.localeCompare(a.dataset.published));
-    for (const r of visible) list.appendChild(r);
-    count.textContent = 'SHOWING ' + visible.length + ' OF ' + rows.length;
-    empty.hidden = visible.length > 0;
+    let shown = visible;
+    if (sort === 'foryou' && canRank) {
+      const ranked = FeedRanker.rank(visible.map(rowItem));
+      const pos = {};
+      ranked.forEach((it, i) => { pos[it.id] = i; });
+      shown = [];
+      for (const r of visible) {
+        if (Object.prototype.hasOwnProperty.call(pos, r.dataset.id)) {
+          shown.push(r);
+        } else {
+          r.hidden = true;
+        }
+      }
+      shown.sort((a, b) => pos[a.dataset.id] - pos[b.dataset.id]);
+    } else {
+      shown.sort((a, b) => sort === 'signal'
+        ? (Number(b.dataset.signal) - Number(a.dataset.signal))
+          || b.dataset.published.localeCompare(a.dataset.published)
+        : b.dataset.published.localeCompare(a.dataset.published));
+    }
+    for (const r of shown) list.appendChild(r);
+    count.textContent = 'SHOWING ' + shown.length + ' OF ' + rows.length;
+    empty.hidden = shown.length > 0;
   }
   search.addEventListener('input', () => {
     q = search.value.trim().toLowerCase();
@@ -1094,6 +1141,24 @@ def build_feed_page(feed, stamp, template):
     sort = s.dataset.sort;
     apply();
   });
+  if (canRank) {
+    for (const r of rows) {
+      const link = r.querySelector('.feed-row');
+      if (link) link.addEventListener('click', () => {
+        try { FeedRanker.feedback.recordRead(rowItem(r)); } catch (e) {}
+      });
+    }
+    for (const d of document.querySelectorAll('.feed-dismiss')) {
+      d.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const r = d.closest('.feed-row-wrap');
+        if (!r) return;
+        try { FeedRanker.feedback.recordDismiss(rowItem(r)); } catch (e) {}
+        apply();
+      });
+    }
+  }
   apply();
 
   // Tip chooser: Gmail web compose, native mailto, or copy address.
@@ -1191,6 +1256,7 @@ def build_feed_page(feed, stamp, template):
         <div class="feed-sort" role="group" aria-label="Sort the wire">
           <button type="button" class="is-active" data-sort="newest">NEWEST</button>
           <button type="button" data-sort="signal">HIGHEST SIGNAL</button>
+          <button type="button" data-sort="foryou">FOR YOU</button>
         </div>
         <span id="feed-count" class="feed-count" aria-live="polite"></span>
       </div>
@@ -1230,6 +1296,7 @@ def build_feed_page(feed, stamp, template):
     <span>Chris / C, firmware, and OS internals</span>
     <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">\u2197</span></a></span>
   </footer>
+  <script src="feed-ranker.js"></script>
   <script>{js}</script>
   <script>
     if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('/portfolio/sw.js'); }}
