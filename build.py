@@ -941,7 +941,10 @@ FEED_CSS = """
   transition: transform .18s ease, color .18s ease; }
 .feed-empty { padding: 48px 0; color: var(--dim); font-size: 13px; }
 .feed-tip { color: var(--dim); font-size: 13px; padding: 28px 0 8px; }
-.feed-tip a { color: var(--acid); }
+.feed-tip-btn { background: none; border: 0; padding: 0; color: var(--acid);
+  font: inherit; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 3px; }
+.feed-tip-btn:hover { color: var(--acid-soft); }
 footer.frame { display: flex; justify-content: space-between; gap: 16px;
   flex-wrap: wrap; padding-block: 28px; border-top: 1px solid var(--line);
   color: var(--dim); font-size: 11px; letter-spacing: .06em; }
@@ -1092,6 +1095,43 @@ def build_feed_page(feed, stamp, template):
     apply();
   });
   apply();
+
+  // Tip chooser: Gmail web compose, native mailto, or copy address.
+  const tipBtn = document.getElementById('feed-tip-btn');
+  const chooser = document.getElementById('feed-chooser');
+  const closeBtn = chooser.querySelector('.chooser-close');
+  const copyBtn = chooser.querySelector('.copy-email');
+  const copyStatus = chooser.querySelector('.copy-status');
+  const email = 'shipthisgroup@gmail.com';
+  tipBtn.addEventListener('click', () => {
+    copyStatus.textContent = '';
+    chooser.showModal();
+    tipBtn.blur();
+  });
+  const closeChooser = () => { chooser.close(); tipBtn.focus(); };
+  closeBtn.addEventListener('click', closeChooser);
+  chooser.addEventListener('click', (event) => {
+    if (event.target === chooser) chooser.close();
+  });
+  chooser.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', () => chooser.close());
+  });
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(email);
+    } catch (err) {
+      const field = document.createElement('textarea');
+      field.value = email;
+      field.setAttribute('readonly', '');
+      field.style.position = 'fixed';
+      field.style.opacity = '0';
+      document.body.appendChild(field);
+      field.select();
+      document.execCommand('copy');
+      field.remove();
+    }
+    copyStatus.textContent = 'Email address copied.';
+  });
 })();
 """
 
@@ -1162,8 +1202,29 @@ def build_feed_page(feed, stamp, template):
       <p id="feed-empty" class="feed-empty" hidden>The wire is quiet under
       this filter. Try clearing the search.</p>
       <p class="feed-tip">Spotted something?
-      <a href="mailto:shipthisgroup@gmail.com?subject=Feed%20suggestion">Send it over</a>.</p>
+      <button type="button" class="feed-tip-btn" id="feed-tip-btn">Send it over</button>.</p>
     </section>
+    <dialog class="contact-chooser" id="feed-chooser" aria-labelledby="feed-chooser-title">
+      <div class="chooser-head">
+        <div>
+          <h2 id="feed-chooser-title">Send a tip</h2>
+          <p>Pick whichever way fits.</p>
+        </div>
+        <button class="chooser-close" type="button" aria-label="Close">\u00d7</button>
+      </div>
+      <div class="chooser-options">
+        <a class="chooser-option" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=shipthisgroup%40gmail.com&amp;su=Feed%20suggestion" target="_blank" rel="noopener">
+          <span>Compose in Gmail</span><span aria-hidden="true">\u2197</span>
+        </a>
+        <a class="chooser-option" href="mailto:shipthisgroup@gmail.com?subject=Feed%20suggestion">
+          <span>Use my email app</span><span aria-hidden="true">\u2197</span>
+        </a>
+        <button class="chooser-option copy-email" type="button">
+          <span>Copy email address</span><span aria-hidden="true">+</span>
+        </button>
+        <p class="copy-status" role="status" aria-live="polite"></p>
+      </div>
+    </dialog>
   </main>
   <footer class="frame">
     <span>Chris / C, firmware, and OS internals</span>
