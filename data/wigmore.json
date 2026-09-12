@@ -120992,6 +120992,458 @@
           "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
         }
       ]
+    },
+    {
+      "kind": "card",
+      "item": "src-pmp-napot-match",
+      "slot": "ISA",
+      "probandum": "The privileged ISA defines NAPOT matching: an entry whose pmpaddr ends in a run of ones matches exactly the naturally aligned 2^(n+1)-byte region, and a matching entry with no permissions raises a load or store access fault. The card proves the boundary byte by byte: inside addresses trap, outside addresses complete.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The privileged ISA defines NAPOT matching: an entry whose pmpaddr ends in a run of ones matches exactly the naturally aligned 2^(n+1)-byte region, and a matching entry with no permissions raises a load or store access fault. The card proves the boundary byte by byte: inside addresses trap, outside addresses complete."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "39 checks against the NAPOT match invariant, 0 mismatches; inside loads trap with mcause 0x5 and mtval at the faulting address, inside stores trap with mcause 0x7, outside accesses complete",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-napot-match/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-match/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: PMP address matching, the NAPOT encoding, and access-fault trap codes are defined there",
+          "source": {
+            "tier": "lab",
+            "cite": "riscv-isa-manual (pinned release)",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-pmp-napot-match",
+      "slot": "MICROARCH",
+      "probandum": "The card compares trap records only, never timing. Whether the PMP checker decodes the trailing ones with a priority encoder or a comparator array, the match or no-match verdict is identical, so the implementation leaves the claim untouched.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The card compares trap records only, never timing. Whether the PMP checker decodes the trailing ones with a priority encoder or a comparator array, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The proof compares trap records only (mcause, mepc, mtval) and measures no timing; all 39 checks passed identically across 3 runs",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-napot-match/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-match/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-pmp-napot-match",
+      "slot": "FIRMWARE",
+      "probandum": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map. The card proves the match semantics of an entry the program itself programmed, the exact policy real firmware enforces.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map. The card proves the match semantics of an entry the program itself programmed, the exact policy real firmware enforces."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The program itself writes pmpaddr0 0x200009ff and pmpcfg0 0x18 in M-mode and reads both back exactly; the match it proves is the policy those writes installed",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-napot-match/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-match/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-pmp-napot-match",
+      "slot": "KERNEL",
+      "probandum": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Every probe runs in M-mode; no supervisor software is present and no S-mode or U-mode execution was exercised",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-napot-match/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-match/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-pmp-napot-match",
+      "slot": "ALGORITHM",
+      "probandum": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The verified claim is a hardware address-decode function; the module contains no portable computation and the proof compares no C implementation",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-napot-match/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-match/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-frm-rounding-static",
+      "slot": "ISA",
+      "probandum": "The unprivileged ISA gives every floating-point instruction a 3-bit rm field that selects the rounding mode statically, overriding fcsr.frm. The card proves the override: an fadd.d encoded with rm=010 rounds down while frm reads RNE.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The unprivileged ISA gives every floating-point instruction a 3-bit rm field that selects the rounding mode statically, overriding fcsr.frm. The card proves the override: an fadd.d encoded with rm=010 rounds down while frm reads RNE."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "29 checks, 0 mismatches; static rm 010 with frm RNE gives 0x3FF0000000000000 with fflags NX alone, while DYN with frm RNE gives exactly one ulp above",
+          "source": {
+            "tier": "lab",
+            "cite": "src/frm-rounding-static/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-static/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The pinned RISC-V ISA manual, unprivileged F chapter: the rm field in the instruction encoding selects the rounding mode for that instruction",
+          "source": {
+            "tier": "lab",
+            "cite": "riscv-isa-manual (pinned release)",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-frm-rounding-static",
+      "slot": "MICROARCH",
+      "probandum": "The proof compares only result and fflags bits, which the ISA fixes for a given rm value. Pipeline depth or FPU implementation changes timing, never the rounded bits.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The proof compares only result and fflags bits, which the ISA fixes for a given rm value. Pipeline depth or FPU implementation changes timing, never the rounded bits."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The proof compares only result and fflags bits across 3 byte-identical runs and measures no timing or pipeline behavior",
+          "source": {
+            "tier": "lab",
+            "cite": "src/frm-rounding-static/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-static/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-frm-rounding-static",
+      "slot": "FIRMWARE",
+      "probandum": "fcsr and the rm encoding are visible to all privilege levels; M-mode firmware only enabled the F extension and never mediates the rounding decision.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "fcsr and the rm encoding are visible to all privilege levels; M-mode firmware only enabled the F extension and never mediates the rounding decision."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "M-mode only enabled the F extension via mstatus.FS; the rounding decision was made by the executed instruction word, and no firmware mediation was exercised or needed",
+          "source": {
+            "tier": "lab",
+            "cite": "src/frm-rounding-static/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-static/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-frm-rounding-static",
+      "slot": "KERNEL",
+      "probandum": "The override lives entirely in the instruction word, so kernel FP state management (saving and restoring fcsr across context switches) is neither exercised nor affected by what was verified.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The override lives entirely in the instruction word, so kernel FP state management (saving and restoring fcsr across context switches) is neither exercised nor affected by what was verified."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The module runs entirely in M-mode with no context switch and no fcsr save or restore; the verified override lives in the instruction word",
+          "source": {
+            "tier": "lab",
+            "cite": "src/frm-rounding-static/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-static/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-frm-rounding-static",
+      "slot": "ALGORITHM",
+      "probandum": "The property is an instruction-encoding rule, not a portable computation; there is no equivalent C under test.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The property is an instruction-encoding rule, not a portable computation; there is no equivalent C under test."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The verified property is an instruction-encoding rule; the module implements no portable computation and compares no C code",
+          "source": {
+            "tier": "lab",
+            "cite": "src/frm-rounding-static/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-static/PROOF.md"
+          }
+        },
+        {
+          "kind": "generalization",
+          "n": 3,
+          "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the probandum via the generalization."
+        }
+      ]
     }
   ]
 }

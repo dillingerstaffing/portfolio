@@ -17644,5 +17644,115 @@
     "terminalLabel": "Verified xv6 user-space test output",
     "checks": 7,
     "failures": 0
+  },
+  {
+    "id": "src-pmp-napot-match",
+    "kicker": "A NAPOT entry matches exactly the region its trailing ones encode",
+    "title": "The entry that knows its own borders",
+    "summary": "A bare-metal M-mode RISC-V program proves a NAPOT PMP entry matches exactly the 4 KiB region its trailing-ones pattern encodes. Loads and stores inside the region raise access-fault traps with the faulting address recorded; the same accesses just outside the region complete normally. A second allow-entry isolates the outside probes, so an unexpected match would trap for the right reason.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines NAPOT matching: an entry whose pmpaddr ends in a run of ones matches exactly the naturally aligned 2^(n+1)-byte region, and a matching entry with no permissions raises a load or store access fault. The card proves the boundary byte by byte: inside addresses trap, outside addresses complete."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card compares trap records only, never timing. Whether the PMP checker decodes the trailing ones with a priority encoder or a comparator array, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map. The card proves the match semantics of an entry the program itself programmed, the exact policy real firmware enforces."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-napot-match/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "39 checks against the NAPOT match invariant (inside traps, outside completes), 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Inside load traps with mcause 0x5, inside store traps with mcause 0x7, both with the faulting address in mtval"
+      ],
+      [
+        "CHECKSUM",
+        "0x1cf84d380d3383e1, identical across 3 runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-match",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel pmp-napot-match.elf\n\ninside: trap mcause=0x5 (load), 0x7 (store); outside: clean\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / pmp-napot-match.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 39,
+    "failures": 0
+  },
+  {
+    "id": "src-frm-rounding-static",
+    "kicker": "The instruction word overrules the mode register",
+    "title": "Static rounding mode in the instruction word",
+    "summary": "A bare-metal M-mode RISC-V program hand-encodes fadd.d with rm=010 (round down) and executes it while fcsr.frm reads RNE. The result follows the encoded mode, not the register: on the exact-halfway pair the hardware returns 1.0 with NX alone in fflags. A DYN-encoded control that follows frm proves the instruction word decided.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The unprivileged ISA gives every floating-point instruction a 3-bit rm field that selects the rounding mode statically, overriding fcsr.frm. The card proves the override: an fadd.d encoded with rm=010 rounds down while frm reads RNE."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares only result and fflags bits, which the ISA fixes for a given rm value. Pipeline depth or FPU implementation changes timing, never the rounded bits."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "fcsr and the rm encoding are visible to all privilege levels; M-mode firmware only enabled the F extension and never mediates the rounding decision."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The override lives entirely in the instruction word, so kernel FP state management (saving and restoring fcsr across context switches) is neither exercised nor affected by what was verified."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is an instruction-encoding rule, not a portable computation; there is no equivalent C under test."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rounding-static/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "29 checks against the static-rounding invariant (the encoded mode wins over frm), 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Static RDN gives 0x3FF0000000000000 with fflags NX alone; DYN with frm=RNE gives exactly one ulp above"
+      ],
+      [
+        "CHECKSUM",
+        "0x6b500bc19583830, identical across 3 runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/frm-rounding-static",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel frm-rounding-static.elf\n\nstatic RDN: 0x3ff0000000000000, fflags NX; DYN/RNE: one ulp above\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / frm-rounding-static.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 29,
+    "failures": 0
   }
 ]
