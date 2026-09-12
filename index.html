@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-052817">
+  <meta name="build-version" content="v20260912-060736">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,23 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-return-with-nothing-to-return-from/">The Return With Nothing to Return From</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified content is the privileged architecture's own contract for sret: executed in U-mode it traps as illegal instruction with mcause=2, mepc at the sret site, trapped mstatus.MPP=0, and the faulting instruction word in mtval. The module probed all four with real CSR reads against the manual's supervisor-instruction text, the Sail model's bare user-mode match clause that routes straight to the illegal-instruction handler, and the SPP/SPIE/sepc restore semantics the control phase exercised from S-mode.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the refusal is a contract rule about register state, identical on every conforming implementation: the proof measured no timing and no pipeline, cache, or predictor behavior, and no microarchitectural choice could change whether the trap fires or what the CSRs read back. The QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the trap's destination is firmware's decision: medeleg was written 0 and read back 0 so the illegal-instruction trap could not be delegated away, and the M-mode handler recorded mcause, mepc, mtval, and mstatus before jumping to the C continuation. On this machine the receiver, the delegation lock, and the scripted drop into U-mode are all M-mode operations.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because sret is the supervisor trap return path the kernel walks on every trap exit: privilege restored from SPP, interrupt enable from SPIE, the program counter from sepc. The module proved the gate in both directions, S-mode sret works with control_ok=1, U-mode sret traps with mcause=2, so a kernel knows exactly where its return instruction is legal and what the hardware does when user code reaches for it.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-return-with-nothing-to-return-from|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the sret refusal is the architecture's privilege mechanism, not a portable technique: with no privilege modes and no return-from-trap instruction the claim has nothing to mean, and nothing in the verified behavior travels to another machine.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 02:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The program runs the same four bytes twice: 0x10200073, the encoding of sret, the supervisor return-from-trap instruction. The first run happens in S-mode, and it works: the control phase records control_ok=1 and the program comes back to the pad with no trap fired. The second run executes the identical bytes in U-mode, and the machine refuses. The hart traps to M-mode with mcause=2, illegal instruction. mepc reads 0x80000344, the exact site of the sret. mstatus.MPP reads 0, the hardware&#x27;s own record that the offender was in user mode. And mtval holds 0x10200073, the offending instruction echoed back like a confiscated key.</p>
+          <p>sret is the second half of the trap contract. When it executes, privilege is restored from sstatus.SPP, interrupt enable from SPIE, and the program counter from sepc. All three are supervisor-owned state. In U-mode there is no supervisor trap to return from, and no legal way to have built that state, so the ISA does not define the behavior. It refuses the instruction. The formal Sail model of the privileged architecture writes the rule as a bare match: in user mode, sret goes straight to handle_illegal(). No conditions, no escape hatch.</p>
+          <p>There is a mirror image in the same manual. The TSR bit in mstatus lets M-mode forbid even S-mode from executing sret, so a hypervisor can intercept it and emulate the missing extension. Returning from a trap is itself a gated privilege. And the night&#x27;s neighboring module, mstatus-tvm-trap, probes the gate next door: the TVM bit makes S-mode writes to satp and sfence.vma trap to M-mode. Taken together the pair maps who is allowed to come back from where.</p>
+          <p>The discipline held, too. medeleg was written 0 and read back 0, so the trap could not be delegated away from M-mode; it had to land where the handler was waiting. And the mtval check does not compare the trap&#x27;s evidence against a constant anyone typed from memory. It reads the actual instruction word at mepc and compares the two measured values against each other:</p>
+          <pre><code>unsigned long word_at_mepc = *(volatile unsigned int *)mepc;\ncheck(mtval == word_at_mepc,\n      &quot;mtval does not match the word at mepc&quot;);</code></pre>
+          <p>Eighteen checks, zero mismatches, checksum 0x802872738f9db42a identical across three byte-identical runs on QEMU 8.2.2. One sentence to carry away: sret is a key cut for a lock user mode never had, and the ISA&#x27;s answer to the wrong hands on it is immediate and total, an illegal instruction, the trap delivered to M-mode, the offending bytes echoed in the evidence register.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sret-to-umode-fault" target="_blank" rel="noopener">src/sret-to-umode-fault</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-division-that-isnt/">The Division That Isn't</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified content is the F/D chapters' invalid-operation contract: 0.0/0.0 raises NV alone, the quotient is the canonical quiet NaN, and no trap fires. The module probes all three halves against the manual's statements: the fcsr triple 0x0 to 0x10 to 0x0, the 0x7FF8000000000000 quotient readback, and the trap counter at zero. The canonical-NaN wording and the payload-refusal reasoning are the spec's own.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the values under test are architectural constants: the NV definition, the canonical NaN pattern, and the no-trap rule are fixed in the spec's text, so no implementation choice changes a readback. The proof never times anything, and the QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the module runs at firmware's own privilege level: it reads the boot mstatus, moves FS from Off to Initial before the first floating-point instruction (Off would raise illegal-instruction), installs an M-mode trap handler as the witness, and reads the trap counter back at zero. That is the enable, arm, and leave-no-trace discipline of M-mode boot code around the floating-point unit.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the no-trap discipline fixes the kernel's contract with user space: there is no exception path to audit and no trap handler to write, an invalid operation is detected by polling fflags after the computation, and fflags is per-hart state the context switch must save and clear so one process's invalid never accuses another.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-division-that-isnt|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the verified claim is the hardware's flag contract, not a portable computation: the fourteen checks are CSR readback assertions judged against the spec's text, and no host-independent computation can reproduce an fcsr readback. The indeterminate-form mathematics motivates the rule, but the proof targets the flag, not the math.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 01:15 EDT</time></p>
@@ -140189,6 +140206,441 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "the-return-with-nothing-to-return-from|ISA": {
+    "item": "the-return-with-nothing-to-return-from",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified content is the privileged architecture's own contract for sret: executed in U-mode it traps as illegal instruction with mcause=2, mepc at the sret site, trapped mstatus.MPP=0, and the faulting instruction word in mtval. The module probed all four with real CSR reads against the manual's supervisor-instruction text, the Sail model's bare user-mode match clause that routes straight to the illegal-instruction handler, and the SPP/SPIE/sepc restore semantics the control phase exercised from S-mode.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified content is the privileged architecture's own contract for sret: executed in U-mode it traps as illegal instruction with mcause=2, mepc at the sret site, trapped mstatus.MPP=0, and the faulting instruction word in mtval. The module probed all four with real CSR reads against the manual's supervisor-instruction text, the Sail model's bare user-mode match clause that routes straight to the illegal-instruction handler, and the SPP/SPIE/sepc restore semantics the control phase exercised from S-mode."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the U-mode sret trap: mcause 0x2, mepc 0x80000344 matching the recorded sret site, trapped mstatus.MPP 0, and mtval 0x10200073 checked against the word at mepc.",
+        "source": {
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification states that SRET raises an illegal-instruction exception when executed in U-mode; the formal Sail model writes the rule as a bare user-mode match clause that routes straight to the illegal-instruction handler.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about specified instruction behavior, provable only against the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim proved from an instruction's specified privilege behavior is a claim about the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ISA layer lights when the verified property is the specified behavior of an instruction, including its privilege gate."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the module only observes a QEMU model, not silicon."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The contract under test is what the spec requires of any implementation; the module asserts only what the spec and this hart guarantee, and QEMU's answer is one legal answer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-return-with-nothing-to-return-from|MICROARCH": {
+    "item": "the-return-with-nothing-to-return-from",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the refusal is a contract rule about register state, identical on every conforming implementation: the proof measured no timing and no pipeline, cache, or predictor behavior, and no microarchitectural choice could change whether the trap fires or what the CSRs read back. The QEMU 8.2.2 numbers are labeled as the model's, not the architecture's.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the refusal is a contract rule about register state, identical on every conforming implementation: the proof measured no timing and no pipeline, cache, or predictor behavior, and no microarchitectural choice could change whether the trap fires or what the CSRs read back. The QEMU 8.2.2 numbers are labeled as the model's, not the architecture's."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md reports only register readbacks and bit patterns: mcause, mepc, mstatus.MPP, mtval, the word at mepc. No measurement in the proof times anything.",
+        "source": {
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification fixes the sret privilege rule in the ISA text, leaving no implementation choice that could change whether the trap fires.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The claim is decided by comparing readbacks to specified contract rules, so it carries no information about any pipeline, cache, or predictor."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A test that only compares register readbacks to specified rules cannot discriminate between microarchitectures."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Microarch layer stays dim when the verified property would read identically on every implementation of the same spec."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that different harts might implement sret differently."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "Any difference an implementation introduced would be a spec violation, so the verdict follows the contract, not the model."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-return-with-nothing-to-return-from|FIRMWARE": {
+    "item": "the-return-with-nothing-to-return-from",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because the trap's destination is firmware's decision: medeleg was written 0 and read back 0 so the illegal-instruction trap could not be delegated away, and the M-mode handler recorded mcause, mepc, mtval, and mstatus before jumping to the C continuation. On this machine the receiver, the delegation lock, and the scripted drop into U-mode are all M-mode operations.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because the trap's destination is firmware's decision: medeleg was written 0 and read back 0 so the illegal-instruction trap could not be delegated away, and the M-mode handler recorded mcause, mepc, mtval, and mstatus before jumping to the C continuation. On this machine the receiver, the delegation lock, and the scripted drop into U-mode are all M-mode operations."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records medeleg written 0 and read back 0, the M-mode handler recording mcause/mepc/mtval/mstatus on every trap, and the scripted M-mode drop into U-mode before the sret.",
+        "source": {
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification gives M-mode sole control of medeleg: only M-mode can choose where the illegal-instruction trap lands.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The trap's destination and the experiment's sequencing are decisions only M-mode firmware can make."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A property decided by a register writable only in M-mode is a claim about firmware's domain."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Firmware layer lights when the verified behavior sits in registers or actions only M-mode can take."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that an S-mode kernel could observe the same trap."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "With medeleg forced to 0 the trap never reaches S-mode; the receiver and the lock are firmware's by construction."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-return-with-nothing-to-return-from|KERNEL": {
+    "item": "the-return-with-nothing-to-return-from",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because sret is the supervisor trap return path the kernel walks on every trap exit: privilege restored from SPP, interrupt enable from SPIE, the program counter from sepc. The module proved the gate in both directions, S-mode sret works with control_ok=1, U-mode sret traps with mcause=2, so a kernel knows exactly where its return instruction is legal and what the hardware does when user code reaches for it.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because sret is the supervisor trap return path the kernel walks on every trap exit: privilege restored from SPP, interrupt enable from SPIE, the program counter from sepc. The module proved the gate in both directions, S-mode sret works with control_ok=1, U-mode sret traps with mcause=2, so a kernel knows exactly where its return instruction is legal and what the hardware does when user code reaches for it."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the control phase: sret from S-mode returns with control_ok=1 and no trap, while the U-mode sret traps with mcause=2; sret restores privilege from SPP, interrupt enable from SPIE, and pc from sepc.",
+        "source": {
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification defines sret as the supervisor return-from-trap instruction, restoring privilege, interrupt enable, and pc from supervisor-owned state.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified gate is the exact rule a supervisor kernel's trap return path depends on."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A property that decides where a kernel's own return instruction is legal is load-bearing for kernel work."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property is load-bearing for work a kernel does, here the trap return path."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the module never runs a real kernel."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The property under test is the hardware contract every supervisor trap return relies on, proved in both directions."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-return-with-nothing-to-return-from|ALGORITHM": {
+    "item": "the-return-with-nothing-to-return-from",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the sret refusal is the architecture's privilege mechanism, not a portable technique: with no privilege modes and no return-from-trap instruction the claim has nothing to mean, and nothing in the verified behavior travels to another machine.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the sret refusal is the architecture's privilege mechanism, not a portable technique: with no privilege modes and no return-from-trap instruction the claim has nothing to mean, and nothing in the verified behavior travels to another machine."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every check asserts a RISC-V CSR or privilege value; the module contains no portable computation whose correctness survives leaving the architecture.",
+        "source": {
+          "cite": "src/sret-to-umode-fault/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "sret, mcause, mepc, mstatus.MPP, and mtval exist only in the RISC-V privileged architecture; the refusal is a property of privilege modes, not of a reusable construction.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The claim dissolves the moment the architecture's register names and privilege modes are removed."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A property that can only be stated in one architecture's register names is not an algorithm."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The Algorithm layer stays dim when the verified property cannot travel: if the mechanism has no meaning without the registers, it is not portable."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One might think the pending-versus-permission reading of the trap is a portable principle."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The principle is portable, but the verified property is this architecture's refusal; the proof pins the mechanism, not the moral."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
       }
     ]
   }

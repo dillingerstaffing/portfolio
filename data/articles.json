@@ -1,5 +1,45 @@
 [
   {
+    "title": "The Return With Nothing to Return From",
+    "slug": "the-return-with-nothing-to-return-from",
+    "date": "2026-09-12",
+    "description": "The same four bytes run twice: in S-mode, sret returns from the trap; in U-mode, the machine refuses with an illegal instruction. Eighteen checks on what privilege the ISA refuses to hand out.",
+    "paragraphs": [
+      "The program runs the same four bytes twice: 0x10200073, the encoding of sret, the supervisor return-from-trap instruction. The first run happens in S-mode, and it works: the control phase records control_ok=1 and the program comes back to the pad with no trap fired. The second run executes the identical bytes in U-mode, and the machine refuses. The hart traps to M-mode with mcause=2, illegal instruction. mepc reads 0x80000344, the exact site of the sret. mstatus.MPP reads 0, the hardware's own record that the offender was in user mode. And mtval holds 0x10200073, the offending instruction echoed back like a confiscated key.",
+      "sret is the second half of the trap contract. When it executes, privilege is restored from sstatus.SPP, interrupt enable from SPIE, and the program counter from sepc. All three are supervisor-owned state. In U-mode there is no supervisor trap to return from, and no legal way to have built that state, so the ISA does not define the behavior. It refuses the instruction. The formal Sail model of the privileged architecture writes the rule as a bare match: in user mode, sret goes straight to handle_illegal(). No conditions, no escape hatch.",
+      "There is a mirror image in the same manual. The TSR bit in mstatus lets M-mode forbid even S-mode from executing sret, so a hypervisor can intercept it and emulate the missing extension. Returning from a trap is itself a gated privilege. And the night's neighboring module, mstatus-tvm-trap, probes the gate next door: the TVM bit makes S-mode writes to satp and sfence.vma trap to M-mode. Taken together the pair maps who is allowed to come back from where.",
+      "The discipline held, too. medeleg was written 0 and read back 0, so the trap could not be delegated away from M-mode; it had to land where the handler was waiting. And the mtval check does not compare the trap's evidence against a constant anyone typed from memory. It reads the actual instruction word at mepc and compares the two measured values against each other:",
+      "Eighteen checks, zero mismatches, checksum 0x802872738f9db42a identical across three byte-identical runs on QEMU 8.2.2. One sentence to carry away: sret is a key cut for a lock user mode never had, and the ISA's answer to the wrong hands on it is immediate and total, an illegal instruction, the trap delivered to M-mode, the offending bytes echoed in the evidence register."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sret-to-umode-fault",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sret-to-umode-fault/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified content is the privileged architecture's own contract for sret: executed in U-mode it traps as illegal instruction with mcause=2, mepc at the sret site, trapped mstatus.MPP=0, and the faulting instruction word in mtval. The module probed all four with real CSR reads against the manual's supervisor-instruction text, the Sail model's bare user-mode match clause that routes straight to the illegal-instruction handler, and the SPP/SPIE/sepc restore semantics the control phase exercised from S-mode."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the refusal is a contract rule about register state, identical on every conforming implementation: the proof measured no timing and no pipeline, cache, or predictor behavior, and no microarchitectural choice could change whether the trap fires or what the CSRs read back. The QEMU 8.2.2 numbers are labeled as the model's, not the architecture's."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because the trap's destination is firmware's decision: medeleg was written 0 and read back 0 so the illegal-instruction trap could not be delegated away, and the M-mode handler recorded mcause, mepc, mtval, and mstatus before jumping to the C continuation. On this machine the receiver, the delegation lock, and the scripted drop into U-mode are all M-mode operations."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because sret is the supervisor trap return path the kernel walks on every trap exit: privilege restored from SPP, interrupt enable from SPIE, the program counter from sepc. The module proved the gate in both directions, S-mode sret works with control_ok=1, U-mode sret traps with mcause=2, so a kernel knows exactly where its return instruction is legal and what the hardware does when user code reaches for it."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the sret refusal is the architecture's privilege mechanism, not a portable technique: with no privilege modes and no return-from-trap instruction the claim has nothing to mean, and nothing in the verified behavior travels to another machine."
+      }
+    }
+  },
+  {
     "title": "The Division That Isn't",
     "slug": "the-division-that-isnt",
     "date": "2026-09-12",
