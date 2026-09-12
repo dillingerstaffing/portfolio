@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-041118">
+  <meta name="build-version" content="v20260912-041559">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -18876,6 +18876,61 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "qemu / xv6 / forkclose",
     "terminalLabel": "Verified xv6 test output",
     "checks": 6,
+    "failures": 0
+  },
+  {
+    "id": "src-fflags-nv-invalid",
+    "kicker": "Invalid operation sets NV and nothing else",
+    "title": "The Flag That Marks an Invalid Operation",
+    "summary": "A bare-metal M-mode RISC-V program that clears fflags, executes an invalid floating-point operation, and verifies the NV (invalid operation) bit sets while no other accrued flag moves.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines fflags.NV as the sticky invalid-operation indicator; the card proves only NV sets on an invalid op."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because flag accrual is an architectural contract, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because fflags is a user-visible CSR; M-mode firmware does not mediate its behavior."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because signal delivery for SIGFPE and floating-point exception handling depend on reading the correct accrued flags."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a flag-accrual invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 checks against NV flag accrual invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Invalid op sets NV only, other flags unchanged"
+      ],
+      [
+        "CHECKSUM",
+        "0x1dbad5f6e633e840, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fflags-nv-invalid",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel fflags-nv-invalid.elf\n\nfflags cleared, invalid op: NV set, others clear\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / fflags-nv-invalid.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 14,
     "failures": 0
   }
 ];
@@ -137041,6 +137096,221 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "src-fflags-nv-invalid|ISA": {
+    "kind": "card",
+    "item": "src-fflags-nv-invalid",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the privileged spec defines fflags.NV as the sticky invalid-operation indicator; the card proves only NV sets on an invalid op.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the privileged spec defines fflags.NV as the sticky invalid-operation indicator; the card proves only NV sets on an invalid op."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fflags-nv-invalid|MICROARCH": {
+    "kind": "card",
+    "item": "src-fflags-nv-invalid",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because flag accrual is an architectural contract, not a pipeline implementation detail.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because flag accrual is an architectural contract, not a pipeline implementation detail."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fflags-nv-invalid|FIRMWARE": {
+    "kind": "card",
+    "item": "src-fflags-nv-invalid",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because fflags is a user-visible CSR; M-mode firmware does not mediate its behavior.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because fflags is a user-visible CSR; M-mode firmware does not mediate its behavior."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fflags-nv-invalid|KERNEL": {
+    "kind": "card",
+    "item": "src-fflags-nv-invalid",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because signal delivery for SIGFPE and floating-point exception handling depend on reading the correct accrued flags.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because signal delivery for SIGFPE and floating-point exception handling depend on reading the correct accrued flags."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fflags-nv-invalid|ALGORITHM": {
+    "kind": "card",
+    "item": "src-fflags-nv-invalid",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a flag-accrual invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a flag-accrual invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fflags-nv-invalid/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
       }
     ]
   }
