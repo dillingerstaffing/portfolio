@@ -1241,6 +1241,9 @@ def build_feed_page(feed, stamp, template):
       getMode: () => sort,
       getItems: () => rows.filter(r => !r.hidden)
         .map(r => ({ id: r.dataset.id, item: rowItem(r), el: r })),
+      getAllItems: () => rows
+        .map(r => ({ id: r.dataset.id, item: rowItem(r), el: r })),
+      stickySel: '.feed-controls',
       rerank: () => apply(),
       placeWhy: (entry, b) => {
         b.style.top = '8px';

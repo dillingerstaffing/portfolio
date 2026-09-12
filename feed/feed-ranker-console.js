@@ -9,6 +9,14 @@
        panelHost:   element,  // the panel is appended here
        getMode:     function () -> 'foryou' when For You is active,
        getItems:    function () -> [{ id, item, el }] visible items,
+       getAllItems: function () -> [{ id, item, el }] all rankable items
+                   (optional; falls back to getItems; used to seed the
+                   console rows with the full topic/source/kind
+                   vocabulary so the panel is useful before anything
+                   has been learned),
+       stickySel:   CSS selector of a sticky bar that can overlap the
+                   panel when stuck (optional; the console nudges the
+                   page just enough to clear it on open),
        rerank:      function () -> re-apply the For You ordering,
        placeWhy:    function (entry, btn) -> put the why button in the
                                   item's DOM (page-specific positioning)
@@ -53,6 +61,7 @@
     '.frk-bar{flex:1 1 100%;position:relative;height:7px;background:rgba(128,128,128,.18)}',
     '.frk-bar i{position:absolute;top:0;bottom:0;background:currentColor;opacity:.7;display:block}',
     '.frk-basis{flex:0 0 auto;font-size:11px;opacity:.55}',
+    '.frk-release{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}',
     '.frk-row input[type=range]{flex:1 1 140px;accent-color:currentColor;margin:0}',
     '.frk-empty{opacity:.5;font-size:11px;padding:6px 0}',
     '.frk-blend{opacity:.5;font-size:11px;margin-top:14px}',
@@ -114,7 +123,22 @@
       open = v;
       panel.hidden = !v;
       btn.setAttribute('aria-expanded', String(v));
-      if (v) render();
+      if (v) { render(); reveal(); }
+    }
+
+    // If a sticky bar (the feed's stuck controls, for example) paints
+    // over the freshly opened panel, nudge the page just enough to
+    // clear it. No-op when there is no overlap.
+    function reveal() {
+      if (!cfg.stickySel || typeof document === 'undefined') return;
+      var bar;
+      try { bar = document.querySelector(cfg.stickySel); } catch (e) { return; }
+      if (!bar) return;
+      var rb = bar.getBoundingClientRect();
+      var rp = panel.getBoundingClientRect();
+      if (rb.bottom > rp.top + 1) {
+        window.scrollBy({ top: (rb.bottom - rp.top) + 12, behavior: 'smooth' });
+      }
     }
 
     btn.addEventListener('click', function () { setOpen(!open); });
@@ -130,6 +154,24 @@
         i.style.width = (-v * 50) + '%';
       }
       bar.appendChild(i);
+    }
+
+    // A "set by you" row is pinned: learning skips it until the user
+    // releases it back to measured (value stays, learning resumes
+    // from there) or resets the profile.
+    function showPinned(basis, r, group) {
+      basis.textContent = '';
+      basis.appendChild(document.createTextNode('set by you '));
+      var rel = el('button', 'frk-release', 'release');
+      rel.setAttribute('aria-label',
+        'release ' + r.key + ' back to measured');
+      rel.title = 'Let learning adjust this signal again';
+      rel.addEventListener('click', function () {
+        FeedRanker.profile.releaseAffinity(group, r.key);
+        r.basis = 'measured';
+        basis.textContent = 'measured';
+      });
+      basis.appendChild(rel);
     }
 
     function groupBlock(title, rowsArr, group) {
@@ -149,7 +191,9 @@
         var bar = el('div', 'frk-bar');
         bar.setAttribute('aria-hidden', 'true');
         barFill(bar, r.value);
-        var basis = el('span', 'frk-basis', r.basis);
+        var basis = el('span', 'frk-basis');
+        if (r.basis === 'set by you') showPinned(basis, r, group);
+        else basis.textContent = 'measured';
         var slider = document.createElement('input');
         slider.type = 'range';
         slider.min = '-1';
@@ -163,7 +207,7 @@
           r.value = v;
           r.basis = 'set by you';
           val.textContent = fmtVal(v);
-          basis.textContent = 'set by you';
+          showPinned(basis, r, group);
           barFill(bar, v);
           try { cfg.rerank(); } catch (e) {}
         });
@@ -175,6 +219,35 @@
         g.appendChild(row);
       });
       return g;
+    }
+
+    // Rows come from the profile snapshot, seeded with the full
+    // vocabulary of the rankable items: a fresh reader sees every
+    // topic/source/kind at +0.00 (measured, nothing learned yet) with
+    // a working slider, instead of an empty panel. Learned and pinned
+    // rows keep their values and sort first.
+    function seeded(snapRows, group) {
+      var seen = {};
+      snapRows.forEach(function (r) { seen[r.key] = true; });
+      var items = [];
+      try { items = ((cfg.getAllItems || cfg.getItems)() || []); } catch (e) {}
+      items.forEach(function (entry) {
+        var it = (entry && entry.item) || entry || {};
+        var keys = group === 'topic' ? (it.topics || [])
+          : group === 'source' ? (it.source ? [it.source] : [])
+          : (it.kind ? [it.kind] : []);
+        keys.forEach(function (k) {
+          if (k && !seen[k]) {
+            seen[k] = true;
+            snapRows.push({ key: k, value: 0, basis: 'measured' });
+          }
+        });
+      });
+      snapRows.sort(function (a, b) {
+        if (b.value !== a.value) return b.value - a.value;
+        return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+      });
+      return snapRows;
     }
 
     function render() {
@@ -200,12 +273,24 @@
       });
       var resetBtn = el('button', 'frk-btn', 'Reset');
       resetBtn.type = 'button';
+      // Two-step inline confirm: no native dialog, the button itself
+      // becomes the question and disarms after a few seconds.
+      var resetArmed = false, resetTimer = null;
       resetBtn.addEventListener('click', function () {
-        if (window.confirm('Reset all ranking signals to their defaults?')) {
-          FeedRanker.profile.resetProfile();
-          render();
-          try { cfg.rerank(); } catch (e) {}
+        if (!resetArmed) {
+          resetArmed = true;
+          resetBtn.textContent = 'Confirm reset?';
+          resetTimer = setTimeout(function () {
+            resetArmed = false;
+            if (resetBtn.isConnected) resetBtn.textContent = 'Reset';
+          }, 4000);
+          return;
         }
+        clearTimeout(resetTimer);
+        resetArmed = false;
+        FeedRanker.profile.resetProfile();
+        render();
+        try { cfg.rerank(); } catch (e) {}
       });
       actions.appendChild(pauseBtn);
       actions.appendChild(resetBtn);
@@ -216,9 +301,9 @@
         'This panel shows the signals that order For you. ' +
         'Adjusting them only changes ordering.'));
 
-      panel.appendChild(groupBlock('TOPICS', snap.topics, 'topic'));
-      panel.appendChild(groupBlock('SOURCES', snap.sources, 'source'));
-      panel.appendChild(groupBlock('KINDS', snap.kinds, 'kind'));
+      panel.appendChild(groupBlock('TOPICS', seeded(snap.topics, 'topic'), 'topic'));
+      panel.appendChild(groupBlock('SOURCES', seeded(snap.sources, 'source'), 'source'));
+      panel.appendChild(groupBlock('KINDS', seeded(snap.kinds, 'kind'), 'kind'));
 
       var w = snap.weights;
       panel.appendChild(el('div', 'frk-blend',
