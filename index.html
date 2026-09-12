@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-041559">
+  <meta name="build-version" content="v20260912-042608">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -18931,6 +18931,61 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "qemu / riscv64 / fflags-nv-invalid.elf",
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 14,
+    "failures": 0
+  },
+  {
+    "id": "src-fcsr-field-independence",
+    "kicker": "fflags and frm do not disturb each other",
+    "title": "The Two Fields That Share a Register",
+    "summary": "A bare-metal M-mode RISC-V program that proves the fcsr register's two fields are independent. It writes fflags and frm separately via csrs/csrc read-modify-write and verifies each write leaves the other field untouched.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the spec defines fcsr as two independent fields (fflags bits 4:0, frm bits 7:5); the card proves writes to one never disturb the other."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because field independence is an architectural contract, not an implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because fcsr is user-visible; M-mode firmware does not mediate field writes."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because floating-point context switches must save and restore fcsr without one field's value corrupting the other."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a CSR field-independence invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "17 checks against field independence invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "fflags and frm written independently, 0 traps"
+      ],
+      [
+        "CHECKSUM",
+        "0x6865065142aba3c7, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fcsr-field-independence",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel fcsr-field-independence.elf\n\nfflags write leaves frm untouched, frm write leaves fflags untouched\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / fcsr-field-independence.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 17,
     "failures": 0
   }
 ];
@@ -137290,6 +137345,221 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "src/fflags-nv-invalid/PROOF.md",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nv-invalid/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-field-independence|ISA": {
+    "kind": "card",
+    "item": "src-fcsr-field-independence",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the spec defines fcsr as two independent fields (fflags bits 4:0, frm bits 7:5); the card proves writes to one never disturb the other.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the spec defines fcsr as two independent fields (fflags bits 4:0, frm bits 7:5); the card proves writes to one never disturb the other."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-field-independence/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-field-independence|MICROARCH": {
+    "kind": "card",
+    "item": "src-fcsr-field-independence",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because field independence is an architectural contract, not an implementation detail.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because field independence is an architectural contract, not an implementation detail."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-field-independence/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-field-independence|FIRMWARE": {
+    "kind": "card",
+    "item": "src-fcsr-field-independence",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because fcsr is user-visible; M-mode firmware does not mediate field writes.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because fcsr is user-visible; M-mode firmware does not mediate field writes."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-field-independence/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-field-independence|KERNEL": {
+    "kind": "card",
+    "item": "src-fcsr-field-independence",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because floating-point context switches must save and restore fcsr without one field's value corrupting the other.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because floating-point context switches must save and restore fcsr without one field's value corrupting the other."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-field-independence/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-field-independence|ALGORITHM": {
+    "kind": "card",
+    "item": "src-fcsr-field-independence",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a CSR field-independence invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a CSR field-independence invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-field-independence/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md"
         }
       },
       {
