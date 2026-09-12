@@ -117537,6 +117537,441 @@
           "note": "The evidence establishes the probandum via the generalization."
         }
       ]
+    },
+    {
+      "item": "the-switch-with-nothing-behind-it",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "matters at ISA because menvcfg is a privileged CSR whose bit 62 the spec defines as the Svpbmt enable; the module proves the WARL contract holds, writing 1 reads back 0 on a hart without the extension, and the PBMT vocabulary the bit gates is PTE bits 62:61 in leaf entries.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at ISA because menvcfg is a privileged CSR whose bit 62 the spec defines as the Svpbmt enable; the module proves the WARL contract holds, writing 1 reads back 0 on a hart without the extension, and the PBMT vocabulary the bit gates is PTE bits 62:61 in leaf entries."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module PROOF.md records the set probe: writing 0x6000000000000000 reads back 0x2000000000000000, bit 62 legalized to 0 while every other bit comes back exactly as written.",
+          "source": {
+            "cite": "src/menvcfg-pbmte-write/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V privileged specification defines menvcfg.PBMTE as the enable for the Svpbmt page-based memory types extension, with the PBMT field occupying PTE bits 62:61 in leaf entries.",
+          "source": {
+            "cite": "RISC-V ISA manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The verified property is a fact about a privileged register's specified behavior, provable only against the machine contract."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim proved from a CSR's specified WARL behavior is a claim about the machine contract."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The ISA layer lights when the verified property is the specified behavior of a privileged register or instruction."
+        },
+        {
+          "n": 7,
+          "kind": "explanation",
+          "text": "One could object that the module only observes a QEMU model, not silicon."
+        },
+        {
+          "n": 8,
+          "kind": "refutation",
+          "text": "The contract under test is the WARL legalization the spec permits any implementation; the module asserts only what the spec and this hart guarantee, and QEMU's answer is one legal answer."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+        }
+      ]
+    },
+    {
+      "item": "the-switch-with-nothing-behind-it",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "not at Microarch because the legalization is an architectural choice visible to software, not a pipeline, cache, or predictor behavior: the proof reads back register values, never times anything, and the verdict would be identical on any microarchitecture implementing the same privileged spec.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Microarch because the legalization is an architectural choice visible to software, not a pipeline, cache, or predictor behavior: the proof reads back register values, never times anything, and the verdict would be identical on any microarchitecture implementing the same privileged spec."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The PROOF.md measured-results table lists only register values read back after writes: boot, set, clear, two all-ones legalizations, restore, and a trap count of zero. No timing, no counters, no pipeline state.",
+          "source": {
+            "cite": "src/menvcfg-pbmte-write/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The three QEMU run logs are byte-identical, so the verdict depends only on the values observed, not on how the machine produced them.",
+          "source": {
+            "cite": "src/menvcfg-pbmte-write/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The verified property is a value test, not a timing test: it compares each readback against its expectation."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim proved by comparing observed values against expected values does not depend on microarchitectural behavior."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The microarch layer stays dim when the verified property would hold identically on any microarchitecture implementing the same privileged specification."
+        },
+        {
+          "n": 7,
+          "kind": "explanation",
+          "text": "One could object that caches are central to the article, since NC means non-cacheable."
+        },
+        {
+          "n": 8,
+          "kind": "refutation",
+          "text": "The article explains the vocabulary but the proof never exercises a cache: no line is filled or evicted, so no cache behavior could change the verdict."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+        }
+      ]
+    },
+    {
+      "item": "the-switch-with-nothing-behind-it",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "matters at Firmware because menvcfg is M-mode only, so only machine-mode firmware can probe the WARL field or flip the enable; the article's lesson is that firmware must measure rather than assume, and the henvcfg read-only-zero rule is the same privilege ladder M-mode enforces everywhere.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at Firmware because menvcfg is M-mode only, so only machine-mode firmware can probe the WARL field or flip the enable; the article's lesson is that firmware must measure rather than assume, and the henvcfg read-only-zero rule is the same privilege ladder M-mode enforces everywhere."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The set probe is exactly the firmware discipline the article teaches: write 1 to bit 62, read back 0, and conclude the extension is absent instead of assuming it present.",
+          "source": {
+            "cite": "src/menvcfg-pbmte-write/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned privileged specification defines the enable ladder: menvcfg.PBMTE at zero behaves as though Svpbmt were absent, and henvcfg.PBMTE is read-only zero while M-mode's copy is clear.",
+          "source": {
+            "cite": "RISC-V ISA manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The verified property is the behavior machine-mode firmware must implement to use the feature safely: probe before assuming."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim about how machine-mode software must handle a WARL enable is a claim about firmware."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The firmware layer lights when the verified property is load-bearing for machine-mode software's correct operation."
+        },
+        {
+          "n": 7,
+          "kind": "explanation",
+          "text": "One could object that WARL legalization is specified by the ISA, so the ISA layer already covers it."
+        },
+        {
+          "n": 8,
+          "kind": "refutation",
+          "text": "The spec defines the contract but firmware lives it: the probe-then-gate discipline and the privilege ladder are M-mode software's job, not the manual's."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+        }
+      ]
+    },
+    {
+      "item": "the-switch-with-nothing-behind-it",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "not at Kernel because menvcfg is unreachable from S-mode: a supervisor kernel can neither set PBMTE nor observe its readback, so the verified legalization is identical no matter what the kernel does, and the PBMT field the OS would use sits behind a gate the kernel cannot touch.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Kernel because menvcfg is unreachable from S-mode: a supervisor kernel can neither set PBMTE nor observe its readback, so the verified legalization is identical no matter what the kernel does, and the PBMT field the OS would use sits behind a gate the kernel cannot touch."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module runs entirely in M-mode on hart 0; the PROOF.md configuration states QEMU boots the ELF straight into M-mode, so no privilege drop is needed or taken.",
+          "source": {
+            "cite": "src/menvcfg-pbmte-write/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The spec text verified this run states the hypervisor copy henvcfg.PBMTE is read-only zero while M-mode's menvcfg.PBMTE is clear, so less-privileged software cannot reach the gate.",
+          "source": {
+            "cite": "RISC-V ISA manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "No supervisor software can address menvcfg, so no kernel behavior can alter the observed legalization."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim about a register unreachable from S-mode is invariant to everything S-mode does."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The kernel layer stays dim when the verified property is identical under every possible supervisor behavior."
+        },
+        {
+          "n": 7,
+          "kind": "explanation",
+          "text": "One could object that the operating system is the intended user of the PBMT field."
+        },
+        {
+          "n": 8,
+          "kind": "refutation",
+          "text": "The intended user sits behind the enable: the module proves the gate's behavior, which the kernel can neither set nor observe, so the proof says nothing the kernel can act on."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+        }
+      ]
+    },
+    {
+      "item": "the-switch-with-nothing-behind-it",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "not at Algorithm because no computational mechanism is under test: the six checks are register readback assertions, and the FNV-1a checksum only collapses the measured values into one checkable number, so the verdict would stand under any other hash.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Algorithm because no computational mechanism is under test: the six checks are register readback assertions, and the FNV-1a checksum only collapses the measured values into one checkable number, so the verdict would stand under any other hash."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The six checks are readback assertions: the set probe leaves other bits unchanged, the clear probe equals its write, all-ones keeps boot-set bits, two legalizations agree, restore returns the boot value, and the trap count is zero.",
+          "source": {
+            "cite": "src/menvcfg-pbmte-write/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The FNV-1a checksum is fed the boot value and the write/readback pairs in a fixed order and printed on the completion path; it carries no addresses or live counters.",
+          "source": {
+            "cite": "src/menvcfg-pbmte-write/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "No check computes anything beyond comparing a readback to its expectation; the checksum is a reporting device, not the property."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim proved by register readback assertions is not a claim about a computational mechanism."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The algorithm layer stays dim when swapping the checksum for any other hash would leave the verdict unchanged."
+        },
+        {
+          "n": 7,
+          "kind": "explanation",
+          "text": "One could object that the module computes a 64-bit FNV-1a checksum, which is an algorithm."
+        },
+        {
+          "n": 8,
+          "kind": "refutation",
+          "text": "The checksum collapses measured values into one checkable number; the six assertions would pass or fail identically under any other hash, so no algorithmic property is under test."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+        }
+      ]
     }
   ]
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-040004">
+  <meta name="build-version" content="v20260912-041118">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,7 +949,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-switch-with-nothing-behind-it/">The Switch With Nothing Behind It</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because menvcfg is a privileged CSR whose bit 62 the spec defines as the Svpbmt enable; the module proves the WARL contract holds, writing 1 reads back 0 on a hart without the extension, and the PBMT vocabulary the bit gates is PTE bits 62:61 in leaf entries.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the legalization is an architectural choice visible to software, not a pipeline, cache, or predictor behavior: the proof reads back register values, never times anything, and the verdict would be identical on any microarchitecture implementing the same privileged spec.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because menvcfg is M-mode only, so only machine-mode firmware can probe the WARL field or flip the enable; the article's lesson is that firmware must measure rather than assume, and the henvcfg read-only-zero rule is the same privilege ladder M-mode enforces everywhere.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because menvcfg is unreachable from S-mode: a supervisor kernel can neither set PBMTE nor observe its readback, so the verified legalization is identical no matter what the kernel does, and the PBMT field the OS would use sits behind a gate the kernel cannot touch.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-switch-with-nothing-behind-it|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism is under test: the six checks are register readback assertions, and the FNV-1a checksum only collapses the measured values into one checkable number, so the verdict would stand under any other hash.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 00:11 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Write 0x6000000000000000 to menvcfg, the M-mode environment configuration register, and read it back: 0x2000000000000000. Bit 62, the PBMTE switch, refused to stick, and every other bit came back exactly as written. Saying it properly took six checks: a set probe, a clear probe, two all-ones legalizations that agreed with each other, a restore of the boot value, and a trap count of zero. Three byte-identical runs on QEMU 8.2.2, one checksum over every readback, verdict PASS. This hart has no Svpbmt.</p>
+          <p>The measurement is a WARL probe, and WARL is the whole method. Write-any-read-legal means the register may legalize any value you write, so the experiment writes values and reads back what the hart allows. The set probe is three lines:</p>
+          <pre><code>unsigned long boot = read_menvcfg();      /* 0x2000000000000000 */
+write_menvcfg(boot | MENVCFG_PBMTE);      /* ask for bit 62 */
+unsigned long set = read_menvcfg();       /* 0x2000000000000000: refused */</code></pre>
+          <p>The question behind the switch is who decides what a physical address is. Today the answer is the platform: physical memory attributes are fixed at boot, this region is RAM, that region is a device, and the page table is blind to the distinction. That works until the operating system maps a device register as ordinary cacheable memory. Then reads go stale in the cache, and speculative reads fire side effects on hardware that was only ever supposed to be asked. The fix is to let the page table say what each page is, and that is what the Svpbmt extension, RISC-V&#x27;s page-based memory types, does: a two-bit PBMT field, bits 62:61, in every leaf page-table entry, so one page can be memory and its neighbor can be a device.</p>
+          <p>The vocabulary is three words. Zero means PMA, the physical memory attributes: ask the platform, the old world, no override. One means non-cacheable memory: idempotent and weakly ordered, you may read it speculatively and read it twice, you just may not keep a copy in the cache. Two means this page is hardware: non-idempotent and strongly ordered, every access a real conversation with a device that has side effects. Three is reserved, and the machine raises a page fault instead of guessing what you meant. My favorite sentence in the spec is the one proving the bits are not a label: mark an I/O-underlying page as non-cacheable, and for FENCE and acquire/release its accesses count as main memory, not I/O. The bits are the rulebook the ordering instructions read.</p>
+          <p>And bit 62 of menvcfg is the master switch for the whole vocabulary. The spec&#x27;s rule: while PBMTE is zero, the implementation behaves as though Svpbmt were not implemented at all. If the extension is not implemented, the bit is read-only zero. The hypervisor&#x27;s copy in henvcfg is read-only zero while M-mode&#x27;s copy is clear. Each privilege level gated by the one above it, one rung at a time.</p>
+          <p>The module answers two different unknowns with two different probes and never lets them mix. The set probe asks whether the feature exists: the bit does not stick, so this hart has none. The all-ones probe asks what legalization looks like: 0xa0000000000000f1, stable across two writes, bit 63 surviving and bit 62 reading zero. The check that PBMTE would survive is gated on the set probe&#x27;s answer, so the same binary would prove the positive case on a hart that implements it. One program proves presence and absence alike. One sentence to carry away: the page table already knew where every byte was and who could touch it; two bits in the leaf entry let it say what the byte is, and one bit in menvcfg decides whether the machine listens. Tonight the machine answered: not here.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-pbmte-write" target="_blank" rel="noopener">src/menvcfg-pbmte-write</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-signal-that-xv6-never-sends/">The Signal That xv6 Never Sends</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the write syscall's contract, refuse with -1 and leave the writer alive, which is identical on every machine the kernel could run on: the proof compares behavior against POSIX and the kernel source, never against the machine manual.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because every check compares a syscall return value against its expected value, so the verdict depends only on the observed values and not on how the machine produced them: the proof is a value test, not a timing test.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the claim lives entirely in the kernel and its userland test: the pipe write path touches no trap vector or privilege register beneath the kernel, so nothing configured under the kernel stands between the syscall and the -1.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the property under test is the kernel's write-to-pipe contract: Linux's fs/pipe.c answers a readerless pipe with a signal plus an error, xv6's kernel/pipe.c answers with the error alone, and the module verifies the xv6 side.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the claim is a kernel interface decision, how a write reports a missing reader, not a computational mechanism: FNV-1a only collapses the measured values into one checkable number, and the -1 verdict would stand under any other hash.</p></div></div>
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 23:14 EDT</time></p>
         </div>
         <div class="research-body">
@@ -1653,7 +1674,6 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
         <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-checksum-that-always-lands-on-0x2144df1c/">The Checksum That Always Lands on 0x2144DF1C</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/82-crc32-residue/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not here because the residue identity uses plain CRC arithmetic, touching no extension instruction.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not here because the post is about the checksum construction and its fixed residue; no pipeline, cache, or predictor behavior is measured.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not here because checksum validation involves no boot-time M-mode software.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters because Ethernet hardware and the drivers that validate frame check sequences rely on exactly this residue.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-checksum-that-always-lands-on-0x2144df1c|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters because the 0x2144DF1C residue identity is pure CRC mathematics, identical on every ISA.</p></div></div>
-          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the write syscall's contract, refuse with -1 and leave the writer alive, which is identical on every machine the kernel could run on: the proof compares behavior against POSIX and the kernel source, never against the machine manual.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because every check compares a syscall return value against its expected value, so the verdict depends only on the observed values and not on how the machine produced them: the proof is a value test, not a timing test.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the claim lives entirely in the kernel and its userland test: the pipe write path touches no trap vector or privilege register beneath the kernel, so nothing configured under the kernel stands between the syscall and the -1.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the property under test is the kernel's write-to-pipe contract: Linux's fs/pipe.c answers a readerless pipe with a signal plus an error, xv6's kernel/pipe.c answers with the error alone, and the module verifies the xv6 side.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-signal-that-xv6-never-sends|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the claim is a kernel interface decision, how a write reports a missing reader, not a computational mechanism: FNV-1a only collapses the measured values into one checkable number, and the -1 verdict would stand under any other hash.</p></div></div>
           <p class="research-date"><time datetime="2026-09-07">2026-09-07 09:15 EDT</time></p>
         </div>
         <div class="research-body">
@@ -136586,6 +136606,441 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "the-switch-with-nothing-behind-it|ISA": {
+    "item": "the-switch-with-nothing-behind-it",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because menvcfg is a privileged CSR whose bit 62 the spec defines as the Svpbmt enable; the module proves the WARL contract holds, writing 1 reads back 0 on a hart without the extension, and the PBMT vocabulary the bit gates is PTE bits 62:61 in leaf entries.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because menvcfg is a privileged CSR whose bit 62 the spec defines as the Svpbmt enable; the module proves the WARL contract holds, writing 1 reads back 0 on a hart without the extension, and the PBMT vocabulary the bit gates is PTE bits 62:61 in leaf entries."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the set probe: writing 0x6000000000000000 reads back 0x2000000000000000, bit 62 legalized to 0 while every other bit comes back exactly as written.",
+        "source": {
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification defines menvcfg.PBMTE as the enable for the Svpbmt page-based memory types extension, with the PBMT field occupying PTE bits 62:61 in leaf entries.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about a privileged register's specified behavior, provable only against the machine contract."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim proved from a CSR's specified WARL behavior is a claim about the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ISA layer lights when the verified property is the specified behavior of a privileged register or instruction."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the module only observes a QEMU model, not silicon."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The contract under test is the WARL legalization the spec permits any implementation; the module asserts only what the spec and this hart guarantee, and QEMU's answer is one legal answer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-switch-with-nothing-behind-it|MICROARCH": {
+    "item": "the-switch-with-nothing-behind-it",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the legalization is an architectural choice visible to software, not a pipeline, cache, or predictor behavior: the proof reads back register values, never times anything, and the verdict would be identical on any microarchitecture implementing the same privileged spec.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the legalization is an architectural choice visible to software, not a pipeline, cache, or predictor behavior: the proof reads back register values, never times anything, and the verdict would be identical on any microarchitecture implementing the same privileged spec."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md measured-results table lists only register values read back after writes: boot, set, clear, two all-ones legalizations, restore, and a trap count of zero. No timing, no counters, no pipeline state.",
+        "source": {
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The three QEMU run logs are byte-identical, so the verdict depends only on the values observed, not on how the machine produced them.",
+        "source": {
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is a value test, not a timing test: it compares each readback against its expectation."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim proved by comparing observed values against expected values does not depend on microarchitectural behavior."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The microarch layer stays dim when the verified property would hold identically on any microarchitecture implementing the same privileged specification."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that caches are central to the article, since NC means non-cacheable."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The article explains the vocabulary but the proof never exercises a cache: no line is filled or evicted, so no cache behavior could change the verdict."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-switch-with-nothing-behind-it|FIRMWARE": {
+    "item": "the-switch-with-nothing-behind-it",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because menvcfg is M-mode only, so only machine-mode firmware can probe the WARL field or flip the enable; the article's lesson is that firmware must measure rather than assume, and the henvcfg read-only-zero rule is the same privilege ladder M-mode enforces everywhere.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because menvcfg is M-mode only, so only machine-mode firmware can probe the WARL field or flip the enable; the article's lesson is that firmware must measure rather than assume, and the henvcfg read-only-zero rule is the same privilege ladder M-mode enforces everywhere."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The set probe is exactly the firmware discipline the article teaches: write 1 to bit 62, read back 0, and conclude the extension is absent instead of assuming it present.",
+        "source": {
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned privileged specification defines the enable ladder: menvcfg.PBMTE at zero behaves as though Svpbmt were absent, and henvcfg.PBMTE is read-only zero while M-mode's copy is clear.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The verified property is the behavior machine-mode firmware must implement to use the feature safely: probe before assuming."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim about how machine-mode software must handle a WARL enable is a claim about firmware."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The firmware layer lights when the verified property is load-bearing for machine-mode software's correct operation."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that WARL legalization is specified by the ISA, so the ISA layer already covers it."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The spec defines the contract but firmware lives it: the probe-then-gate discipline and the privilege ladder are M-mode software's job, not the manual's."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-switch-with-nothing-behind-it|KERNEL": {
+    "item": "the-switch-with-nothing-behind-it",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because menvcfg is unreachable from S-mode: a supervisor kernel can neither set PBMTE nor observe its readback, so the verified legalization is identical no matter what the kernel does, and the PBMT field the OS would use sits behind a gate the kernel cannot touch.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because menvcfg is unreachable from S-mode: a supervisor kernel can neither set PBMTE nor observe its readback, so the verified legalization is identical no matter what the kernel does, and the PBMT field the OS would use sits behind a gate the kernel cannot touch."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module runs entirely in M-mode on hart 0; the PROOF.md configuration states QEMU boots the ELF straight into M-mode, so no privilege drop is needed or taken.",
+        "source": {
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The spec text verified this run states the hypervisor copy henvcfg.PBMTE is read-only zero while M-mode's menvcfg.PBMTE is clear, so less-privileged software cannot reach the gate.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "No supervisor software can address menvcfg, so no kernel behavior can alter the observed legalization."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim about a register unreachable from S-mode is invariant to everything S-mode does."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The kernel layer stays dim when the verified property is identical under every possible supervisor behavior."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the operating system is the intended user of the PBMT field."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The intended user sits behind the enable: the module proves the gate's behavior, which the kernel can neither set nor observe, so the proof says nothing the kernel can act on."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "the-switch-with-nothing-behind-it|ALGORITHM": {
+    "item": "the-switch-with-nothing-behind-it",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because no computational mechanism is under test: the six checks are register readback assertions, and the FNV-1a checksum only collapses the measured values into one checkable number, so the verdict would stand under any other hash.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because no computational mechanism is under test: the six checks are register readback assertions, and the FNV-1a checksum only collapses the measured values into one checkable number, so the verdict would stand under any other hash."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The six checks are readback assertions: the set probe leaves other bits unchanged, the clear probe equals its write, all-ones keeps boot-set bits, two legalizations agree, restore returns the boot value, and the trap count is zero.",
+        "source": {
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The FNV-1a checksum is fed the boot value and the write/readback pairs in a fixed order and printed on the completion path; it carries no addresses or live counters.",
+        "source": {
+          "cite": "src/menvcfg-pbmte-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "No check computes anything beyond comparing a readback to its expectation; the checksum is a reporting device, not the property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim proved by register readback assertions is not a claim about a computational mechanism."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The algorithm layer stays dim when swapping the checksum for any other hash would leave the verdict unchanged."
+      },
+      {
+        "n": 7,
+        "kind": "explanation",
+        "text": "One could object that the module computes a 64-bit FNV-1a checksum, which is an algorithm."
+      },
+      {
+        "n": 8,
+        "kind": "refutation",
+        "text": "The checksum collapses measured values into one checkable number; the six assertions would pass or fail identically under any other hash, so no algorithmic property is under test."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence in (2) and (3) establishes per (5) that the claim lives where (4) says it does."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
       }
     ]
   }

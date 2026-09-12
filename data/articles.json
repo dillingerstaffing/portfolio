@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Switch With Nothing Behind It",
+    "slug": "the-switch-with-nothing-behind-it",
+    "date": "2026-09-12",
+    "description": "Bit 62 of menvcfg was supposed to switch on page-based memory types. On this hart the bit refuses to stick, so I asked what the switch was for and got a clean negative answer.",
+    "paragraphs": [
+      "Write 0x6000000000000000 to menvcfg, the M-mode environment configuration register, and read it back: 0x2000000000000000. Bit 62, the PBMTE switch, refused to stick, and every other bit came back exactly as written. Saying it properly took six checks: a set probe, a clear probe, two all-ones legalizations that agreed with each other, a restore of the boot value, and a trap count of zero. Three byte-identical runs on QEMU 8.2.2, one checksum over every readback, verdict PASS. This hart has no Svpbmt.",
+      "The measurement is a WARL probe, and WARL is the whole method. Write-any-read-legal means the register may legalize any value you write, so the experiment writes values and reads back what the hart allows. The set probe is three lines:",
+      "The question behind the switch is who decides what a physical address is. Today the answer is the platform: physical memory attributes are fixed at boot, this region is RAM, that region is a device, and the page table is blind to the distinction. That works until the operating system maps a device register as ordinary cacheable memory. Then reads go stale in the cache, and speculative reads fire side effects on hardware that was only ever supposed to be asked. The fix is to let the page table say what each page is, and that is what the Svpbmt extension, RISC-V's page-based memory types, does: a two-bit PBMT field, bits 62:61, in every leaf page-table entry, so one page can be memory and its neighbor can be a device.",
+      "The vocabulary is three words. Zero means PMA, the physical memory attributes: ask the platform, the old world, no override. One means non-cacheable memory: idempotent and weakly ordered, you may read it speculatively and read it twice, you just may not keep a copy in the cache. Two means this page is hardware: non-idempotent and strongly ordered, every access a real conversation with a device that has side effects. Three is reserved, and the machine raises a page fault instead of guessing what you meant. My favorite sentence in the spec is the one proving the bits are not a label: mark an I/O-underlying page as non-cacheable, and for FENCE and acquire/release its accesses count as main memory, not I/O. The bits are the rulebook the ordering instructions read.",
+      "And bit 62 of menvcfg is the master switch for the whole vocabulary. The spec's rule: while PBMTE is zero, the implementation behaves as though Svpbmt were not implemented at all. If the extension is not implemented, the bit is read-only zero. The hypervisor's copy in henvcfg is read-only zero while M-mode's copy is clear. Each privilege level gated by the one above it, one rung at a time.",
+      "The module answers two different unknowns with two different probes and never lets them mix. The set probe asks whether the feature exists: the bit does not stick, so this hart has none. The all-ones probe asks what legalization looks like: 0xa0000000000000f1, stable across two writes, bit 63 surviving and bit 62 reading zero. The check that PBMTE would survive is gated on the set probe's answer, so the same binary would prove the positive case on a hart that implements it. One program proves presence and absence alike. One sentence to carry away: the page table already knew where every byte was and who could touch it; two bits in the leaf entry let it say what the byte is, and one bit in menvcfg decides whether the machine listens. Tonight the machine answered: not here."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-pbmte-write",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-pbmte-write/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because menvcfg is a privileged CSR whose bit 62 the spec defines as the Svpbmt enable; the module proves the WARL contract holds, writing 1 reads back 0 on a hart without the extension, and the PBMT vocabulary the bit gates is PTE bits 62:61 in leaf entries."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the legalization is an architectural choice visible to software, not a pipeline, cache, or predictor behavior: the proof reads back register values, never times anything, and the verdict would be identical on any microarchitecture implementing the same privileged spec."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because menvcfg is M-mode only, so only machine-mode firmware can probe the WARL field or flip the enable; the article's lesson is that firmware must measure rather than assume, and the henvcfg read-only-zero rule is the same privilege ladder M-mode enforces everywhere."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because menvcfg is unreachable from S-mode: a supervisor kernel can neither set PBMTE nor observe its readback, so the verified legalization is identical no matter what the kernel does, and the PBMT field the OS would use sits behind a gate the kernel cannot touch."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because no computational mechanism is under test: the six checks are register readback assertions, and the FNV-1a checksum only collapses the measured values into one checkable number, so the verdict would stand under any other hash."
+      }
+    }
+  },
+  {
     "title": "The Signal That xv6 Never Sends",
     "slug": "the-signal-that-xv6-never-sends",
     "date": "2026-09-11",

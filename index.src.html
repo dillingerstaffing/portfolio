@@ -949,7 +949,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Switch With Nothing Behind It</h3>
+          <!-- LAYER-STRIP:the-switch-with-nothing-behind-it -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 00:11 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Write 0x6000000000000000 to menvcfg, the M-mode environment configuration register, and read it back: 0x2000000000000000. Bit 62, the PBMTE switch, refused to stick, and every other bit came back exactly as written. Saying it properly took six checks: a set probe, a clear probe, two all-ones legalizations that agreed with each other, a restore of the boot value, and a trap count of zero. Three byte-identical runs on QEMU 8.2.2, one checksum over every readback, verdict PASS. This hart has no Svpbmt.</p>
+          <p>The measurement is a WARL probe, and WARL is the whole method. Write-any-read-legal means the register may legalize any value you write, so the experiment writes values and reads back what the hart allows. The set probe is three lines:</p>
+          <pre><code>unsigned long boot = read_menvcfg();      /* 0x2000000000000000 */
+write_menvcfg(boot | MENVCFG_PBMTE);      /* ask for bit 62 */
+unsigned long set = read_menvcfg();       /* 0x2000000000000000: refused */</code></pre>
+          <p>The question behind the switch is who decides what a physical address is. Today the answer is the platform: physical memory attributes are fixed at boot, this region is RAM, that region is a device, and the page table is blind to the distinction. That works until the operating system maps a device register as ordinary cacheable memory. Then reads go stale in the cache, and speculative reads fire side effects on hardware that was only ever supposed to be asked. The fix is to let the page table say what each page is, and that is what the Svpbmt extension, RISC-V&#x27;s page-based memory types, does: a two-bit PBMT field, bits 62:61, in every leaf page-table entry, so one page can be memory and its neighbor can be a device.</p>
+          <p>The vocabulary is three words. Zero means PMA, the physical memory attributes: ask the platform, the old world, no override. One means non-cacheable memory: idempotent and weakly ordered, you may read it speculatively and read it twice, you just may not keep a copy in the cache. Two means this page is hardware: non-idempotent and strongly ordered, every access a real conversation with a device that has side effects. Three is reserved, and the machine raises a page fault instead of guessing what you meant. My favorite sentence in the spec is the one proving the bits are not a label: mark an I/O-underlying page as non-cacheable, and for FENCE and acquire/release its accesses count as main memory, not I/O. The bits are the rulebook the ordering instructions read.</p>
+          <p>And bit 62 of menvcfg is the master switch for the whole vocabulary. The spec&#x27;s rule: while PBMTE is zero, the implementation behaves as though Svpbmt were not implemented at all. If the extension is not implemented, the bit is read-only zero. The hypervisor&#x27;s copy in henvcfg is read-only zero while M-mode&#x27;s copy is clear. Each privilege level gated by the one above it, one rung at a time.</p>
+          <p>The module answers two different unknowns with two different probes and never lets them mix. The set probe asks whether the feature exists: the bit does not stick, so this hart has none. The all-ones probe asks what legalization looks like: 0xa0000000000000f1, stable across two writes, bit 63 surviving and bit 62 reading zero. The check that PBMTE would survive is gated on the set probe&#x27;s answer, so the same binary would prove the positive case on a hart that implements it. One program proves presence and absence alike. One sentence to carry away: the page table already knew where every byte was and who could touch it; two bits in the leaf entry let it say what the byte is, and one bit in menvcfg decides whether the machine listens. Tonight the machine answered: not here.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-pbmte-write" target="_blank" rel="noopener">src/menvcfg-pbmte-write</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Signal That xv6 Never Sends</h3>
+          <!-- LAYER-STRIP:the-signal-that-xv6-never-sends -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 23:14 EDT</time></p>
         </div>
         <div class="research-body">
@@ -1653,7 +1674,6 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
         <div>
           <h3>The Checksum That Always Lands on 0x2144DF1C</h3>
           <!-- LAYER-STRIP:the-checksum-that-always-lands-on-0x2144df1c -->
-          <!-- LAYER-STRIP:the-signal-that-xv6-never-sends -->
           <p class="research-date"><time datetime="2026-09-07">2026-09-07 09:15 EDT</time></p>
         </div>
         <div class="research-body">
