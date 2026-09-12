@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-031632">
+  <meta name="build-version" content="v20260912-033858">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -18425,6 +18425,328 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalLabel": "Verified xv6 test output",
     "checks": 6,
     "failures": 0
+  },
+  {
+    "id": "lab-124-is-pow2",
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "Branchless power-of-two test from the x and (x minus 1) identity",
+    "summary": "is_pow2(x) reports whether a 64-bit word holds exactly one set bit, using the identity that clearing the lowest set bit of a power of two leaves zero: (x != 0) and ((x and (x - 1)) == 0). The implementation is branchless, built only from subtraction, bitwise AND, and comparison, with no builtins. The proof checks it against a per-bit popcount oracle.",
+    "checks": 26777408,
+    "failures": 0,
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/124-is-pow2",
+    "repoLabel": "GitHub: systems-lab/lab/124-is-pow2",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "26777408 inputs checked against a per-bit popcount oracle (192 directed edges, an exhaustive 24-bit sweep, 10M fixed-seed splitmix64 values), 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "296ab7282627f4b7 (FNV-1a), identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "2.813 ns/value at -O2"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 124-is-pow2",
+    "terminalLabel": "Verified power-of-two test output",
+    "terminalOutput": "$ make run\nchecks=26777408 mismatches=0 checksum=296ab7282627f4b7\n$ make sanitize\nchecks=26777408 mismatches=0 checksum=296ab7282627f4b7\nRESULT: PASS\n\nbranchless power-of-two test, 0 mismatches",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the verified claim is that (x != 0) and ((x and (x - 1)) == 0) detects exactly one set bit, matching the per-bit oracle on every input. That is a Boolean identity about the expression, provable on any ISA; no machine-contract operation is the claim's subject."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof compares values against the oracle, finding no mismatches. A pipeline, cache, or predictor can change how fast the expression evaluates, never its value; the per-value timing describes the rig, not the claim."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the claim is an integer identity evaluated in an ordinary process; no boot-time machine-mode configuration participates in what the expression evaluates to."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because the verified property is a pure function of x. Kernel behavior cannot perturb a pure function's return value, since the claim is about the function's outputs, not its execution environment."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "Matters at ALGORITHM because the x and (x - 1) lowest-set-bit-clearing identity is a portable computational mechanism: the same branchless construction verifies on every ISA, and the identical checksum across -O0, -O2, and ASan+UBSan builds shows the construction itself is what is proved."
+      }
+    }
+  },
+  {
+    "id": "lab-122-decimal-digits",
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "Straight-line decimal digit count from the comparison cascade",
+    "summary": "digit_count(x) returns how many decimal digits a 64-bit word needs, computed as a straight line of ordered comparisons, one per decimal magnitude from tens up to 10 to the 19th: no loop, no division, no table. The proof checks it against the string length of the formatted number.",
+    "checks": 4304967336,
+    "failures": 0,
+    "verificationEnvironment": "Host",
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/122-decimal-digits",
+    "repoLabel": "GitHub: systems-lab/lab/122-decimal-digits",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/122-decimal-digits/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4304967336 inputs checked against the formatted string length (40 directed boundaries, 10M fixed-seed splitmix64 values, a full 2^32 sweep), 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "2bb5269a79ea9099 (FNV-1a), identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "11.55 ns/value at -O2"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 122-decimal-digits",
+    "terminalLabel": "Verified decimal digit count output",
+    "terminalOutput": "total checks: 4304967336\nmismatches: 0\nchecksum: 2bb5269a79ea9099\nPASS",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the verified claim is that the comparison cascade counts decimal digits exactly, matching the formatted string length on every input. That is a magnitude truth about the comparisons, provable on any ISA; no machine-contract operation is the claim's subject."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof compares digit counts against the reference, finding no mismatches. Implementation behavior can change evaluation speed, never the digit count; the per-value timing describes the rig, not the claim."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because no machine-mode register, trap delegation, or boot configuration takes part in what the cascade evaluates to."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because the verified property is a pure function of x. Kernel behavior cannot perturb a pure function's return value, since the claim is about the function's outputs, not its execution environment."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "Matters at ALGORITHM because the comparison cascade is a portable computational mechanism: one ordered comparison per decimal magnitude, no division, no table. The same construction verifies on every ISA, and the identical checksum across -O0, -O2, and ASan+UBSan builds shows the construction itself is what is proved."
+      }
+    }
+  },
+  {
+    "id": "src-mcounteren-time-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mcounteren gates the S-mode time counter independently of the cycle counter",
+    "summary": "An M-mode program on the QEMU virt board sets mcounteren to 0x1 (cycle counter readable, time counter gated) and drops to S-mode. The S-mode rdtime traps as illegal instruction with scause 0x2 and sepc exactly at the read site, while rdcycle reads and advances with no new trap. The proof verifies each counter is gated by its own enable bit, independently.",
+    "checks": 11,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-time-gate",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-time-gate/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "11 in-program checks on QEMU 8.2.2: S-mode rdtime with mcounteren.TM clear traps illegal-instruction with sepc at the read site and the destination register untouched, rdcycle with CY set reads and advances with no new trap, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xd1d0b4647fd56387, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board, medeleg bit 2 only"
+      ]
+    ],
+    "terminalName": "qemu / riscv64 / mcounteren-time-gate.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalOutput": "phase A: rdtime with mcounteren=0x1 (expect S-mode trap):\n  scause  = 0x2\n  sepc    = 0x80000288\n  sepc+4  = 0x8000028c\n  traps   = 1\n  rdtime dest register = 0xdeadbeefdeadbeef (sentinel = 0xdeadbeefdeadbeef)\n\nphase B: rdcycle with mcounteren=0x1 (expect success):\n  S-mode traps after phase B = 1\n\nchecksum (FNV-1a over verdict values) = 0xd1d0b4647fd56387\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the privileged ISA defines mcounteren.TM (bit 1) as the S-mode time-counter availability gate, independent of the CY bit. The proof verifies this exact contract on QEMU 8.2.2: gated rdtime traps with scause=2 and sepc at the read site while rdcycle still reads, 11 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof checks trap and read outcomes against the TM gate rule: 11 checks, 0 mismatches. Whether S-mode may read the time counter is determined by the mcounteren control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because M-mode firmware owns mcounteren and decides which counters supervisors may read. The verified property (TM clear traps the time read, CY set keeps cycle reads working) is the per-counter access policy firmware programs."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because the card verifies M-mode's counter-gating control over S-mode reads; a supervisor kernel cannot write mcounteren itself, it only experiences the gate. The access decision belongs to firmware, not to the kernel being gated."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the verified claim is about the hart's per-counter enable bits, not a portable computation: it states what this machine does when S-mode reads a gated counter, not a mechanism another ISA could share."
+      }
+    }
+  },
+  {
+    "id": "user-sbrkshrink",
+    "kicker": "XV6",
+    "title": "sbrk with a negative increment releases the page, and regrow works",
+    "summary": "A user-space xv6 test grows the break by one page, tiles a 64-byte canary over it and reads it back byte-exact, then shrinks with sbrk(-4096) and requires the break back at its original value. A regrow returns the released address again and a second, different canary reads back byte-exact, proving the page was genuinely released and reusable.",
+    "checks": 9,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkshrink.c",
+    "repoLabel": "GitHub: xv6-getscount/user/sbrkshrink.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "repo",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkshrink.c"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks on QEMU 8.2.2: grow returns the old break, the new page holds a 64-byte canary byte-exact, shrink returns the pre-shrink break with sbrk(0) back at the original, regrow reuses the released address with a fresh canary, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x73916C5B31770205, independently recomputed on the host to the same value"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / sbrkshrink",
+    "terminalLabel": "Verified xv6 sbrk shrink output",
+    "terminalOutput": "$ sbrkshrink\ncheck 1: initial break 0x5000 is page-aligned\ncheck 2: sbrk(4096) returned old break 0x5000\ncheck 3: sbrk(0)=0x6000 == 0x5000+4096, matches\ncheck 4: 4096-byte canary write/readback byte-exact\ncheck 5: sbrk(-4096) returned old break 0x6000\ncheck 6: sbrk(0)=0x5000 back at initial break, shrink released the page\ncheck 7: sbrk(4096) after shrink returned 0x5000, same page reused\ncheck 8: sbrk(0)=0x6000 == 0x5000+4096, matches\ncheck 9: regrown page canary write/readback byte-exact\nchecksum: 0x73916C5B31770205\nsbrk-shrink values: b0=0x5000 grow=0x5000 end1=0x6000 shrink=0x6000 end2=0x5000 regrow=0x5000 end3=0x6000\nchecks: 9 mismatches: 0\nPASS: sbrk(-4096) releases the page, regrow works",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the claim is about xv6's break bookkeeping, not the machine contract: the module asserts sbrk return values and canary readbacks, which would behave identically on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts break values and byte-exact canaries across runs, never timing: implementation behavior changes how fast pages are released, never whether the break moves or the bytes match."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the grow, shrink, and regrow sequence never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the verified property is the sbrk deallocation contract: a negative increment must release the page and move the break down, and the regrow must hand back a usable page, and the module checks both."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim depends on xv6's growproc and deallocuvm path, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
+      }
+    }
+  },
+  {
+    "id": "src-mtimecmp-rw",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "CLINT mtimecmp reads back exactly what was written, 64-bit patterns included",
+    "summary": "An M-mode program on the QEMU virt board writes three 64-bit patterns to hart 0's mtimecmp, 0x0, 0x123456789abcdef0, and all-ones, and reads each back exactly, with every mie bit clear throughout. After the zero write, mip.MTIP pends as the running time catches up, but with MTIE clear no trap is delivered. The register is disarmed back to all ones at the end.",
+    "checks": 6,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtimecmp-rw",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-rw/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks on QEMU 8.2.2: three write/readback pairs exact over 64-bit patterns, mip.MTIP pended only after the zero write, trap count 0 with MTIE clear, disarm readback exact, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0xbe715111eb42d62b, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode on virt board, mie all bits clear, hart 0 CLINT at 0x02004000"
+      ]
+    ],
+    "terminalName": "qemu / riscv64 / mtimecmp-rw.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalOutput": "write/readback trials (each requires exact readback):\n  trial 0: wrote=0x0000000000000000 read=0x0000000000000000 equal=yes mip.MTIP=1 (pending)\n  trial 1: wrote=0x123456789abcdef0 read=0x123456789abcdef0 equal=yes mip.MTIP=0 (clear)\n  trial 2: wrote=0xffffffffffffffff read=0xffffffffffffffff equal=yes mip.MTIP=0 (clear)\n\nfinal disarm: wrote=0xffffffffffffffff read=0xffffffffffffffff mip.MTIP=0 (clear)\n\ntraps: count=0 mcause=0x0 mepc=0x0 mtval=0x0\n\nchecks: 6, mismatches: 0\nchecksum: 0xbe715111eb42d62b\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Matters at ISA because the privileged ISA assigns mtimecmp as the M-mode writable compare register for the machine timer, and the contract is that a written value reads back exactly. The proof verifies three 64-bit patterns read back equal on QEMU 8.2.2, 6 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts readback equality and trap absence, never timing. The MTIP pending after the zero write is the compare rule firing, a specified behavior, not an implementation artifact."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Matters at FIRMWARE because M-mode firmware programs the timer it depends on. The verified property, writes to mtimecmp are faithful and a pended MTIP stays undelivered while MTIE is clear, is exactly the discipline firmware needs before it can trust timer interrupts."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not at KERNEL because the module runs in M-mode with no supervisor present. A supervisor kernel never programs mtimecmp directly; it receives timer interrupts through the firmware interface instead."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the verified claim is about this hart's compare register behavior, not a portable computation: it states what the register returns after a write, not a mechanism another ISA could share."
+      }
+    }
+  },
+  {
+    "id": "user-waitorder",
+    "kicker": "XV6",
+    "title": "wait() reaps several already-zombied children in pid order, not exit order",
+    "summary": "A parent forks three children that sleep 30, 20, and 10 ticks and exit with 11, 22, and 33, so the exit order (p3, p2, p1) is the reverse of the fork order. After sleeping long enough that all three are zombies, three wait() calls return (p1, 11), (p2, 22), (p3, 33): the reaper walks the process table in pid order.",
+    "checks": 7,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitorder.c",
+    "repoLabel": "GitHub: xv6-getscount/user/waitorder.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "repo",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitorder.c"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks on QEMU 8.2.2: forks returned p1=4 p2=5 p3=6, the three wait() calls returned 4, 5, 6 with statuses 11, 22, 33, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x5BBF2DC7084738FF, identical across 3 boots"
+      ]
+    ],
+    "terminalName": "xv6-getscount / user / waitorder",
+    "terminalLabel": "Verified xv6 wait order output",
+    "terminalOutput": "$ waitorder\nfork order: p1=4 p2=5 p3=6\nexit 6\nexit 5\nexit 4\ncheck 2: first wait() returned 4, the first forked child\ncheck 3: first reaped status 11, the first child's exit code\ncheck 4: second wait() returned 5, the second forked child\ncheck 5: second reaped status 22, the second child's exit code\ncheck 6: third wait() returned 6, the third forked child\ncheck 7: third reaped status 33, the third child's exit code\nchecksum: 0x5BBF2DC7084738FF\nchecks: 7 mismatches: 0\nPASS: wait() reaped three zombies in pid order, not exit order",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Not at ISA because the claim is about xv6's process-table scan order, not the machine contract: the module asserts which pid wait returns first, a value identical on any RISC-V implementation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Not at MICROARCH because the proof asserts reap order and exit codes, never timing: implementation behavior changes how fast processes run, never which zombie wait returns first."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: no machine-mode register is read or written, and no boot-time configuration takes part in which child wait returns."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "Matters at KERNEL because the verified property is xv6's wait() reaping contract: when several children are zombies, wait scans the process table in pid order and reaps the lowest-pid zombie first, and the module checks all three returns with their statuses."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "Not at ALGORITHM because the claim depends on xv6's wait implementation scanning the process table in pid order, not a portable computation: it states what this kernel does with zombies, not a mechanism another ISA could share."
+      }
+    }
   }
 ];
       const CHIPS_BY_KEY = {
@@ -134454,6 +134776,1276 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "lab-124-is-pow2|ISA": {
+    "item": "lab-124-is-pow2",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the verified claim is that (x != 0) and ((x and (x - 1)) == 0) detects exactly one set bit, matching the per-bit oracle on every input. That is a Boolean identity about the expression, provable on any ISA; no machine-contract operation is the claim's subject.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ISA because the verified claim is that (x != 0) and ((x and (x - 1)) == 0) detects exactly one set bit, matching the per-bit oracle on every input. That is a Boolean identity about the expression, provable on any ISA; no machine-contract operation is the claim's subject."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module's checks compare is_pow2(x) against a per-bit popcount oracle; no instruction semantics, CSR, trap, or memory-model claim is asserted.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim provable purely from Boolean algebra on expression values does not depend on the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-124-is-pow2|MICROARCH": {
+    "item": "lab-124-is-pow2",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof compares values against the oracle, finding no mismatches. A pipeline, cache, or predictor can change how fast the expression evaluates, never its value; the per-value timing describes the rig, not the claim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof compares values against the oracle, finding no mismatches. A pipeline, cache, or predictor can change how fast the expression evaluates, never its value; the per-value timing describes the rig, not the claim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records only value comparisons and a throughput figure; no pipeline, cache, or predictor state is measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Timing-free value verification cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-124-is-pow2|FIRMWARE": {
+    "item": "lab-124-is-pow2",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the claim is an integer identity evaluated in an ordinary process; no boot-time machine-mode configuration participates in what the expression evaluates to.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at FIRMWARE because the claim is an integer identity evaluated in an ordinary process; no boot-time machine-mode configuration participates in what the expression evaluates to."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test runs as an ordinary host process; its PROOF.md names no machine-mode register, trap delegation, or boot configuration.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "What boot never configures cannot affect the result."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-124-is-pow2|KERNEL": {
+    "item": "lab-124-is-pow2",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because the verified property is a pure function of x. Kernel behavior cannot perturb a pure function's return value, since the claim is about the function's outputs, not its execution environment.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at KERNEL because the verified property is a pure function of x. Kernel behavior cannot perturb a pure function's return value, since the claim is about the function's outputs, not its execution environment."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verified property is a pure function of one 64-bit input; the proof never invokes a syscall or kernel subsystem.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A pure function's return value is independent of the OS it runs under."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-124-is-pow2|ALGORITHM": {
+    "item": "lab-124-is-pow2",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Matters at ALGORITHM because the x and (x - 1) lowest-set-bit-clearing identity is a portable computational mechanism: the same branchless construction verifies on every ISA, and the identical checksum across -O0, -O2, and ASan+UBSan builds shows the construction itself is what is proved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ALGORITHM because the x and (x - 1) lowest-set-bit-clearing identity is a portable computational mechanism: the same branchless construction verifies on every ISA, and the identical checksum across -O0, -O2, and ASan+UBSan builds shows the construction itself is what is proved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "26777408 inputs checked against the per-bit popcount oracle, 0 mismatches: 192 directed edges, an exhaustive 24-bit sweep, and 10M fixed-seed splitmix64 values.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "FNV-1a checksum 296ab7282627f4b7 identical across -O0, -O2, and ASan+UBSan builds.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/124-is-pow2/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "An expression that agrees with its oracle on tens of millions of directed, exhaustive, and random inputs, with the identical result independent of optimization level, implements the claimed identity rather than a coincidence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-122-decimal-digits|ISA": {
+    "item": "lab-122-decimal-digits",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the verified claim is that the comparison cascade counts decimal digits exactly, matching the formatted string length on every input. That is a magnitude truth about the comparisons, provable on any ISA; no machine-contract operation is the claim's subject.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ISA because the verified claim is that the comparison cascade counts decimal digits exactly, matching the formatted string length on every input. That is a magnitude truth about the comparisons, provable on any ISA; no machine-contract operation is the claim's subject."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module's checks compare digit_count(x) against the formatted string length; no instruction semantics, CSR, trap, or memory-model claim is asserted.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/122-decimal-digits/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim provable purely from the ordering of integer comparisons does not depend on the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-122-decimal-digits|MICROARCH": {
+    "item": "lab-122-decimal-digits",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof compares digit counts against the reference, finding no mismatches. Implementation behavior can change evaluation speed, never the digit count; the per-value timing describes the rig, not the claim.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof compares digit counts against the reference, finding no mismatches. Implementation behavior can change evaluation speed, never the digit count; the per-value timing describes the rig, not the claim."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log records only digit-count comparisons and a throughput figure; no pipeline, cache, or predictor state is measured.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/122-decimal-digits/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "Timing-free value verification cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-122-decimal-digits|FIRMWARE": {
+    "item": "lab-122-decimal-digits",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because no machine-mode register, trap delegation, or boot configuration takes part in what the cascade evaluates to.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at FIRMWARE because no machine-mode register, trap delegation, or boot configuration takes part in what the cascade evaluates to."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test runs as an ordinary host process; its PROOF.md names no machine-mode register, trap delegation, or boot configuration.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/122-decimal-digits/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "What boot never configures cannot affect the result."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-122-decimal-digits|KERNEL": {
+    "item": "lab-122-decimal-digits",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because the verified property is a pure function of x. Kernel behavior cannot perturb a pure function's return value, since the claim is about the function's outputs, not its execution environment.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at KERNEL because the verified property is a pure function of x. Kernel behavior cannot perturb a pure function's return value, since the claim is about the function's outputs, not its execution environment."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verified property is a pure function of one 64-bit input; the proof never invokes a syscall or kernel subsystem.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/122-decimal-digits/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A pure function's return value is independent of the OS it runs under."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "lab-122-decimal-digits|ALGORITHM": {
+    "item": "lab-122-decimal-digits",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Matters at ALGORITHM because the comparison cascade is a portable computational mechanism: one ordered comparison per decimal magnitude, no division, no table. The same construction verifies on every ISA, and the identical checksum across -O0, -O2, and ASan+UBSan builds shows the construction itself is what is proved.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ALGORITHM because the comparison cascade is a portable computational mechanism: one ordered comparison per decimal magnitude, no division, no table. The same construction verifies on every ISA, and the identical checksum across -O0, -O2, and ASan+UBSan builds shows the construction itself is what is proved."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "4304967336 inputs checked against the formatted string length, 0 mismatches: 40 directed boundaries, 10M fixed-seed splitmix64 values, and a full 2^32 sweep.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/122-decimal-digits/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "FNV-1a checksum 2bb5269a79ea9099 identical across -O0, -O2, and ASan+UBSan builds.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/122-decimal-digits/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A straight-line construction that agrees with its oracle on billions of directed, random, and exhaustive inputs, with the identical result independent of optimization level, implements the claimed mechanism rather than a coincidence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mcounteren-time-gate|ISA": {
+    "item": "src-mcounteren-time-gate",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the privileged ISA defines mcounteren.TM (bit 1) as the S-mode time-counter availability gate, independent of the CY bit. The proof verifies this exact contract on QEMU 8.2.2: gated rdtime traps with scause=2 and sepc at the read site while rdcycle still reads, 11 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ISA because the privileged ISA defines mcounteren.TM (bit 1) as the S-mode time-counter availability gate, independent of the CY bit. The proof verifies this exact contract on QEMU 8.2.2: gated rdtime traps with scause=2 and sepc at the read site while rdcycle still reads, 11 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification defines mcounteren as the M-mode register gating supervisor access to the cycle, time, and instret counters, with an independent enable bit per counter.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "11 in-program checks on QEMU 8.2.2: gated rdtime trapped with scause=2 and sepc exactly at the read site, rdcycle with CY set read and advanced, 0 mismatches, byte-identical across 3 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-time-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A behavior verified check-by-check against the specification's gate rule, with traps and readbacks matching the specified values, proves the specified contract rather than emulator coincidence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mcounteren-time-gate|MICROARCH": {
+    "item": "src-mcounteren-time-gate",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof checks trap and read outcomes against the TM gate rule: 11 checks, 0 mismatches. Whether S-mode may read the time counter is determined by the mcounteren control bit, not by pipeline or cache behavior.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof checks trap and read outcomes against the TM gate rule: 11 checks, 0 mismatches. Whether S-mode may read the time counter is determined by the mcounteren control bit, not by pipeline or cache behavior."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof asserts trap outcomes and readback values only; no cycle counts, latencies, or contention measurements take part in the verdict.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-time-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A verification that never measures timing cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mcounteren-time-gate|FIRMWARE": {
+    "item": "src-mcounteren-time-gate",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because M-mode firmware owns mcounteren and decides which counters supervisors may read. The verified property (TM clear traps the time read, CY set keeps cycle reads working) is the per-counter access policy firmware programs.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at FIRMWARE because M-mode firmware owns mcounteren and decides which counters supervisors may read. The verified property (TM clear traps the time read, CY set keeps cycle reads working) is the per-counter access policy firmware programs."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Only M-mode software can write mcounteren; the experiment programs the gate from M-mode before dropping to S-mode, and the pinned specification assigns this access policy to M-mode.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A property that only machine-mode software can configure is a firmware property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mcounteren-time-gate|KERNEL": {
+    "item": "src-mcounteren-time-gate",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because the card verifies M-mode's counter-gating control over S-mode reads; a supervisor kernel cannot write mcounteren itself, it only experiences the gate. The access decision belongs to firmware, not to the kernel being gated.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at KERNEL because the card verifies M-mode's counter-gating control over S-mode reads; a supervisor kernel cannot write mcounteren itself, it only experiences the gate. The access decision belongs to firmware, not to the kernel being gated."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The S-mode payload never writes mcounteren; it only reads counters and takes the trap the gate prescribes, while M-mode programs the policy.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-time-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A party that experiences a policy without configuring it is not the layer the policy belongs to."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mcounteren-time-gate|ALGORITHM": {
+    "item": "src-mcounteren-time-gate",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the verified claim is about the hart's per-counter enable bits, not a portable computation: it states what this machine does when S-mode reads a gated counter, not a mechanism another ISA could share.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the verified claim is about the hart's per-counter enable bits, not a portable computation: it states what this machine does when S-mode reads a gated counter, not a mechanism another ISA could share."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every asserted value (scause=2, sepc at the read site, the 0x1 readback) is a hart-specific register behavior from the proof log; no portable computation is under test.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-time-gate/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim whose evidence is entirely machine-specific register behavior is not a portable algorithmic claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrkshrink|ISA": {
+    "item": "user-sbrkshrink",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the claim is about xv6's break bookkeeping, not the machine contract: the module asserts sbrk return values and canary readbacks, which would behave identically on any RISC-V implementation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ISA because the claim is about xv6's break bookkeeping, not the machine contract: the module asserts sbrk return values and canary readbacks, which would behave identically on any RISC-V implementation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test asserts sbrk return values and byte-exact canary readbacks; no instruction semantics, CSR, trap, or memory-model claim is asserted.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkshrink.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about one kernel's heap bookkeeping, stated in values any implementation would report, does not depend on the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrkshrink|MICROARCH": {
+    "item": "user-sbrkshrink",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof asserts break values and byte-exact canaries across runs, never timing: implementation behavior changes how fast pages are released, never whether the break moves or the bytes match.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof asserts break values and byte-exact canaries across runs, never timing: implementation behavior changes how fast pages are released, never whether the break moves or the bytes match."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test records break addresses and canary bytes; no cycle counts, latencies, or contention measurements take part in the verdict.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkshrink.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A verification that never measures timing cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrkshrink|FIRMWARE": {
+    "item": "user-sbrkshrink",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the grow, shrink, and regrow sequence never consults a machine-mode register, and no boot-time configuration takes part.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: the grow, shrink, and regrow sequence never consults a machine-mode register, and no boot-time configuration takes part."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The program is an xv6 user process exercising sys_sbrk; it reads and writes no machine-mode register and configures no boot-time state.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkshrink.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "What runs entirely after boot, in a process that never touches machine mode, cannot be a firmware property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrkshrink|KERNEL": {
+    "item": "user-sbrkshrink",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because the verified property is the sbrk deallocation contract: a negative increment must release the page and move the break down, and the regrow must hand back a usable page, and the module checks both.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at KERNEL because the verified property is the sbrk deallocation contract: a negative increment must release the page and move the break down, and the regrow must hand back a usable page, and the module checks both."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "9 checks: the shrink returns the pre-shrink break, sbrk(0) reads the original break afterward, and the regrow reuses the released address with a fresh canary byte-exact, 0 mismatches.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkshrink.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A syscall's deallocation contract is a kernel property, and checking both the bookkeeping values and the memory contents proves the contract, not just its shadow."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-sbrkshrink|ALGORITHM": {
+    "item": "user-sbrkshrink",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the claim depends on xv6's growproc and deallocuvm path, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the claim depends on xv6's growproc and deallocuvm path, not a portable mechanism: it states what this kernel does with the break, not a computation another ISA could share."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The mechanism under test is xv6's growproc and deallocuvm path; the proof names no portable computation and compares against no ISA-independent oracle.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/sbrkshrink.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim whose evidence is entirely one kernel's internal behavior is not a portable algorithmic claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mtimecmp-rw|ISA": {
+    "item": "src-mtimecmp-rw",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the privileged ISA assigns mtimecmp as the M-mode writable compare register for the machine timer, and the contract is that a written value reads back exactly. The proof verifies three 64-bit patterns read back equal on QEMU 8.2.2, 6 checks, 0 mismatches.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ISA because the privileged ISA assigns mtimecmp as the M-mode writable compare register for the machine timer, and the contract is that a written value reads back exactly. The proof verifies three 64-bit patterns read back equal on QEMU 8.2.2, 6 checks, 0 mismatches."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The pinned RISC-V privileged specification defines mtimecmp as the M-mode machine-timer compare register: the timer hardware compares it against mtime, and software arms and disarms the timer by writing it.",
+        "source": {
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "6 checks on QEMU 8.2.2: three 64-bit write/readback pairs exact, trap count 0, disarm readback exact, 0 mismatches, byte-identical across 3 runs.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-rw/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A register whose written values read back exactly, with the trap record clean, proves the specified read/write contract rather than emulator coincidence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mtimecmp-rw|MICROARCH": {
+    "item": "src-mtimecmp-rw",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof asserts readback equality and trap absence, never timing. The MTIP pending after the zero write is the compare rule firing, a specified behavior, not an implementation artifact.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof asserts readback equality and trap absence, never timing. The MTIP pending after the zero write is the compare rule firing, a specified behavior, not an implementation artifact."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof asserts readback equality and a zero trap record; no cycle counts, latencies, or contention measurements take part in the verdict.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-rw/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A verification that never measures timing cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mtimecmp-rw|FIRMWARE": {
+    "item": "src-mtimecmp-rw",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because M-mode firmware programs the timer it depends on. The verified property, writes to mtimecmp are faithful and a pended MTIP stays undelivered while MTIE is clear, is exactly the discipline firmware needs before it can trust timer interrupts.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at FIRMWARE because M-mode firmware programs the timer it depends on. The verified property, writes to mtimecmp are faithful and a pended MTIP stays undelivered while MTIE is clear, is exactly the discipline firmware needs before it can trust timer interrupts."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module runs in M-mode and keeps every mie bit clear while MTIP pends, verifying the pended-but-undelivered discipline firmware relies on before enabling timer interrupts.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-rw/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A property that only machine-mode software can program and that machine-mode software must respect to use timers safely is a firmware property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mtimecmp-rw|KERNEL": {
+    "item": "src-mtimecmp-rw",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because the module runs in M-mode with no supervisor present. A supervisor kernel never programs mtimecmp directly; it receives timer interrupts through the firmware interface instead.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at KERNEL because the module runs in M-mode with no supervisor present. A supervisor kernel never programs mtimecmp directly; it receives timer interrupts through the firmware interface instead."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module's M-mode payload programs mtimecmp directly; no supervisor-mode kernel is present and no supervisor syscall takes part in the experiment.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-rw/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A register programmed only by machine-mode firmware, invisible to supervisor software, is not a kernel property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "src-mtimecmp-rw|ALGORITHM": {
+    "item": "src-mtimecmp-rw",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the verified claim is about this hart's compare register behavior, not a portable computation: it states what the register returns after a write, not a mechanism another ISA could share.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the verified claim is about this hart's compare register behavior, not a portable computation: it states what the register returns after a write, not a mechanism another ISA could share."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every asserted value (the three written patterns, the mip samples, the trap record) is a hart-specific register behavior from the proof log; no portable computation is under test.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-rw/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim whose evidence is entirely machine-specific register behavior is not a portable algorithmic claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-waitorder|ISA": {
+    "item": "user-waitorder",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Not at ISA because the claim is about xv6's process-table scan order, not the machine contract: the module asserts which pid wait returns first, a value identical on any RISC-V implementation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ISA because the claim is about xv6's process-table scan order, not the machine contract: the module asserts which pid wait returns first, a value identical on any RISC-V implementation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test asserts wait return values and exit statuses; no instruction semantics, CSR, trap, or memory-model claim is asserted.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim about one kernel's reap ordering, stated in values any implementation would report, does not depend on the machine contract."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-waitorder|MICROARCH": {
+    "item": "user-waitorder",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the proof asserts reap order and exit codes, never timing: implementation behavior changes how fast processes run, never which zombie wait returns first.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the proof asserts reap order and exit codes, never timing: implementation behavior changes how fast processes run, never which zombie wait returns first."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test records pids and exit codes; no cycle counts, latencies, or contention measurements take part in the verdict.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A verification that never measures timing cannot depend on implementation behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-waitorder|FIRMWARE": {
+    "item": "user-waitorder",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: no machine-mode register is read or written, and no boot-time configuration takes part in which child wait returns.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at FIRMWARE because the whole test runs in an xv6 process long after boot: no machine-mode register is read or written, and no boot-time configuration takes part in which child wait returns."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The program is an xv6 user process exercising wait; it reads and writes no machine-mode register and configures no boot-time state.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "What runs entirely after boot, in a process that never touches machine mode, cannot be a firmware property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-waitorder|KERNEL": {
+    "item": "user-waitorder",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Matters at KERNEL because the verified property is xv6's wait() reaping contract: when several children are zombies, wait scans the process table in pid order and reaps the lowest-pid zombie first, and the module checks all three returns with their statuses.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at KERNEL because the verified property is xv6's wait() reaping contract: when several children are zombies, wait scans the process table in pid order and reaps the lowest-pid zombie first, and the module checks all three returns with their statuses."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "7 checks: fork order p1=4 p2=5 p3=6, exit order reversed (6, 5, 4), and the three wait() calls returned (4, 11), (5, 22), (6, 33), 0 mismatches, identical across 3 boots.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A syscall's reap-ordering contract is a kernel property, and checking both the pid order and the exit statuses proves the contract, not just its shadow."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
+      }
+    ]
+  },
+  "user-waitorder|ALGORITHM": {
+    "item": "user-waitorder",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the claim depends on xv6's wait implementation scanning the process table in pid order, not a portable computation: it states what this kernel does with zombies, not a mechanism another ISA could share.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the claim depends on xv6's wait implementation scanning the process table in pid order, not a portable computation: it states what this kernel does with zombies, not a mechanism another ISA could share."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The mechanism under test is xv6's wait scanning the process table in pid order; the proof names no portable computation and compares against no ISA-independent oracle.",
+        "source": {
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/waitorder.c"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "generalization",
+        "text": "A claim whose evidence is entirely one kernel's internal behavior is not a portable algorithmic claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong"
       }
     ]
   }
