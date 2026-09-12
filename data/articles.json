@@ -1,5 +1,46 @@
 [
   {
+    "title": "The Four Legal Ways to See Memory",
+    "slug": "the-four-legal-ways-to-see-memory",
+    "date": "2026-09-11",
+    "description": "Four bits in the satp register choose the machine's whole address-translation scheme, and only four of sixteen encodings are legal. A new systems-lab validator proves a one-line legality rule reproduces the privileged spec's own table exactly, including six values the field cannot hold.",
+    "paragraphs": [
+      "Four bits at the top of the satp register choose the machine's whole memory model. On RV64 exactly four encodings are legal: 0 is Bare, no translation and no protection at all, and 8, 9, and 10 are Sv39, Sv48, and Sv57, page-based virtual addressing with 39, 48, and 57-bit address spaces. The other twelve are not memory models: 1 through 7 and 12 through 13 are reserved for future standard use, 11 is reserved for an Sv64 scheme that does not exist yet, and 14 and 15 are designated for custom use.",
+      "Why validate a table? Because legality is not the same as support. The spec says an implementation is not required to support every MODE setting, and that writing an unsupported one has no effect at all. An earlier module probed which MODE values one QEMU model actually accepts; this module validates the table itself, the universe of answers before any one machine narrows it. And the two sides of the check are deliberately shaped nothing alike: the implementation is a range predicate, mode is 0 or in 8 through 10, while the oracle is a 16-row table transcribed by hand from the spec's Table 114, the document's own row text quoted in the comments. Agreement between two differently-shaped descriptions proves the rule, not shared code.",
+      "The whole implementation is one line:",
+      "The oracle is the opposite shape: an explicit 16-entry list, each row transcribed from Table 114 with the document's wording in the comments. The six rows that never fit in four bits, 16, 17, 31, 32, 100, and 0xFFFFFFFF, have no table row covering them, and the function must judge each one illegal. Running them is what separates a test of the table from a test of the function: the table cannot be wrong about values it never lists.",
+      "Value 11 gets the same verdict for the opposite reason. The pinned release reserves it for an Sv64 scheme to be defined in a later version of the specification, so the module quotes the release version and counts it illegal, which means a future spec moves the row openly instead of silently. The module also corrected its own planning note on the way in: the backlog gloss labeled value 9 as Sv40, but the document's row reads Sv48, page-based 48-bit virtual addressing, and the code, the oracle, and the proof all follow the document. Twenty-two checks, zero mismatches, and one checksum identical across the -O2, -O0, and sanitizer builds, the byte-level signature that all three builds agreed on every verdict.",
+      "One sentence to carry away: four bits choose the machine's whole memory model, and this validator agrees with the spec's table on every value the field can hold, plus six it cannot."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/137-satp-mode-validate",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified content is the privileged specification's own contract: the four legal MODE encodings are the spec's Table 114, quoted verbatim from the pinned release, and the validator reproduces that table in C with two independently shaped implementations, so the argument binds every compliant RV64 hart rather than one machine."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because legality of the encoding is an architectural constant: the spec's table is identical on every compliant hart, and the module draws the spec's own line between legality and support, so implementation differences can only narrow the accepted subset, never enlarge the legal universe."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because boot firmware is the layer that actually chooses a MODE when it brings the machine up: selecting 8 versus 11 versus 15 is a firmware decision made before any kernel exists, and this validator is the machine-checkable form of the rule that choice must not violate."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the supervisor kernel installs address spaces through satp: the legality table bounds every satp value a kernel can legitimately write, so the MODE a supervisor may select on any compliant hart comes from this table of four."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because the verification is a portable computational argument: a range predicate and a hand-transcribed table are two independent computations of the same legality function, and their agreement on all sixteen in-domain values plus six out-of-domain probes is a verdict comparison reproducible on any host."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/137-satp-mode-validate/PROOF.md"
+    }
+  },
+  {
     "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/satp-mode-warl",
     "date": "2026-09-11",
     "description": "A RISC-V register field called WARL lets you write anything but only keeps legal values. A new bare-metal probe asks the satp register which address-translation schemes it will accept, and the readback answers: Sv48 and Sv57 stick, the reserved encoding is ignored whole.",

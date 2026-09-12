@@ -15886,5 +15886,115 @@
         "because": "The property is hardware flag accrual on an underflowing operation, not a software algorithm."
       }
     }
+  },
+  {
+    "id": "src-fflags-of-overflow",
+    "kicker": "fflags OF bit sets on overflowing fmul.d; others stay 0",
+    "title": "fflags OF (overflow) accrual on fmul.d",
+    "summary": "M-mode program clearing fcsr.fflags, executing fmul.d on two DBL_MAX doubles whose product overflows, and verifying the OF bit sets alongside NX with no other accrued flag moving, then clearing back to zero.",
+    "checks": 15,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/fflags-of-overflow",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-of-overflow/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "15 checks on QEMU 8.2.2: fmul.d on two huge doubles sets fflags OF and NX with no other flag moving, clear restores zero, across 3 byte-identical runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x8a3aeb9d338b7df1, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with FS enabled"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / fflags-of-overflow",
+    "terminalLabel": "",
+    "terminalOutput": "",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The F extension defines the accrued exception flags including OF for overflow, so the observed set is the machine contract in action."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test reads fcsr flag bits only; no pipeline, cache, or predictor behavior is involved."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software enables FS and programs the floating-point state, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is hardware flag accrual on an overflowing operation, not a software algorithm."
+      }
+    }
+  },
+  {
+    "id": "src-frm-rdn-vs-rup-div",
+    "kicker": "RDN and RUP quotients are adjacent doubles, 1 ulp apart",
+    "title": "frm RDN vs RUP rounding on fdiv.d",
+    "summary": "M-mode program executing fdiv.d 1.0/3.0 under frm=RDN and frm=RUP, verifying the two quotients are the adjacent doubles around the true value, exactly one ulp apart with RUP above RDN.",
+    "checks": 16,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo",
+    "repoLabel": "dillingerstaffing/riscv-baremetal-demo src/frm-rdn-vs-rup-div",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-rdn-vs-rup-div/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "16 checks on QEMU 8.2.2: fdiv.d 1.0/3.0 under frm=RDN and frm=RUP produces adjacent quotients exactly 1 ulp apart, across 3 byte-identical runs, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x108e47da413617b9, identical across 3 QEMU 8.2.2 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M-mode with FS enabled"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / frm-rdn-vs-rup-div",
+    "terminalLabel": "",
+    "terminalOutput": "",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The F extension defines frm's directed rounding modes, so the RDN and RUP quotients landing one ulp apart is the contract's rounding rule."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The test compares quotient values; no pipeline or execution-unit internals are measured."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Machine-mode software enables FS and programs frm before the test, which is firmware's privilege."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The module runs bare metal with no operating system; no kernel mechanisms are involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The property is directed-rounding behavior of the hardware divider, not a software algorithm."
+      }
+    }
   }
 ]

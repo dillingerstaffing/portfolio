@@ -949,6 +949,26 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Four Legal Ways to See Memory</h3>
+          <!-- LAYER-STRIP:the-four-legal-ways-to-see-memory -->
+          <p class="research-date"><time datetime="2026-09-11">2026-09-11 19:26 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Four bits at the top of the satp register choose the machine&#x27;s whole memory model. On RV64 exactly four encodings are legal: 0 is Bare, no translation and no protection at all, and 8, 9, and 10 are Sv39, Sv48, and Sv57, page-based virtual addressing with 39, 48, and 57-bit address spaces. The other twelve are not memory models: 1 through 7 and 12 through 13 are reserved for future standard use, 11 is reserved for an Sv64 scheme that does not exist yet, and 14 and 15 are designated for custom use.</p>
+          <p>Why validate a table? Because legality is not the same as support. The spec says an implementation is not required to support every MODE setting, and that writing an unsupported one has no effect at all. An earlier module probed which MODE values one QEMU model actually accepts; this module validates the table itself, the universe of answers before any one machine narrows it. And the two sides of the check are deliberately shaped nothing alike: the implementation is a range predicate, mode is 0 or in 8 through 10, while the oracle is a 16-row table transcribed by hand from the spec&#x27;s Table 114, the document&#x27;s own row text quoted in the comments. Agreement between two differently-shaped descriptions proves the rule, not shared code.</p>
+          <p>The whole implementation is one line:</p>
+          <pre><code>int satp_mode_legal_rv64(uint64_t mode) {
+    return (mode == 0) || (mode &gt;= 8 &amp;&amp; mode &lt;= 10);
+}</code></pre>
+          <p>The oracle is the opposite shape: an explicit 16-entry list, each row transcribed from Table 114 with the document&#x27;s wording in the comments. The six rows that never fit in four bits, 16, 17, 31, 32, 100, and 0xFFFFFFFF, have no table row covering them, and the function must judge each one illegal. Running them is what separates a test of the table from a test of the function: the table cannot be wrong about values it never lists.</p>
+          <p>Value 11 gets the same verdict for the opposite reason. The pinned release reserves it for an Sv64 scheme to be defined in a later version of the specification, so the module quotes the release version and counts it illegal, which means a future spec moves the row openly instead of silently. The module also corrected its own planning note on the way in: the backlog gloss labeled value 9 as Sv40, but the document&#x27;s row reads Sv48, page-based 48-bit virtual addressing, and the code, the oracle, and the proof all follow the document. Twenty-two checks, zero mismatches, and one checksum identical across the -O2, -O0, and sanitizer builds, the byte-level signature that all three builds agreed on every verdict.</p>
+          <p>One sentence to carry away: four bits choose the machine&#x27;s whole memory model, and this validator agrees with the spec&#x27;s table on every value the field can hold, plus six it cannot.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/137-satp-mode-validate" target="_blank" rel="noopener">lab/137-satp-mode-validate</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Register That Answers in Readback</h3>
           <!-- LAYER-STRIP:the-register-that-answers-in-readback -->
           <p class="research-date"><time datetime="2026-09-11">2026-09-11 17:12 EDT</time></p>
