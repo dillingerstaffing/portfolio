@@ -1,5 +1,47 @@
 [
   {
+    "title": "The Bridge That Doesn't Translate",
+    "slug": "the-bridge-that-doesnt-translate",
+    "date": "2026-09-12",
+    "description": "RISC-V keeps two register files and one narrow bridge between them. FMV.D.X copies 64 bits from the integer file to the floating-point file without reading them, and the discipline is knowing whether you want the bits or what they mean.",
+    "paragraphs": [
+      "The module needed the double 1e16 inside a floating-point register, and it had a problem. It builds with -march=rv64imac_zicsr, a target with no floating point at all, so the compiler cannot name f1, f2, or f3; the source comment says so outright, and the floating-point instructions only assemble because of an in-asm \".option arch, +d\". The way in was the integer 0x4341C37937E08000 sitting in an integer register, then one instruction: fmv.d.x. The bits walked across into the floating-point register file unchanged. On the way back, fmv.x.d carried the result bits out for inspection.",
+      "There is a conversion instruction sitting right next to it, and reaching for it is the whole bug. Feed those same 64 bits, 0x3FF0000000000000, to FCVT.D.L, and the machine reads them as the integer 4,607,182,418,800,017,408 and hands you back the double 4607182418800017408.0. Feed them to FMV.D.X and you get exactly 1.0. One instruction translates. The other transports.",
+      "This is the entire crossing, four instructions quoted from the module's source:",
+      "The two operands ride in as raw bits, the add runs, and the sum's bits ride out for inspection. The %1 and %2 are the integer registers holding the bit patterns; %0 is where the result bits land. No host floating point touches the values at any point. The module's own comment states the rule: the operands arrive as integer bit patterns precisely so the test's hands never shape a float. When the thing under test is what the hardware does with a float, the measurement must not pass through your tools' idea of a float.",
+      "The manual draws the line in one sentence: \"FMV.X.D and FMV.D.X do not modify the bits being transferred; in particular, the payloads of noncanonical NaNs are preserved.\" A converter cannot make that promise, because conversion interprets. Only a transporter can promise the payload survives, and that sentence is the proof the instruction is a copy, not a conversion.",
+      "The reason the bridge is narrow is a design decision, not an accident. The ISA was defined to reduce the number of explicit int-float register moves: conversions and comparisons write their results straight into the appropriate register file, so the crossings most programs need are already built into the operations themselves. FMV exists for the one case nothing else covers: when you want the bits themselves, not what they mean. It is an RV64-only instruction, for 64-bit integer registers; the early ISA's half-register transfer moves were cut because partial register writes would have forced a read-modify-write through renamed pipelines. x86 keeps the same bridge under another name: MOVQ between an xmm register and a 64-bit general register.",
+      "For this work the bridge has two customers. The first is the hermetic test: feeding bit patterns through integer registers keeps the host toolchain's floating point out of the measurement loop, which is the difference between measuring the machine and measuring your tools. The second is the kernel: the floating-point registers are a whole separate file of state, f0 through f31 beside x0 through x31, and that separation is why mstatus.FS exists at all, the two-bit receipt that lets the kernel skip saving thirty-two registers when the running code never touched them. The bridge is narrow because the two sides are meant to live apart; FMV is the one supervised crossing. One sentence to keep: RISC-V keeps two register files and one narrow bridge between them that copies bits without reading them, and the discipline is knowing whether you want the bits, or what they mean."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fflags-nx-only",
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified property is an instruction contract: FMV.D.X copies 64 bits from the integer register file to the floating-point file without interpreting them, the manual promises the bits are not modified and noncanonical NaN payloads are preserved, and the post's 1.0 versus 4607182418800017408.0 pair shows the contract is what separates a transport from a translation."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the promise is implementation-invariant: whether a core renames the two register files together or apart, and through which pipeline it issues the move, the observable result is the same unchanged 64 bits, and the post verifies the contract, not any implementation's choice of how to honor it."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the move is privilege-invariant: it executes identically at every privilege level with no trap, no SBI call, and no PMP entry involved, and nothing firmware configures changes what the instruction promises about the bits."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because the property is policy-invariant: the kernel's work is managing when the floating-point file is live, the mstatus.FS bookkeeping the post cites, and that lifetime policy is orthogonal to the crossing itself, which moves bits identically whether it runs in a user process, a trap handler, or a bare-metal binary."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the post computes nothing: FMV is a move, not a computation, and the discipline it teaches, knowing whether you want the bits or what they mean, is a property of one instruction's contract, independent of any algorithm that later consumes the bits."
+      }
+    }
+  },
+  {
     "title": "The Fence the Instruction Cache Never Sees",
     "slug": "the-fence-the-instruction-cache-never-sees",
     "date": "2026-09-12",

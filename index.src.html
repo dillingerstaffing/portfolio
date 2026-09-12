@@ -950,6 +950,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bridge That Doesn't Translate</h3>
+          <!-- LAYER-STRIP:the-bridge-that-doesnt-translate -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 09:13 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The module needed the double 1e16 inside a floating-point register, and it had a problem. It builds with -march=rv64imac_zicsr, a target with no floating point at all, so the compiler cannot name f1, f2, or f3; the source comment says so outright, and the floating-point instructions only assemble because of an in-asm &quot;.option arch, +d&quot;. The way in was the integer 0x4341C37937E08000 sitting in an integer register, then one instruction: fmv.d.x. The bits walked across into the floating-point register file unchanged. On the way back, fmv.x.d carried the result bits out for inspection.</p>
+          <p>There is a conversion instruction sitting right next to it, and reaching for it is the whole bug. Feed those same 64 bits, 0x3FF0000000000000, to FCVT.D.L, and the machine reads them as the integer 4,607,182,418,800,017,408 and hands you back the double 4607182418800017408.0. Feed them to FMV.D.X and you get exactly 1.0. One instruction translates. The other transports.</p>
+          <p>This is the entire crossing, four instructions quoted from the module&#x27;s source:</p>
+          <pre><code>fmv.d.x f2, %1
+fmv.d.x f3, %2
+fadd.d f1, f2, f3, dyn
+fmv.x.d %0, f1</code></pre>
+          <p>The two operands ride in as raw bits, the add runs, and the sum&#x27;s bits ride out for inspection. The %1 and %2 are the integer registers holding the bit patterns; %0 is where the result bits land. No host floating point touches the values at any point. The module&#x27;s own comment states the rule: the operands arrive as integer bit patterns precisely so the test&#x27;s hands never shape a float. When the thing under test is what the hardware does with a float, the measurement must not pass through your tools&#x27; idea of a float.</p>
+          <p>The manual draws the line in one sentence: &quot;FMV.X.D and FMV.D.X do not modify the bits being transferred; in particular, the payloads of noncanonical NaNs are preserved.&quot; A converter cannot make that promise, because conversion interprets. Only a transporter can promise the payload survives, and that sentence is the proof the instruction is a copy, not a conversion.</p>
+          <p>The reason the bridge is narrow is a design decision, not an accident. The ISA was defined to reduce the number of explicit int-float register moves: conversions and comparisons write their results straight into the appropriate register file, so the crossings most programs need are already built into the operations themselves. FMV exists for the one case nothing else covers: when you want the bits themselves, not what they mean. It is an RV64-only instruction, for 64-bit integer registers; the early ISA&#x27;s half-register transfer moves were cut because partial register writes would have forced a read-modify-write through renamed pipelines. x86 keeps the same bridge under another name: MOVQ between an xmm register and a 64-bit general register.</p>
+          <p>For this work the bridge has two customers. The first is the hermetic test: feeding bit patterns through integer registers keeps the host toolchain&#x27;s floating point out of the measurement loop, which is the difference between measuring the machine and measuring your tools. The second is the kernel: the floating-point registers are a whole separate file of state, f0 through f31 beside x0 through x31, and that separation is why mstatus.FS exists at all, the two-bit receipt that lets the kernel skip saving thirty-two registers when the running code never touched them. The bridge is narrow because the two sides are meant to live apart; FMV is the one supervised crossing. One sentence to keep: RISC-V keeps two register files and one narrow bridge between them that copies bits without reading them, and the discipline is knowing whether you want the bits, or what they mean.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fflags-nx-only" target="_blank" rel="noopener">src/fflags-nx-only</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Fence the Instruction Cache Never Sees</h3>
           <!-- LAYER-STRIP:the-fence-the-instruction-cache-never-sees -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 07:09 EDT</time></p>
