@@ -1,5 +1,47 @@
 [
   {
+    "title": "The Register That Is Always Zero",
+    "slug": "the-register-that-is-always-zero",
+    "date": "2026-09-12",
+    "description": "RISC-V has no move instruction and no return instruction. It has x0, the register that always reads zero, and a family of idioms built on it: what the mnemonics really encode, why the architecture spends one of thirty-two register slots on zero, and what the alternatives cost.",
+    "paragraphs": [
+      "Type mv a0, a1 and ask what the machine executes. There is no MOV instruction in the base ISA, not even an opcode for one. What runs is addi a0, a1, 0, encoding 0x00058513, which I read off my own objdump this morning: opcode 0x13, funct3 000, rs1 = a1, immediate = 0, destination = a0. A move is an add against x0, the register that always reads zero. The assembler never told me it was doing arithmetic. The hardware never had to learn what \"move\" means.",
+      "Once you see it, the whole family lines up:",
+      "Read left to right, each line is the same trick. A nop is an add whose result lands in the void, so nothing happens, and the manual names addi the canonical NOP because it is \"most likely to take fewest resources to execute across a range of systems\": the instruction reads one register, and address-generation units already execute base-plus-offset math with hardware they have, while a register-register add would need extra hardware. A ret is a jump to the return address with the new link discarded into x0. A negate is a subtract from zero. A CSR read is a csrrs with rs1 set to x0, reading the register while the \"write\" lands in the ignored register. Even addi x0, x0, 1, which is 0x00100013, assembles without complaint. The architecture simply ignores the write.",
+      "Here is the why. Register fields are five bits wide, thirty-two slots, and every instruction format has fixed operand positions. Sometimes an instruction needs a source it will not really use, or a destination it will not keep. Spend one of those thirty-two encodings on a constant zero and the ISA never needs a MOV opcode, a RET opcode, a jump-without-link opcode, or a compare-against-zero immediate. Zero is available anywhere a register operand fits, so the hardware implements a dozen idioms and the assembler invents the friendly names.",
+      "The alternatives all cost more. x86 zeroes a register with xor eax, eax, a real instruction that writes the register file and rewrites the flags; RISC-V's li rd, 0 is one addi with no flags to touch, because there are none. ARM had the same idea but spent its last register, x31, and dual-purposed it as the stack pointer in stack instructions, so \"register 31\" means zero or SP depending on context; RISC-V kept x0 unambiguous, always zero, no context to track. The idea is inherited rather than invented: MIPS had $zero first, and RISC-V kept the good part. The honest boundary is that it is not free, only cheap: a physical register file still has to make x0 read zero, one small constant mux, and the ISA really has thirty-one writable integer registers, one slot spent on the constant.",
+      "The discarded-write side is the part I keep returning to. x0 is the architecture's bit bucket: anything you do not want back, aim at x0. My own spinlock's unlock path does exactly this: sw zero, 0(%0), the zero alias, clearing the lock in one store with no register spent holding the constant. (An AMOSWAP with x0 as the destination would perform the atomic store and throw the returned old value away, the same bit-bucket trick at the atomic level.) One methodology note, because the encodings above were the exhibit: binutils defaults to the C extension, so my first objdump session handed me compressed forms (mv came back as 0x852e, ret as 0x8082); the 32-bit forms quoted here are what you get with .option norvc. When the encoding is the exhibit, turn the compressor off first.",
+      "One sentence to carry away: RISC-V spent one of its thirty-two register encodings on the number zero and bought move, negate, return, jump, compare-with-zero, and a bit bucket, without adding a single opcode."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/smp",
+    "evidence": {
+      "label": "spin_unlock in spinlock.c clears the lock with sw zero, 0(%0)",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/smp/spinlock.c"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified properties are instruction encodings and their architecturally defined semantics: mv a0,a1 assembles to addi a0,a1,0 and disassembles as 0x00058513, the nop, ret, neg, and csrr idioms are writes to x0 ignored or reads from x0 as zero, and the manual's own sentences fix the canonical NOP and its cost rationale. The post verifies what the contract says the mnemonics mean."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the post's only implementation-adjacent sentence, the manual's claim that ADDI is the cheapest NOP across a range of systems, arrives as a rationale quoted from the spec and never as a measured property of any pipeline or core: the verified facts are assembler input and disassembler output, identical on every implementation that honors the contract."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because no privilege-level contract enters the argument: csrr a3,mstatus appears only as an encoding idiom, csrrs with rs1 set to x0 so the read happens without a write, and the verified properties, assembler and disassembler behavior plus spec sentences, need no trap, no delegation, and no machine-mode enable gate."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because the argument never leaves user-visible assembler and contract text: no scheduling decision, no address mapping, and no syscall or driver behavior is verified anywhere in the post, and the question it answers is what the mnemonics mean, not what the supervisor does."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because every idiom is x0 semantics made concrete: each line names the zero register as a source or a destination of a RISC-V instruction, so the family cannot survive translation to another instruction set as a portable mechanism. The mnemonics differ; the contract's zero is what they share."
+      }
+    }
+  },
+  {
     "title": "The Conditional Move RISC-V Finally Allowed Itself",
     "slug": "the-conditional-move-risc-v-finally-allowed-itself",
     "date": "2026-09-12",

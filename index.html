@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-160948">
+  <meta name="build-version" content="v20260912-171035">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-register-that-is-always-zero/">The Register That Is Always Zero</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/smp/spinlock.c" target="_blank" rel="noopener">spin_unlock in spinlock.c clears the lock with sw zero, 0(%0) <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are instruction encodings and their architecturally defined semantics: mv a0,a1 assembles to addi a0,a1,0 and disassembles as 0x00058513, the nop, ret, neg, and csrr idioms are writes to x0 ignored or reads from x0 as zero, and the manual's own sentences fix the canonical NOP and its cost rationale. The post verifies what the contract says the mnemonics mean.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the post's only implementation-adjacent sentence, the manual's claim that ADDI is the cheapest NOP across a range of systems, arrives as a rationale quoted from the spec and never as a measured property of any pipeline or core: the verified facts are assembler input and disassembler output, identical on every implementation that honors the contract.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no privilege-level contract enters the argument: csrr a3,mstatus appears only as an encoding idiom, csrrs with rs1 set to x0 so the read happens without a write, and the verified properties, assembler and disassembler behavior plus spec sentences, need no trap, no delegation, and no machine-mode enable gate.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the argument never leaves user-visible assembler and contract text: no scheduling decision, no address mapping, and no syscall or driver behavior is verified anywhere in the post, and the question it answers is what the mnemonics mean, not what the supervisor does.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-register-that-is-always-zero|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because every idiom is x0 semantics made concrete: each line names the zero register as a source or a destination of a RISC-V instruction, so the family cannot survive translation to another instruction set as a portable mechanism. The mnemonics differ; the contract's zero is what they share.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 13:05 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Type mv a0, a1 and ask what the machine executes. There is no MOV instruction in the base ISA, not even an opcode for one. What runs is addi a0, a1, 0, encoding 0x00058513, which I read off my own objdump this morning: opcode 0x13, funct3 000, rs1 = a1, immediate = 0, destination = a0. A move is an add against x0, the register that always reads zero. The assembler never told me it was doing arithmetic. The hardware never had to learn what &#x27;move&#x27; means.</p>
+          <p>Once you see it, the whole family lines up:</p>
+          <pre><code>mv   a0, a1         addi  a0, a1, 0        -&gt;  0x00058513
+nop                 addi  x0, x0, 0        -&gt;  0x00000013
+ret                 jalr  x0, 0(ra)        -&gt;  0x00008067
+neg  a5, a6         sub   a5, x0, a6       -&gt;  0x410007b3
+csrr a3, mstatus    csrrs a3, mstatus, x0  -&gt;  0x300026f3</code></pre>
+          <p>Read left to right, each line is the same trick. A nop is an add whose result lands in the void, so nothing happens, and the manual names addi the canonical NOP because it is &#x27;most likely to take fewest resources to execute across a range of systems&#x27;: the instruction reads one register, and address-generation units already execute base-plus-offset math with hardware they have, while a register-register add would need extra hardware. A ret is a jump to the return address with the new link discarded into x0. A negate is a subtract from zero. A CSR read is a csrrs with rs1 set to x0, reading the register while the &#x27;write&#x27; lands in the ignored register. Even addi x0, x0, 1, which is 0x00100013, assembles without complaint. The architecture simply ignores the write.</p>
+          <p>Here is the why. Register fields are five bits wide, thirty-two slots, and every instruction format has fixed operand positions. Sometimes an instruction needs a source it will not really use, or a destination it will not keep. Spend one of those thirty-two encodings on a constant zero and the ISA never needs a MOV opcode, a RET opcode, a jump-without-link opcode, or a compare-against-zero immediate. Zero is available anywhere a register operand fits, so the hardware implements a dozen idioms and the assembler invents the friendly names.</p>
+          <p>The alternatives all cost more. x86 zeroes a register with xor eax, eax, a real instruction that writes the register file and rewrites the flags; RISC-V&#x27;s li rd, 0 is one addi with no flags to touch, because there are none. ARM had the same idea but spent its last register, x31, and dual-purposed it as the stack pointer in stack instructions, so &#x27;register 31&#x27; means zero or SP depending on context; RISC-V kept x0 unambiguous, always zero, no context to track. The idea is inherited rather than invented: MIPS had $zero first, and RISC-V kept the good part. The honest boundary is that it is not free, only cheap: a physical register file still has to make x0 read zero, one small constant mux, and the ISA really has thirty-one writable integer registers, one slot spent on the constant.</p>
+          <p>The discarded-write side is the part I keep returning to. x0 is the architecture&#x27;s bit bucket: anything you do not want back, aim at x0. My own spinlock&#x27;s unlock path does exactly this: sw zero, 0(%0), the zero alias, clearing the lock in one store with no register spent holding the constant. (An AMOSWAP with x0 as the destination would perform the atomic store and throw the returned old value away, the same bit-bucket trick at the atomic level.) One methodology note, because the encodings above were the exhibit: binutils defaults to the C extension, so my first objdump session handed me compressed forms (mv came back as 0x852e, ret as 0x8082); the 32-bit forms quoted here are what you get with .option norvc. When the encoding is the exhibit, turn the compressor off first.</p>
+          <p>One sentence to carry away: RISC-V spent one of its thirty-two register encodings on the number zero and bought move, negate, return, jump, compare-with-zero, and a bit bucket, without adding a single opcode.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/smp" target="_blank" rel="noopener">src/smp</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/">The Conditional Move RISC-V Finally Allowed Itself</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/09-branchless-bsearch/PROOF.md" target="_blank" rel="noopener">proof log for the branchless search that motivates the note <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-conditional-move-risc-v-finally-allowed-itself|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are instruction semantics and encodings: czero.eqz means zero-unless and czero.nez means zero-if, objdump round-trips the pair as 0ec5d533 and 0ec5f533 one funct3 bit apart, and the spec's own sentences fix the shape. The refusal of predication and flag-based moves is the ISA's design philosophy stated as architecture, and the post verifies the contract's text.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-conditional-move-risc-v-finally-allowed-itself|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the post's only implementation story, cores fusing a short forward branch over a single ALU op, arrives explicitly as a debated report rather than a verified property: the spec sentence quoted is about what implementations do not need, no core's behavior was measured, and the verified facts stay on the contract side.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-conditional-move-risc-v-finally-allowed-itself|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because nothing in the post runs at firmware's privilege level or uses its services: the verified facts are assembler input, disassembler output, compiler output, and spec text, and czero needs no trap, no delegation, and no machine-mode enable gate.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-conditional-move-risc-v-finally-allowed-itself|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because no kernel mechanism enters the argument: the post verifies instruction encodings, compiler output, and spec sentences, and the select lowering it shows is a compiler's code-generation rule, not a privilege or scheduling contract.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-conditional-move-risc-v-finally-allowed-itself|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the lowering is spelled in Zicond instructions: cond ? x : y as OR of czero.eqz and czero.nez exists only where the extension does, so it is an ISA-specific idiom rather than a portable computational mechanism, and the motivating lab's checks judge a C construction, not this lowering.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 12:15 EDT</time></p>
@@ -145897,6 +145919,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "The technique's portability belongs to the 0/1-arithmetic idiom, which is the motivating lab's property; the post's lowering names Zicond instructions, and renaming the atoms changes what the post proves."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-register-that-is-always-zero|ISA": {
+    "item": "the-register-that-is-always-zero",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified properties are instruction encodings and their architecturally defined semantics: mv a0,a1 assembles to addi a0,a1,0 and disassembles as 0x00058513, the nop, ret, neg, and csrr idioms are writes to x0 ignored or reads from x0 as zero, and the manual's own sentences fix the canonical NOP and its cost rationale. The post verifies what the contract says the mnemonics mean.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified properties are instruction encodings and their architecturally defined semantics: mv a0,a1 assembles to addi a0,a1,0 and disassembles as 0x00058513, the nop, ret, neg, and csrr idioms are writes to x0 ignored or reads from x0 as zero, and the manual's own sentences fix the canonical NOP and its cost rationale. The post verifies what the contract says the mnemonics mean."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "binutils 2.42 assembles mv a0,a1 and objdump disassembles the word back as 0x00058513: opcode 0x13, funct3 000, rs1 a1, immediate 0, rd a0, the addi the note read firsthand. The nop, ret, neg, and csrr idioms were read the same way, and the manual's NOP sentence was quoted from the spec.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Register That Is Always Zero, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-is-always-zero/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are what the mnemonics mean and how they encode: the contract's text, confirmed by the assembler and disassembler agreeing on the word."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is an instruction's architecturally defined semantics and encoding, the ISA slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A manual sentence fixing which instruction is canonical, with its cost rationale, is itself contract text: the NOP choice is what makes the idiom family legible as design rather than accident."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the idioms were assembled and disassembled but never executed, so this is toolchain behavior, not ISA."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The assembler and disassembler are the contract's readers: the round-trip shows each encoding is defined and agreed upon, and the semantics come from the spec's own sentences, which is exactly what an ISA claim is."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-register-that-is-always-zero|MICROARCH": {
+    "item": "the-register-that-is-always-zero",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the post's only implementation-adjacent sentence, the manual's claim that ADDI is the cheapest NOP across a range of systems, arrives as a rationale quoted from the spec and never as a measured property of any pipeline or core: the verified facts are assembler input and disassembler output, identical on every implementation that honors the contract.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the post's only implementation-adjacent sentence, the manual's claim that ADDI is the cheapest NOP across a range of systems, arrives as a rationale quoted from the spec and never as a measured property of any pipeline or core: the verified facts are assembler input and disassembler output, identical on every implementation that honors the contract."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The note's only implementation-adjacent sentence is the manual's: ADDI is 'most likely to take fewest resources to execute across a range of systems', quoted from the spec. No core, pipeline, cache, or predictor was measured; the idioms were assembled and disassembled, never timed.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Register That Is Always Zero, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-is-always-zero/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts stay on the contract side: what the assembler emits and the disassembler reads back. The manual's cost sentence is a quoted rationale, not a measured property."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A spec sentence about what implementations tend to do is not itself an implementation fact: quoting the rationale is reading the contract, not probing the silicon."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the cheapest-NOP claim is a microarchitecture claim, so the slot should light."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The claim lights a slot only when the post verifies it. The note quotes the manual's rationale and verifies the encodings; it measures no implementation, so the microarch verdict stays an unattributed sentence, not a property of this work."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-register-that-is-always-zero|FIRMWARE": {
+    "item": "the-register-that-is-always-zero",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because no privilege-level contract enters the argument: csrr a3,mstatus appears only as an encoding idiom, csrrs with rs1 set to x0 so the read happens without a write, and the verified properties, assembler and disassembler behavior plus spec sentences, need no trap, no delegation, and no machine-mode enable gate.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because no privilege-level contract enters the argument: csrr a3,mstatus appears only as an encoding idiom, csrrs with rs1 set to x0 so the read happens without a write, and the verified properties, assembler and disassembler behavior plus spec sentences, need no trap, no delegation, and no machine-mode enable gate."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "csrr a3,mstatus appears in the note only as 0x300026f3, csrrs a3,mstatus,x0: read the CSR with the write discarded into x0. No trap fired, no delegation register was touched, no machine-mode gate was probed.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Register That Is Always Zero, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-is-always-zero/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The CSR is an example of the encoding idiom, not of privilege behavior: the verified property is what the instruction word means, which holds at any privilege level."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "An instruction form that happens to name a privileged register does not make the argument about privilege: the idiom under study is the read-without-write, not the machine's response."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that reading mstatus is inherently a machine-mode act, so firmware must light."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The note verifies the word's encoding and semantics, not the act's privilege outcome: it never executes the read, and the idiom is the same word at M-mode or S-mode. The contract's text is the exhibit, not the trap."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-register-that-is-always-zero|KERNEL": {
+    "item": "the-register-that-is-always-zero",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because the argument never leaves user-visible assembler and contract text: no scheduling decision, no address mapping, and no syscall or driver behavior is verified anywhere in the post, and the question it answers is what the mnemonics mean, not what the supervisor does.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because the argument never leaves user-visible assembler and contract text: no scheduling decision, no address mapping, and no syscall or driver behavior is verified anywhere in the post, and the question it answers is what the mnemonics mean, not what the supervisor does."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The note's verified facts are assembler input, disassembler output, and spec sentences. No syscall was issued, no scheduler decision observed, no address mapping walked, and no driver register was touched.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Register That Is Always Zero, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-is-always-zero/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The argument is about what mnemonics mean: a question of assembler aliases and instruction definitions, which sits below every kernel's concerns."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A layer stays dim when the verified property is invariant across every choice at that layer."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The assembler aliases that make mv, ret, and nop friendly are decided before any kernel boots: they are properties of the toolchain and the contract, not of the supervisor."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the spinlock unlock example, sw zero in a bare-metal module, is kernel-adjacent systems code."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The unlock line is cited as one more x0-as-source sighting, not as a claim about locking: the post verifies the encoding idiom, and the spinlock is the witness, not the subject."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-register-that-is-always-zero|ALGORITHM": {
+    "item": "the-register-that-is-always-zero",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because every idiom is x0 semantics made concrete: each line names the zero register as a source or a destination of a RISC-V instruction, so the family cannot survive translation to another instruction set as a portable mechanism. The mnemonics differ; the contract's zero is what they share.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because every idiom is x0 semantics made concrete: each line names the zero register as a source or a destination of a RISC-V instruction, so the family cannot survive translation to another instruction set as a portable mechanism. The mnemonics differ; the contract's zero is what they share."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Every idiom in the family names x0 explicitly: addi against x0, jalr discarding into x0, sub from x0, csrrs with rs1 as x0. Each is defined by the RISC-V instruction set's zero-register semantics.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Register That Is Always Zero, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-is-always-zero/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified properties are tied to one contract's zero register: without x0 the idioms do not exist, and with a different ISA they are spelled differently."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A mechanism that cannot be stated without naming an ISA-specific register is an idiom of that contract, not a portable algorithm."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Portability is argued inside the Algorithm slot: when the construction names x0 in every line, the construction travels only where x0 travels."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that 'spend one encoding on zero to delete opcodes' is a portable design principle."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The principle is portable; the verified properties are not. The note verifies encodings and mnemonics, not the principle, so the slot judges the idioms as shown, which are RISC-V all the way down."
       }
     ],
     "inferences": [
