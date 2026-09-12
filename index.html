@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-001019">
+  <meta name="build-version" content="v20260912-002437">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -17707,6 +17707,132 @@ assert(check == 0x2144DF1C);</code></pre>
         "because": "The property is directed-rounding behavior of the hardware divider, not a software algorithm."
       }
     }
+  },
+  {
+    "id": "lab-119-onesc-add",
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "16-bit one's-complement adder",
+    "summary": "A 16-bit add that folds its carry back in. The sum wraps in 16-bit arithmetic, the single lost carry bit is recovered from the wrap itself (a wrapped sum smaller than one addend means a carry escaped), and that bit is added back, so 0xFFFF + 0xFFFF yields 0xFFFF instead of zero. An independent loop-folding reference, which reduces the 32-bit sum one carry at a time, agreed with the adder on every input it was checked against.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "No instruction in the RISC-V base ISA or the standard extensions performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and the carry is discarded, never folded back. The verified claim is about the C construction under the unsigned wraparound contract, which is identical on every ISA, so the machine contract adds nothing."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares adder outputs against a loop-folding reference over 10065536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict. The 3.14 ns figure is a measured cost, not part of the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap. Extension detection and machine-mode setup live above it, untouched by a 16-bit add."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "One's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack. The sibling card lab-47-ones-complement-sum ships the IPv4 checksum built on exactly this adder, and this card pins the adder itself."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "10065536 inputs checked against the loop-folding reference, the 32-bit sum reduced one carry at a time, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "65536 directed carry-forcing pairs with one operand at 0xFFFF, 10000000 fixed-seed random pairs, the 0xFFFF + 0xFFFF edge pinned to 0xFFFF"
+      ],
+      [
+        "CHECKSUM",
+        "12261447224700235540, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "BENCHMARK",
+        "3.14 ns/pair at -O2, best of 5 rounds, the timed loop includes one splitmix64 step per pair"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 119-onesc-add",
+    "terminalOutput": "$ make\ngcc -std=c11 -Wall -Wextra -Werror -D_POSIX_C_SOURCE=199309L -O2 -o test_onesc_add_o2 test_onesc_add.c onesc_add.c\n$ ./test_onesc_add_o2\nedge_pins: 4 checked, onesc_add(0xFFFF, 0xFFFF) = 0xFFFF\ndirected_65536=65536 random_pairs=10000000 total=10065536 mismatches=0\nchecksum=12261447224700235540\nthroughput: pairs=100000000 best_of_5 ns_total=314361173 ns_per_pair=3.14 sink=16386899863180\nPASS",
+    "verificationEnvironment": "Host",
+    "checks": 10065536,
+    "failures": 0,
+    "stressItems": 10065536,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/119-onesc-add",
+    "repoLabel": "GitHub: systems-lab/lab/119-onesc-add",
+    "terminalLabel": "Verified lab-119-onesc-add host output",
+    "showRepoLink": true
+  },
+  {
+    "id": "lab-127-sat-shl",
+    "kicker": "INTEGER ARITHMETIC",
+    "title": "Branchless saturating 64-bit shift-left",
+    "summary": "A left shift that saturates to all-ones instead of silently losing bits. The shift amount is masked to 0-63 so no shift ever runs with an out-of-range count, the bits that would shift out are found with a two-step shift that stays defined at every amount, and a 0/1 mask merges the shifted value with all-ones exactly when overflow was detected. An independent conditional implementation agreed on every input, and a programmatic scan of the compiled object found no conditional jump in the saturating path.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "No RISC-V instruction saturates on shift: sll and sllw truncate the shifted-out bits silently, and no standard extension adds a saturating shift. The verified claim is the branchless C construction checked against a conditional C reference, with no instruction execution anywhere in the proof, so the machine contract adds nothing."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof compares function outputs against a conditional reference over 5194304 cases and scans the emitted object for conditional jumps: both are value and code-shape claims, not pipeline, cache, or predictor behavior. The 6.199 ns figure is a measured cost, not part of the proof."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The function runs entirely in user space: it configures no trap vector, CSR, or privilege level, takes no trap, and touches no machine-mode state. Nothing firmware configures stands between the input and the claim."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The demo is one self-contained arithmetic function checked against a conditional reference: it enters no kernel, touches no syscall, driver, or scheduler state, and no kernel behavior was measured. The branchlessness is a compiler code-shape claim, not a claim about any kernel path."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "Saturating shift-left is a pure computational mechanism: overflow is exactly the mathematical fact that the bits shifted out are nonzero, and the construction uses only unsigned-arithmetic masks and shifts, so it ports to every ISA while the identity holds."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "5194304 inputs checked against a conditional reference, 0 mismatches"
+      ],
+      [
+        "COVERAGE",
+        "all 64 shift amounts 0..63 times every 16-bit value, plus 1000000 fixed-seed random pairs with amounts 0..127"
+      ],
+      [
+        "CHECKSUM",
+        "10430319035230998775, identical across -O0, -O2, and ASan+UBSan builds"
+      ],
+      [
+        "CODE SHAPE",
+        "the -O2 object holds 0 conditional jumps in the saturating path, decisions via setne and cmove only"
+      ],
+      [
+        "BENCHMARK",
+        "6.199 ns/value at -O2, best of 5 trials, the timed loop includes the PRNG steps"
+      ]
+    ],
+    "terminalName": "systems-lab / lab / 127-sat-shl",
+    "terminalOutput": "$ make run\ngcc -std=c11 -Wall -Wextra -Werror -D_POSIX_C_SOURCE=199309L -O2 -o test_satshl_o2 test_satshl.c satshl.c\n$ ./test_satshl_o2\nsweep_k=0..63 sweep_x=0..65535 random_pairs=1000000 total=5194304 mismatches=0\nchecksum=10430319035230998775\nthroughput: best_of_5 trials values=20000000 ns_per_value=6.199 sink=8804416366858687454\nPASS\n$ make disasm\nconditional_jumps=0 PASS",
+    "verificationEnvironment": "Host",
+    "checks": 5194304,
+    "failures": 0,
+    "stressItems": 5194304,
+    "repoUrl": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/127-sat-shl",
+    "repoLabel": "GitHub: systems-lab/lab/127-sat-shl",
+    "terminalLabel": "Verified lab-127-sat-shl host output",
+    "showRepoLink": true
   }
 ];
       const CHIPS_BY_KEY = {
@@ -129616,6 +129742,817 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "lab-119-onesc-add|ISA": {
+    "item": "lab-119-onesc-add",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "No instruction in the RISC-V base ISA or the standard extensions performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and the carry is discarded, never folded back. The verified claim is about the C construction under the unsigned wraparound contract, which is identical on every ISA, so the machine contract adds nothing.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No instruction in the RISC-V base ISA or the standard extensions performs one's-complement addition with end-around carry: the base add wraps modulo 2^64 and the carry is discarded, never folded back. The verified claim is about the C construction under the unsigned wraparound contract, which is identical on every ISA, so the machine contract adds nothing."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "10065536 inputs checked against the loop-folding reference, 0 mismatches",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The implementation uses only C unsigned wraparound arithmetic, no instruction semantics",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "text": "RISC-V add is defined as modulo 2^XLEN with the carry discarded, no end-around-carry instruction exists in the base ISA or the standard extensions",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual (riscv-isa-manual release dc8bf2a, 2026-06-26)",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The adder's contract is the C unsigned wraparound contract, which holds identically on every ISA."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A claim verified purely under the C unsigned wraparound contract does not depend on any ISA's machine contract."
+      },
+      {
+        "kind": "generalization",
+        "n": 7,
+        "text": "The ISA layer stays dim when the verified behavior is identical with or without the ISA's instructions in the picture."
+      },
+      {
+        "kind": "explanation",
+        "n": 8,
+        "text": "One could object that unsigned wraparound is itself an ISA property, since hardware adders wrap."
+      },
+      {
+        "kind": "refutation",
+        "n": 9,
+        "text": "C defines unsigned arithmetic as modulo 2^N regardless of the hardware underneath, and the proof never reads a carry flag or executes an add instruction. The claim would verify identically on a machine whose add did not wrap."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          7
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-119-onesc-add|MICROARCH": {
+    "item": "lab-119-onesc-add",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof compares adder outputs against a loop-folding reference over 10065536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict. The 3.14 ns figure is a measured cost, not part of the proof.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The proof compares adder outputs against a loop-folding reference over 10065536 inputs: every checked case is a value comparison, so pipelines, caches, and predictors cannot change the verdict. The 3.14 ns figure is a measured cost, not part of the proof."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "10065536 value comparisons against the loop-folding reference, 0 mismatches",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "Checksum 12261447224700235540 identical across -O0, -O2, and ASan+UBSan builds",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The verdict depends only on output values, which no microarchitectural behavior can alter."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A proof whose verdict is fixed by value comparisons is invariant under pipeline, cache, and predictor behavior."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The microarchitecture layer stays dim when timing and implementation effects cannot move the verdict."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-119-onesc-add|FIRMWARE": {
+    "item": "lab-119-onesc-add",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap. Extension detection and machine-mode setup live above it, untouched by a 16-bit add.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The adder never leaves user space: it configures no trap vector, CSR, or privilege level and takes no trap. Extension detection and machine-mode setup live above it, untouched by a 16-bit add."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The test binaries run in user space on the host, with no trap handler, no CSR access, and no privilege change",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "misa detection, PMP setup, and trap delegation are never invoked by a 16-bit add",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "No firmware configuration stands between the adder's inputs and its verified claim."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "Firmware is boot-time machine-mode configuration; a user-space arithmetic check engages none of it."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The firmware layer stays dim when no CSR, trap vector, or privilege state is part of the claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-119-onesc-add|KERNEL": {
+    "item": "lab-119-onesc-add",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "One's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack. The sibling card lab-47-ones-complement-sum ships the IPv4 checksum built on exactly this adder, and this card pins the adder itself.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "One's-complement addition is the exact operation every IP stack's header checksum computes: RFC 1071 defines the checksum as the end-around-carry sum of the header's 16-bit words, so a wrong carry fold is a corrupted header checksum in the networking stack. The sibling card lab-47-ones-complement-sum ships the IPv4 checksum built on exactly this adder, and this card pins the adder itself."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "10065536 inputs checked, 0 mismatches, the end-around-carry addition pinned on every carry-forcing case",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The sibling card lab/47-ones-complement-sum ships the IPv4 checksum built on exactly this adder, and RFC 1071 defines every IP header checksum as the end-around-carry sum of its 16-bit words",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/47-ones-complement-sum",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/47-ones-complement-sum"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The verified property is the exact addition the kernel's IP stack checksums depend on: a wrong carry fold is a corrupted header checksum."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A verified property is load-bearing at the layer whose subsystems compute it, even when the demo isolates the property from the subsystem."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The kernel layer lights when kernel work depends on the verified property being right."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that the demo never runs a kernel, so nothing kernel was verified."
+      },
+      {
+        "kind": "refutation",
+        "n": 8,
+        "text": "The claim is not that a kernel ran it, but that the kernel's checksum depends on this addition being correct; the proof pins the addition, and the dependency is what lights the slot."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-119-onesc-add|ALGORITHM": {
+    "item": "lab-119-onesc-add",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The end-around-carry construction is a pure computational mechanism: it uses only the wraparound contract of unsigned arithmetic, so the implementation ports to every ISA while the verified identity holds on each."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The construction uses only 16-bit wraparound addition and one comparison, no wider accumulator",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "0xFFFF + 0xFFFF pinned to 0xFFFF by the carry-fold identity, not by a special case",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/119-onesc-add/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/119-onesc-add/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The identity holds under unsigned arithmetic alone, with no machine-specific step."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A construction that uses only the wraparound contract of unsigned arithmetic ports to every ISA."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The algorithm layer lights when the verified claim is a pure computational mechanism independent of the machine."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-127-sat-shl|ISA": {
+    "item": "lab-127-sat-shl",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "No RISC-V instruction saturates on shift: sll and sllw truncate the shifted-out bits silently, and no standard extension adds a saturating shift. The verified claim is the branchless C construction checked against a conditional C reference, with no instruction execution anywhere in the proof, so the machine contract adds nothing.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No RISC-V instruction saturates on shift: sll and sllw truncate the shifted-out bits silently, and no standard extension adds a saturating shift. The verified claim is the branchless C construction checked against a conditional C reference, with no instruction execution anywhere in the proof, so the machine contract adds nothing."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "5194304 inputs checked against the conditional reference, 0 mismatches",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "RISC-V sll/sllw truncate shifted-out bits silently; no base or standard-extension instruction saturates to all-ones on overflow",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual (riscv-isa-manual release dc8bf2a, 2026-06-26)",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "No instruction in the machine contract performs this operation, so the claim cannot depend on one."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "When no instruction in the contract performs the operation, the verified claim is necessarily a software construction."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The ISA layer stays dim when the machine contract contributes nothing to the verified claim."
+      },
+      {
+        "kind": "explanation",
+        "n": 7,
+        "text": "One could object that the reference and the construction both assume two's-complement shifts, an ISA property."
+      },
+      {
+        "kind": "refutation",
+        "n": 8,
+        "text": "The proof compares the construction against a conditional reference in the same language; the agreement is between two C expressions, and any ISA whose shifts behave like C's keeps it. No RISC-V instruction or CSR appears anywhere in the verification."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-127-sat-shl|MICROARCH": {
+    "item": "lab-127-sat-shl",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The proof compares function outputs against a conditional reference over 5194304 cases and scans the emitted object for conditional jumps: both are value and code-shape claims, not pipeline, cache, or predictor behavior. The 6.199 ns figure is a measured cost, not part of the proof.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The proof compares function outputs against a conditional reference over 5194304 cases and scans the emitted object for conditional jumps: both are value and code-shape claims, not pipeline, cache, or predictor behavior. The 6.199 ns figure is a measured cost, not part of the proof."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "5194304 value comparisons against the conditional reference, 0 mismatches",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The disassembly scan asserts 0 conditional jumps in the -O2 object, a code-shape claim, with checksum identical across builds",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The verdict rests on output values and emitted code shape, neither of which pipeline, cache, or predictor behavior can change."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "Value and code-shape claims are invariant under microarchitectural timing effects."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The microarchitecture layer stays dim when no pipeline, cache, or predictor behavior is measured or reasoned about."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-127-sat-shl|FIRMWARE": {
+    "item": "lab-127-sat-shl",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "The function runs entirely in user space: it configures no trap vector, CSR, or privilege level, takes no trap, and touches no machine-mode state. Nothing firmware configures stands between the input and the claim.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The function runs entirely in user space: it configures no trap vector, CSR, or privilege level, takes no trap, and touches no machine-mode state. Nothing firmware configures stands between the input and the claim."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The test binaries run in user space on the host, with no trap handler, no CSR access, and no privilege change",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "Machine-mode configuration (misa dispatch, PMP, trap delegation) is never part of the shift's verification",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "No firmware configuration stands between the function's inputs and its verified claim."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "Firmware is boot-time machine-mode configuration; a user-space arithmetic check engages none of it."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The firmware layer stays dim when no CSR, trap vector, or privilege state is part of the claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-127-sat-shl|KERNEL": {
+    "item": "lab-127-sat-shl",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The demo is one self-contained arithmetic function checked against a conditional reference: it enters no kernel, touches no syscall, driver, or scheduler state, and no kernel behavior was measured. The branchlessness is a compiler code-shape claim, not a claim about any kernel path.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The demo is one self-contained arithmetic function checked against a conditional reference: it enters no kernel, touches no syscall, driver, or scheduler state, and no kernel behavior was measured. The branchlessness is a compiler code-shape claim, not a claim about any kernel path."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "The demo is one self-contained function, sat_shl64, checked against a conditional reference with no system calls",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "No syscall, driver, scheduler, or memory-management behavior was measured or asserted",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "No kernel subsystem is involved in the construction, the verification, or the claim."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A self-contained arithmetic check that never enters the kernel verifies nothing kernel."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The kernel layer stays dim when the claim would hold identically with no kernel in the picture."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
+      }
+    ]
+  },
+  "lab-127-sat-shl|ALGORITHM": {
+    "item": "lab-127-sat-shl",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Saturating shift-left is a pure computational mechanism: overflow is exactly the mathematical fact that the bits shifted out are nonzero, and the construction uses only unsigned-arithmetic masks and shifts, so it ports to every ISA while the identity holds.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "Saturating shift-left is a pure computational mechanism: overflow is exactly the mathematical fact that the bits shifted out are nonzero, and the construction uses only unsigned-arithmetic masks and shifts, so it ports to every ISA while the identity holds."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Overflow is exactly the mathematical fact that the shifted-out bits are nonzero: for a k-bit left shift the top k bits of the word decide, so a nonzero top means the shift overflows",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "text": "The lost-bit computation uses a two-step shift that stays defined at every amount, so the overflow test never executes an out-of-range shift, with the 0/1 mask merging the shifted value and all-ones without a branch",
+        "source": {
+          "tier": "lab",
+          "cite": "lab/127-sat-shl/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/127-sat-shl/PROOF.md"
+        }
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The construction is pure unsigned-arithmetic identities, portable to every ISA."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A construction built only from unsigned-arithmetic masks and shifts ports to every ISA."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "The algorithm layer lights when the verified claim is a pure computational mechanism independent of the machine."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the penultimate claim through the stated warrant."
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The penultimate claim plus the verdict warrant yields the slot's lit/dim verdict."
       }
     ]
   }
