@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-091235">
+  <meta name="build-version" content="v20260912-101036">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,23 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-referee-with-three-masters/">The Referee With Three Masters</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/proving-ground/commit/1579d78" target="_blank" rel="noopener">bench commit <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-referee-with-three-masters|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the arbiter's grant split, and it comes out of the scan order in the bench's own code, identically on any ISA: no instruction, opcode, or CSR is exercised anywhere in the experiment.</p></div><div class="layer-slot lit"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-referee-with-three-masters|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer matters">why</button></div><p class="layer-because">matters at Microarch because the 16/0/0 and 6/5/5 grant splits are exactly what a bus-fabric arbiter computes every cycle on real SoCs: the interconnect, TileLink on SiFive parts and AXI elsewhere, runs this logic, and the policy decides which master waits, which starves, and how fast an urgent request gets through.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-referee-with-three-masters|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no boot, SBI, PMP, or trap handling is exercised: the policy is evaluated by the interconnect hardware and the bench's own simulation, with no firmware dispatch in the path.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-referee-with-three-masters|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the Pathfinder failure was a kernel scheduling failure, fixed priority plus a mutex minus priority inheritance, and the bench's urgency race is the same phenomenon at the interconnect: a rule about who waits, enforced where the waiting happens.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-referee-with-three-masters|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because weighted round-robin is a pure computational mechanism: a 2:1:1 weight contract provably holds 12/6/6 over 24 cycles, and the same turn-taking math schedules processes, packets, and bus grants.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 06:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Two masters cannot drive a bus at once. The bits collide and everyone reads garbage. So a tiny referee, the arbiter, watches the request lines and grants exactly one winner per cycle. The bench starts with the simplest possible rule: fixed priority, CPU on top, sixteen cycles, all three masters asking on every cycle. The grants come back 16, 0, 0. The GPU raised its hand sixteen times and was answered never. Nothing is broken. That is the policy working exactly as specified.</p>
+          <p>The bench&#x27;s fixed-priority rule is two lines long, and the starvation is right there in the code:</p>
+          <pre><code>for (qi = 0; qi &lt; 3; qi++)
+  if (pend[qi]) { win = qi; break; }</code></pre>
+          <p>Index 0 is the CPU, the highest priority, and the scan checks it first on every cycle. When the CPU always has a request pending, the loop never reaches the GPU at index 2. The obvious repair is round-robin: take turns, nobody starves, 6, 5, 5 over the same sixteen cycles. But fairness has a price the second trial measures. An urgent page-walk arrives at cycle 7, the one request that cannot wait, and under round-robin it waits a full cycle that the unfair policy would have handed over instantly. Every arbitration rule is a bet about what matters most, and every bet is wrong for somebody. My own ticket-lock lab measured the same wrinkle honestly: round-robin guarantees admission order, not service order.</p>
+          <p>Real hardware got tired of placing that bet in one fixed place, so it made the bet programmable. The AMBA AXI4 protocol added AWQOS and ARQOS, two four-bit QoS identifiers on the address channels, section A8.1 of the spec. Higher value means higher priority; zero means the transaction is not participating in any QoS scheme. The spec&#x27;s most instructive sentence is a refusal: it does not define what the QoS values mean, only recommending that higher means higher. The people who build interconnects describe the world in exactly the bench&#x27;s terms: latency-sensitive managers like CPUs, bandwidth-sensitive managers like GPUs, best-effort ones like USB and SATA, all sharing one DDR controller, and the arbitration scheme decides how bandwidth gets distributed and whose latency stays controlled. Three masters, three classes of manager, and the weight dial is a QoS register.</p>
+          <p>The cautionary tale is from Mars, 1997. Pathfinder&#x27;s flight software ran a fixed-priority scheduler, and a low-priority meteorological task held a mutex the high-priority bus task needed. Medium-priority tasks kept preempting the low one, so the high-priority task sat waiting on a task it outranked, missed its deadline, and the watchdog reset the spacecraft computer. The mutex had been created with priority inheritance turned off, for performance. The fix was one of the great field repairs in engineering history: the VxWorks C interpreter had been left enabled on the spacecraft, so JPL uploaded a short C program that flipped the initialization globals from FALSE to TRUE, and the resets stopped. The engineer&#x27;s lessons were plain: only detailed traces of the actual behavior caught it, leaving the debugging facilities in the shipped system saved the mission, and the reasoning that a time-critical task should not spend time on priority inheritance was exactly wrong. One sentence to carry away: a shared wire needs a referee, every rule the referee follows is a bet about what matters most, and the honest designs write the bet down where it can be measured, whether that is a weight table, four QoS bits per transaction, or a mutex flag someone remembered to leave on.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/proving-ground/blob/main/features.js#L45176" target="_blank" rel="noopener">The Arbiter Room (Bench 63)</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-promise-the-compiler-is-allowed-to-break/">The Promise the Compiler Is Allowed to Break</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/blob/main/lab/10-from-scratch-memcpy/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the C compiler's aliasing contract, and it holds identically on any ISA with a conforming compiler: the same five lines return 1.0 or 0.0 depending only on the flag, while no instruction encoding, register, or trap semantic is what changed.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the register-pressure argument is about what the compiler may keep in registers, and the observed split is identical on any pipeline, cache, or predictor: the mechanism under test is the optimizer's assumption, not the machine's execution of it.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the experiment is a hosted-toolchain C program whose aliasing property is fixed at compile time, before any firmware runs: boot code, PMP, and SBI are downstream of the question, and the 1.0-versus-0.0 split is the same whether the program runs on bare metal or under an OS.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the kernel is the systems program that lives inside this rule: it reinterprets DMA buffers and packet headers constantly, so it compiles the entire tree with -fno-strict-aliasing (line 610 of the top-level Makefile, verified against the torvalds/linux master tree), trading register pressure for certainty where the rule would cost the most.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-promise-the-compiler-is-allowed-to-break|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the portable spelling is a pure computational mechanism: copy the bytes through character-type access into an object already declared as the destination type, then read it normally, a discipline whose ground truth is the from-scratch memcpy lab's 1,004,160 differential cases with zero mismatches.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 05:09 EDT</time></p>
@@ -143500,6 +143517,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "The mechanism is the discipline, copy into a declared destination object, and the lab verifies the primitive it depends on; the library call is the spelling, not the argument."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-referee-with-three-masters|ISA": {
+    "item": "the-referee-with-three-masters",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "not at ISA because the verified property is the arbiter's grant split, and it comes out of the scan order in the bench's own code, identically on any ISA: no instruction, opcode, or CSR is exercised anywhere in the experiment.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at ISA because the verified property is the arbiter's grant split, and it comes out of the scan order in the bench's own code, identically on any ISA: no instruction, opcode, or CSR is exercised anywhere in the experiment."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The bench's fixed-priority scan walks indices 0, 1, 2 over the pending requesters and grants the first set one: the grant order is decided by loop bounds, with the CPU at index 0, and the loop body contains no instruction semantics at all.",
+        "source": {
+          "tier": "lab",
+          "cite": "proving-ground features.js, Arbiter Room module, fixed-priority scan",
+          "url": "https://github.com/dillingerstaffing/proving-ground/blob/main/features.js#L45176"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The experiment's outcome depends only on which requester the scan reaches first, a property of the loop, not of the machine contract."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A result that changes with no ISA detail and follows from loop order alone cannot be an ISA property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The ISA slot lights when the verified claim is about instructions, encodings, CSRs, or the memory model; a scan order over requesters is none of those."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the bench simulates RISC-V SoC interconnects, which are ISA-adjacent."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The simulation models the arbiter's policy, not any core's fetch or decode, and the numbers would be identical for an ARM or x86 SoC with the same fabric."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-referee-with-three-masters|MICROARCH": {
+    "item": "the-referee-with-three-masters",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "matters at Microarch because the 16/0/0 and 6/5/5 grant splits are exactly what a bus-fabric arbiter computes every cycle on real SoCs: the interconnect, TileLink on SiFive parts and AXI elsewhere, runs this logic, and the policy decides which master waits, which starves, and how fast an urgent request gets through.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Microarch because the 16/0/0 and 6/5/5 grant splits are exactly what a bus-fabric arbiter computes every cycle on real SoCs: the interconnect, TileLink on SiFive parts and AXI elsewhere, runs this logic, and the policy decides which master waits, which starves, and how fast an urgent request gets through."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The bench's first trial runs sixteen cycles with all three masters requesting every cycle and records fixed priority at 16/0/0 and round-robin at 6/5/5; its intro copy states the interconnect runs exactly this logic every cycle.",
+        "source": {
+          "tier": "lab",
+          "cite": "proving-ground bench 63 commit: trial outcomes and intro copy",
+          "url": "https://github.com/dillingerstaffing/proving-ground/commit/1579d78"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The measured splits are the arbiter's per-cycle decisions, the same decisions a real interconnect makes in silicon."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A bench that counts grants per cycle under named policies is measuring microarchitectural behavior, not abstract math."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Microarch slot lights when the verified property is load-bearing for implementation work: pipelines, fabrics, arbiters, memory hierarchy."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the bench is JavaScript, not gates, so nothing was really arbitrated."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The policy functions are the same functions the RTL implements: a scan order, a rotating pointer, a weight frame; the silicon adds timing, not a different rule."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-referee-with-three-masters|FIRMWARE": {
+    "item": "the-referee-with-three-masters",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because no boot, SBI, PMP, or trap handling is exercised: the policy is evaluated by the interconnect hardware and the bench's own simulation, with no firmware dispatch in the path.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because no boot, SBI, PMP, or trap handling is exercised: the policy is evaluated by the interconnect hardware and the bench's own simulation, with no firmware dispatch in the path."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The bench's three policy functions take only the pending-request pattern and return a winner: the computation references no CSR, no trap vector, and no boot state.",
+        "source": {
+          "tier": "lab",
+          "cite": "proving-ground features.js, Arbiter Room policy functions",
+          "url": "https://github.com/dillingerstaffing/proving-ground/blob/main/features.js#L45176"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The entire experiment is closed under request patterns and grant decisions; firmware could only observe the result, never change it."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A computation whose inputs and outputs contain no firmware state cannot be a firmware property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Firmware slot lights when boot, misa dispatch, PMP, or SBI behavior is load-bearing for the verified claim."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that on real hardware, firmware programs the QoS registers."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Programming a register is not the policy's behavior: the article verifies what the rule does to grants, not who writes the configuration, and the bench leaves the dial to the user."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-referee-with-three-masters|KERNEL": {
+    "item": "the-referee-with-three-masters",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "matters at Kernel because the Pathfinder failure was a kernel scheduling failure, fixed priority plus a mutex minus priority inheritance, and the bench's urgency race is the same phenomenon at the interconnect: a rule about who waits, enforced where the waiting happens.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Kernel because the Pathfinder failure was a kernel scheduling failure, fixed priority plus a mutex minus priority inheritance, and the bench's urgency race is the same phenomenon at the interconnect: a rule about who waits, enforced where the waiting happens."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "On Mars Pathfinder, the low-priority meteorological task held a mutex needed by the high-priority bus task while medium-priority tasks preempted the low one, and the watchdog reset the spacecraft; the mutex had priority inheritance turned off for performance.",
+        "source": {
+          "tier": "reference",
+          "cite": "Mars Pathfinder on-board computer account (priority inversion)",
+          "url": "https://en.wikipedia.org/wiki/Mars_Pathfinder"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The spacecraft's resets were decided by a scheduling rule interacting with a lock, the kernel-side mirror of the bench's arbitration rule interacting with urgency."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "Priority inversion is a scheduling phenomenon: the layer that owns schedulers and mutexes owns its lessons."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Kernel slot lights when the verified property governs how kernel or systems code must be written; a scheduler's fixed priorities and a mutex's inheritance flag are that governance."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the article's measurements are about a bus, not a kernel."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The article's point is the rule, not the wire: fixed priority's blind spot is identical in both places, which is why the tale is in the post."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-referee-with-three-masters|ALGORITHM": {
+    "item": "the-referee-with-three-masters",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "matters at Algorithm because weighted round-robin is a pure computational mechanism: a 2:1:1 weight contract provably holds 12/6/6 over 24 cycles, and the same turn-taking math schedules processes, packets, and bus grants.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Algorithm because weighted round-robin is a pure computational mechanism: a 2:1:1 weight contract provably holds 12/6/6 over 24 cycles, and the same turn-taking math schedules processes, packets, and bus grants."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The bench's third trial runs weighted round-robin at 2:1:1 over 24 cycles and holds 12/6/6: the split is the weight ratio, proved to the cycle by the grant counters.",
+        "source": {
+          "tier": "lab",
+          "cite": "proving-ground bench 63 commit: weighted round-robin trial",
+          "url": "https://github.com/dillingerstaffing/proving-ground/commit/1579d78"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The contract-to-split mapping depends on nothing but the arithmetic of the weight frame: it would hold for packet queues or run queues with the same math."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A turn-taking rule whose outcome is a pure function of its weights is an algorithm, wherever it is deployed."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Algorithm slot lights when the verified property is a portable computational mechanism, argued as such inside the slot."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the weights configure hardware, so the property is hardware."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The configuration is a number; the guarantee is arithmetic. Silicon executes the arithmetic, it does not change it."
       }
     ],
     "inferences": [

@@ -950,6 +950,23 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Referee With Three Masters</h3>
+          <!-- LAYER-STRIP:the-referee-with-three-masters -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 06:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Two masters cannot drive a bus at once. The bits collide and everyone reads garbage. So a tiny referee, the arbiter, watches the request lines and grants exactly one winner per cycle. The bench starts with the simplest possible rule: fixed priority, CPU on top, sixteen cycles, all three masters asking on every cycle. The grants come back 16, 0, 0. The GPU raised its hand sixteen times and was answered never. Nothing is broken. That is the policy working exactly as specified.</p>
+          <p>The bench&#x27;s fixed-priority rule is two lines long, and the starvation is right there in the code:</p>
+          <pre><code>for (qi = 0; qi &lt; 3; qi++)
+  if (pend[qi]) { win = qi; break; }</code></pre>
+          <p>Index 0 is the CPU, the highest priority, and the scan checks it first on every cycle. When the CPU always has a request pending, the loop never reaches the GPU at index 2. The obvious repair is round-robin: take turns, nobody starves, 6, 5, 5 over the same sixteen cycles. But fairness has a price the second trial measures. An urgent page-walk arrives at cycle 7, the one request that cannot wait, and under round-robin it waits a full cycle that the unfair policy would have handed over instantly. Every arbitration rule is a bet about what matters most, and every bet is wrong for somebody. My own ticket-lock lab measured the same wrinkle honestly: round-robin guarantees admission order, not service order.</p>
+          <p>Real hardware got tired of placing that bet in one fixed place, so it made the bet programmable. The AMBA AXI4 protocol added AWQOS and ARQOS, two four-bit QoS identifiers on the address channels, section A8.1 of the spec. Higher value means higher priority; zero means the transaction is not participating in any QoS scheme. The spec&#x27;s most instructive sentence is a refusal: it does not define what the QoS values mean, only recommending that higher means higher. The people who build interconnects describe the world in exactly the bench&#x27;s terms: latency-sensitive managers like CPUs, bandwidth-sensitive managers like GPUs, best-effort ones like USB and SATA, all sharing one DDR controller, and the arbitration scheme decides how bandwidth gets distributed and whose latency stays controlled. Three masters, three classes of manager, and the weight dial is a QoS register.</p>
+          <p>The cautionary tale is from Mars, 1997. Pathfinder&#x27;s flight software ran a fixed-priority scheduler, and a low-priority meteorological task held a mutex the high-priority bus task needed. Medium-priority tasks kept preempting the low one, so the high-priority task sat waiting on a task it outranked, missed its deadline, and the watchdog reset the spacecraft computer. The mutex had been created with priority inheritance turned off, for performance. The fix was one of the great field repairs in engineering history: the VxWorks C interpreter had been left enabled on the spacecraft, so JPL uploaded a short C program that flipped the initialization globals from FALSE to TRUE, and the resets stopped. The engineer&#x27;s lessons were plain: only detailed traces of the actual behavior caught it, leaving the debugging facilities in the shipped system saved the mission, and the reasoning that a time-critical task should not spend time on priority inheritance was exactly wrong. One sentence to carry away: a shared wire needs a referee, every rule the referee follows is a bet about what matters most, and the honest designs write the bet down where it can be measured, whether that is a weight table, four QoS bits per transaction, or a mutex flag someone remembered to leave on.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/proving-ground/blob/main/features.js#L45176" target="_blank" rel="noopener">The Arbiter Room (Bench 63)</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Promise the Compiler Is Allowed to Break</h3>
           <!-- LAYER-STRIP:the-promise-the-compiler-is-allowed-to-break -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 05:09 EDT</time></p>

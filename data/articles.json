@@ -1,5 +1,45 @@
 [
   {
+    "title": "The Referee With Three Masters",
+    "slug": "the-referee-with-three-masters",
+    "date": "2026-09-12",
+    "description": "Three bus masters, one grant per cycle. Fixed priority starves the GPU 16 to 0, round-robin fixes it but taxes the urgent request, and real interconnects make the rule programmable with four QoS bits.",
+    "paragraphs": [
+      "Two masters cannot drive a bus at once. The bits collide and everyone reads garbage. So a tiny referee, the arbiter, watches the request lines and grants exactly one winner per cycle. The bench starts with the simplest possible rule: fixed priority, CPU on top, sixteen cycles, all three masters asking on every cycle. The grants come back 16, 0, 0. The GPU raised its hand sixteen times and was answered never. Nothing is broken. That is the policy working exactly as specified.",
+      "The bench's fixed-priority rule is two lines long, and the starvation is right there in the code:",
+      "Index 0 is the CPU, the highest priority, and the scan checks it first on every cycle. When the CPU always has a request pending, the loop never reaches the GPU at index 2. The obvious repair is round-robin: take turns, nobody starves, 6, 5, 5 over the same sixteen cycles. But fairness has a price the second trial measures. An urgent page-walk arrives at cycle 7, the one request that cannot wait, and under round-robin it waits a full cycle that the unfair policy would have handed over instantly. Every arbitration rule is a bet about what matters most, and every bet is wrong for somebody. My own ticket-lock lab measured the same wrinkle honestly: round-robin guarantees admission order, not service order.",
+      "Real hardware got tired of placing that bet in one fixed place, so it made the bet programmable. The AMBA AXI4 protocol added AWQOS and ARQOS, two four-bit QoS identifiers on the address channels, section A8.1 of the spec. Higher value means higher priority; zero means the transaction is not participating in any QoS scheme. The spec's most instructive sentence is a refusal: it does not define what the QoS values mean, only recommending that higher means higher. The people who build interconnects describe the world in exactly the bench's terms: latency-sensitive managers like CPUs, bandwidth-sensitive managers like GPUs, best-effort ones like USB and SATA, all sharing one DDR controller, and the arbitration scheme decides how bandwidth gets distributed and whose latency stays controlled. Three masters, three classes of manager, and the weight dial is a QoS register.",
+      "The cautionary tale is from Mars, 1997. Pathfinder's flight software ran a fixed-priority scheduler, and a low-priority meteorological task held a mutex the high-priority bus task needed. Medium-priority tasks kept preempting the low one, so the high-priority task sat waiting on a task it outranked, missed its deadline, and the watchdog reset the spacecraft computer. The mutex had been created with priority inheritance turned off, for performance. The fix was one of the great field repairs in engineering history: the VxWorks C interpreter had been left enabled on the spacecraft, so JPL uploaded a short C program that flipped the initialization globals from FALSE to TRUE, and the resets stopped. The engineer's lessons were plain: only detailed traces of the actual behavior caught it, leaving the debugging facilities in the shipped system saved the mission, and the reasoning that a time-critical task should not spend time on priority inheritance was exactly wrong. One sentence to carry away: a shared wire needs a referee, every rule the referee follows is a bet about what matters most, and the honest designs write the bet down where it can be measured, whether that is a weight table, four QoS bits per transaction, or a mutex flag someone remembered to leave on."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/proving-ground/blob/main/features.js#L45176",
+    "evidence": {
+      "label": "bench commit",
+      "url": "https://github.com/dillingerstaffing/proving-ground/commit/1579d78"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because the verified property is the arbiter's grant split, and it comes out of the scan order in the bench's own code, identically on any ISA: no instruction, opcode, or CSR is exercised anywhere in the experiment."
+      },
+      "MICROARCH": {
+        "applies": true,
+        "because": "matters at Microarch because the 16/0/0 and 6/5/5 grant splits are exactly what a bus-fabric arbiter computes every cycle on real SoCs: the interconnect, TileLink on SiFive parts and AXI elsewhere, runs this logic, and the policy decides which master waits, which starves, and how fast an urgent request gets through."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because no boot, SBI, PMP, or trap handling is exercised: the policy is evaluated by the interconnect hardware and the bench's own simulation, with no firmware dispatch in the path."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because the Pathfinder failure was a kernel scheduling failure, fixed priority plus a mutex minus priority inheritance, and the bench's urgency race is the same phenomenon at the interconnect: a rule about who waits, enforced where the waiting happens."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because weighted round-robin is a pure computational mechanism: a 2:1:1 weight contract provably holds 12/6/6 over 24 cycles, and the same turn-taking math schedules processes, packets, and bus grants."
+      }
+    }
+  },
+  {
     "title": "The Promise the Compiler Is Allowed to Break",
     "slug": "the-promise-the-compiler-is-allowed-to-break",
     "date": "2026-09-12",
