@@ -950,6 +950,25 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The ID Card Inside Your CPU</h3>
+          <!-- LAYER-STRIP:the-id-card-inside-your-cpu -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 15:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I wrote a thirty-four-line assembly program this afternoon whose entire job was one instruction: csrr s0, misa. It printed sixteen hex digits over the virt UART on QEMU 8.2.2 and then parked: 80000000001411ad. You can read that number by hand and it names the whole machine. The top two bits are 10, MXL equals 2, which the privileged manual&#x27;s Table 11 maps to RV64. The lower twenty-six bits are one per letter of the alphabet, bit 0 for A through bit 25 for Z, and 0x1411ad lights exactly A, C, D, F, H, I, M, S, U. QEMU&#x27;s virt board is RV64IMAFD, the general-purpose set, plus compressed instructions and the H, S, U privilege modes. One read, one register, the entire alphabet.</p>
+          <pre><code>_start:
+    csrr s0, misa            # the ID card, read whole
+    li   t1, 0x10000000      # virt UART base
+    li   t2, 16              # 16 nibbles</code></pre>
+          <p>Getting that read was the first lesson, and it arrived before the program ever ran. The assembler refused the instruction: unrecognized opcode, extension zicsr required. CSR access is itself an extension, so you must pass _zicsr in -march before the chip will answer what it has. The ID card sits behind a door that is itself one of the things the card lists. I confirmed the refusal and the fix both ways with the same three lines of assembly.</p>
+          <p>Why keep such a register at all? Because the firmware that reads it runs on chips it did not choose. One CSR read names the width, the alphabet, and the privilege modes, everything early boot needs before it can trust anything else. The encoding even carries its own bootstrap: branch on the sign of misa and you learn MXLEN as two to the power of (MXL plus 4) without knowing the register width of the machine you are standing on. On x86 the same question goes through the CPUID leaf-selection dance, as I understand it; here it is one register and one read.</p>
+          <p>The manual is honest about what the card is and who holds it. It calls misa &#x27;a rudimentary catalog of CPU features to machine-mode code&#x27;, and it forbids lower privilege levels from reading it at all. Supervisor and user code must ask through environment calls, which means a hypervisor can present a different ISA than the silicon underneath. The ID card stays in machine mode&#x27;s hands so the layers below get told whatever story the firmware wants them to hear.</p>
+          <p>One footnote is worth the whole read. The extensions field is WARL, write-any-read-legal: clear a bit and that extension&#x27;s instructions revert to their reserved behavior, as if the extension were not implemented. Software can de-feature the chip on purpose, to walk the fallback path and prove it works. An ID card you can edit, to rehearse being a lesser machine.</p>
+          <p>One sentence to keep: the chip carries its own ID card, one read names its width and its alphabet, and the manual keeps the card in machine mode&#x27;s hands so every layer below can be told any story the firmware needs.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Eight Bytes That Became Four</h3>
           <!-- LAYER-STRIP:the-eight-bytes-that-became-four -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 14:05 EDT</time></p>

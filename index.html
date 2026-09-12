@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-181142">
+  <meta name="build-version" content="v20260912-191133">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -950,6 +950,25 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-id-card-inside-your-cpu/">The ID Card Inside Your CPU</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">bare-metal repo: the QEMU virt conventions the read ran under <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are the misa CSR semantics the privileged specification defines: MXL equals 2 maps to RV64, twenty-six bits name the extension alphabet A through Z, G is the IMAFD plus Zicsr plus Zifencei shorthand with no G bit stored, and the WARL extensions field reverts cleared extensions to reserved behavior. The post verifies register semantics from the spec text.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified property is implementation-invariant: the same sixteen digits come back on QEMU 8.2.2 and on any RV64 core with these extensions; the post verifies the register's contract, not how any core implements it.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the verified properties are the ones boot code consumes: one CSR read names the whole machine for firmware that did not choose the chip, and the sign-bit bootstrap derives MXLEN as two to the power of (MXL plus 4) before the firmware knows the register width it stands on.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the verified property is privilege-invariance: the register is unreadable below machine mode, so kernel code reaches misa only through environment calls; the post verifies the machine-mode gate, which holds identically for every kernel.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-id-card-inside-your-cpu|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the decode is a table lookup against the manual, not a portable computation: no invariant survives translation out of the RISC-V register encoding, and the hand decode checks a contract, not a mathematical property.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 15:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I wrote a thirty-four-line assembly program this afternoon whose entire job was one instruction: csrr s0, misa. It printed sixteen hex digits over the virt UART on QEMU 8.2.2 and then parked: 80000000001411ad. You can read that number by hand and it names the whole machine. The top two bits are 10, MXL equals 2, which the privileged manual&#x27;s Table 11 maps to RV64. The lower twenty-six bits are one per letter of the alphabet, bit 0 for A through bit 25 for Z, and 0x1411ad lights exactly A, C, D, F, H, I, M, S, U. QEMU&#x27;s virt board is RV64IMAFD, the general-purpose set, plus compressed instructions and the H, S, U privilege modes. One read, one register, the entire alphabet.</p>
+          <pre><code>_start:
+    csrr s0, misa            # the ID card, read whole
+    li   t1, 0x10000000      # virt UART base
+    li   t2, 16              # 16 nibbles</code></pre>
+          <p>Getting that read was the first lesson, and it arrived before the program ever ran. The assembler refused the instruction: unrecognized opcode, extension zicsr required. CSR access is itself an extension, so you must pass _zicsr in -march before the chip will answer what it has. The ID card sits behind a door that is itself one of the things the card lists. I confirmed the refusal and the fix both ways with the same three lines of assembly.</p>
+          <p>Why keep such a register at all? Because the firmware that reads it runs on chips it did not choose. One CSR read names the width, the alphabet, and the privilege modes, everything early boot needs before it can trust anything else. The encoding even carries its own bootstrap: branch on the sign of misa and you learn MXLEN as two to the power of (MXL plus 4) without knowing the register width of the machine you are standing on. On x86 the same question goes through the CPUID leaf-selection dance, as I understand it; here it is one register and one read.</p>
+          <p>The manual is honest about what the card is and who holds it. It calls misa &#x27;a rudimentary catalog of CPU features to machine-mode code&#x27;, and it forbids lower privilege levels from reading it at all. Supervisor and user code must ask through environment calls, which means a hypervisor can present a different ISA than the silicon underneath. The ID card stays in machine mode&#x27;s hands so the layers below get told whatever story the firmware wants them to hear.</p>
+          <p>One footnote is worth the whole read. The extensions field is WARL, write-any-read-legal: clear a bit and that extension&#x27;s instructions revert to their reserved behavior, as if the extension were not implemented. Software can de-feature the chip on purpose, to walk the fallback path and prove it works. An ID card you can edit, to rehearse being a lesser machine.</p>
+          <p>One sentence to keep: the chip carries its own ID card, one read names its width and its alphabet, and the manual keeps the card in machine mode&#x27;s hands so every layer below can be told any story the firmware needs.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-eight-bytes-that-became-four/">The Eight Bytes That Became Four</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">bare-metal repo: the object files where the relaxation was observed <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are what the psABI contract says the call sequence may become: AUIPC plus JALR relaxes to a single JAL inside minus one mebibyte to plus one mebibyte minus two, and R_RISCV_CALL_PLT names the destination while R_RISCV_RELAX names nothing at all. The post verifies relocation semantics from the spec text.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because no pipeline, cache, or predictor behavior was measured or is at issue: the before and after are linker-time bytes, and the distance test is a static layout check, not a property of any core.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no privilege contract enters: the relocation table, the auipc and jalr encodings, and the psABI rule live entirely in the build toolchain and the ELF contract, needing no trap, no delegation, and no machine-mode enable gate.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because no address translation, scheduling, or syscall behavior is verified: the shrink happens before the program ever runs, and the addresses the linker rewrites are link-time layout facts, not runtime mappings.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-eight-bytes-that-became-four|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the mechanism is a toolchain rewrite, not a portable computation: no invariant survives translation out of the RISC-V toolchain, and the range test is a linker policy on instruction bytes, not a mathematical property.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 14:05 EDT</time></p>
@@ -146701,6 +146720,386 @@ assert(check == 0x2144DF1C);</code></pre>
         "n": 7,
         "kind": "refutation",
         "text": "Arithmetic in service of a policy is not the mechanism: the insight is the permission-slip split in the relocation design, and a range check alone is not a portable invariant."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-id-card-inside-your-cpu|ISA": {
+    "item": "the-id-card-inside-your-cpu",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified properties are the misa CSR semantics the privileged specification defines: MXL equals 2 maps to RV64, twenty-six bits name the extension alphabet A through Z, G is the IMAFD plus Zicsr plus Zifencei shorthand with no G bit stored, and the WARL extensions field reverts cleared extensions to reserved behavior. The post verifies register semantics from the spec text.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified properties are the misa CSR semantics the privileged specification defines: MXL equals 2 maps to RV64, twenty-six bits name the extension alphabet A through Z, G is the IMAFD plus Zicsr plus Zifencei shorthand with no G bit stored, and the WARL extensions field reverts cleared extensions to reserved behavior. The post verifies register semantics from the spec text."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: a thirty-four-line program whose only job is csrr s0, misa printed 80000000001411ad over the virt UART on QEMU 8.2.2; the assembler refused the opcode until -march carried _zicsr; the hand decode gives MXL equals 2 for RV64 and 0x1411ad lighting A, C, D, F, H, I, M, S, U.",
+        "source": {
+          "tier": "reference",
+          "cite": "The ID Card Inside Your CPU, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-id-card-inside-your-cpu/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are the register's contract from the spec text: which bits name the width, which name the alphabet, how G is spelled without a stored bit, and what a cleared WARL bit does to the extension's instructions."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is what a control register is defined to report, the ISA slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A register whose fields are defined by the privileged specification is contract text: the manual's table is the machine's alphabet, and the read is the lookup."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that no extension was enabled or executed, so this is a static catalog, not ISA behavior."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The catalog is the behavior: WARL clearing reverts an extension's instructions to reserved, which is a defined semantic change the post verifies from the spec text."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-id-card-inside-your-cpu|MICROARCH": {
+    "item": "the-id-card-inside-your-cpu",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the verified property is implementation-invariant: the same sixteen digits come back on QEMU 8.2.2 and on any RV64 core with these extensions; the post verifies the register's contract, not how any core implements it.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the verified property is implementation-invariant: the same sixteen digits come back on QEMU 8.2.2 and on any RV64 core with these extensions; the post verifies the register's contract, not how any core implements it."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: a thirty-four-line program whose only job is csrr s0, misa printed 80000000001411ad over the virt UART on QEMU 8.2.2; the assembler refused the opcode until -march carried _zicsr; the hand decode gives MXL equals 2 for RV64 and 0x1411ad lighting A, C, D, F, H, I, M, S, U.",
+        "source": {
+          "tier": "reference",
+          "cite": "The ID Card Inside Your CPU, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-id-card-inside-your-cpu/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are the same on every implementation: sixteen digits from QEMU 8.2.2 that any RV64 core with these extensions returns; nothing about pipelines, caches, or predictors was measured."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property holds identically on every conforming core, no microarchitectural slot applies."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A contract read is implementation-invariant by construction: the value is what the register reports, independent of how the core is built."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the read ran on QEMU's model, which is itself an implementation."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The post verifies the contract the model implements, not the model: the decode comes from the manual's table, which binds every core equally."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-id-card-inside-your-cpu|FIRMWARE": {
+    "item": "the-id-card-inside-your-cpu",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because the verified properties are the ones boot code consumes: one CSR read names the whole machine for firmware that did not choose the chip, and the sign-bit bootstrap derives MXLEN as two to the power of (MXL plus 4) before the firmware knows the register width it stands on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because the verified properties are the ones boot code consumes: one CSR read names the whole machine for firmware that did not choose the chip, and the sign-bit bootstrap derives MXLEN as two to the power of (MXL plus 4) before the firmware knows the register width it stands on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: a thirty-four-line program whose only job is csrr s0, misa printed 80000000001411ad over the virt UART on QEMU 8.2.2; the assembler refused the opcode until -march carried _zicsr; the hand decode gives MXL equals 2 for RV64 and 0x1411ad lighting A, C, D, F, H, I, M, S, U.",
+        "source": {
+          "tier": "reference",
+          "cite": "The ID Card Inside Your CPU, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-id-card-inside-your-cpu/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are what boot code needs first: the width and the alphabet from one read, and the sign-bit bootstrap that derives MXLEN before the firmware knows XLEN."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is the machine self-description that firmware consumes before it can trust anything else, the Firmware slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Discovery that fits in one read is a boot-time primitive: firmware that did not choose the chip must learn the chip before it runs on it."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the program ran on QEMU, not on real boot firmware."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The register's consumers are the same either way: the post verifies the contract firmware reads, and the bootstrap trick works wherever the register exists."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-id-card-inside-your-cpu|KERNEL": {
+    "item": "the-id-card-inside-your-cpu",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because the verified property is privilege-invariance: the register is unreadable below machine mode, so kernel code reaches misa only through environment calls; the post verifies the machine-mode gate, which holds identically for every kernel.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because the verified property is privilege-invariance: the register is unreadable below machine mode, so kernel code reaches misa only through environment calls; the post verifies the machine-mode gate, which holds identically for every kernel."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: a thirty-four-line program whose only job is csrr s0, misa printed 80000000001411ad over the virt UART on QEMU 8.2.2; the assembler refused the opcode until -march carried _zicsr; the hand decode gives MXL equals 2 for RV64 and 0x1411ad lighting A, C, D, F, H, I, M, S, U.",
+        "source": {
+          "tier": "reference",
+          "cite": "The ID Card Inside Your CPU, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-id-card-inside-your-cpu/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are the privilege boundary: the manual restricts the read to machine mode and routes everyone below through environment calls, so a hypervisor may present a different ISA than the silicon."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is a privilege gate the kernel cannot cross, the Kernel slot stays dim: the rule holds identically for every kernel."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "An unreadable register is the same unreadable register in every kernel: invariance across all kernels is what keeps the slot dim."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that kernels care deeply about which extensions exist."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Caring is not reading: the post verifies the gate that keeps the register in machine mode's hands, and that gate is identical for every kernel."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-id-card-inside-your-cpu|ALGORITHM": {
+    "item": "the-id-card-inside-your-cpu",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because the decode is a table lookup against the manual, not a portable computation: no invariant survives translation out of the RISC-V register encoding, and the hand decode checks a contract, not a mathematical property.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because the decode is a table lookup against the manual, not a portable computation: no invariant survives translation out of the RISC-V register encoding, and the hand decode checks a contract, not a mathematical property."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: a thirty-four-line program whose only job is csrr s0, misa printed 80000000001411ad over the virt UART on QEMU 8.2.2; the assembler refused the opcode until -march carried _zicsr; the hand decode gives MXL equals 2 for RV64 and 0x1411ad lighting A, C, D, F, H, I, M, S, U.",
+        "source": {
+          "tier": "reference",
+          "cite": "The ID Card Inside Your CPU, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-id-card-inside-your-cpu/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified facts are a manual table lookup: two bits name the width, twenty-six bits name the alphabet; nothing computed was checked against an independent oracle."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified work is decoding a defined encoding against its specification, no algorithmic invariant is at issue, and the Algorithm slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A decode is checked by the contract that defines the encoding: there is no portable computation whose result must survive translation."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the hand decode is arithmetic on bits."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Arithmetic over a defined bit layout is lookup, not algorithm: the truth comes from the manual's table, not from a mathematical property of the numbers."
       }
     ],
     "inferences": [

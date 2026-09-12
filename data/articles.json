@@ -1,5 +1,46 @@
 [
   {
+    "title": "The ID Card Inside Your CPU",
+    "slug": "the-id-card-inside-your-cpu",
+    "date": "2026-09-12",
+    "description": "One CSR read names the whole machine: csrr s0, misa returned 80000000001411ad on QEMU, decoding to RV64IMAFD plus C, H, S, U by hand. Why the ID card lives in machine mode, and why the extensions field is editable so software can rehearse being a lesser machine.",
+    "paragraphs": [
+      "I wrote a thirty-four-line assembly program this afternoon whose entire job was one instruction: csrr s0, misa. It printed sixteen hex digits over the virt UART on QEMU 8.2.2 and then parked: 80000000001411ad. You can read that number by hand and it names the whole machine. The top two bits are 10, MXL equals 2, which the privileged manual's Table 11 maps to RV64. The lower twenty-six bits are one per letter of the alphabet, bit 0 for A through bit 25 for Z, and 0x1411ad lights exactly A, C, D, F, H, I, M, S, U. QEMU's virt board is RV64IMAFD, the general-purpose set, plus compressed instructions and the H, S, U privilege modes. One read, one register, the entire alphabet.",
+      "Getting that read was the first lesson, and it arrived before the program ever ran. The assembler refused the instruction: unrecognized opcode, extension zicsr required. CSR access is itself an extension, so you must pass _zicsr in -march before the chip will answer what it has. The ID card sits behind a door that is itself one of the things the card lists. I confirmed the refusal and the fix both ways with the same three lines of assembly.",
+      "Why keep such a register at all? Because the firmware that reads it runs on chips it did not choose. One CSR read names the width, the alphabet, and the privilege modes, everything early boot needs before it can trust anything else. The encoding even carries its own bootstrap: branch on the sign of misa and you learn MXLEN as two to the power of (MXL plus 4) without knowing the register width of the machine you are standing on. On x86 the same question goes through the CPUID leaf-selection dance, as I understand it; here it is one register and one read.",
+      "The manual is honest about what the card is and who holds it. It calls misa 'a rudimentary catalog of CPU features to machine-mode code', and it forbids lower privilege levels from reading it at all. Supervisor and user code must ask through environment calls, which means a hypervisor can present a different ISA than the silicon underneath. The ID card stays in machine mode's hands so the layers below get told whatever story the firmware wants them to hear.",
+      "One footnote is worth the whole read. The extensions field is WARL, write-any-read-legal: clear a bit and that extension's instructions revert to their reserved behavior, as if the extension were not implemented. Software can de-feature the chip on purpose, to walk the fallback path and prove it works. An ID card you can edit, to rehearse being a lesser machine.",
+      "One sentence to keep: the chip carries its own ID card, one read names its width and its alphabet, and the manual keeps the card in machine mode's hands so every layer below can be told any story the firmware needs."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "bare-metal repo: the QEMU virt conventions the read ran under",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the verified properties are the misa CSR semantics the privileged specification defines: MXL equals 2 maps to RV64, twenty-six bits name the extension alphabet A through Z, G is the IMAFD plus Zicsr plus Zifencei shorthand with no G bit stored, and the WARL extensions field reverts cleared extensions to reserved behavior. The post verifies register semantics from the spec text."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the verified property is implementation-invariant: the same sixteen digits come back on QEMU 8.2.2 and on any RV64 core with these extensions; the post verifies the register's contract, not how any core implements it."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because the verified properties are the ones boot code consumes: one CSR read names the whole machine for firmware that did not choose the chip, and the sign-bit bootstrap derives MXLEN as two to the power of (MXL plus 4) before the firmware knows the register width it stands on."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because the verified property is privilege-invariance: the register is unreadable below machine mode, so kernel code reaches misa only through environment calls; the post verifies the machine-mode gate, which holds identically for every kernel."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the decode is a table lookup against the manual, not a portable computation: no invariant survives translation out of the RISC-V register encoding, and the hand decode checks a contract, not a mathematical property."
+      }
+    }
+  },
+  {
     "title": "The Eight Bytes That Became Four",
     "slug": "the-eight-bytes-that-became-four",
     "date": "2026-09-12",
