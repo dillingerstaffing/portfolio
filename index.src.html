@@ -949,6 +949,21 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bouncer on the Stopwatch</h3>
+          <!-- LAYER-STRIP:the-bouncer-on-the-stopwatch -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 04:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>At boot, mcounteren reads back 0x0: user mode may see nothing, and nobody granted it. The experiment sets bit 0, CY, then drops from M-mode through S-mode down to user mode and reads the cycle counter twice: no trap, two strictly increasing samples, the door open. Then it clears that one bit, drops to user mode again, and runs the same instruction. This time the machine traps with scause 2, illegal instruction, sepc pointing exactly at the rdcycle site, and the destination register still holding its 0xdeadbeefdeadbeef sentinel, proof the read never happened. Twenty-two checks, zero mismatches, three byte-identical runs under QEMU 8.2.2. One bit decides whether a user process may know what time it is.</p>
+          <p>Why would a machine hide the time from its own programs? The unprivileged manual says it plainly: "Some execution environments might prohibit access to counters to impede timing side-channel attacks." A cycle counter is an oracle. Diffing two timestamps around someone else&#x27;s code measures what that code did, and measured-then-inferred has a dark literature behind it: keystroke intervals, memory access patterns, the Spectre-era classics. So the privileged ISA puts the bouncer in M-mode. The obvious alternative is to hand back a zero or a clamped value, but a silent zero is a lie the program cannot detect, so the ISA refuses it: a clear CY bit raises illegal instruction, the architectural equivalent of the door staying shut. The manual is careful about what hiding is and is not. "The settings in this register only control accessibility. The act of reading or writing this register does not affect the underlying counters, which continue to increment even when not accessible." The clock still ticks; you simply may not ask it the time. An earlier module proved the brake pedal, mcountinhibit, which stops the clock. This one proves the bouncer, which bars the door. Stopping versus hiding: two different promises, same family.</p>
+          <p>The experiment earns its verdict one gate at a time. Two gates sit in series on the road from user code to the cycle counter, the M-level mcounteren and the S-level scounteren, so the module pins the S-level gate open, held set and read back as 0x1 before each phase, and wiggles only the M-level one. A mirror-image module did the reverse, holding the M-level gate open while toggling the S-level one. A single experiment can only blame one gate when the other is nailed open, so the two arrive as a converse pair. And the failure carries its own proof inside the success. The phase-B payload loads the destination register with a sentinel before attempting the read, so a completed read would have overwritten it. The trap alone says the instruction faulted; the untouched register says the read never happened:</p>
+          <pre><code>li t0, 0xdeadbeefdeadbeef\nrdcycle t0</code></pre>
+          <p>Scope, honestly held: this verifies QEMU 8.2.2&#x27;s model of the gate, not silicon, and the gate only bites below M-mode, which is why both phases run through two real privilege drops, M to S to U, instead of asserting anything from the top. One sentence to carry away: time is a hardware resource, and one bit in one register is the bouncer who decides which rings of privilege get to see it.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-u-read" target="_blank" rel="noopener">src/mcounteren-cy-u-read</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Write That Sleeps</h3>
           <!-- LAYER-STRIP:the-write-that-sleeps -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 03:07 EDT</time></p>

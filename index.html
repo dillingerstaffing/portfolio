@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-071702">
+  <meta name="build-version" content="v20260912-080818">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -949,6 +949,21 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-bouncer-on-the-stopwatch/">The Bouncer on the Stopwatch</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified property is the privileged ISA's own rule: mcounteren.CY is the M-level gate on U-mode cycle reads, and the module proves both directions, reads succeed when the bit is set and the same read traps with scause 2 when it is clear.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the gate is an architectural access rule, and the observed outcomes, a trap versus two increasing samples, are identical on any pipeline, cache, or predictor that implements the privileged spec: the proof asserts nothing about how the read is implemented, only whether it is permitted.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because M-mode firmware owns mcounteren, and the experiment is written as that firmware: it sets and clears CY itself and performs the real M to S to U drops, so the gate is the firmware's own policy for exposing the cycle counter to user mode.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because the verified property is the M-level hardware gate on a counter read, and the S-mode code exists only to reach U-mode where the gate bites: no supervisor timing or scheduling policy is under test, and the same gate would bite under any kernel.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-bouncer-on-the-stopwatch|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism is under test: the claim is an access-control invariant, one bit deciding whether a read is permitted, and the converse-pair experiment design is a testing method, not an algorithm.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 04:10 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>At boot, mcounteren reads back 0x0: user mode may see nothing, and nobody granted it. The experiment sets bit 0, CY, then drops from M-mode through S-mode down to user mode and reads the cycle counter twice: no trap, two strictly increasing samples, the door open. Then it clears that one bit, drops to user mode again, and runs the same instruction. This time the machine traps with scause 2, illegal instruction, sepc pointing exactly at the rdcycle site, and the destination register still holding its 0xdeadbeefdeadbeef sentinel, proof the read never happened. Twenty-two checks, zero mismatches, three byte-identical runs under QEMU 8.2.2. One bit decides whether a user process may know what time it is.</p>
+          <p>Why would a machine hide the time from its own programs? The unprivileged manual says it plainly: "Some execution environments might prohibit access to counters to impede timing side-channel attacks." A cycle counter is an oracle. Diffing two timestamps around someone else&#x27;s code measures what that code did, and measured-then-inferred has a dark literature behind it: keystroke intervals, memory access patterns, the Spectre-era classics. So the privileged ISA puts the bouncer in M-mode. The obvious alternative is to hand back a zero or a clamped value, but a silent zero is a lie the program cannot detect, so the ISA refuses it: a clear CY bit raises illegal instruction, the architectural equivalent of the door staying shut. The manual is careful about what hiding is and is not. "The settings in this register only control accessibility. The act of reading or writing this register does not affect the underlying counters, which continue to increment even when not accessible." The clock still ticks; you simply may not ask it the time. An earlier module proved the brake pedal, mcountinhibit, which stops the clock. This one proves the bouncer, which bars the door. Stopping versus hiding: two different promises, same family.</p>
+          <p>The experiment earns its verdict one gate at a time. Two gates sit in series on the road from user code to the cycle counter, the M-level mcounteren and the S-level scounteren, so the module pins the S-level gate open, held set and read back as 0x1 before each phase, and wiggles only the M-level one. A mirror-image module did the reverse, holding the M-level gate open while toggling the S-level one. A single experiment can only blame one gate when the other is nailed open, so the two arrive as a converse pair. And the failure carries its own proof inside the success. The phase-B payload loads the destination register with a sentinel before attempting the read, so a completed read would have overwritten it. The trap alone says the instruction faulted; the untouched register says the read never happened:</p>
+          <pre><code>li t0, 0xdeadbeefdeadbeef\nrdcycle t0</code></pre>
+          <p>Scope, honestly held: this verifies QEMU 8.2.2&#x27;s model of the gate, not silicon, and the gate only bites below M-mode, which is why both phases run through two real privilege drops, M to S to U, instead of asserting anything from the top. One sentence to carry away: time is a hardware resource, and one bit in one register is the bouncer who decides which rings of privilege get to see it.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-cy-u-read" target="_blank" rel="noopener">src/mcounteren-cy-u-read</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-write-that-sleeps/">The Write That Sleeps</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md" target="_blank" rel="noopener">proof log <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because the verified property is the kernel's scheduling decision, when a full pipe makes a write sleep, and that decision is identical for the same kernel on any instruction set: the proof asserts nothing about any instruction's specified behavior, and no ISA rule distinguishes a sleeping write from a returning one.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the measured quantity is scheduler time in whole timer ticks, forty of them against a thirty-tick gate: pipeline, cache, and predictor effects live orders of magnitude below the gate, so no implementation detail could change whether the verdict passes. The timing the module measured is kernel-visible, not machine-visible.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the measured path never leaves the kernel: the sleep and the wakeup happen between user processes and xv6's scheduler, with no privilege register, trap vector, or SBI call under the kernel under test. Nothing configured beneath the kernel stands between the syscall and the stall.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the property under test is the kernel's own pipe scheduling contract: a full pipe makes pipewrite sleep on the nwrite channel instead of spinning, and piperead wakes that channel when it drains. The module proves the block from outside the kernel with the uptime tick counter as a stopwatch, 40 ticks against a 30-tick gate, the shadow of a sleep measured in time.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-write-that-sleeps|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because the claim is a kernel scheduling decision, when a write sleeps for a reader, not a computational mechanism: the tick-edge choreography that makes the measurement repeatable is craft around the claim, not the claim itself, and the FNV-1a fold only collapses the measured values into one checkable number.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 03:07 EDT</time></p>
@@ -142680,6 +142695,386 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "the-bouncer-on-the-stopwatch|ISA": {
+    "item": "the-bouncer-on-the-stopwatch",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified property is the privileged ISA's own rule: mcounteren.CY is the M-level gate on U-mode cycle reads, and the module proves both directions, reads succeed when the bit is set and the same read traps with scause 2 when it is clear.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified property is the privileged ISA's own rule: mcounteren.CY is the M-level gate on U-mode cycle reads, and the module proves both directions, reads succeed when the bit is set and the same read traps with scause 2 when it is clear."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The module PROOF.md records the gate invariant: with mcounteren.CY set, two U-mode rdcycle reads return strictly increasing samples; with CY clear, the same U-mode rdcycle traps with scause 2, sepc exactly at the rdcycle site, and t0 still holding the 0xdeadbeefdeadbeef sentinel. 22 checks, 0 mismatches, 3 byte-identical QEMU 8.2.2 runs.",
+        "source": {
+          "cite": "src/mcounteren-cy-u-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is the specified behavior of a privileged CSR bit, including its exact fault semantics when the gate is closed."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test that asserts a CSR's specified gate behavior, open and closed, proves an ISA-level property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The ISA layer lights when the verified property is the specified behavior of an instruction or CSR, including its privilege gate."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the experiment is written as M-mode firmware, so it belongs to firmware."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The firmware writes the experiment, but the property under test is the ISA's rule for the bit: the firmware is the harness, and the verdict would be identical for any M-mode author."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-bouncer-on-the-stopwatch|MICROARCH": {
+    "item": "the-bouncer-on-the-stopwatch",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the gate is an architectural access rule, and the observed outcomes, a trap versus two increasing samples, are identical on any pipeline, cache, or predictor that implements the privileged spec: the proof asserts nothing about how the read is implemented, only whether it is permitted.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the gate is an architectural access rule, and the observed outcomes, a trap versus two increasing samples, are identical on any pipeline, cache, or predictor that implements the privileged spec: the proof asserts nothing about how the read is implemented, only whether it is permitted."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md records only architectural outcomes: a trap with scause 2 versus two increasing samples. No pipeline depth, cache behavior, or predictor state is measured or asserted; the checksum is fed only run-invariant values, never raw cycle samples.",
+        "source": {
+          "cite": "src/mcounteren-cy-u-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about whether the read is permitted, statable and provable without any implementation-level invariant."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test that asserts no implementation-level property proves no microarchitectural property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Microarch layer lights when the verified property depends on how the hardware implements the ISA: pipelines, caches, predictors, or the memory hierarchy."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that cycle counters are timing hardware, which sounds microarchitectural."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The counter's timing is not under test; only the gate on reading it is, and the gate's verdict does not vary with any implementation choice."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-bouncer-on-the-stopwatch|FIRMWARE": {
+    "item": "the-bouncer-on-the-stopwatch",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "matters at Firmware because M-mode firmware owns mcounteren, and the experiment is written as that firmware: it sets and clears CY itself and performs the real M to S to U drops, so the gate is the firmware's own policy for exposing the cycle counter to user mode.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Firmware because M-mode firmware owns mcounteren, and the experiment is written as that firmware: it sets and clears CY itself and performs the real M to S to U drops, so the gate is the firmware's own policy for exposing the cycle counter to user mode."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md shows the M-mode setup owning the gate: boot mcounteren readback, CY arm and clear, mtvec install, medeleg bits 2 and 8, a whole-address-space PMP NAPOT entry, then mret with MPP=01 into the S-mode phase driver. Both phases run through real M to S to U drops because the gate only bites below M-mode.",
+        "source": {
+          "cite": "src/mcounteren-cy-u-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is the M-mode firmware's own access policy for the cycle counter, exercised by that firmware."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test written as M-mode firmware, asserting the policy that firmware enforces on a CSR it owns, proves a firmware-level property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Firmware layer lights when the verified property is the behavior or policy of machine-mode software: boot, CSR dispatch, PMP, or SBI."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the gate is defined by the ISA, so firmware adds nothing."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The ISA defines the bit, but owning the bit is a firmware act: only M-mode can set it, and the experiment's two privilege drops are the firmware exercising its exclusive ownership."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-bouncer-on-the-stopwatch|KERNEL": {
+    "item": "the-bouncer-on-the-stopwatch",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because the verified property is the M-level hardware gate on a counter read, and the S-mode code exists only to reach U-mode where the gate bites: no supervisor timing or scheduling policy is under test, and the same gate would bite under any kernel.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because the verified property is the M-level hardware gate on a counter read, and the S-mode code exists only to reach U-mode where the gate bites: no supervisor timing or scheduling policy is under test, and the same gate would bite under any kernel."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md records the S-mode phase driver only as the vehicle to reach U-mode: it srets with SPP=0 into each payload and handles the delegated traps. No supervisor timing policy, scheduling decision, or virtual-memory behavior is asserted; all 22 checks concern the M-level gate.",
+        "source": {
+          "cite": "src/mcounteren-cy-u-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about the M-level hardware gate, statable and provable with the S-mode layer reduced to a test vehicle."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test that asserts no supervisor policy proves no kernel-level property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Kernel layer lights when the verified property is the kernel's own behavior: scheduling, virtual memory, drivers, or its trap handling policy."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the experiment runs code at S-mode, the kernel's privilege level."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "Running at S-mode does not make the test about the kernel; the S-mode code implements no kernel policy, and the gate's verdict is identical under any supervisor."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-bouncer-on-the-stopwatch|ALGORITHM": {
+    "item": "the-bouncer-on-the-stopwatch",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "not at Algorithm because no computational mechanism is under test: the claim is an access-control invariant, one bit deciding whether a read is permitted, and the converse-pair experiment design is a testing method, not an algorithm.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Algorithm because no computational mechanism is under test: the claim is an access-control invariant, one bit deciding whether a read is permitted, and the converse-pair experiment design is a testing method, not an algorithm."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The PROOF.md asserts an access-control invariant across 22 checks: the read is permitted or it traps, with the sentinel proving the read never retired. No computation is performed on the counter values; the increasing-samples check only requires strict ordering, not any computed result.",
+        "source": {
+          "cite": "src/mcounteren-cy-u-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-cy-u-read/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The verified property is a fact about permission, not about any computational mechanism."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test that asserts permission without computing over the data proves no algorithmic property."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The Algorithm layer lights when the verified property is a pure computational mechanism, portable and argued on its own terms."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the converse-pair experiment design, nailing one gate open while wiggling the other, is itself a mechanism."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The converse pair is a testing method for isolating blame, not a computational mechanism under test; no algorithm's correctness is asserted."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
       }
     ]
   }
