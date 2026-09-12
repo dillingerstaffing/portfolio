@@ -16395,7 +16395,10 @@
         "applies": false,
         "because": "not at algorithm because the outcome depends on the privileged CSR bit, not a portable computation that maps across ISAs."
       }
-    }
+    },
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel sstatus-fs-off-fp-trap.elf\n\nFS=Off: fadd.d traps, mcause=0x2, mepc=0x800003a6\nFS=Initial: fadd.d runs, f0=0x400e000000000000 (3.75)\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / sstatus-fs-off-fp-trap.elf",
+    "terminalLabel": "Verified RISC-V demo output"
   },
   {
     "id": "user-pipe-write-readend-closed",
@@ -16443,6 +16446,119 @@
         "applies": false,
         "because": "not at algorithm because the mechanism is operating system syscall state, not a portable mathematical transformation."
       }
-    }
+    },
+    "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with pipewrclosed test\n\nwrite to closed read end: -1 (writer survives)\ncontrol pipe: 16 bytes written, 16 bytes read back exact\nRESULT: PASS",
+    "terminalName": "qemu / xv6 / pipewrclosed",
+    "terminalLabel": "Verified xv6 test output"
+  },
+  {
+    "id": "src-mtimecmp-delta-tracks-mtime",
+    "kicker": "CLINT mtime never goes backward",
+    "title": "The Free-Running Counter That Cannot Go Backward",
+    "summary": "A bare-metal M-mode RISC-V program that proves the CLINT mtime register is a free-running counter. It reads mtime twice with a delay between reads and requires the second read to be no smaller than the first, using 32-bit stable-pair loads to avoid 64-bit access faults.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines mtime as a free-running counter, and the card proves monotonicity across 33 checks on QEMU."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the counter's advance rate is implementation-defined; the card proves it never goes backward, not how fast it ticks."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because SBI time services and supervisor timer programming depend on mtime monotonicity for correct timeout computation."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because schedulers and timeout wheels assume time never goes backward; a backward step would corrupt deadline ordering."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a hardware counter invariant, not a portable algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "33 inputs checked against monotonicity invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "12 delayed pairs with 10000-tick spin, 8 immediate back-to-back pairs"
+      ],
+      [
+        "CHECKSUM",
+        "0x3499a18272e6aff0, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtimecmp-delta-tracks-mtime",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "checks": 33,
+    "failures": 0,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mtimecmp-delta-tracks-mtime.elf\n\n12 delayed pairs: delta strictly positive\n8 back-to-back pairs: t1 >= t0\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / mtimecmp-delta-tracks-mtime.elf",
+    "terminalLabel": "Verified RISC-V demo output"
+  },
+  {
+    "id": "user-forkoffset",
+    "kicker": "Fork shares the file offset",
+    "title": "The File Offset That Two Processes Share",
+    "summary": "An xv6 user-space test proving fork copies the file descriptor table entry, so parent and child share the same file offset. The child writes 32 bytes through its inherited fd, the parent writes 32 more, and the file contains both patterns contiguously with no gap or overlap.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because file descriptor sharing is an OS abstraction; no instruction or CSR defines it."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the sharing happens in kernel memory structures, not in caches or pipelines."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because fork and file tables are kernel constructs; machine-mode firmware never sees them."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because fork's fd table copy semantics determine whether concurrent writes interleave correctly or corrupt each other."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the mechanism is a specific kernel data structure choice, not a portable computational pattern."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks against shared-offset invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "32-byte child write plus 32-byte parent write, contiguous in file"
+      ],
+      [
+        "CHECKSUM",
+        "0x24322B881E690C23, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "checks": 9,
+    "failures": 0,
+    "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with forkoffset test\n\nchild writes 32 bytes via inherited fd 3, exits 42\nparent writes 32 bytes, file holds 64 contiguous\nRESULT: PASS",
+    "terminalName": "qemu / xv6 / forkoffset",
+    "terminalLabel": "Verified xv6 test output"
   }
 ]

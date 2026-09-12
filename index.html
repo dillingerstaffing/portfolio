@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-020456">
+  <meta name="build-version" content="v20260912-024825">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -18082,6 +18082,218 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalLabel": "",
     "checks": 1,
     "failures": 0
+  },
+  {
+    "id": "src-sstatus-fs-off-fp-trap",
+    "kicker": "RISCV PRIV",
+    "title": "FS=Off blocks floating add with mcause 0x2",
+    "summary": "M-mode binary sets mstatus.FS to Off and executes fadd.d f0,f0,f0. The instruction traps with mcause 0x2 at the faulting pc, mepc advanced past it, and FP remains unusable until FS is set to Initial and the operation succeeds giving f0 bits for 3.75.",
+    "checks": 15,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-off-fp-trap",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-fs-off-fp-trap/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "15 checks on QEMU 8.2.2: FS Off yields mcause 0x2 at fault pc 0x800003a6; FS Initial gives f0bits and no trap, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9b52bcfd1c7d14c3, over measurement words, identical across 3 runs"
+      ]
+    ],
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because mstatus.FS is part of the privileged machine contract: when FS=Off the specification requires any FP instruction to trap as illegal instruction 0x2, and the card proves the same pc and cause on QEMU."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the proof shows a trap cause, pc, and mtval across 3 byte-identical runs, never timing, and pipeline changes cannot change the verdict."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because the trap originates in hardware on decode/execute with FS=Off; the firmware handler only records and advances mepc, not the trap decision."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because the test runs bare metal without any operating system or scheduling, and no syscall boundary is involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the outcome depends on the privileged CSR bit, not a portable computation that maps across ISAs."
+      }
+    },
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel sstatus-fs-off-fp-trap.elf\n\nFS=Off: fadd.d traps, mcause=0x2, mepc=0x800003a6\nFS=Initial: fadd.d runs, f0=0x400e000000000000 (3.75)\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / sstatus-fs-off-fp-trap.elf",
+    "terminalLabel": "Verified RISC-V demo output"
+  },
+  {
+    "id": "user-pipe-write-readend-closed",
+    "kicker": "XV6 SYS",
+    "title": "xv6 pipe write fails with -1 when the read end is closed",
+    "summary": "A single process opens a pipe, closes fd 0, writes 16 bytes to fd 1, and receives -1. A control pipe with the read end open writes and reads 16 bytes byte-exact, showing the failure is due to the closed peer, not a broken pipe. No SIGPIPE occurs in xv6.",
+    "checks": 9,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c",
+    "repoLabel": "GitHub: xv6-getscount/user/pipewrclosed.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks on QEMU 8.2.2: write returns -1 after close read end; control pipe reads back 16 bytes exact; fds 3 and 4 on a fresh pipe, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x1BA39D31F2019BE8, over write return, control read size, and readback bytes, identical across 3 runs"
+      ]
+    ],
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because pipe is a kernel syscall facility and the observed behavior is due to xv6 pipe semantics, not a RISC-V instruction or CSR."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the verdict turns on sys_pipe, file descriptor state, and the closed read end, not on pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because the test runs after boot in S-mode user space and does not touch SBI or bootloader configuration."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because xv6 defines pipe behavior: write to a pipe with the read end closed returns -1 and the writer is not terminated, which the test verifies against a live run."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the mechanism is operating system syscall state, not a portable mathematical transformation."
+      }
+    },
+    "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with pipewrclosed test\n\nwrite to closed read end: -1 (writer survives)\ncontrol pipe: 16 bytes written, 16 bytes read back exact\nRESULT: PASS",
+    "terminalName": "qemu / xv6 / pipewrclosed",
+    "terminalLabel": "Verified xv6 test output"
+  },
+  {
+    "id": "src-mtimecmp-delta-tracks-mtime",
+    "kicker": "CLINT mtime never goes backward",
+    "title": "The Free-Running Counter That Cannot Go Backward",
+    "summary": "A bare-metal M-mode RISC-V program that proves the CLINT mtime register is a free-running counter. It reads mtime twice with a delay between reads and requires the second read to be no smaller than the first, using 32-bit stable-pair loads to avoid 64-bit access faults.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the privileged spec defines mtime as a free-running counter, and the card proves monotonicity across 33 checks on QEMU."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the counter's advance rate is implementation-defined; the card proves it never goes backward, not how fast it ticks."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at firmware because SBI time services and supervisor timer programming depend on mtime monotonicity for correct timeout computation."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because schedulers and timeout wheels assume time never goes backward; a backward step would corrupt deadline ordering."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a hardware counter invariant, not a portable algorithm."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "33 inputs checked against monotonicity invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "12 delayed pairs with 10000-tick spin, 8 immediate back-to-back pairs"
+      ],
+      [
+        "CHECKSUM",
+        "0x3499a18272e6aff0, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtimecmp-delta-tracks-mtime",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "checks": 33,
+    "failures": 0,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mtimecmp-delta-tracks-mtime.elf\n\n12 delayed pairs: delta strictly positive\n8 back-to-back pairs: t1 >= t0\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / mtimecmp-delta-tracks-mtime.elf",
+    "terminalLabel": "Verified RISC-V demo output"
+  },
+  {
+    "id": "user-forkoffset",
+    "kicker": "Fork shares the file offset",
+    "title": "The File Offset That Two Processes Share",
+    "summary": "An xv6 user-space test proving fork copies the file descriptor table entry, so parent and child share the same file offset. The child writes 32 bytes through its inherited fd, the parent writes 32 more, and the file contains both patterns contiguously with no gap or overlap.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because file descriptor sharing is an OS abstraction; no instruction or CSR defines it."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the sharing happens in kernel memory structures, not in caches or pipelines."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because fork and file tables are kernel constructs; machine-mode firmware never sees them."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because fork's fd table copy semantics determine whether concurrent writes interleave correctly or corrupt each other."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the mechanism is a specific kernel data structure choice, not a portable computational pattern."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks against shared-offset invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "32-byte child write plus 32-byte parent write, contiguous in file"
+      ],
+      [
+        "CHECKSUM",
+        "0x24322B881E690C23, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "checks": 9,
+    "failures": 0,
+    "terminalOutput": "<span class=\"prompt\">$</span> xv6 kernel with forkoffset test\n\nchild writes 32 bytes via inherited fd 3, exits 42\nparent writes 32 bytes, file holds 64 contiguous\nRESULT: PASS",
+    "terminalName": "qemu / xv6 / forkoffset",
+    "terminalLabel": "Verified xv6 test output"
   }
 ];
       const CHIPS_BY_KEY = {
@@ -132386,6 +132598,866 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The argument in (4) plus (6) yields the verdict in (1), with the objection in (7) answered by (8)."
+      }
+    ]
+  },
+  "src-sstatus-fs-off-fp-trap|ISA": {
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "matters at ISA because mstatus.FS is part of the privileged machine contract: when FS=Off the specification requires any FP instruction to trap as illegal instruction 0x2, and the card proves the same pc and cause on QEMU.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "src-sstatus-fs-off-fp-trap",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because mstatus.FS is part of the privileged machine contract: when FS=Off the specification requires any FP instruction to trap as illegal instruction 0x2, and the card proves the same pc and cause on QEMU."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-fs-off-fp-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "src-sstatus-fs-off-fp-trap|MICROARCH": {
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the proof shows a trap cause, pc, and mtval across 3 byte-identical runs, never timing, and pipeline changes cannot change the verdict.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "src-sstatus-fs-off-fp-trap",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the proof shows a trap cause, pc, and mtval across 3 byte-identical runs, never timing, and pipeline changes cannot change the verdict."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-fs-off-fp-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "src-sstatus-fs-off-fp-trap|FIRMWARE": {
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because the trap originates in hardware on decode/execute with FS=Off; the firmware handler only records and advances mepc, not the trap decision.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "src-sstatus-fs-off-fp-trap",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because the trap originates in hardware on decode/execute with FS=Off; the firmware handler only records and advances mepc, not the trap decision."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-fs-off-fp-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "src-sstatus-fs-off-fp-trap|KERNEL": {
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "not at kernel because the test runs bare metal without any operating system or scheduling, and no syscall boundary is involved.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "src-sstatus-fs-off-fp-trap",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at kernel because the test runs bare metal without any operating system or scheduling, and no syscall boundary is involved."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-fs-off-fp-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "src-sstatus-fs-off-fp-trap|ALGORITHM": {
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because the outcome depends on the privileged CSR bit, not a portable computation that maps across ISAs.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "src-sstatus-fs-off-fp-trap",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because the outcome depends on the privileged CSR bit, not a portable computation that maps across ISAs."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/sstatus-fs-off-fp-trap/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "user-pipe-write-readend-closed|ISA": {
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "not at ISA because pipe is a kernel syscall facility and the observed behavior is due to xv6 pipe semantics, not a RISC-V instruction or CSR.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "user-pipe-write-readend-closed",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at ISA because pipe is a kernel syscall facility and the observed behavior is due to xv6 pipe semantics, not a RISC-V instruction or CSR."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "user-pipe-write-readend-closed|MICROARCH": {
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the verdict turns on sys_pipe, file descriptor state, and the closed read end, not on pipeline or cache behavior.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "user-pipe-write-readend-closed",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the verdict turns on sys_pipe, file descriptor state, and the closed read end, not on pipeline or cache behavior."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "user-pipe-write-readend-closed|FIRMWARE": {
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because the test runs after boot in S-mode user space and does not touch SBI or bootloader configuration.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "user-pipe-write-readend-closed",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because the test runs after boot in S-mode user space and does not touch SBI or bootloader configuration."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "user-pipe-write-readend-closed|KERNEL": {
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because xv6 defines pipe behavior: write to a pipe with the read end closed returns -1 and the writer is not terminated, which the test verifies against a live run.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "user-pipe-write-readend-closed",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because xv6 defines pipe behavior: write to a pipe with the read end closed returns -1 and the writer is not terminated, which the test verifies against a live run."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "user-pipe-write-readend-closed|ALGORITHM": {
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because the mechanism is operating system syscall state, not a portable mathematical transformation.",
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ],
+    "item": "user-pipe-write-readend-closed",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because the mechanism is operating system syscall state, not a portable mathematical transformation."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "spec behavior"
+      }
+    ]
+  },
+  "src-mtimecmp-delta-tracks-mtime|ISA": {
+    "kind": "card",
+    "item": "src-mtimecmp-delta-tracks-mtime",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the privileged spec defines mtime as a free-running counter, and the card proves monotonicity across 33 checks on QEMU.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the privileged spec defines mtime as a free-running counter, and the card proves monotonicity across 33 checks on QEMU."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mtimecmp-delta-tracks-mtime/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mtimecmp-delta-tracks-mtime|MICROARCH": {
+    "kind": "card",
+    "item": "src-mtimecmp-delta-tracks-mtime",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the counter's advance rate is implementation-defined; the card proves it never goes backward, not how fast it ticks.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the counter's advance rate is implementation-defined; the card proves it never goes backward, not how fast it ticks."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mtimecmp-delta-tracks-mtime/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mtimecmp-delta-tracks-mtime|FIRMWARE": {
+    "kind": "card",
+    "item": "src-mtimecmp-delta-tracks-mtime",
+    "slot": "FIRMWARE",
+    "probandum": "matters at firmware because SBI time services and supervisor timer programming depend on mtime monotonicity for correct timeout computation.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at firmware because SBI time services and supervisor timer programming depend on mtime monotonicity for correct timeout computation."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mtimecmp-delta-tracks-mtime/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mtimecmp-delta-tracks-mtime|KERNEL": {
+    "kind": "card",
+    "item": "src-mtimecmp-delta-tracks-mtime",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because schedulers and timeout wheels assume time never goes backward; a backward step would corrupt deadline ordering.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because schedulers and timeout wheels assume time never goes backward; a backward step would corrupt deadline ordering."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mtimecmp-delta-tracks-mtime/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-mtimecmp-delta-tracks-mtime|ALGORITHM": {
+    "kind": "card",
+    "item": "src-mtimecmp-delta-tracks-mtime",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a hardware counter invariant, not a portable algorithm.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a hardware counter invariant, not a portable algorithm."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/mtimecmp-delta-tracks-mtime/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtimecmp-delta-tracks-mtime/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkoffset|ISA": {
+    "kind": "card",
+    "item": "user-forkoffset",
+    "slot": "ISA",
+    "probandum": "not at ISA because file descriptor sharing is an OS abstraction; no instruction or CSR defines it.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at ISA because file descriptor sharing is an OS abstraction; no instruction or CSR defines it."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkoffset-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkoffset|MICROARCH": {
+    "kind": "card",
+    "item": "user-forkoffset",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the sharing happens in kernel memory structures, not in caches or pipelines.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the sharing happens in kernel memory structures, not in caches or pipelines."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkoffset-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkoffset|FIRMWARE": {
+    "kind": "card",
+    "item": "user-forkoffset",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because fork and file tables are kernel constructs; machine-mode firmware never sees them.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because fork and file tables are kernel constructs; machine-mode firmware never sees them."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkoffset-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkoffset|KERNEL": {
+    "kind": "card",
+    "item": "user-forkoffset",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because fork's fd table copy semantics determine whether concurrent writes interleave correctly or corrupt each other.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because fork's fd table copy semantics determine whether concurrent writes interleave correctly or corrupt each other."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkoffset-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkoffset|ALGORITHM": {
+    "kind": "card",
+    "item": "user-forkoffset",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because the mechanism is a specific kernel data structure choice, not a portable computational pattern.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because the mechanism is a specific kernel data structure choice, not a portable computational pattern."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log at proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkoffset-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkoffset-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A differential test with 0 mismatches against a ground-truth oracle establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
       }
     ]
   }
