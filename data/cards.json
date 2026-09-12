@@ -16348,5 +16348,101 @@
     "terminalLabel": "",
     "checks": 1,
     "failures": 0
+  },
+  {
+    "id": "src-sstatus-fs-off-fp-trap",
+    "kicker": "RISCV PRIV",
+    "title": "FS=Off blocks floating add with mcause 0x2",
+    "summary": "M-mode binary sets mstatus.FS to Off and executes fadd.d f0,f0,f0. The instruction traps with mcause 0x2 at the faulting pc, mepc advanced past it, and FP remains unusable until FS is set to Initial and the operation succeeds giving f0 bits for 3.75.",
+    "checks": 15,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-fs-off-fp-trap",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/sstatus-fs-off-fp-trap/",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-fs-off-fp-trap/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "15 checks on QEMU 8.2.2: FS Off yields mcause 0x2 at fault pc 0x800003a6; FS Initial gives f0bits and no trap, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x9b52bcfd1c7d14c3, over measurement words, identical across 3 runs"
+      ]
+    ],
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because mstatus.FS is part of the privileged machine contract: when FS=Off the specification requires any FP instruction to trap as illegal instruction 0x2, and the card proves the same pc and cause on QEMU."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the proof shows a trap cause, pc, and mtval across 3 byte-identical runs, never timing, and pipeline changes cannot change the verdict."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because the trap originates in hardware on decode/execute with FS=Off; the firmware handler only records and advances mepc, not the trap decision."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at kernel because the test runs bare metal without any operating system or scheduling, and no syscall boundary is involved."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the outcome depends on the privileged CSR bit, not a portable computation that maps across ISAs."
+      }
+    }
+  },
+  {
+    "id": "user-pipe-write-readend-closed",
+    "kicker": "XV6 SYS",
+    "title": "xv6 pipe write fails with -1 when the read end is closed",
+    "summary": "A single process opens a pipe, closes fd 0, writes 16 bytes to fd 1, and receives -1. A control pipe with the read end open writes and reads 16 bytes byte-exact, showing the failure is due to the closed peer, not a broken pipe. No SIGPIPE occurs in xv6.",
+    "checks": 9,
+    "failures": 0,
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipewrclosed.c",
+    "repoLabel": "GitHub: xv6-getscount/user/pipewrclosed.c",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks on QEMU 8.2.2: write returns -1 after close read end; control pipe reads back 16 bytes exact; fds 3 and 4 on a fresh pipe, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x1BA39D31F2019BE8, over write return, control read size, and readback bytes, identical across 3 runs"
+      ]
+    ],
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because pipe is a kernel syscall facility and the observed behavior is due to xv6 pipe semantics, not a RISC-V instruction or CSR."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the verdict turns on sys_pipe, file descriptor state, and the closed read end, not on pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because the test runs after boot in S-mode user space and does not touch SBI or bootloader configuration."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because xv6 defines pipe behavior: write to a pipe with the read end closed returns -1 and the writer is not terminated, which the test verifies against a live run."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because the mechanism is operating system syscall state, not a portable mathematical transformation."
+      }
+    }
   }
 ]
