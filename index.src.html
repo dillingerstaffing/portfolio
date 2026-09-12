@@ -950,6 +950,27 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Conditional Move RISC-V Finally Allowed Itself</h3>
+          <!-- LAYER-STRIP:the-conditional-move-risc-v-finally-allowed-itself -->
+          <p class="research-date"><time datetime="2026-09-12">2026-09-12 12:15 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Pick x when the condition holds and y when it does not, with no branch. Base RISC-V has no instruction for that. An earlier letter built a branchless binary search on the ISA anyway: each iteration&#x27;s comparison produces a 0/1 integer, and the search window is steered with integer arithmetic alone, no data-dependent branch in the loop body. It works, and it is honest code. But the shape advertises a missing instruction.</p>
+          <p>The missing instruction was deliberate, and the refusals are worth naming, because the yes only makes sense against them. ARM-style predication, where nearly every instruction carries a condition, was refused as decode cost paid on every fetch. The x86 conditional-move family was refused because it needs a condition-flags register, and the ISA pointedly does not have one. The Zicond spec&#x27;s own architecture comment says the quiet part out loud: defining more comparisons does not offer a benefit, given the lack of immediates or an additional register operand to compare against. Minimalism as a load-bearing wall.</p>
+          <p>The yes, when it came, is two instructions. czero.eqz rd, rs1, rs2 puts zero in rd if rs2 equals zero, otherwise it moves rs1 into rd. czero.nez is the mirror: zero in rd if rs2 is nonzero, otherwise move rs1. Zero this, unless. The spec gives the reason for this shape and no other: a simple solution that provides most of the benefit and all of the flexibility one would desire for conditional arithmetic and conditional select, while staying true to the RISC-V design philosophy. Branchless sequences come out in typically two instructions, and the spec names the price of admission: no instruction fusion, no special provisions during decoding, and no other microarchitectural provisions.</p>
+          <p>The canonical lowering is worth seeing once. cond ? x : y becomes three lines:</p>
+          <pre><code>czero.eqz t0, x, cond
+czero.nez t1, y, cond
+or        rd, t0, t1</code></pre>
+          <p>Each line glossed: the first yields x when cond is nonzero and 0 otherwise. The second yields y when cond is zero and 0 otherwise. The OR keeps exactly the surviving side. That is the rule a Go compiler proposal uses for RVA23 targets. No branch, no flags: three instructions where the branchy version needed a label.</p>
+          <p>The toolchain knows the name already. This run assembled both mnemonics with binutils 2.42 and the disassembler round-tripped them: czero.eqz a0,a1,a2 is 0ec5d533, czero.nez is 0ec5f533, one funct3 bit apart. But gcc 13.2.0, handed -march=rv64imac_zicsr_zicond, accepts the extension string and still emits beq plus mv for the textbook gate (c ? x : 0) and for the two-way select. The assembler knows the word. The compiler has not learned to reach for it.</p>
+          <p>Honest boundaries, as always. Zicond is an extension, not base: the ratified RVA23 profile made it mandatory for application processors, but portable code still cannot assume it. This note assembled and disassembled the two instructions and never executed them, so its claims are about encodings and semantics, not about silicon. The one implementation story in the neighborhood, cores fusing a short forward branch over a single ALU op in hardware, arrives as a debated forum thread rather than a measured fact, and the note treats it that way.</p>
+          <p>The thread back to the branchless search: for years the x86 machine quietly used the thing RISC-V refused to name. It has a name now, and the two spellings differ in one funct3 bit. One sentence to keep: RISC-V said no to the conditional move until it could say yes in two instructions, and the yes is spelled &#x27;zero this, unless.&#x27;</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/09-branchless-bsearch" target="_blank" rel="noopener">lab/09-branchless-bsearch</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The High Word You Never Multiply For</h3>
           <!-- LAYER-STRIP:the-high-word-you-never-multiply-for -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 11:05 EDT</time></p>
