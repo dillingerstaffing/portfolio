@@ -17212,5 +17212,115 @@
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 17,
     "failures": 0
+  },
+  {
+    "id": "src-fcsr-frm-roundup",
+    "kicker": "Rounding mode selects the last bit",
+    "title": "The Rounding Mode You Set in fcsr",
+    "summary": "A bare-metal M-mode RISC-V program that proves frm in fcsr actually controls rounding. It computes the same sum under round-to-nearest and round-upward and verifies the results differ in exactly the least significant bit.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the spec defines frm as the dynamic rounding-mode selector; the card proves setting it changes the computed result."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because rounding selection is an architectural contract, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because fcsr is user-visible; M-mode firmware does not mediate the rounding mode."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because floating-point context switches must preserve the process's rounding mode across scheduling."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a rounding-mode selection invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "24 checks against rounding-mode invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "RNE vs RUP results differ in exactly the last bit"
+      ],
+      [
+        "CHECKSUM",
+        "0x6585221d7c3874c3, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fcsr-frm-roundup",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel fcsr-frm-roundup.elf\n\nRNE: 0x3ff0000000000000, RUP: 0x3ff0000000000001\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / fcsr-frm-roundup.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 24,
+    "failures": 0
+  },
+  {
+    "id": "user-forkpidorder",
+    "kicker": "Successive forks hand out increasing pids",
+    "title": "The Monotonic Pid Allocator",
+    "summary": "An xv6 user-space program that proves fork hands the parent strictly increasing process IDs. Three successive forks return 4, 5, 6, reaps return exactly those pids, and a fourth fork after reaping gives 7.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because pid allocation is a kernel policy, not a hardware contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the allocator is pure software state, not a pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because pid assignment happens in the running kernel, not at boot time."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because the pid allocator is a kernel subsystem and the test proves its monotonic ordering invariant."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at algorithm because monotonic allocation is a pure computational mechanism the test verifies exhaustively."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks against monotonic pid invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Three forks return 4, 5, 6; fourth fork after reaps gives 7"
+      ],
+      [
+        "CHECKSUM",
+        "0x8212203C396064D4, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel kernel/kernel\n\nfork pids: 4, 5, 6, reaps match, fourth fork gives 7\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / xv6 / forkpidorder",
+    "terminalLabel": "Verified xv6 user-space test output",
+    "checks": 6,
+    "failures": 0
   }
 ]

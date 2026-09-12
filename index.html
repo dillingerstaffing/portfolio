@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260912-042608">
+  <meta name="build-version" content="v20260912-044035">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -18986,6 +18986,116 @@ assert(check == 0x2144DF1C);</code></pre>
     "terminalName": "qemu / riscv64 / fcsr-field-independence.elf",
     "terminalLabel": "Verified RISC-V demo output",
     "checks": 17,
+    "failures": 0
+  },
+  {
+    "id": "src-fcsr-frm-roundup",
+    "kicker": "Rounding mode selects the last bit",
+    "title": "The Rounding Mode You Set in fcsr",
+    "summary": "A bare-metal M-mode RISC-V program that proves frm in fcsr actually controls rounding. It computes the same sum under round-to-nearest and round-upward and verifies the results differ in exactly the least significant bit.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the spec defines frm as the dynamic rounding-mode selector; the card proves setting it changes the computed result."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because rounding selection is an architectural contract, not a pipeline implementation detail."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because fcsr is user-visible; M-mode firmware does not mediate the rounding mode."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because floating-point context switches must preserve the process's rounding mode across scheduling."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at algorithm because no computational mechanism is under test; the property is a rounding-mode selection invariant."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "24 checks against rounding-mode invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "RNE vs RUP results differ in exactly the last bit"
+      ],
+      [
+        "CHECKSUM",
+        "0x6585221d7c3874c3, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/fcsr-frm-roundup",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel fcsr-frm-roundup.elf\n\nRNE: 0x3ff0000000000000, RUP: 0x3ff0000000000001\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / fcsr-frm-roundup.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 24,
+    "failures": 0
+  },
+  {
+    "id": "user-forkpidorder",
+    "kicker": "Successive forks hand out increasing pids",
+    "title": "The Monotonic Pid Allocator",
+    "summary": "An xv6 user-space program that proves fork hands the parent strictly increasing process IDs. Three successive forks return 4, 5, 6, reaps return exactly those pids, and a fourth fork after reaping gives 7.",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because pid allocation is a kernel policy, not a hardware contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at microarch because the allocator is pure software state, not a pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at firmware because pid assignment happens in the running kernel, not at boot time."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at kernel because the pid allocator is a kernel subsystem and the test proves its monotonic ordering invariant."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at algorithm because monotonic allocation is a pure computational mechanism the test verifies exhaustively."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "6 checks against monotonic pid invariant, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Three forks return 4, 5, 6; fourth fork after reaps gives 7"
+      ],
+      [
+        "CHECKSUM",
+        "0x8212203C396064D4, identical across 3 QEMU runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder.c",
+    "repoLabel": "xv6-getscount",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel kernel/kernel\n\nfork pids: 4, 5, 6, reaps match, fourth fork gives 7\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / xv6 / forkpidorder",
+    "terminalLabel": "Verified xv6 user-space test output",
+    "checks": 6,
     "failures": 0
   }
 ];
@@ -137560,6 +137670,436 @@ assert(check == 0x2144DF1C);</code></pre>
           "tier": "lab",
           "cite": "src/fcsr-field-independence/PROOF.md",
           "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-field-independence/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-frm-roundup|ISA": {
+    "kind": "card",
+    "item": "src-fcsr-frm-roundup",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the spec defines frm as the dynamic rounding-mode selector; the card proves setting it changes the computed result.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at ISA because the spec defines frm as the dynamic rounding-mode selector; the card proves setting it changes the computed result."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-frm-roundup/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-frm-roundup|MICROARCH": {
+    "kind": "card",
+    "item": "src-fcsr-frm-roundup",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because rounding selection is an architectural contract, not a pipeline implementation detail.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because rounding selection is an architectural contract, not a pipeline implementation detail."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-frm-roundup/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-frm-roundup|FIRMWARE": {
+    "kind": "card",
+    "item": "src-fcsr-frm-roundup",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because fcsr is user-visible; M-mode firmware does not mediate the rounding mode.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because fcsr is user-visible; M-mode firmware does not mediate the rounding mode."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-frm-roundup/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-frm-roundup|KERNEL": {
+    "kind": "card",
+    "item": "src-fcsr-frm-roundup",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because floating-point context switches must preserve the process's rounding mode across scheduling.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because floating-point context switches must preserve the process's rounding mode across scheduling."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-frm-roundup/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "src-fcsr-frm-roundup|ALGORITHM": {
+    "kind": "card",
+    "item": "src-fcsr-frm-roundup",
+    "slot": "ALGORITHM",
+    "probandum": "not at algorithm because no computational mechanism is under test; the property is a rounding-mode selection invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at algorithm because no computational mechanism is under test; the property is a rounding-mode selection invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "src/fcsr-frm-roundup/PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fcsr-frm-roundup/PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkpidorder|ISA": {
+    "kind": "card",
+    "item": "user-forkpidorder",
+    "slot": "ISA",
+    "probandum": "not at ISA because pid allocation is a kernel policy, not a hardware contract.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at ISA because pid allocation is a kernel policy, not a hardware contract."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkpidorder-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkpidorder|MICROARCH": {
+    "kind": "card",
+    "item": "user-forkpidorder",
+    "slot": "MICROARCH",
+    "probandum": "not at microarch because the allocator is pure software state, not a pipeline or cache behavior.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at microarch because the allocator is pure software state, not a pipeline or cache behavior."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkpidorder-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkpidorder|FIRMWARE": {
+    "kind": "card",
+    "item": "user-forkpidorder",
+    "slot": "FIRMWARE",
+    "probandum": "not at firmware because pid assignment happens in the running kernel, not at boot time.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "not at firmware because pid assignment happens in the running kernel, not at boot time."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkpidorder-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkpidorder|KERNEL": {
+    "kind": "card",
+    "item": "user-forkpidorder",
+    "slot": "KERNEL",
+    "probandum": "matters at kernel because the pid allocator is a kernel subsystem and the test proves its monotonic ordering invariant.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at kernel because the pid allocator is a kernel subsystem and the test proves its monotonic ordering invariant."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkpidorder-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md"
+        }
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes the probandum via the generalization."
+      }
+    ]
+  },
+  "user-forkpidorder|ALGORITHM": {
+    "kind": "card",
+    "item": "user-forkpidorder",
+    "slot": "ALGORITHM",
+    "probandum": "matters at algorithm because monotonic allocation is a pure computational mechanism the test verifies exhaustively.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "matters at algorithm because monotonic allocation is a pure computational mechanism the test verifies exhaustively."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "text": "Proof log: https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md",
+        "source": {
+          "tier": "lab",
+          "cite": "user/forkpidorder-PROOF.md",
+          "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/forkpidorder-PROOF.md"
         }
       },
       {
