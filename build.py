@@ -6,11 +6,14 @@ Flow:
      data/isa-decisions.json, data/wigmore.json.
   2. Run drift-gate.py against the source PROOF.md checkouts. Abort on any
      real contradiction (gate exit != 0). index.html is never touched then.
-  3. Bake the data into index.src.html at build time:
-       - /*__PROJECTS_JSON__*/ -> the 140 cards (deterministic JSON)
-       - /*__CHIPS_JSON__*/    -> chips keyed by chip key (deterministic JSON)
-       - /*__WIGMORE_JSON__*/  -> Wigmore slot analyses, keyed "item|slot"
+  3. Bake the data into cards-data.js (a static sibling file loaded with a
+     plain <script src> tag before the app script, so execution order is
+     unchanged):
+       - window.__PROJECTS__  -> the 140 cards (deterministic JSON)
+       - window.__CHIPS_BY_KEY__ -> chips keyed by chip key (deterministic JSON)
+       - window.__WIGMORE__   -> Wigmore slot analyses, keyed "item|slot"
        - <!-- LAYER-STRIP:<slug> --> (x10) -> static article layer strips
+         (these stay inline in index.html)
   4. node --check every generated <script> block.
   5. Emit one static page per article at blog/<slug>/index.html, each with
      its own social-preview meta tags (og:*/twitter:*), derived from the
@@ -19,7 +22,9 @@ Flow:
   6. Write index.html only if everything above succeeded.
 
 The delivered page stays fully static: no runtime fetching, no dynamic
-data loading. Edit data/*.json, then run build-portfolio.sh "message".
+data loading. The card payload ships as a static cards-data.js file so the
+shell paints before the payload finishes downloading. Edit data/*.json,
+then run build-portfolio.sh "message".
 """
 
 import argparse
@@ -663,6 +668,14 @@ def node_check_scripts(html_text):
         if proc.returncode != 0:
             fail(f"node --check failed on script block {i}: {proc.stderr.strip()}")
     print(f"node --check: {len(scripts)} script block(s) OK")
+
+
+def node_check_file(path, label):
+    proc = subprocess.run(["node", "--check", str(path)],
+                          capture_output=True, text=True)
+    if proc.returncode != 0:
+        fail(f"node --check failed on {label}: {proc.stderr.strip()}")
+    print(f"node --check: {label} OK")
 
 
 SITE_URL = "https://dillingerstaffing.github.io/portfolio"
@@ -1425,22 +1438,29 @@ def build(systems_lab, baremetal, xv6):
 
     template = SRC.read_text(encoding="utf-8")
 
-    projects_json = json.dumps(cards, indent=2, ensure_ascii=False)
-    chips_json = json.dumps(chips_by_key, indent=2, ensure_ascii=False)
+    # The card payload ships as a static sibling file (compact JSON: it is
+    # generated, never hand-read). A plain <script src> tag in the template
+    # keeps execution order identical to the old inline block, while the
+    # browser can paint the shell before the payload finishes downloading.
+    projects_json = json.dumps(cards, ensure_ascii=False, separators=(",", ":"))
+    chips_json = json.dumps(chips_by_key, ensure_ascii=False, separators=(",", ":"))
     # Keyed "item|slot" for O(1) lookup by the tooltip renderer.
     wigmore_json = json.dumps(
         {f"{item}|{slot}": a for (item, slot), a in wigmore_by_slot.items()},
-        indent=2, ensure_ascii=False)
+        ensure_ascii=False, separators=(",", ":"))
+    data_js = (
+        "window.__PROJECTS__ = " + projects_json + ";\n"
+        + "window.__CHIPS_BY_KEY__ = " + chips_json + ";\n"
+        + "window.__WIGMORE__ = " + wigmore_json + ";\n"
+    )
+    (HERE / "cards-data.js").write_text(data_js, encoding="utf-8")
 
-    if template.count("/*__PROJECTS_JSON__*/") != 1:
-        fail("expected exactly one /*__PROJECTS_JSON__*/ placeholder")
-    if template.count("/*__CHIPS_JSON__*/") != 1:
-        fail("expected exactly one /*__CHIPS_JSON__*/ placeholder")
-    if template.count("/*__WIGMORE_JSON__*/") != 1:
-        fail("expected exactly one /*__WIGMORE_JSON__*/ placeholder")
-    page = template.replace("/*__PROJECTS_JSON__*/", projects_json)
-    page = page.replace("/*__CHIPS_JSON__*/", chips_json)
-    page = page.replace("/*__WIGMORE_JSON__*/", wigmore_json)
+    if template.count('<script src="cards-data.js"></script>') != 1:
+        fail('expected exactly one <script src="cards-data.js"></script> in template')
+    for leftover in ("__PROJECTS_JSON__", "__CHIPS_JSON__", "__WIGMORE_JSON__"):
+        if leftover in template:
+            fail(f"stale data placeholder remains in template: {leftover}")
+    page = template
 
     used_slugs = set()
     for article in articles:
@@ -1453,7 +1473,7 @@ def build(systems_lab, baremetal, xv6):
             fail(f"expected exactly one {marker} placeholder")
         page = page.replace(marker, article_strip_html(article, wigmore_by_slot))
 
-    for leftover in ("__PROJECTS_JSON__", "__CHIPS_JSON__", "__WIGMORE_JSON__", "LAYER-STRIP:"):
+    for leftover in ("LAYER-STRIP:",):
         if leftover in page:
             fail(f"unresolved placeholder remains: {leftover}")
 
@@ -1476,6 +1496,7 @@ def build(systems_lab, baremetal, xv6):
     build_feed_page(feed, stamp, template)
 
     node_check_scripts(page)
+    node_check_file(HERE / "cards-data.js", "cards-data.js")
 
     OUT.write_text(page, encoding="utf-8")
     print(f"wrote {OUT} ({len(page)} bytes)")

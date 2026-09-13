@@ -115,6 +115,8 @@
       margin: 0;
       min-width: 0;
       overflow-x: hidden;
+      overflow-x: clip; /* clip, not hidden: no scroll container is created,
+        so position: sticky keeps working (hidden silently breaks it) */
       color: var(--ink);
       background:
         linear-gradient(rgba(184, 243, 75, .018) 1px, transparent 1px),
@@ -392,6 +394,8 @@
     .chapter-button:hover, .chapter-button:focus-visible, .chapter-button.is-active { color: var(--acid); }
     .chapter-button.is-active::before { background: var(--acid); }
     .chapter-count { color: inherit; }
+    /* Shown while cards-data.js streams in; removed on first render. */
+    .cards-loading { color: var(--dim); font-size: 12px; padding: 24px 0; }
 
     .record-close { padding: 42px 0 8px; border-top: 1px solid var(--line); }
     .record-kicker { margin: 0 0 12px; color: var(--acid); font-size: 11px; }
@@ -958,7 +962,7 @@
           <div class="rail-compact" id="proof-filter-compact" aria-hidden="true"></div>
         </nav>
         <div class="project-record">
-          <div id="projects-list"></div>
+          <div id="projects-list"><p class="cards-loading" id="cards-loading">Loading proof cards…</p></div>
           <div class="record-close" aria-label="Complete proof record">
             <p class="record-kicker">COMPLETE RECORD</p>
             <p class="record-total"></p>
@@ -2120,17 +2124,17 @@ assert(check == 0x2144DF1C);</code></pre>
     </div>
   </dialog>
 
+  <script src="cards-data.js"></script>
   <script>
     (() => {
-      const PROJECTS = /*__PROJECTS_JSON__*/;
-      const CHIPS_BY_KEY = /*__CHIPS_JSON__*/;
+      // Card data streams in via cards-data.js (same-origin static file, no
+      // runtime fetching): the shell paints before the payload finishes.
+      const PROJECTS = window.__PROJECTS__;
+      const CHIPS_BY_KEY = window.__CHIPS_BY_KEY__;
       // Formal Wigmore argument analyses, keyed "item|slot". Only slots with
       // an approved analysis carry the argument affordance; the tooltip
-      // renderer below activates on this map.
-      const WIGMORE = /*__WIGMORE_JSON__*/;
-      // Exposed for the tooltip renderer, which lives in its own script
-      // block below (block-scoped consts are invisible across blocks).
-      window.__WIGMORE__ = WIGMORE;
+      // renderer below activates on this map (cards-data.js assigns
+      // window.__WIGMORE__ directly).
 
 
       const AUDIENCES = [
@@ -2453,6 +2457,7 @@ assert(check == 0x2144DF1C);</code></pre>
           </div>`;
         projectsContainer.appendChild(article);
       });
+      document.getElementById('cards-loading')?.remove();
 
       projectsContainer.addEventListener('click', (event) => {
         const link = event.target.closest('a.project-deep-link');
