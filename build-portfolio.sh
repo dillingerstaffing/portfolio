@@ -24,6 +24,15 @@ assert json.dumps(cards, ensure_ascii=False, separators=(",", ":")) in data_js, 
 assert json.dumps(chips, ensure_ascii=False, separators=(",", ":")) in data_js, "baked chips JSON missing from cards-data.js"
 assert '<script src="cards-data.js"></script>' in page, "cards-data.js script tag missing from page"
 assert 'window.__PROJECTS__ =' not in page, "card payload should not be inline in page"
+# The app script reads these globals: a missing declaration is a runtime
+# ReferenceError that node --check cannot catch (it killed card rendering
+# once). Fail the build instead.
+for g in ('window.__PROJECTS__', 'window.__CHIPS_BY_KEY__', 'window.__WIGMORE__'):
+    assert (g + ' =') in data_js, f"{g} not assigned in cards-data.js"
+for decl in ('const PROJECTS = window.__PROJECTS__;',
+             'const CHIPS_BY_KEY = window.__CHIPS_BY_KEY__;',
+             'const WIGMORE = window.__WIGMORE__;'):
+    assert decl in page, f"app script missing declaration: {decl}"
 strips = page.count('class="layer-strip"') + page.count('class=\\"layer-strip\\"')
 ports = page.count('class="portability"') + page.count('class=\\"portability\\"')
 print(f"cards: {len(cards)} (want 140)")
