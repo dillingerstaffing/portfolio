@@ -18019,5 +18019,62 @@
     "checks": 22,
     "failures": 0,
     "stressItems": 0
+  },
+  {
+    "id": "src-mcounteren-tm-u-gate",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "mcounteren.TM gates U-mode rdtime, QEMU",
+    "summary": "Clearing mcounteren.TM makes a U-mode rdtime trap as illegal instruction while scounteren.TM stays set, so the M-mode bit is the outer gate. Setting TM reopens the gate and the reads return the advancing timer.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines mcounteren.TM as the M-mode gate for lower-privilege time reads: reads trap when the bit is clear, succeed when set. The proof verifies this contract on QEMU 8.2.2 with scounteren.TM held set: U-mode rdtime traps with scause=2 and sepc at the rdtime site when mcounteren.TM is clear, and returns increasing timer values when set, 34 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks trap and read outcomes against the TM gate rule, 34 checks, 0 mismatches. Whether U-mode may read the timer is decided by the mcounteren control bit, not by pipeline or cache behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Only M-mode software can write mcounteren, so this gate is a firmware-programmed policy: the proof shows firmware clearing TM hides the timer from user space while scounteren.TM stays set, and setting TM exposes it again, with the boot values restored bit-for-bit."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not here because S-mode cannot write mcounteren; the supervisor's own counter policy lives in scounteren, whose TM gate for U-mode reads is the separate scounteren.TM card."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a pure gating rule: one control bit selects trap or read for a lower privilege level. The same per-resource enable-bit pattern appears in portable code wherever access to shared state is mediated by flags."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-tm-u-gate/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "34 in-program checks on QEMU 8.2.2: U-mode rdtime with mcounteren.TM clear traps illegal-instruction with sepc at the rdtime site, with TM set the reads return strictly increasing timer values, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x96e2802b2ebd9505, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M/S/U-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / mcounteren-tm-u-gate",
+    "terminalOutput": "$ qemu-system-riscv64 -machine virt -nographic -bios none -kernel mcounteren-tm-u-gate.elf\nboot: mcounteren=0x0 scounteren=0x0\nprobe: csrw mcounteren, 0x7; readback=0x7\nwrite: csrw mcounteren, 0x2 (TM); readback=0x2\nwrite: csrw scounteren, 0x2 (TM); readback=0x2\nmedeleg readback=0x104\n  [0] SIG_A ecall  scause=0x8 stval=0x0 sepc=0x8000028c t0=0x173b2 a0=0xa1a1\n  rdtime sample 0 (t0) = 0x173b2\n  rdtime sample 1 (t1) = 0x173e9  (delta = 55)\n  mcounteren after clear=0x0\n  [1] gated rdtime   scause=0x2 stval=0xc01022f3 sepc=0x800002b0 t0=0xdeadbeefdeadbeef a0=0x80000290\n  mcounteren restore readback=0x0\n  scounteren restore readback=0x0\n  medeleg restore readback=0x0\nchecksum (FNV-1a over verdict values) = 0x96e2802b2ebd9505\nRESULT: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 34,
+    "failures": 0,
+    "stressItems": 0,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcounteren-tm-u-gate",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/mcounteren-tm-u-gate",
+    "terminalLabel": "Verified src-mcounteren-tm-u-gate QEMU output",
+    "showRepoLink": true
   }
 ]

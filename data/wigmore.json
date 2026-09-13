@@ -127244,6 +127244,380 @@
           "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
         }
       ]
+    },
+    {
+      "item": "src-mcounteren-tm-u-gate",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "The privileged ISA defines mcounteren.TM as the M-mode gate for lower-privilege time reads: reads trap when the bit is clear, succeed when set. The proof verifies this contract on QEMU 8.2.2 with scounteren.TM held set: U-mode rdtime traps with scause=2 and sepc at the rdtime site when mcounteren.TM is clear, and returns increasing timer values when set, 34 checks, 0 mismatches.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The privileged ISA defines mcounteren.TM as the M-mode gate for lower-privilege time reads: reads trap when the bit is clear, succeed when set. The proof verifies this contract on QEMU 8.2.2 with scounteren.TM held set: U-mode rdtime traps with scause=2 and sepc at the rdtime site when mcounteren.TM is clear, and returns increasing timer values when set, 34 checks, 0 mismatches."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "34 in-program checks on QEMU 8.2.2: gated U-mode rdtime traps with scause=2 and sepc exactly at the rdtime site, enabled reads return strictly increasing timer values, 0 mismatches; checksum 0x96e2802b2ebd9505 identical across 3 runs",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-tm-u-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-tm-u-gate/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The privileged architecture defines mcounteren as the M-mode control over lower-privilege counter access, TM being the time bit; a clear TM bit makes the read raise an illegal-instruction exception",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V privileged spec, machine counter-enable registers",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "Clearing mcounteren.TM turns the U-mode time read into a trap and setting it restores the read, with the S-level gate held open throughout."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A control bit whose clear state traps an operation and whose set state permits it, verified by toggling only that bit, is the machine contract in action."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The ISA layer lights when the verified claim depends on the machine contract: instruction, CSR, trap, or memory-model behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim under the warrant."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-tm-u-gate",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "The proof checks trap and read outcomes against the TM gate rule, 34 checks, 0 mismatches. Whether U-mode may read the timer is decided by the mcounteren control bit, not by pipeline or cache behavior.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The proof checks trap and read outcomes against the TM gate rule, 34 checks, 0 mismatches. Whether U-mode may read the timer is decided by the mcounteren control bit, not by pipeline or cache behavior."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The 34 checks assert trap records and readback values only; the verdict values are byte-identical across 3 runs and the checksum covers verdict values, not timings",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-tm-u-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-tm-u-gate/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "mcounteren is a CSR control register; its bits select architectural behavior independent of any particular pipeline implementation",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V privileged spec, machine counter-enable registers",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The trap and read outcomes are fully explained by the TM control bit; no pipeline, cache, or predictor behavior is needed to account for them."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "When every observed outcome follows from a control bit and none depends on timing or implementation structure, the implementation layer is not engaged."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The MICROARCH layer stays dim when the claim is about the architectural control, not about how an implementation realizes it."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim under the warrant."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-tm-u-gate",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Only M-mode software can write mcounteren, so this gate is a firmware-programmed policy: the proof shows firmware clearing TM hides the timer from user space while scounteren.TM stays set, and setting TM exposes it again, with the boot values restored bit-for-bit.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Only M-mode software can write mcounteren, so this gate is a firmware-programmed policy: the proof shows firmware clearing TM hides the timer from user space while scounteren.TM stays set, and setting TM exposes it again, with the boot values restored bit-for-bit."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Every mcounteren write in the module happens in M-mode: the 0x7 writability probe, the TM set, the TM clear before phase B, the restore to the boot value, all with published readbacks",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-tm-u-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-tm-u-gate/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "mcounteren is an M-mode CSR; lower privilege levels cannot write it, so its programming belongs to machine-mode software",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V privileged spec, machine counter-enable registers",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The gate under test is programmed from M-mode, so the proof exercises a firmware-owned policy: hide the timer from user space by clearing TM, expose it by setting TM."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A control that only machine-mode software can program is a firmware policy, and a proof that toggles it from machine mode verifies firmware behavior."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The FIRMWARE layer lights when the verified claim is about machine-mode software programming: extension dispatch, PMP setup, or counter enables."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim under the warrant."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-tm-u-gate",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Not here because S-mode cannot write mcounteren; the supervisor's own counter policy lives in scounteren, whose TM gate for U-mode reads is the separate scounteren.TM card.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "Not here because S-mode cannot write mcounteren; the supervisor's own counter policy lives in scounteren, whose TM gate for U-mode reads is the separate scounteren.TM card."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The module performs all mcounteren writes in M-mode and drops to S-mode only to drive the U-mode payloads; no S-mode mcounteren write is attempted or needed",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-tm-u-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-tm-u-gate/PROOF.md"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "mcounteren is writable only in M-mode; the supervisor-level counterpart for U-mode counter access is scounteren",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V privileged spec, machine counter-enable registers",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "S-mode cannot program this gate; the supervisor's own counter policy lives in scounteren, verified by a different card."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A layer that has no programming interface to the control under test cannot own the verified property; naming the layer that does keeps the claim honest."
+        },
+        {
+          "kind": "generalization",
+          "n": 6,
+          "text": "The KERNEL layer stays dim when the verified control sits outside supervisor reach, even if kernels are affected by the policy."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim under the warrant."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "src-mcounteren-tm-u-gate",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "The mechanism is a pure gating rule: one control bit selects trap or read for a lower privilege level. The same per-resource enable-bit pattern appears in portable code wherever access to shared state is mediated by flags.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The mechanism is a pure gating rule: one control bit selects trap or read for a lower privilege level. The same per-resource enable-bit pattern appears in portable code wherever access to shared state is mediated by flags."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "Phase B differs from phases A and C only in the TM bit: same payloads, same delegation, same PMP entry; the bit alone flips trap to read across 34 checks",
+          "source": {
+            "tier": "lab",
+            "cite": "src/mcounteren-tm-u-gate/PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcounteren-tm-u-gate/PROOF.md"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The verified behavior is a pure gating rule: one bit selects between trap and read for a lower privilege level, with no other state involved."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A mechanism that reduces to a single control bit choosing between two outcomes is a computational rule, portable as a pattern wherever flags mediate access."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ALGORITHM layer lights when the mechanism is a pure computational rule that carries as a pattern beyond the machine it was verified on."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes the penultimate claim under the warrant."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+        }
+      ]
     }
   ]
 }
