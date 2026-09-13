@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260913-122512">
+  <meta name="build-version" content="v20260913-152354">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -985,6 +985,23 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-most-honest-lie-in-c/">The Most Honest Lie in C</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab" target="_blank" rel="noopener">systems-lab: first-principles C experiments, including the memcpy lab <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-most-honest-lie-in-c|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are the concrete RISC-V instruction sequences gcc emits for memset at -O2: eight sb zero stores inline for the 8-byte call, a tail call to memset for the 16-byte call, a 32-iteration sb loop for the volatile-pointer wipe, and four sd zero stores surviving the compiler barrier, each read off the object disassembly firsthand this run.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-most-honest-lie-in-c|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified properties are the compiler's compile-time instruction choices, not the behavior of the machine executing them: nothing was timed, no buffer or line was measured, and the same objects would carry the same argument on any RV64 implementation.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-most-honest-lie-in-c|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no firmware contract is involved: the objects were compiled and read with objdump, never linked into a boot image and never booted, so trap delegation and the machine-mode handoff never enter the argument.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-most-honest-lie-in-c|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because nothing was ever executed: the experiment is compile-and-read, so no scheduling, system call, or memory-management claim is made or needed.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-most-honest-lie-in-c|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the verified properties are the portable optimizer contract every language with an as-if rule shares: stores to provably dead memory may be deleted, and a compiler barrier declaring memory observable elsewhere restores the wipe, which is the explicit_bzero bargain and the memset_s contract.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-13">2026-09-13 11:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I compiled two one-line functions this morning, gcc 13.2.0 at -O2 for rv64g, and read the disassembly. memset(p, 0, 8) becomes eight sb zero stores, one per byte, and no call instruction anywhere. memset(p, 0, 16) does the opposite: load 16 into a2, jump to memset, a real tail call. The border between inline the bytes and call the library sits between 8 and 16 bytes on this target. The compiler is not running your function. It is deciding what your function meant.</p>
+          <p>The decision that matters lives in a dumber function. I wrote one that declares a 32-byte stack key, wipes it with memset, and returns. Its compiled body, the whole of it:</p>
+          <pre><code>0000000000000044 &lt;secret&gt;:
+  44:   00008067    ret</code></pre>
+          <p>One instruction: ret. The wipe is gone. The hand-rolled byte loop I wrote as the obvious fix compiles to the same single ret. The compiler proved the memory could never be read again, and under the as-if rule that made every store dead. You can see the wipe in the source. It is not in the binary.</p>
+          <p>The as-if rule is the contract behind the deletion. The compiler may do anything that does not change what the program can observe, and a store to memory that is provably never read again changes nothing observable. So it deletes the stores, the call and the loop alike. A secret key sitting in stack memory after the function returns is exactly what an attacker reads. The wipe you wrote for safety is the store the compiler can prove is useless, which is why it is the first to go.</p>
+          <p>Two spellings survived my objects. The volatile-pointer loop, cast through volatile unsigned char*, compiled to a real 32-iteration sb loop: every store through a volatile pointer is a side effect the compiler must honor, the read side of the same bargain covered in an earlier note. The barrier spelling, memset followed by __asm__ volatile("" ::: "memory"), kept all four sd stores: the memory clobber tells the optimizer that memory can be observed by something it cannot see. glibc ships exactly this bargain as explicit_bzero, memset plus a compiler barrier, with the promise that the call will not be deleted even when the buffer is dead afterward. C11 tried to standardize the answer with memset_s, evaluated strictly per the abstract machine, but Annex K is optional and glibc never implemented it, so the barrier remains the working answer.</p>
+          <p>This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never the adversary. It was a contract reader, and the contract said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret is not a function call, it is a negotiation with the optimizer, and the only winning move is a barrier.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-division-that-always-answers/">The Division That Always Answers</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">bare-metal repo: the QEMU virt conventions the eight-case program ran under <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the verified properties are the division corner cases the unprivileged specification's table defines: the quotient of division by zero has all bits set, the remainder of division by zero equals the dividend, and signed overflow, only possible when the most-negative integer is divided by -1, yields the dividend as quotient and zero as remainder. The post verifies the instruction's answers against the manual's table on every input.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because the verified property is implementation-invariant: the same eight answers come back on QEMU 8.2.2 and on any RV64 core, since the spec table fixes the outputs; the post verifies the div and rem contract, not how any divider circuitry produces all-ones.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because the verified property holds in every privilege mode with no enable gate: no firmware register opens or closes the division answers, and the eight cases ran without consulting any machine-mode service.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because the verified property removes a trap class the kernel would otherwise handle: the div instructions cannot fault on any input, so a RISC-V kernel carries no divide-error handler and its trap path never receives arithmetic distress from ordinary division.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-division-that-always-answers|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the verified properties are the portable edge-case contract that code reasoning about division depends on: every input has a defined answer with no trap and no flag, so divisor-zero handling can rely on the all-ones quotient and dividend remainder without a guarding branch.</p></div></div>
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 16:05 EDT</time></p>
@@ -147993,6 +148010,386 @@ assert(check == 0x2144DF1C);</code></pre>
         ],
         "strength": "strong",
         "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+      }
+    ]
+  },
+  "the-most-honest-lie-in-c|ISA": {
+    "item": "the-most-honest-lie-in-c",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "matters at ISA because the verified properties are the concrete RISC-V instruction sequences gcc emits for memset at -O2: eight sb zero stores inline for the 8-byte call, a tail call to memset for the 16-byte call, a 32-iteration sb loop for the volatile-pointer wipe, and four sd zero stores surviving the compiler barrier, each read off the object disassembly firsthand this run.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at ISA because the verified properties are the concrete RISC-V instruction sequences gcc emits for memset at -O2: eight sb zero stores inline for the 8-byte call, a tail call to memset for the 16-byte call, a 32-iteration sb loop for the volatile-pointer wipe, and four sd zero stores surviving the compiler barrier, each read off the object disassembly firsthand this run."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session this run: rv64g -O2 objects for the six wipe spellings, read with objdump. memset of 8 bytes became eight sb zero stores with no call; of 16 bytes a li a2,16 plus tail call; the plain memset wipe of a dead 32-byte key became a single ret; the hand-rolled byte loop the same single ret; the volatile-pointer loop a real 32-iteration sb loop; memset plus the memory-clobber asm kept all four sd stores.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Most Honest Lie in C, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-most-honest-lie-in-c/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "The compiler's dead-store elimination is visible as concrete instruction choice: stores it can prove dead vanish from the object, stores a barrier or volatile marks as observable stay."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is which instructions the compiler emits for a C construct, the ISA slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A disassembly is the compiler's confession: what it kept and what it deleted is written in the instruction stream."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that this is compiler behavior, not the ISA, and the machine contract has nothing to say about it."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The instruction stream is where the compiler's decision lands: inline bytes or call, kept store or deleted store, and those are ISA-level facts a reader can check with objdump."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-most-honest-lie-in-c|MICROARCH": {
+    "item": "the-most-honest-lie-in-c",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "not at Microarch because the verified properties are the compiler's compile-time instruction choices, not the behavior of the machine executing them: nothing was timed, no buffer or line was measured, and the same objects would carry the same argument on any RV64 implementation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Microarch because the verified properties are the compiler's compile-time instruction choices, not the behavior of the machine executing them: nothing was timed, no buffer or line was measured, and the same objects would carry the same argument on any RV64 implementation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session read object files only: no program was executed, no timing or counter was taken, and the microarchitecture underneath never entered the measurement.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Most Honest Lie in C, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-most-honest-lie-in-c/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "A claim about which instructions exist in an object file does not depend on how a pipeline, cache, or predictor treats them."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When nothing is measured at run time, the Microarch slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Compile-and-read experiments end at the ISA boundary; the machine below is the same machine for every outcome."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that store elimination is an optimization for the memory hierarchy and belongs at Microarch."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The optimization's purpose may be performance, but the verified fact is the deleted store itself, which lives one layer up in the instruction stream."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-most-honest-lie-in-c|FIRMWARE": {
+    "item": "the-most-honest-lie-in-c",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "not at Firmware because no firmware contract is involved: the objects were compiled and read with objdump, never linked into a boot image and never booted, so trap delegation and the machine-mode handoff never enter the argument.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Firmware because no firmware contract is involved: the objects were compiled and read with objdump, never linked into a boot image and never booted, so trap delegation and the machine-mode handoff never enter the argument."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The workbench this run produced only .o files, which were disassembled and never linked, loaded, or executed under any firmware.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Most Honest Lie in C, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-most-honest-lie-in-c/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "Firmware enters an argument only when something boots, traps, or calls across a privilege boundary."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When no binary runs, the Firmware slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim that never leaves the compiler's output cannot depend on the firmware that would have run it."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the barrier spelling and the ecall ABI are firmware-adjacent."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The barrier is a contract with the compiler, not with firmware: it changes code generation, and the proof is in the object file before any firmware exists."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-most-honest-lie-in-c|KERNEL": {
+    "item": "the-most-honest-lie-in-c",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "not at Kernel because nothing was ever executed: the experiment is compile-and-read, so no scheduling, system call, or memory-management claim is made or needed.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "not at Kernel because nothing was ever executed: the experiment is compile-and-read, so no scheduling, system call, or memory-management claim is made or needed."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The six wipe spellings were compiled to objects and read back; no process ran, no syscall fired, no page was mapped.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Most Honest Lie in C, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-most-honest-lie-in-c/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "Dead-store elimination is a compile-time proof about future reads, and its evidence is the object file, not a running system."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the system never runs, the Kernel slot stays dim."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "The kernel sees only binaries; this argument never got past the assembler."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that explicit_bzero is a libc function, which is kernel-adjacent."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "explicit_bzero's guarantee is enforced by the compiler barrier inside it, not by any kernel service; the object file is the whole witness."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+      }
+    ]
+  },
+  "the-most-honest-lie-in-c|ALGORITHM": {
+    "item": "the-most-honest-lie-in-c",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "matters at Algorithm because the verified properties are the portable optimizer contract every language with an as-if rule shares: stores to provably dead memory may be deleted, and a compiler barrier declaring memory observable elsewhere restores the wipe, which is the explicit_bzero bargain and the memset_s contract.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "matters at Algorithm because the verified properties are the portable optimizer contract every language with an as-if rule shares: stores to provably dead memory may be deleted, and a compiler barrier declaring memory observable elsewhere restores the wipe, which is the explicit_bzero bargain and the memset_s contract."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The firsthand session showed the same C construct, a wipe of a dead local, deleted in two spellings and preserved in two others, with the only difference being whether the compiler was told memory is observable; glibc's explicit_bzero and C11's memset_s are the standardized forms of the same bargain.",
+        "source": {
+          "tier": "reference",
+          "cite": "The Most Honest Lie in C, as published",
+          "url": "https://dillingerstaffing.github.io/portfolio/blog/the-most-honest-lie-in-c/"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "penultimate",
+        "text": "A memset is a request the compiler may deny; a barrier turns it back into a command."
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verified property is the optimizer's contract rather than any one machine's behavior, the Algorithm slot lights."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Portable correctness is negotiated with the optimizer, not with the ISA."
+      },
+      {
+        "n": 6,
+        "kind": "explanation",
+        "text": "One could object that the experiment ran one compiler on one target, so nothing portable was shown."
+      },
+      {
+        "n": 7,
+        "kind": "refutation",
+        "text": "The as-if rule is in the language standard, not the target manual: any conforming compiler may delete the dead stores, so the negotiation the post describes travels with the language."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "strength": "strong",
+        "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
       }
     ]
   }
