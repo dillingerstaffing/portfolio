@@ -850,7 +850,25 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
   <div class="post-offer"><p>Stuck on a board or a crash? Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up from $500, C audit from $350. <a href="{SITE_PATH}/#contact">Send the details</a>.</p></div>
   <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; All field notes</a></footer>
 {wig_script}
-{dwell}</body>
+{dwell}
+  <script>
+  /* In-app browsers (LinkedIn, Facebook, Instagram, X) often swallow
+     target="_blank" taps: the WebView drops the popup and the tap does
+     nothing. There, follow the link in the same view instead. */
+  (() => {{
+    if (!/LinkedInApp|FBAN|FB_IAB|FBAV|Instagram|Twitter|Line\/|Pinterest|Snapchat|GSA\//i.test(navigator.userAgent)) return;
+    document.addEventListener('click', (event) => {{
+      const link = event.target.closest('a[target="_blank"]');
+      if (!link || event.defaultPrevented) return;
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const url = link.getAttribute('href');
+      if (!url || url.startsWith('#')) return;
+      event.preventDefault();
+      window.location.href = url;
+    }});
+  }})();
+  </script>
+</body>
 </html>
 """
 
