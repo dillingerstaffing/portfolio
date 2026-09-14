@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260914-155812">
+  <meta name="build-version" content="v20260914-160317">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -2988,6 +2988,20 @@ assert(check == 0x2144DF1C);</code></pre>
       const writeSavedPosition = (sectionId, position) => savedPositions.set(sectionId, position);
       const headerHeight = () => stickyHeader.getBoundingClientRect().height;
       const filterRail = document.querySelector('.chapter-rail');
+      // Visible rail obstruction below the sticky header. When the rail is
+      // stuck on desktop it keeps its full chapter-list height (the list
+      // only fades out), so the rail's own height would over-subtract by
+      // ~1900px; measure the compact strip that is actually visible
+      // instead. On mobile the strip is the rail itself.
+      const visibleRailHeight = () => {
+        if (!filterRail) return 0;
+        const compact = filterRail.querySelector('.rail-compact');
+        if (compact) {
+          const compactHeight = compact.getBoundingClientRect().height;
+          if (compactHeight > 0) return compactHeight;
+        }
+        return filterRail.classList.contains('is-stuck') ? filterRail.getBoundingClientRect().height : 0;
+      };
       const railHeight = () => filterRail ? filterRail.getBoundingClientRect().height : 0;
       const syncHeaderHeight = () => {
         document.documentElement.style.setProperty('--header-height', `${headerHeight()}px`);
@@ -3118,11 +3132,7 @@ assert(check == 0x2144DF1C);</code></pre>
       };
       const scrollServicesPrecisely = (behavior = 'auto') => {
         const title = document.getElementById('services-title');
-        const rail = document.querySelector('.chapter-rail');
-        preciseScrollTo(() => {
-          const railHeight = rail && rail.classList.contains('is-stuck') ? rail.getBoundingClientRect().height : 0;
-          return window.scrollY + title.getBoundingClientRect().top - headerHeight() - railHeight;
-        }, behavior);
+        preciseScrollTo(() => window.scrollY + title.getBoundingClientRect().top - headerHeight() - visibleRailHeight(), behavior);
       };
 
       const scrollToSectionTop = (sectionId, behavior = 'auto') => {
@@ -3219,7 +3229,7 @@ assert(check == 0x2144DF1C);</code></pre>
           // cards render at their true sizes.
           const target = document.getElementById(sectionId);
           if (target) {
-            preciseScrollTo(() => window.scrollY + target.getBoundingClientRect().top - headerHeight() - 8, 'auto');
+            preciseScrollTo(() => window.scrollY + target.getBoundingClientRect().top - headerHeight() - visibleRailHeight() - 8, 'auto');
           }
         }
         scheduleScrollControlUpdate();
