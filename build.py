@@ -1440,6 +1440,23 @@ def build_feed_page(feed, stamp, template):
   <script>
     if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('/portfolio/sw.js'); }}
   </script>
+  <script>
+  /* In-app browsers (LinkedIn, Facebook, Instagram, X) often swallow
+     target="_blank" taps: the WebView drops the popup and the tap does
+     nothing. There, follow the link in the same view instead. */
+  (() => {{
+    if (!/LinkedInApp|FBAN|FB_IAB|FBAV|Instagram|Twitter|Line\/|Pinterest|Snapchat|GSA\//i.test(navigator.userAgent)) return;
+    document.addEventListener('click', (event) => {{
+      const link = event.target.closest('a[target="_blank"]');
+      if (!link || event.defaultPrevented) return;
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const url = link.getAttribute('href');
+      if (!url || url.startsWith('#')) return;
+      event.preventDefault();
+      window.location.href = url;
+    }});
+  }})();
+  </script>
 </body>
 </html>
 """
