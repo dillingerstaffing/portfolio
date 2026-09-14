@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260914-155221">
+  <meta name="build-version" content="v20260914-155812">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -3076,41 +3076,53 @@ assert(check == 0x2144DF1C);</code></pre>
         history.pushState({ sectionId }, '', next);
       };
 
-      let servicesAlignToken = 0;
+      let preciseScrollToken = 0;
+      // Scrolls until targetTop() (a document-top px position) sits at the
+      // top of the viewport, correcting for content-visibility layout shifts.
+      // Two phases: first with true card sizes forced via .view-switching
+      // (good first estimate), then again in the natural layout, because
+      // releasing the forced sizes shifts everything and a single-phase
+      // align would leave the viewport stranded mid-page. Rapid re-clicks
+      // cancel the previous run: only the latest token may scroll.
+      const preciseScrollTo = (targetTopFn, behavior = 'auto') => {
+        const token = ++preciseScrollToken;
+        const root = document.documentElement;
+        const settle = (done) => {
+          let frame = 0;
+          let stable = 0;
+          const tick = () => {
+            if (token !== preciseScrollToken) return;
+            const want = Math.max(0, targetTopFn());
+            if (Math.abs(want - window.scrollY) <= 2) {
+              stable += 1;
+              if (stable >= 3) { done(); return; }
+            } else {
+              stable = 0;
+              window.scrollTo({ top: want, behavior: frame === 0 ? behavior : 'auto' });
+            }
+            frame += 1;
+            if (frame < 120) window.requestAnimationFrame(tick);
+            else done();
+          };
+          window.requestAnimationFrame(tick);
+        };
+        root.classList.add('view-switching');
+        settle(() => {
+          if (token !== preciseScrollToken) return;
+          root.classList.remove('view-switching');
+          settle(() => { if (token === preciseScrollToken) scheduleScrollControlUpdate(); });
+        });
+        document.fonts?.ready.then(() => {
+          if (token === preciseScrollToken) window.requestAnimationFrame(() => settle(() => {}));
+        });
+      };
       const scrollServicesPrecisely = (behavior = 'auto') => {
-        // Rapid re-clicks cancel the previous alignment run instead of
-        // fighting it: only the latest token may scroll.
-        const token = ++servicesAlignToken;
         const title = document.getElementById('services-title');
         const rail = document.querySelector('.chapter-rail');
-        document.documentElement.classList.add('view-switching');
-        let frame = 0;
-        let stableFrames = 0;
-        const align = () => {
-          if (token !== servicesAlignToken) return;
+        preciseScrollTo(() => {
           const railHeight = rail && rail.classList.contains('is-stuck') ? rail.getBoundingClientRect().height : 0;
-          const targetTop = headerHeight() + railHeight;
-          const delta = title.getBoundingClientRect().top - targetTop;
-          if (Math.abs(delta) <= 1) {
-            stableFrames += 1;
-          } else {
-            stableFrames = 0;
-            window.scrollTo({ top: Math.max(0, window.scrollY + delta), behavior: frame === 0 ? behavior : 'auto' });
-          }
-          frame += 1;
-          if (stableFrames < 2 && frame < 120) {
-            window.requestAnimationFrame(align);
-          } else {
-            document.documentElement.classList.remove('view-switching');
-            scheduleScrollControlUpdate();
-          }
-        };
-        window.requestAnimationFrame(() => {
-          if (token !== servicesAlignToken) return;
-          document.getElementById('services').scrollIntoView({ block: 'start', behavior: 'auto' });
-          window.requestAnimationFrame(align);
-        });
-        document.fonts?.ready.then(() => { if (token === servicesAlignToken) window.requestAnimationFrame(align); });
+          return window.scrollY + title.getBoundingClientRect().top - headerHeight() - railHeight;
+        }, behavior);
       };
 
       const scrollToSectionTop = (sectionId, behavior = 'auto') => {
@@ -3202,11 +3214,12 @@ assert(check == 0x2144DF1C);</code></pre>
         else if (alignServices && (sectionId === 'contact' || sectionId === 'blog')) {
           // Cross-page fragment arrivals (#contact, #blog from per-post
           // pages): land precisely under the sticky header instead of
-          // wherever the native fragment scroll happened to stop.
+          // wherever the native fragment scroll happened to stop. The
+          // two-phase scroll corrects for the layout shift as nearby
+          // cards render at their true sizes.
           const target = document.getElementById(sectionId);
           if (target) {
-            const top = window.scrollY + target.getBoundingClientRect().top - headerHeight() - 8;
-            window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+            preciseScrollTo(() => window.scrollY + target.getBoundingClientRect().top - headerHeight() - 8, 'auto');
           }
         }
         scheduleScrollControlUpdate();
