@@ -2171,19 +2171,35 @@ assert(check == 0x2144DF1C);</code></pre>
     </div>
   </dialog>
 
-  <script src="cards-data.js"></script>
+  <script src="cards-data.js" defer></script>
   <script>
     (() => {
-      // Card data streams in via cards-data.js (same-origin static file, no
-      // runtime fetching): the shell paints before the payload finishes.
-      const PROJECTS = window.__PROJECTS__;
-      const CHIPS_BY_KEY = window.__CHIPS_BY_KEY__;
-      // Formal Wigmore argument analyses, keyed "item|slot". Only slots with
-      // an approved analysis carry the argument affordance; the tooltip
-      // renderer below activates on this map (cards-data.js assigns
-      // window.__WIGMORE__ directly).
-      const WIGMORE = window.__WIGMORE__;
+      // cards-data.js loads with defer so the payload never blocks the shell:
+      // the chrome below (scroll buttons, chooser, nav) wires up during parsing,
+      // and everything that needs the payload waits for DOMContentLoaded
+      // (deferred scripts always run before it, so the globals are set).
+      const whenCardsReady = (fn) => {
+        if (window.__PROJECTS__ && window.__CHIPS_BY_KEY__) fn();
+        else window.addEventListener('DOMContentLoaded', fn, { once: true });
+      };
+      const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+      const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+      const numberWord = (count) => NUMBER_WORDS[count] ?? String(count);
+      const padNumber = (number) => String(number).padStart(2, '0');
+      const formatList = (items) => {
+        if (items.length < 2) return items[0] ?? '';
+        if (items.length === 2) return `${items[0]} and ${items[1]}`;
+        return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
+      };
+
+      const formatCompact = (value) => {
+        const formatScaled = (scaled) => scaled.toFixed(1).replace(/\.0$/, '');
+        if (value >= 1e9) return `${formatScaled(value / 1e9)}B`;
+        if (value >= 1e6) return `${formatScaled(value / 1e6)}M`;
+        if (value >= 1e3) return `${formatScaled(value / 1e3)}k`;
+        return String(value);
+      };
 
       const AUDIENCES = [
         'Firmware teams with a defined blocker',
@@ -2240,15 +2256,14 @@ assert(check == 0x2144DF1C);</code></pre>
         'Your timeline'
       ];
 
-      const NUMBER_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
-      const numberWord = (count) => NUMBER_WORDS[count] ?? String(count);
-      const padNumber = (number) => String(number).padStart(2, '0');
-      const formatList = (items) => {
-        if (items.length < 2) return items[0] ?? '';
-        if (items.length === 2) return `${items[0]} and ${items[1]}`;
-        return `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`;
-      };
-
+      whenCardsReady(() => {
+      const PROJECTS = window.__PROJECTS__;
+      const CHIPS_BY_KEY = window.__CHIPS_BY_KEY__;
+      // Formal Wigmore argument analyses, keyed "item|slot". Only slots with
+      // an approved analysis carry the argument affordance; the tooltip
+      // renderer below activates on this map (cards-data.js assigns
+      // window.__WIGMORE__ directly).
+      const WIGMORE = window.__WIGMORE__;
       const environments = PROJECTS.reduce((unique, project) => {
         if (!unique.some((environment) => environment.toLowerCase() === project.verificationEnvironment.toLowerCase())) {
           unique.push(project.verificationEnvironment);
@@ -2256,14 +2271,6 @@ assert(check == 0x2144DF1C);</code></pre>
         return unique;
       }, []).sort();
       const environmentSummary = formatList(environments);
-      const formatCompact = (value) => {
-        const formatScaled = (scaled) => scaled.toFixed(1).replace(/\.0$/, '');
-        if (value >= 1e9) return `${formatScaled(value / 1e9)}B`;
-        if (value >= 1e6) return `${formatScaled(value / 1e6)}M`;
-        if (value >= 1e3) return `${formatScaled(value / 1e3)}k`;
-        return String(value);
-      };
-
       document.querySelector('.fit-list').innerHTML = AUDIENCES
         .map((audience) => `<li>${audience}</li>`)
         .join('');
@@ -2534,7 +2541,6 @@ assert(check == 0x2144DF1C);</code></pre>
       const recordClose = document.querySelector('.record-close');
       const recordKicker = recordClose.querySelector('.record-kicker');
       const recordTotal = recordClose.querySelector('.record-total');
-      const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const topOffset = () => window.innerWidth <= 900 ? 64 : 24;
       let activeFilter = null;
       const visibleProjectCards = () => projectCards.filter((card) => !card.hidden);
@@ -2789,6 +2795,14 @@ assert(check == 0x2144DF1C);</code></pre>
         }
       });
 
+      // Cross-page fragment links (/portfolio/#contact, /portfolio/#blog,
+      // /portfolio/#services) land before cards render and get shifted by the
+      // layout growth; re-align once the layout is final.
+      if (['#contact', '#blog', '#services'].includes(location.hash)) {
+        updatePageView({ alignServices: true });
+      }
+      }); // end whenCardsReady
+
       document.getElementById('services-title').textContent = `${numberWord(SERVICES.length)} simple ways to get unstuck.`;
       document.querySelector('.services').innerHTML = SERVICES
         .map((service) => `
@@ -2817,6 +2831,22 @@ assert(check == 0x2144DF1C);</code></pre>
       const copyButton = chooser.querySelector('.copy-email');
       const copyStatus = chooser.querySelector('.copy-status');
       const email = 'shipthisgroup@gmail.com';
+      // In-app browsers (LinkedIn, Facebook, Instagram, X) often swallow
+      // target="_blank" taps: the WebView drops the popup and the tap does
+      // nothing. There, follow the link in the same view instead.
+      const inAppBrowser = /LinkedInApp|FBAN|FB_IAB|FBAV|Instagram|Twitter|Line\/|Pinterest|Snapchat|GSA\//i.test(navigator.userAgent);
+      if (inAppBrowser) {
+        document.addEventListener('click', (event) => {
+          const link = event.target.closest('a[target="_blank"]');
+          if (!link || event.defaultPrevented) return;
+          if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          const url = link.getAttribute('href');
+          if (!url || url.startsWith('#')) return;
+          event.preventDefault();
+          window.location.href = url;
+        });
+      }
+
       const scrollToTop = document.querySelector('.scroll-to-top');
       const scrollToServices = document.querySelector('.scroll-to-services');
       const scrollToBottom = document.querySelector('.scroll-to-bottom');
@@ -2856,7 +2886,17 @@ assert(check == 0x2144DF1C);</code></pre>
         return Math.max(0, docHeight - window.innerHeight);
       };
       scrollToBottom.addEventListener('click', () => {
+        // content-visibility placeholders underestimate scrollHeight, so a
+        // plain measure stops short of the true bottom. Force every card
+        // visible for the measure and the scroll; the class comes off on the
+        // next frame, after the scroll has landed.
+        const root = document.documentElement;
+        root.classList.add('view-switching');
         window.scrollTo({ top: maxScrollTop(), behavior: 'auto' });
+        window.requestAnimationFrame(() => {
+          root.classList.remove('view-switching');
+          scheduleScrollControlUpdate();
+        });
       });
       window.addEventListener('scroll', scheduleScrollControlUpdate, { passive: true });
       window.addEventListener('resize', scheduleScrollControlUpdate);
@@ -2876,7 +2916,10 @@ assert(check == 0x2144DF1C);</code></pre>
         trigger.addEventListener('click', () => {
           lastTrigger = trigger;
           copyStatus.textContent = '';
-          chooser.showModal();
+          // Older in-app WebViews predate <dialog>; fall back to a
+          // non-modal open rather than throwing and doing nothing.
+          if (typeof chooser.showModal === 'function') chooser.showModal();
+          else chooser.setAttribute('open', '');
         });
       });
 
@@ -3031,13 +3074,18 @@ assert(check == 0x2144DF1C);</code></pre>
         history.pushState({ sectionId }, '', next);
       };
 
+      let servicesAlignToken = 0;
       const scrollServicesPrecisely = (behavior = 'auto') => {
+        // Rapid re-clicks cancel the previous alignment run instead of
+        // fighting it: only the latest token may scroll.
+        const token = ++servicesAlignToken;
         const title = document.getElementById('services-title');
         const rail = document.querySelector('.chapter-rail');
         document.documentElement.classList.add('view-switching');
         let frame = 0;
         let stableFrames = 0;
         const align = () => {
+          if (token !== servicesAlignToken) return;
           const railHeight = rail && rail.classList.contains('is-stuck') ? rail.getBoundingClientRect().height : 0;
           const targetTop = headerHeight() + railHeight;
           const delta = title.getBoundingClientRect().top - targetTop;
@@ -3056,10 +3104,11 @@ assert(check == 0x2144DF1C);</code></pre>
           }
         };
         window.requestAnimationFrame(() => {
+          if (token !== servicesAlignToken) return;
           document.getElementById('services').scrollIntoView({ block: 'start', behavior: 'auto' });
           window.requestAnimationFrame(align);
         });
-        document.fonts?.ready.then(() => window.requestAnimationFrame(align));
+        document.fonts?.ready.then(() => { if (token === servicesAlignToken) window.requestAnimationFrame(align); });
       };
 
       const scrollToSectionTop = (sectionId, behavior = 'auto') => {
@@ -3148,6 +3197,16 @@ assert(check == 0x2144DF1C);</code></pre>
         updateActiveNavigation(sectionId);
         hideContinuePosition();
         if (alignServices && sectionId === 'services') scrollServicesPrecisely();
+        else if (alignServices && (sectionId === 'contact' || sectionId === 'blog')) {
+          // Cross-page fragment arrivals (#contact, #blog from per-post
+          // pages): land precisely under the sticky header instead of
+          // wherever the native fragment scroll happened to stop.
+          const target = document.getElementById(sectionId);
+          if (target) {
+            const top = window.scrollY + target.getBoundingClientRect().top - headerHeight() - 8;
+            window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+          }
+        }
         scheduleScrollControlUpdate();
       };
       window.addEventListener('hashchange', () => updatePageView());
@@ -3165,7 +3224,9 @@ assert(check == 0x2144DF1C);</code></pre>
        panel below the marker on touch. */
     (() => {
       const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-      const WIGMORE = window.__WIGMORE__ || {};
+      // Read lazily at open time: the payload script is deferred, so an early
+      // read here could freeze an empty map forever.
+      const wigmoreData = () => window.__WIGMORE__ || {};
       const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
       const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
       let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
@@ -3313,7 +3374,7 @@ assert(check == 0x2144DF1C);</code></pre>
 
       function openL1(marker) {
         const key = marker.getAttribute('data-wigmore');
-        const a = WIGMORE[key];
+        const a = wigmoreData()[key];
         if (!a) return;
         closeAll();
         const slotName = key.split('|')[1] || '';
@@ -3328,7 +3389,7 @@ assert(check == 0x2144DF1C);</code></pre>
 
       function openL2(termBtn) {
         const key = l1 ? l1.dataset.wigKey : null;
-        const a = key ? WIGMORE[key] : null;
+        const a = key ? wigmoreData()[key] : null;
         const n = parseInt(termBtn.getAttribute('data-node'), 10);
         if (!a || !n) return;
         if (FINE) {

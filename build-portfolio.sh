@@ -22,7 +22,7 @@ cards = json.load(open('data/cards.json'))
 chips = {c['key']: c for c in json.load(open('data/chips.json'))}
 assert json.dumps(cards, ensure_ascii=False, separators=(",", ":")) in data_js, "baked cards JSON missing from cards-data.js"
 assert json.dumps(chips, ensure_ascii=False, separators=(",", ":")) in data_js, "baked chips JSON missing from cards-data.js"
-assert '<script src="cards-data.js"></script>' in page, "cards-data.js script tag missing from page"
+assert '<script src="cards-data.js" defer></script>' in page, "cards-data.js script tag missing from page"
 assert 'window.__PROJECTS__ =' not in page, "card payload should not be inline in page"
 # The app script reads these globals: a missing declaration is a runtime
 # ReferenceError that node --check cannot catch (it killed card rendering

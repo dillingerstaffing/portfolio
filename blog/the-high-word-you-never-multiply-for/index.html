@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260914-152208" />
+  <meta name="build-version" content="v20260914-154904" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The High Word You Never Multiply For &middot; Blog &middot; Chris Dillinger</title>
@@ -872,7 +872,9 @@ uint64_t c = (s &lt; p0);      /* 1 iff (mid &lt;&lt; 32) + p0 wrapped */</code>
   <script>
 (() => {
       const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-      const WIGMORE = window.__WIGMORE__ || {};
+      // Read lazily at open time: the payload script is deferred, so an early
+      // read here could freeze an empty map forever.
+      const wigmoreData = () => window.__WIGMORE__ || {};
       const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
       const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
       let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
@@ -1020,7 +1022,7 @@ uint64_t c = (s &lt; p0);      /* 1 iff (mid &lt;&lt; 32) + p0 wrapped */</code>
 
       function openL1(marker) {
         const key = marker.getAttribute('data-wigmore');
-        const a = WIGMORE[key];
+        const a = wigmoreData()[key];
         if (!a) return;
         closeAll();
         const slotName = key.split('|')[1] || '';
@@ -1035,7 +1037,7 @@ uint64_t c = (s &lt; p0);      /* 1 iff (mid &lt;&lt; 32) + p0 wrapped */</code>
 
       function openL2(termBtn) {
         const key = l1 ? l1.dataset.wigKey : null;
-        const a = key ? WIGMORE[key] : null;
+        const a = key ? wigmoreData()[key] : null;
         const n = parseInt(termBtn.getAttribute('data-node'), 10);
         if (!a || !n) return;
         if (FINE) {

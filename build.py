@@ -7,8 +7,9 @@ Flow:
   2. Run drift-gate.py against the source PROOF.md checkouts. Abort on any
      real contradiction (gate exit != 0). index.html is never touched then.
   3. Bake the data into cards-data.js (a static sibling file loaded with a
-     plain <script src> tag before the app script, so execution order is
-     unchanged):
+     deferred <script src> tag before the app script; deferred scripts run in
+     order before DOMContentLoaded, so execution order is unchanged and the
+     payload never blocks parsing):
        - window.__PROJECTS__  -> the 140 cards (deterministic JSON)
        - window.__CHIPS_BY_KEY__ -> chips keyed by chip key (deterministic JSON)
        - window.__WIGMORE__   -> Wigmore slot analyses, keyed "item|slot"
@@ -1461,8 +1462,8 @@ def build(systems_lab, baremetal, xv6):
     )
     (HERE / "cards-data.js").write_text(data_js, encoding="utf-8")
 
-    if template.count('<script src="cards-data.js"></script>') != 1:
-        fail('expected exactly one <script src="cards-data.js"></script> in template')
+    if template.count('<script src="cards-data.js" defer></script>') != 1:
+        fail('expected exactly one <script src="cards-data.js" defer></script> in template')
     for leftover in ("__PROJECTS_JSON__", "__CHIPS_JSON__", "__WIGMORE_JSON__"):
         if leftover in template:
             fail(f"stale data placeholder remains in template: {leftover}")
