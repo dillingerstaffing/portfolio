@@ -18077,4 +18077,62 @@
     "terminalLabel": "Verified src-mcounteren-tm-u-gate QEMU output",
     "showRepoLink": true
   }
+,
+  {
+    "id": "src-stval-warl-probe",
+    "kicker": "RISC-V PRIVILEGED",
+    "title": "stval WARL write legalization, QEMU",
+    "summary": "Supervisor writes to stval legalize under the WARL rule: an all-ones write sticks verbatim and a zero write clears, while trap entry overwrites the register with the faulting instruction's encoding. The boot value is restored bit-for-bit at the end.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines stval as WARL: software writes legalize to values the hart permits, and trap entry overwrites the register with trap information. The proof verifies this contract on QEMU 8.2.2: an all-ones S-mode write reads back 0xffffffffffffffff, a zero write reads back 0x0, and a deliberate illegal-instruction trap overwrites stval with the faulting instruction encoding 0x7ff022f3, 14 checks, 0 mismatches."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The proof checks architecturally legalized readbacks, 14 checks, 0 mismatches. Which values stval retains is decided by the WARL contract, not by pipeline, cache, or predictor behavior."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "Trap-entry firmware reads stval to classify traps, so the hart's legalization behavior is firmware-relevant: the proof shows software writes stick verbatim on this hart, trap entry overwrites them with the faulting encoding, and the boot value restores bit-for-bit."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Not here because no kernel path writes stval: the kernel consumes trap-written stval values such as fault addresses, and software-write legalization cannot alter what the hart reports on a trap."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The mechanism is a write-legalization rule: written values are mapped into the permitted set before they stick. The same clamp-on-write pattern appears in portable code wherever a field must hold only legal values."
+      }
+    },
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-warl-probe/PROOF.md"
+    },
+    "portability": null,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "14 in-program checks on QEMU 8.2.2: an all-ones S-mode stval write reads back verbatim, a zero write reads back zero, a deliberate illegal CSR read traps with scause 2 and stval equal to the faulting instruction word 0x7ff022f3, and the boot value restores exactly, 0 mismatches"
+      ],
+      [
+        "CHECKSUM",
+        "0x0edf2feb40411329, byte-identical across 3 runs"
+      ],
+      [
+        "ENVIRONMENT",
+        "QEMU 8.2.2, M/S-mode on virt board"
+      ]
+    ],
+    "terminalName": "riscv-baremetal-demo / src / stval-warl-probe",
+    "terminalOutput": "$ qemu-system-riscv64 -machine virt -nographic -bios none -kernel stval-warl-probe.elf\nboot: stval=0x0\nmedeleg readback=0x4\nphase 2: csrw stval, 0xffffffffffffffff; readback = 0xffffffffffffffff\nphase 3: csrw stval, 0x0; readback = 0x0\n  faulting instruction word = 0x7ff022f3\n  scause  = 0x2\n  stval   = 0x7ff022f3\n  sepc    = 0x80000486\n  traps   = 1\n  t0 after trap = 0xdeadbeefdeadbeef (sentinel intact)\nchecksum (FNV-1a over verdict values) = 0x0edf2feb40411329\nRESULT: PASS",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "checks": 14,
+    "failures": 0,
+    "stressItems": 0,
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/stval-warl-probe",
+    "repoLabel": "GitHub: riscv-baremetal-demo/src/stval-warl-probe",
+    "terminalLabel": "Verified src-stval-warl-probe QEMU output",
+    "showRepoLink": true
+  }
 ]

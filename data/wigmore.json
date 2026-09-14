@@ -127999,5 +127999,391 @@
         }
       ]
     }
+,
+    {
+        "item": "src-stval-warl-probe",
+        "kind": "card",
+        "slot": "ISA",
+        "probandum": "The privileged ISA defines stval as WARL: software writes legalize to values the hart permits, and trap entry overwrites the register with trap information. The proof verifies this contract on QEMU 8.2.2: an all-ones S-mode write reads back 0xffffffffffffffff, a zero write reads back 0x0, and a deliberate illegal-instruction trap overwrites stval with the faulting instruction encoding 0x7ff022f3, 14 checks, 0 mismatches.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "The privileged ISA defines stval as WARL: software writes legalize to values the hart permits, and trap entry overwrites the register with trap information. The proof verifies this contract on QEMU 8.2.2: an all-ones S-mode write reads back 0xffffffffffffffff, a zero write reads back 0x0, and a deliberate illegal-instruction trap overwrites stval with the faulting instruction encoding 0x7ff022f3, 14 checks, 0 mismatches."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "14 in-program checks on QEMU 8.2.2: all-ones S-mode stval write reads back 0xffffffffffffffff, zero write reads back 0x0, a deliberate illegal CSR read traps with scause 2 and stval equal to the faulting instruction word 0x7ff022f3, boot value restored exactly, 0 mismatches; checksum 0x0edf2feb40411329 identical across 3 runs",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/stval-warl-probe/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-warl-probe/PROOF.md"
+                }
+            },
+            {
+                "kind": "evidence",
+                "n": 3,
+                "text": "The privileged architecture defines stval as a WARL register holding trap-specific information written on trap entry",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V privileged spec, trap-value registers",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "kind": "penultimate",
+                "n": 4,
+                "text": "Writing all-ones to stval reads back all-ones, writing zero reads back zero, and the trap overwrites stval with the faulting encoding, so the hart honors the WARL contract for stval."
+            },
+            {
+                "kind": "generalization",
+                "n": 5,
+                "text": "A register whose software writes legalize to a deterministic value and whose trap writes carry the trap record is the machine contract in action."
+            },
+            {
+                "kind": "generalization",
+                "n": 6,
+                "text": "The ISA layer lights when the verified claim depends on the machine contract: instruction, CSR, trap, or memory-model behavior."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    5
+                ],
+                "to": [
+                    4
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the penultimate claim under the warrant."
+            },
+            {
+                "from": [
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "src-stval-warl-probe",
+        "kind": "card",
+        "slot": "MICROARCH",
+        "probandum": "The proof checks architecturally legalized readbacks, 14 checks, 0 mismatches. Which values stval retains is decided by the WARL contract, not by pipeline, cache, or predictor behavior.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "The proof checks architecturally legalized readbacks, 14 checks, 0 mismatches. Which values stval retains is decided by the WARL contract, not by pipeline, cache, or predictor behavior."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "14 in-program checks: readbacks are architecturally legalized values, identical on all 3 runs; 0 mismatches; checksum 0x0edf2feb40411329",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/stval-warl-probe/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-warl-probe/PROOF.md"
+                }
+            },
+            {
+                "kind": "evidence",
+                "n": 3,
+                "text": "The privileged architecture defines stval as a WARL register holding trap-specific information written on trap entry",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V privileged spec, trap-value registers",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "kind": "penultimate",
+                "n": 4,
+                "text": "The readbacks depend only on the WARL rule, so no pipeline, cache, or predictor behavior can change the verdict."
+            },
+            {
+                "kind": "generalization",
+                "n": 5,
+                "text": "A property that holds identically regardless of implementation timing is decided above the microarchitecture."
+            },
+            {
+                "kind": "generalization",
+                "n": 6,
+                "text": "The microarchitecture layer stays dim when the verified property is invariant across implementations."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    5
+                ],
+                "to": [
+                    4
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the penultimate claim under the warrant."
+            },
+            {
+                "from": [
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "src-stval-warl-probe",
+        "kind": "card",
+        "slot": "FIRMWARE",
+        "probandum": "Trap-entry firmware reads stval to classify traps, so the hart's legalization behavior is firmware-relevant: the proof shows software writes stick verbatim on this hart, trap entry overwrites them with the faulting encoding, and the boot value restores bit-for-bit.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "Trap-entry firmware reads stval to classify traps, so the hart's legalization behavior is firmware-relevant: the proof shows software writes stick verbatim on this hart, trap entry overwrites them with the faulting encoding, and the boot value restores bit-for-bit."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "Trap-entry probe: the S-mode handler captured scause 2, stval 0x7ff022f3, sepc at the fault site; software writes stuck verbatim and the boot value restored bit-for-bit",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/stval-warl-probe/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-warl-probe/PROOF.md"
+                }
+            },
+            {
+                "kind": "evidence",
+                "n": 3,
+                "text": "The privileged architecture defines stval as a WARL register holding trap-specific information written on trap entry",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V privileged spec, trap-value registers",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "kind": "penultimate",
+                "n": 4,
+                "text": "Firmware trap handlers read stval to classify traps, and the probe shows exactly which values this hart reports after software writes and after traps."
+            },
+            {
+                "kind": "generalization",
+                "n": 5,
+                "text": "A register contract that trap-entry code depends on is load-bearing for firmware."
+            },
+            {
+                "kind": "generalization",
+                "n": 6,
+                "text": "The firmware layer lights when the verified property is load-bearing for boot-time or trap-time machine-mode software."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    5
+                ],
+                "to": [
+                    4
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the penultimate claim under the warrant."
+            },
+            {
+                "from": [
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "src-stval-warl-probe",
+        "kind": "card",
+        "slot": "KERNEL",
+        "probandum": "Not here because no kernel path writes stval: the kernel consumes trap-written stval values such as fault addresses, and software-write legalization cannot alter what the hart reports on a trap.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "Not here because no kernel path writes stval: the kernel consumes trap-written stval values such as fault addresses, and software-write legalization cannot alter what the hart reports on a trap."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "The probe performs no kernel operation; the kernel's only contact with stval is reading trap-written values, which the module shows are unaffected by software-write legalization",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/stval-warl-probe/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-warl-probe/PROOF.md"
+                }
+            },
+            {
+                "kind": "evidence",
+                "n": 3,
+                "text": "The privileged architecture defines stval as a WARL register holding trap-specific information written on trap entry",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V privileged spec, trap-value registers",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "kind": "penultimate",
+                "n": 4,
+                "text": "The kernel never writes stval; it only reads values the hart wrote on traps, which software-write legalization cannot alter."
+            },
+            {
+                "kind": "generalization",
+                "n": 5,
+                "text": "A property invisible to every path at a layer leaves that layer correctly dim."
+            },
+            {
+                "kind": "generalization",
+                "n": 6,
+                "text": "A layer stays dim when the verified property is invariant for all work at that layer."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    5
+                ],
+                "to": [
+                    4
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the penultimate claim under the warrant."
+            },
+            {
+                "from": [
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+            }
+        ]
+    },
+    {
+        "item": "src-stval-warl-probe",
+        "kind": "card",
+        "slot": "ALGORITHM",
+        "probandum": "The mechanism is a write-legalization rule: written values are mapped into the permitted set before they stick. The same clamp-on-write pattern appears in portable code wherever a field must hold only legal values.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "The mechanism is a write-legalization rule: written values are mapped into the permitted set before they stick. The same clamp-on-write pattern appears in portable code wherever a field must hold only legal values."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "Write-legalization verified as a rule: every written value maps into the permitted set before sticking, 14 checks, 0 mismatches",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/stval-warl-probe/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/stval-warl-probe/PROOF.md"
+                }
+            },
+            {
+                "kind": "evidence",
+                "n": 3,
+                "text": "The privileged architecture defines stval as a WARL register holding trap-specific information written on trap entry",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V privileged spec, trap-value registers",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "kind": "penultimate",
+                "n": 4,
+                "text": "The hart maps every written value into its permitted set before the value sticks, which is the clamp-on-write rule."
+            },
+            {
+                "kind": "generalization",
+                "n": 5,
+                "text": "A write-legalization rule verified on the hart is the same contract portable code implements when a field must hold only legal values."
+            },
+            {
+                "kind": "generalization",
+                "n": 6,
+                "text": "The algorithm layer lights when the verified mechanism is a portable computational rule."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    5
+                ],
+                "to": [
+                    4
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the penultimate claim under the warrant."
+            },
+            {
+                "from": [
+                    4
+                ],
+                "via": [
+                    6
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The penultimate claim plus the layer warrant yields the verdict in (1)."
+            }
+        ]
+    }
   ]
 }
