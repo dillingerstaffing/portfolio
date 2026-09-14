@@ -1384,6 +1384,10 @@ def build_feed_page(feed, stamp, template):
       this filter. Try clearing the search.</p>
       <p class="feed-tip">Spotted something?
       <button type="button" class="feed-tip-btn" id="feed-tip-btn">Send it over</button>.</p>
+      <p class="feed-tip">Stuck on a board or a crash?
+      Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up
+      from $500, C audit from $350.
+      <a class="feed-tip-btn" href="{SITE_PATH}/#contact">Send the details</a>.</p>
     </section>
     <dialog class="contact-chooser" id="feed-chooser" aria-labelledby="feed-chooser-title">
       <div class="chooser-head">
@@ -1409,7 +1413,7 @@ def build_feed_page(feed, stamp, template):
   </main>
   <footer class="frame">
     <span>Chris / C, firmware, and OS internals</span>
-    <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">\u2197</span></a></span>
+    <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">\u2197</span></a> <span aria-hidden="true">\u00b7</span> <a href="https://dillingerstaffing.github.io/tapeout/" target="_blank" rel="noopener">Tapeout <span aria-hidden="true">\u2197</span></a> <span aria-hidden="true">\u00b7</span> <a href="https://dillingerstaffing.github.io/old-iron/" target="_blank" rel="noopener">Old Iron <span aria-hidden="true">\u2197</span></a> <span aria-hidden="true">\u00b7</span> <a href="https://dillingerstaffing.github.io/unstuck/" target="_blank" rel="noopener">Unstuck <span aria-hidden="true">\u2197</span></a></span>
   </footer>
   <script src="feed-ranker.js"></script>
   <script src="feed-ranker-console.js"></script>
