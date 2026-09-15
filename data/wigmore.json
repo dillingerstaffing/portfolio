@@ -128764,6 +128764,276 @@
                 "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
             }
         ]
+    },
+    {
+        "item": "src-medeleg-load-pagefault",
+        "kind": "card",
+        "slot": "ISA",
+        "probandum": "Matters at ISA because medeleg is the privileged machine contract for trap delegation: bit 13 selects the destination for load page faults, and the proof shows the same S-mode load from an unmapped page arriving in M-mode with mcause 0xd when the bit is clear and in S-mode with scause 0xd and stval at the fault page when the bit is set.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "Matters at ISA because medeleg is the privileged machine contract for trap delegation: bit 13 selects the destination for load page faults, and the proof shows the same S-mode load from an unmapped page arriving in M-mode with mcause 0xd when the bit is clear and in S-mode with scause 0xd and stval at the fault page when the bit is set."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The proof log records the medeleg write/readback pairs and the per-phase trap records: phase A traps once in S-mode with scause 0xd, sepc 0x800002f2 at the load, and stval 0x80080000 at the fault page; phase B traps once in M-mode with mcause 0xd, mepc 0x80000378, and mtval 0x80080000.",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src-medeleg-load-pagefault proof log, spec rows",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-load-pagefault/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The RISC-V privileged architecture defines medeleg bit 13 as the delegation bit for load page faults (exception code 13).",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V ISA Manual, privileged architecture",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "When the verification performs the exact CSR writes the machine contract describes and reads back the contract's defined outcomes, the ISA slot claim is established."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The logged readbacks and trap records match the delegation contract bit 13 defines."
+            }
+        ]
+    },
+    {
+        "item": "src-medeleg-load-pagefault",
+        "kind": "card",
+        "slot": "MICROARCH",
+        "probandum": "Not at MICROARCH because the proof asserts trap destinations, cause codes, and exact trap pcs across 3 byte-identical runs, never timing. Moving cache or pipeline behavior changes when the load faults, never whether medeleg bit 13 selects M-mode or S-mode, and the 34 checks assert only the routing.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "Not at MICROARCH because the proof asserts trap destinations, cause codes, and exact trap pcs across 3 byte-identical runs, never timing. Moving cache or pipeline behavior changes when the load faults, never whether medeleg bit 13 selects M-mode or S-mode, and the 34 checks assert only the routing."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The proof log contains no cycle counts and no timing assertions: the 34 checks assert only trap destinations, cause codes, and exact trap pcs, and the three run logs are byte-identical.",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src-medeleg-load-pagefault proof log, spec rows",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-load-pagefault/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "Trap destination selection by the medeleg CSR is an architectural routing decision, independent of pipeline, cache, or predictor behavior.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V ISA Manual, privileged architecture",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "A claim whose evidence asserts only architectural outcomes across byte-identical runs cannot depend on microarchitectural timing behavior."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The logged readbacks and trap records match the delegation contract bit 13 defines."
+            }
+        ]
+    },
+    {
+        "item": "src-medeleg-load-pagefault",
+        "kind": "card",
+        "slot": "FIRMWARE",
+        "probandum": "Matters at FIRMWARE because trap delegation is configured by M-mode boot firmware: the proof is exactly that firmware-level act, writing medeleg bit 13, dropping to S-mode, and executing the faulting load, so the claim leans on boot-time machine-mode configuration.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "Matters at FIRMWARE because trap delegation is configured by M-mode boot firmware: the proof is exactly that firmware-level act, writing medeleg bit 13, dropping to S-mode, and executing the faulting load, so the claim leans on boot-time machine-mode configuration."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The proof's M-mode phase writes medeleg bit 13 (write 0x2000, readback 0x2000) and drops to S-mode with sret before executing the faulting load; boot firmware owns both acts.",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src-medeleg-load-pagefault proof log, spec rows",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-load-pagefault/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The RISC-V privileged architecture assigns trap delegation configuration to M-mode, the firmware layer.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V ISA Manual, privileged architecture",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "When the measured behavior is exactly the firmware-level act of configuring delegation, the firmware slot applies."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The logged readbacks and trap records match the delegation contract bit 13 defines."
+            }
+        ]
+    },
+    {
+        "item": "src-medeleg-load-pagefault",
+        "kind": "card",
+        "slot": "KERNEL",
+        "probandum": "Not at KERNEL because no kernel subsystem takes part in the claim: the S-mode handler is a test stub recording scause, sepc, and stval, not a scheduler or memory manager, and the routing verdict holds identically under any kernel.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "Not at KERNEL because no kernel subsystem takes part in the claim: the S-mode handler is a test stub recording scause, sepc, and stval, not a scheduler or memory manager, and the routing verdict holds identically under any kernel."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The S-mode handler in the proof is a test stub that records scause, sepc, sstatus, and stval; no scheduler, memory manager, or driver runs in either phase.",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src-medeleg-load-pagefault proof log, spec rows",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-load-pagefault/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "No kernel subsystem is required for a bare-metal delegation routing claim to hold.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V ISA Manual, privileged architecture",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "When no kernel subsystem participates in the measured path, the kernel slot does not apply."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The logged readbacks and trap records match the delegation contract bit 13 defines."
+            }
+        ]
+    },
+    {
+        "item": "src-medeleg-load-pagefault",
+        "kind": "card",
+        "slot": "ALGORITHM",
+        "probandum": "Not at ALGORITHM because selecting a trap destination through a delegation CSR is a hardware register contract stated in RISC-V privileged terms (medeleg, mcause, scause). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "Not at ALGORITHM because selecting a trap destination through a delegation CSR is a hardware register contract stated in RISC-V privileged terms (medeleg, mcause, scause). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The mechanism is stated entirely in RISC-V privileged terms: medeleg bit 13, mcause 0xd, scause 0xd, sepc, stval; there is no ISA-independent computation to port.",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src-medeleg-load-pagefault proof log, spec rows",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-load-pagefault/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "A portability claim requires the mechanism to be restatable without its home ISA.",
+                "source": {
+                    "tier": "spec",
+                    "cite": "RISC-V ISA Manual, privileged architecture",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "An argument that cannot be restated without its ISA fails the identical-on-every-ISA test, so the algorithm slot stays dim."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The logged readbacks and trap records match the delegation contract bit 13 defines."
+            }
+        ]
     }
   ]
 }
