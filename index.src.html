@@ -3538,7 +3538,7 @@ if ('serviceWorker' in navigator) {
       let checking = false;
       let reloadRequested = false;
 
-      document.addEventListener('visibilitychange', async () => {
+      async function checkBuild() {
         if (document.visibilityState !== 'visible' || checking || reloadRequested || !currentVersion) return;
         checking = true;
 
@@ -3557,11 +3557,16 @@ if ('serviceWorker' in navigator) {
             window.location.reload();
           }
         } catch (_) {
-          // A failed background check leaves the current page untouched.
+          // A failed check leaves the current page untouched.
         } finally {
           checking = false;
         }
-      });
+      }
+
+      document.addEventListener('visibilitychange', checkBuild);
+      // A fresh launch (the home-screen app) may never fire visibilitychange,
+      // so check once shortly after load as well.
+      setTimeout(checkBuild, 2500);
     })();
   </script>
   <script>
