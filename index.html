@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260915-145500">
+  <meta name="build-version" content="v20260915-221141">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -105,7 +105,7 @@
 
     * { box-sizing: border-box; }
     [hidden] { display: none !important; }
-    html { background: #0c0f0d; scroll-behavior: smooth;  overflow-x: clip; }
+    html { background: #0c0f0d; scroll-behavior: smooth; }
     html.view-switching { scroll-behavior: auto; }
     html.view-switching .project { content-visibility: visible; }
     /* Deep-link veil: hidden until the permalink landing completes, so the
@@ -546,6 +546,8 @@
     .project-hire { background: none; border-style: none none solid none; cursor: pointer; font-family: var(--mono); font-size: 11px; margin-top: 10px; padding: 0 0 3px; }
     button.contact-email { background: none; border: 0; border-bottom: 1px solid #394138; cursor: pointer; font: inherit; font-size: 11px; padding: 0; text-align: left; }
     .section-cta { display: flex; justify-content: flex-end; margin-top: 36px; }
+    .overflow-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 24px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px; }
+    .overflow-line p { margin: 0; color: var(--dim); font-size: 12px; }
     .text-cta { background: none; border: 0; border-bottom: 1px solid #394138; color: var(--dim); font: 11px var(--mono); letter-spacing: .04em; padding: 0 0 3px; cursor: pointer; }
     .text-cta:hover, .text-cta:focus-visible { color: var(--acid); border-bottom-color: var(--acid); }
 
@@ -2265,6 +2267,10 @@ assert(check == 0x2144DF1C);</code></pre>
       <div class="section-cta">
         <button class="cta-trigger text-cta" type="button">Start your project <span aria-hidden="true">↗</span></button>
       </div>
+      <div class="overflow-line">
+        <p>Engineering services firms: subcontract firmware and bring-up hours, white-label or bench work. Weekly availability on request.</p>
+        <button class="cta-trigger text-cta" type="button" data-brief="overflow">Overflow / subcontract work <span aria-hidden="true">↗</span></button>
+      </div>
     </section>
 
     <section class="frame section normal-section" aria-labelledby="approach-title">
@@ -2417,6 +2423,34 @@ assert(check == 0x2144DF1C);</code></pre>
         'What is going wrong or needs building',
         'Your timeline'
       ];
+
+      // Pre-filled briefs for the contact chooser. The default brief serves
+      // board-owner buyers; the overflow brief serves engineering services
+      // firms buying subcontract firmware hours. Triggers opt in with
+      // data-brief="overflow"; everything else gets the default.
+      const BRIEFS = {
+        standard: {
+          subject: 'Firmware project scope',
+          body: ['Device or project:', 'Chip or board:', 'What is going wrong or needs building:', 'Timeline:']
+        },
+        overflow: {
+          subject: 'Overflow / subcontract firmware work',
+          body: ['Your firm or team:', 'The workload (bring-up, drivers, kernel, bench work):', 'Hours per week and timeline:', 'White-label or bench notes:']
+        }
+      };
+
+      const setChooserBrief = (brief) => {
+        const subject = encodeURIComponent(brief.subject);
+        const body = encodeURIComponent(brief.body.join('\n'));
+        chooser.querySelectorAll('a.chooser-option').forEach((link) => {
+          const href = link.getAttribute('href') || '';
+          if (href.startsWith('mailto:')) {
+            link.setAttribute('href', `mailto:${email}?subject=${subject}&body=${body}`);
+          } else if (href.startsWith('https://mail.google.com/mail/')) {
+            link.setAttribute('href', `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${subject}&body=${body}`);
+          }
+        });
+      };
 
       whenCardsReady(() => {
       const PROJECTS = window.__PROJECTS__;
@@ -3084,6 +3118,7 @@ assert(check == 0x2144DF1C);</code></pre>
         if (!trigger) return;
         lastTrigger = trigger;
         copyStatus.textContent = '';
+        setChooserBrief(BRIEFS[trigger.dataset.brief] || BRIEFS.standard);
         // Older in-app WebViews predate <dialog>; fall back to a
         // non-modal open rather than throwing and doing nothing.
         if (typeof chooser.showModal === 'function') chooser.showModal();
