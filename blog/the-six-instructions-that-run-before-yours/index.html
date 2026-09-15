@@ -6,24 +6,25 @@
   <meta name="build-version" content="v20260915-152549" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
-  <title>The Signal Wire &middot; Chris Dillinger</title>
-  <meta name="description" content="The Signal Wire: the week&#x27;s reading for low-level engineers. RISC-V, kernels, hardware, and tooling, updated every Monday." />
-  <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/feed/" />
-  <meta property="og:type" content="website" />
+  <title>The Six Instructions That Run Before Yours &middot; Blog &middot; Chris Dillinger</title>
+  <meta name="description" content="On QEMU&#x27;s virt board with no firmware, every hart wakes at 0x1000 to a 64-byte ROM. I dumped it through the UART and decoded it against QEMU&#x27;s source: six instructions, then your code. Four harts, all four arrived; with OpenSBI, only one did. The pecking order is firmware&#x27;s idea, not hardware&#x27;s." />
+  <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/" />
+  <meta property="og:type" content="article" />
   <meta property="og:site_name" content="Chris Dillinger" />
-  <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/feed/" />
-  <meta property="og:title" content="The Signal Wire &middot; Chris Dillinger" />
-  <meta property="og:description" content="The Signal Wire: the week&#x27;s reading for low-level engineers. RISC-V, kernels, hardware, and tooling, updated every Monday." />
+  <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/" />
+  <meta property="og:title" content="The Six Instructions That Run Before Yours · Blog · Chris Dillinger" />
+  <meta property="og:description" content="On QEMU&#x27;s virt board with no firmware, every hart wakes at 0x1000 to a 64-byte ROM. I dumped it through the UART and decoded it against QEMU&#x27;s source: six instructions, then your code. Four harts, all four arrived; with OpenSBI, only one did. The pecking order is firmware&#x27;s idea, not hardware&#x27;s." />
   <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="The Signal Wire &middot; Chris Dillinger" />
-  <meta name="twitter:description" content="The Signal Wire: the week&#x27;s reading for low-level engineers. RISC-V, kernels, hardware, and tooling, updated every Monday." />
+  <meta name="twitter:title" content="The Six Instructions That Run Before Yours · Blog · Chris Dillinger" />
+  <meta name="twitter:description" content="On QEMU&#x27;s virt board with no firmware, every hart wakes at 0x1000 to a 64-byte ROM. I dumped it through the UART and decoded it against QEMU&#x27;s source: six instructions, then your code. Four harts, all four arrived; with OpenSBI, only one did. The pecking order is firmware&#x27;s idea, not hardware&#x27;s." />
   <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
   <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "CollectionPage", "name": "The Signal Wire", "description": "The Signal Wire: the week's reading for low-level engineers. RISC-V, kernels, hardware, and tooling, updated every Monday.", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/feed/"}</script>
+  <meta property="article:published_time" content="2026-09-15T00:00:00-04:00" />
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Six Instructions That Run Before Yours", "datePublished": "2026-09-15", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <style>
@@ -836,380 +837,327 @@
       * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
     }
 
-  </style>
-  <style>
-/* ---- The Signal Wire (feed page) ---- */
-.feed-masthead { padding-block: clamp(56px, 8vw, 110px) clamp(28px, 4vw, 48px); }
-.feed-kicker { display: flex; align-items: center; gap: 10px; margin: 0;
-  color: var(--acid); font-size: 11px; letter-spacing: .24em; }
-.feed-masthead h1 { font: 600 clamp(54px, 9vw, 116px)/0.94 var(--display);
-  letter-spacing: -0.045em; margin: 20px 0 0; }
-.feed-lede { color: var(--muted); max-width: 660px; margin: 22px 0 0;
-  font-size: 14px; }
-.feed-meta { margin-top: 30px; padding: 13px 0; border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line); color: var(--dim); font-size: 11px;
-  letter-spacing: .14em; display: flex; gap: 20px; flex-wrap: wrap; }
-.feed-controls { position: sticky; top: 68px; z-index: 40;
-  background: #0c0f0d; border-bottom: 1px solid var(--line); }
-.feed-controls-inner { display: flex; align-items: center; gap: 12px;
-  flex-wrap: wrap; padding-block: 12px; }
-#feed-search { flex: 1 1 220px; max-width: 340px; background: var(--panel);
-  border: 1px solid var(--line); color: var(--ink);
-  font: 400 13px var(--mono); padding: 10px 14px; border-radius: 0; }
-#feed-search:focus { outline: none; border-color: var(--acid); }
-#feed-search::placeholder { color: var(--dim); }
-.feed-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.feed-chip { border: 1px solid var(--line); background: transparent;
-  color: var(--muted); font: 500 10px/1 var(--mono); letter-spacing: .12em;
-  padding: 10px 13px; cursor: pointer; border-radius: 0; }
-.feed-chip:hover { color: var(--ink); border-color: var(--dim); }
-.feed-chip.is-active { color: var(--acid); border-color: var(--acid); }
-.feed-sort { display: flex; border: 1px solid var(--line); margin-left: auto; }
-.feed-sort button { background: transparent; border: 0; color: var(--dim);
-  font: 500 10px/1 var(--mono); letter-spacing: .12em; padding: 10px 14px;
-  cursor: pointer; border-radius: 0; }
-.feed-sort button + button { border-left: 1px solid var(--line); }
-.feed-sort button.is-active { color: var(--black); background: var(--acid); }
-.feed-count { width: 100%; color: var(--dim); font-size: 10px;
-  letter-spacing: .14em; }
-.feed-list { padding-bottom: clamp(40px, 6vw, 80px); }
-.feed-row-wrap { position: relative; }
-.feed-row-wrap:first-child .feed-row { border-top: 1px solid var(--line); }
-.feed-dismiss { position: absolute; top: 8px; right: 2px; background: transparent;
-  border: 0; color: var(--dim); font: 400 13px/1 var(--mono); cursor: pointer;
-  padding: 4px 8px; opacity: 0; }
-.feed-row-wrap:hover .feed-dismiss, .feed-dismiss:focus-visible { opacity: 1; }
-.feed-dismiss:hover { color: var(--ink); }
-.feed-row { display: grid; grid-template-columns: 56px 1fr 28px; gap: 22px;
-  align-items: start; padding: 24px 0; border-bottom: 1px solid var(--line);
-  text-decoration: none; color: inherit; }
-.feed-row:hover .feed-title { color: var(--acid); }
-.feed-row:hover .feed-go { color: var(--acid); transform: translate(2px, -2px); }
-.sig { display: flex; gap: 3px; padding-top: 6px; }
-.sig i { width: 5px; height: 20px; background: var(--line); }
-.sig i.on { background: var(--acid); }
-.feed-kicker-line { display: block; font-size: 10px; letter-spacing: .16em;
-  color: var(--dim); }
-.feed-title { display: block;
-  font: 500 clamp(20px, 2.8vw, 28px)/1.28 var(--display);
-  letter-spacing: -0.01em; margin-top: 9px; }
-.feed-brief { display: block; color: var(--muted); font-size: 13px;
-  line-height: 1.7; max-width: 760px; margin-top: 10px; }
-.feed-go { color: var(--dim); font-size: 20px; line-height: 1; padding-top: 4px;
-  transition: transform .18s ease, color .18s ease; }
-.feed-empty { padding: 48px 0; color: var(--dim); font-size: 13px; }
-.feed-tip { color: var(--dim); font-size: 13px; padding: 28px 0 8px; }
-.feed-tip-btn { background: none; border: 0; padding: 0; color: var(--acid);
-  font: inherit; cursor: pointer; text-decoration: underline;
-  text-underline-offset: 3px; }
-.feed-tip-btn:hover { color: var(--acid-soft); }
-footer.frame { display: flex; justify-content: space-between; gap: 16px;
-  flex-wrap: wrap; padding-block: 28px; border-top: 1px solid var(--line);
-  color: var(--dim); font-size: 11px; letter-spacing: .06em; }
-footer.frame .elsewhere a { color: var(--muted); text-decoration: none; }
-footer.frame .elsewhere a:hover { color: var(--acid); }
-@media (max-width: 700px) {
-  .feed-row { grid-template-columns: 1fr; gap: 12px; }
-  .sig { padding-top: 0; }
-  .feed-go { display: none; }
-  .feed-sort { margin-left: 0; }
-}
-</style>
+  
+.post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }
+.post-offer a { color: var(--acid); text-decoration: none; }
+.post-offer a:hover { text-decoration: underline; }</style>
 </head>
-<body id="top">
-  <header class="frame topline">
-    <div class="identity">
-      <span class="signal" aria-hidden="true"></span>
-      <strong>Chris</strong>
-      <span>Low-level systems developer</span>
-    </div>
-    <nav aria-label="Primary navigation">
-      <a href="/portfolio/">Home</a>
-      <a href="/portfolio/#blog">Blog</a>
-      <a href="/portfolio/feed/" class="is-active" aria-current="page">Feed</a>
-      <a href="/portfolio/#services">Services</a>
-      <a href="/portfolio/#contact">Contact</a>
-    </nav>
-  </header>
-
-  <main>
-    <section class="frame feed-masthead" aria-labelledby="feed-title">
-      <p class="feed-kicker"><span class="signal" aria-hidden="true"></span>FEED</p>
-      <h1 id="feed-title">The Signal Wire.</h1>
-      <p class="feed-lede">The week&rsquo;s reading for low-level
-      engineers: RISC-V, kernels, hardware, and the tooling around them.
-      Updated every Monday.</p>
-      <div class="feed-meta">
-        <span>11 ITEMS</span>
-        <span>CURATED SEP 14 2026</span>
-        <span>NEXT PASS SEP 21 2026</span>
-      </div>
-    </section>
-    <div class="feed-controls">
-      <div class="frame feed-controls-inner">
-        <label class="visually-hidden" for="feed-search">Search the wire</label>
-        <input id="feed-search" type="search" placeholder="Search the wire"
-               autocomplete="off" />
-        <div class="feed-chips" role="group" aria-label="Filter by topic">
-          <button class="feed-chip is-active" type="button" data-topic="all">ALL</button><button class="feed-chip" type="button" data-topic="riscv-isa">RISC-V ISA</button><button class="feed-chip" type="button" data-topic="riscv-hardware">RISC-V HARDWARE</button><button class="feed-chip" type="button" data-topic="kernel">KERNEL</button><button class="feed-chip" type="button" data-topic="tooling">TOOLING</button><button class="feed-chip" type="button" data-topic="embedded">EMBEDDED</button><button class="feed-chip" type="button" data-topic="hardware-hacking">HARDWARE HACKING</button>
-        </div>
-        <div class="feed-sort" role="group" aria-label="Sort the wire">
-          <button type="button" class="is-active" data-sort="newest">NEWEST</button>
-          <button type="button" data-sort="signal">HIGHEST SIGNAL</button>
-          <button type="button" data-sort="foryou">FOR YOU</button>
-        </div>
-        <span id="feed-count" class="feed-count" aria-live="polite"></span>
-      </div>
-    </div>
-    <div class="frame" id="frk-panel-slot"></div>
-    <section class="frame feed-list" aria-label="Curated reading">
-      <div id="feed-rows">
-        <div class="feed-row-wrap" data-id="rvtts-offline-neural-tts-riscv-mcu" data-signal="5" data-published="2026-09-13" data-topics="riscv-hardware embedded" data-source="Hackaday.io" data-kind="project" data-search="rvtts: offline neural tts for risc-v mcus a two-stage int8 neural tts pipeline running bare-metal across both cores of a ch32h417, from 85x slower than real time to 1.24x: the standout lesson is that staging one 16kb weight tap into ram beat every arithmetic optimization combined, with the measurements to prove it. hackaday.io project risc-v hardware embedded"><a class="feed-row" href="https://hackaday.io/project/206668-rvtts-offline-neural-tts-for-risc-v-mcus" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 5 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="feed-main"><span class="feed-kicker-line">PROJECT · RISC-V HARDWARE · EMBEDDED · HACKADAY.IO · SEP 13 2026</span><span class="feed-title">rvTTS: Offline Neural TTS for RISC-V MCUs</span><span class="feed-brief">A two-stage int8 neural TTS pipeline running bare-metal across both cores of a CH32H417, from 85x slower than real time to 1.24x: the standout lesson is that staging one 16KB weight tap into RAM beat every arithmetic optimization combined, with the measurements to prove it.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="gcc-13-5-released" data-signal="3" data-published="2026-09-11" data-topics="tooling" data-source="GCC" data-kind="news" data-search="gcc 13.5 released the gcc 13 line is now closed: 265+ bug fixes since 13.4 and no more releases, so if your embedded toolchain is pinned to gcc 13, this is the final stop before planning the jump. gcc news tooling"><a class="feed-row" href="https://gcc.gnu.org/pipermail/gcc-announce/2026/000194.html" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 3 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="feed-main"><span class="feed-kicker-line">NEWS · TOOLING · GCC · SEP 11 2026</span><span class="feed-title">GCC 13.5 Released</span><span class="feed-brief">The GCC 13 line is now closed: 265+ bug fixes since 13.4 and no more releases, so if your embedded toolchain is pinned to GCC 13, this is the final stop before planning the jump.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="wch-ch32v003-sub-10c" data-signal="5" data-published="2026-09-09" data-topics="riscv-hardware embedded" data-source="Hackster.io" data-kind="news" data-search="wch launches a sub-10 cent risc-v microcontroller, and a $6.90 dev board is already here ten cents a chip means the cheapest possible bench for register-level experiments on real risc-v silicon: 48mhz rv32, 2kb sram, 16kb flash. a $6.90 dev board is already on tindie. if you want a throwaway target for bare-metal bring-up practice, there is no cheaper seat. hackster.io news risc-v hardware embedded"><a class="feed-row" href="https://www.hackster.io/news/wch-launches-a-sub-10-risc-v-microcontroller-while-a-6-90-dev-board-gets-you-started-90b1ffd7490a" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 5 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="feed-main"><span class="feed-kicker-line">NEWS · RISC-V HARDWARE · EMBEDDED · HACKSTER.IO · SEP 09 2026</span><span class="feed-title">WCH launches a sub-10 cent RISC-V microcontroller, and a $6.90 dev board is already here</span><span class="feed-brief">Ten cents a chip means the cheapest possible bench for register-level experiments on real RISC-V silicon: 48MHz RV32, 2KB SRAM, 16KB flash. A $6.90 dev board is already on Tindie. If you want a throwaway target for bare-metal bring-up practice, there is no cheaper seat.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="yuzukineko-allwinner-f101-riscv-sbc" data-signal="4" data-published="2026-09-08" data-topics="riscv-hardware embedded" data-source="CNX Software" data-kind="news" data-search="yuzukineko – a linux-capable allwinner f101 risc-v sbc with raspberry pi pico form factor a brand-new $3-class risc-v soc (t-head c907 at 1.008 ghz) on a pico-sized open board with full schematics, gerbers, bom, and mainline linux work in progress: the cheapest way to get a linux-capable 64-bit risc-v target you can actually probe with a scope. cnx software news risc-v hardware embedded"><a class="feed-row" href="https://www.cnx-software.com/2026/09/08/yuzukineko-a-linux-capable-allwinner-f101-64-bit-risc-v-sbc-with-raspberry-pi-pico-form-factor/" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 4 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span class="feed-main"><span class="feed-kicker-line">NEWS · RISC-V HARDWARE · EMBEDDED · CNX SOFTWARE · SEP 08 2026</span><span class="feed-title">YuzukiNeko – A Linux-capable Allwinner F101 RISC-V SBC with Raspberry Pi Pico form factor</span><span class="feed-brief">A brand-new $3-class RISC-V SoC (T-Head C907 at 1.008 GHz) on a Pico-sized open board with full schematics, Gerbers, BOM, and mainline Linux work in progress: the cheapest way to get a Linux-capable 64-bit RISC-V target you can actually probe with a scope.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="agamemnon-openocd-0-1-0" data-signal="3" data-published="2026-09-07" data-topics="tooling riscv-hardware" data-source="GitHub" data-kind="project" data-search="agamemnon openocd 0.1.0 patched openocd for ag32 risc-v debug through adiv5 dap, shipped as reproducible multi-platform binaries with matching sha-256s, pinned source, and an sbom: a clean example of how to publish open tooling for an obscure risc-v part. github project tooling risc-v hardware"><a class="feed-row" href="https://github.com/bbenchoff/AGaMEMnon/releases/tag/openocd-v0.1.0" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 3 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="feed-main"><span class="feed-kicker-line">PROJECT · TOOLING · RISC-V HARDWARE · GITHUB · SEP 07 2026</span><span class="feed-title">AGaMEMnon OpenOCD 0.1.0</span><span class="feed-brief">Patched OpenOCD for AG32 RISC-V debug through ADIv5 DAP, shipped as reproducible multi-platform binaries with matching SHA-256s, pinned source, and an SBOM: a clean example of how to publish open tooling for an obscure RISC-V part.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="microchip-mi-v-rv32-v4" data-signal="4" data-published="2026-09-06" data-topics="riscv-hardware" data-source="Hackster.io" data-kind="news" data-search="microchip upgrades its mi-v rv32 soft-core, promises a major speed boost the v4.0 mi-v soft-core adds hamming-coded state machines, triple-modular-redundant registers, and ecc ram options for polarfire fpgas. the safety techniques are the real story: hamming-encoded fsms and triplicated registers are patterns you can lift into your own rtl, and this is a working checklist for any safety-adjacent fpga design. hackster.io news risc-v hardware"><a class="feed-row" href="https://www.hackster.io/news/microchip-upgrades-its-mi-v-rv32-risc-v-soft-core-processor-promises-a-major-speed-boost-658092a5fb21" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 4 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span class="feed-main"><span class="feed-kicker-line">NEWS · RISC-V HARDWARE · HACKSTER.IO · SEP 06 2026</span><span class="feed-title">Microchip upgrades its Mi-V RV32 soft-core, promises a major speed boost</span><span class="feed-brief">The V4.0 Mi-V soft-core adds Hamming-coded state machines, triple-modular-redundant registers, and ECC RAM options for PolarFire FPGAs. The safety techniques are the real story: Hamming-encoded FSMs and triplicated registers are patterns you can lift into your own RTL, and this is a working checklist for any safety-adjacent FPGA design.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="buildroot-2026-08-released" data-signal="4" data-published="2026-09-04" data-topics="tooling embedded" data-source="Buildroot" data-kind="news" data-search="2026.08 released default compiler jumps to gcc 15 with glibc 2.44 and linux 7.1 headers across ~1,000 changes from 100 contributors: if you ship embedded firmware, this is the release that will surface the warnings your code has been hiding. buildroot news tooling embedded"><a class="feed-row" href="https://buildroot.org/news.html" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 4 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span class="feed-main"><span class="feed-kicker-line">NEWS · TOOLING · EMBEDDED · BUILDROOT · SEP 04 2026</span><span class="feed-title">2026.08 released</span><span class="feed-brief">Default compiler jumps to GCC 15 with glibc 2.44 and Linux 7.1 headers across ~1,000 changes from 100 contributors: if you ship embedded firmware, this is the release that will surface the warnings your code has been hiding.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="sop-firmware-reverse-engineering" data-signal="4" data-published="2026-08-31" data-topics="hardware-hacking" data-source="GitHub" data-kind="guide" data-search="firmware reverse engineering sop: acquisition, extraction, analysis a field sop for getting firmware off a device: triple-read every flash dump with flashrom and compare hashes, probe uart at 115200 8n1, drive jtag through openocd with concrete commands. the habit that matters is the triple read and hash compare, cheap insurance against a flaky clip corrupting your only copy. github guide hardware hacking"><a class="feed-row" href="https://github.com/gl0bal01/intel-codex/blob/HEAD/Security/Pentesting/sop-firmware-reverse-engineering.md" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 4 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span class="feed-main"><span class="feed-kicker-line">GUIDE · HARDWARE HACKING · GITHUB · AUG 31 2026</span><span class="feed-title">Firmware reverse engineering SOP: acquisition, extraction, analysis</span><span class="feed-brief">A field SOP for getting firmware off a device: triple-read every flash dump with flashrom and compare hashes, probe UART at 115200 8N1, drive JTAG through OpenOCD with concrete commands. The habit that matters is the triple read and hash compare, cheap insurance against a flaky clip corrupting your only copy.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="riscv-extensions-embedded-primer" data-signal="5" data-published="2026-08-24" data-topics="riscv-isa embedded" data-source="EE News Europe" data-kind="guide" data-search="risc-v extensions for high performance embedded computing a compact walk through the three embedded extensions that matter most: c (compressed, 15 to 30 percent smaller code), e (16 registers for tiny mcus), and m (hardware multiply and divide). if you are picking a core for a constrained board, this is the ten-minute version of the decision you will actually make. ee news europe guide risc-v isa embedded"><a class="feed-row" href="https://www.eenewseurope.com/en/risc-v-extensions-for-high-performance-embedded-computing" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 5 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="feed-main"><span class="feed-kicker-line">GUIDE · RISC-V ISA · EMBEDDED · EE NEWS EUROPE · AUG 24 2026</span><span class="feed-title">RISC-V extensions for high performance embedded computing</span><span class="feed-brief">A compact walk through the three embedded extensions that matter most: C (compressed, 15 to 30 percent smaller code), E (16 registers for tiny MCUs), and M (hardware multiply and divide). If you are picking a core for a constrained board, this is the ten-minute version of the decision you will actually make.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="rene-rebe-rx6700xt-riscv" data-signal="5" data-published="2026-08-17" data-topics="kernel riscv-hardware" data-source="Hackster.io" data-kind="news" data-search="rene rebe patches the linux kernel for a first look at a radeon rx 6700xt on a risc-v pc ten hours of kernel debugging brought an amd rx 6700xt up on a hifive unmatched, with hardware-accelerated rendering and vaapi encode. desktop-class pcie bring-up on risc-v is no longer theory. the patch is the artifact: read it for how a real bring-up debugger narrows a driver problem on unfamiliar silicon. hackster.io news kernel risc-v hardware"><a class="feed-row" href="https://www.hackster.io/news/rene-rebe-patches-the-linux-kernel-for-world-s-first-look-at-a-radeon-rx-6700xt-on-a-risc-v-pc-31fddcb0d468" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 5 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="feed-main"><span class="feed-kicker-line">NEWS · KERNEL · RISC-V HARDWARE · HACKSTER.IO · AUG 17 2026</span><span class="feed-title">Rene Rebe patches the Linux kernel for a first look at a Radeon RX 6700XT on a RISC-V PC</span><span class="feed-brief">Ten hours of kernel debugging brought an AMD RX 6700XT up on a HiFive Unmatched, with hardware-accelerated rendering and VAAPI encode. Desktop-class PCIe bring-up on RISC-V is no longer theory. The patch is the artifact: read it for how a real bring-up debugger narrows a driver problem on unfamiliar silicon.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div><div class="feed-row-wrap" data-id="cryphon-kore-rv32-os" data-signal="5" data-published="2026-07-08" data-topics="riscv-isa kernel" data-source="GitHub" data-kind="project" data-search="kore: a minimal risc-v operating system built from scratch on rv32i m-mode boot, m to s to u transitions, trap delegation, a 140-byte trap frame, and every feature verified in gdb before commit. reads like a study companion to the xv6 trap chapters, except every claim was checked in a debugger. the trap-frame layout and the gdb workflow are the parts worth stealing. github project risc-v isa kernel"><a class="feed-row" href="https://github.com/cryphon/kore" target="_blank" rel="noopener"><span class="sig" role="img" aria-label="signal 5 of 5"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="feed-main"><span class="feed-kicker-line">PROJECT · RISC-V ISA · KERNEL · GITHUB · JUL 08 2026</span><span class="feed-title">kore: a minimal RISC-V operating system built from scratch on RV32I</span><span class="feed-brief">M-mode boot, M to S to U transitions, trap delegation, a 140-byte trap frame, and every feature verified in GDB before commit. Reads like a study companion to the xv6 trap chapters, except every claim was checked in a debugger. The trap-frame layout and the GDB workflow are the parts worth stealing.</span></span><span class="feed-go" aria-hidden="true">↗</span></a><button type="button" class="feed-dismiss" aria-label="Dismiss this item">×</button></div>
-      </div>
-      <p id="feed-empty" class="feed-empty" hidden>The wire is quiet under
-      this filter. Try clearing the search.</p>
-      <p class="feed-tip">Spotted something?
-      <button type="button" class="feed-tip-btn" id="feed-tip-btn">Send it over</button>.</p>
-      <p class="feed-tip">Stuck on a board or a crash?
-      Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up
-      from $500, C audit from $350.
-      <a class="feed-tip-btn" href="/portfolio/#contact">Send the details</a>.</p>
-    </section>
-    <dialog class="contact-chooser" id="feed-chooser" aria-labelledby="feed-chooser-title">
-      <div class="chooser-head">
+<body>
+  <header class="post-crumb"><a href="/portfolio/">Chris Dillinger</a><span> / </span><a href="/portfolio/#blog">Blog</a></header>
+  <main class="post-wrap">
+<article class="research-note">
         <div>
-          <h2 id="feed-chooser-title">Send a tip</h2>
-          <p>Pick whichever way fits.</p>
+          <p class="research-latest">LATEST</p>
+          <h3>The Six Instructions That Run Before Yours</h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">riscv-baremetal-demo: bare-metal RISC-V modules for QEMU virt <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-15">2026-09-15 11:12 EDT</time></p>
         </div>
-        <button class="chooser-close" type="button" aria-label="Close">×</button>
-      </div>
-      <div class="chooser-options">
-        <a class="chooser-option" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=shipthisgroup%40gmail.com&amp;su=Feed%20suggestion" target="_blank" rel="noopener">
-          <span>Compose in Gmail</span><span aria-hidden="true">↗</span>
-        </a>
-        <a class="chooser-option" href="mailto:shipthisgroup@gmail.com?subject=Feed%20suggestion">
-          <span>Use my email app</span><span aria-hidden="true">↗</span>
-        </a>
-        <button class="chooser-option copy-email" type="button">
-          <span>Copy email address</span><span aria-hidden="true">+</span>
-        </button>
-        <p class="copy-status" role="status" aria-live="polite"></p>
-      </div>
-    </dialog>
+        <div class="research-body">
+          <p>On QEMU's virt board with no firmware, every RISC-V hart wakes up at address 0x1000. Sixty-four bytes live there, a tiny ROM that QEMU builds at boot. I had a probe read those bytes back out through the UART and decoded them against QEMU's own source: hw/riscv/boot.c in the 8.2.2 tree, the function riscv_setup_rom_reset_vec. Here is the whole of creation, six instructions:</p>
+          <pre><code>    auipc t0, 0        # t0 = 0x1000, the ROM's own address
+    addi  a2, t0, 40   # a2 = 0x1028, a pointer to the firmware info block
+    csrr  a0, mhartid  # a0 = this hart's number
+    ld    a1, 32(t0)   # a1 = 0x87e00000, where the device tree was placed
+    ld    t0, 24(t0)   # t0 = 0x80000000, the kernel's entry address
+    jr    t0           # and we are gone, off to your code</code></pre>
+          <p>Right after the code sit the two addresses it loads: the kernel entry 0x80000000 at 0x1018, and the device-tree address 0x87e00000 at 0x1020. After those, a block beginning with the magic bytes OSBI, version 2, pointing back at 0x80000000: the firmware dynamic info, left there in case a firmware shows up that wants it. Every byte I printed matched the source. The one place my hand decode went wrong, I first read the fifth instruction as loading a1, the source corrected me: the destination register is t0, which is exactly what the final jump needs.</p>
+          <p>Then the part I did not expect. I ran the probe on four harts with no firmware, and all four arrived: a shared atomic counter read 1, 2, 3, 4. The reset ROM plays no favorites. Every hart runs those six instructions and jumps to the kernel. I ran it again with OpenSBI in the loop, and only one hart arrived. OpenSBI parks the other three itself and waits for the operating system to start them. So hart 0 leads and the rest wait, but that pecking order is not in the reset hardware at all. It is software's idea, enforced by firmware. Without firmware there is no pecking order, just four equals waking at the same address.</p>
+          <p>One sentence to keep: before your first instruction ever runs, six instructions have already run, and they treat every core as equal. The hierarchy is policy, not physics.</p>
+        </div>
+      </article>
   </main>
-  <footer class="frame">
-    <span>Chris / C, firmware, and OS internals</span>
-    <span class="elsewhere">Elsewhere: <a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener">Proving Ground <span aria-hidden="true">↗</span></a> <span aria-hidden="true">·</span> <a href="https://dillingerstaffing.github.io/tapeout/" target="_blank" rel="noopener">Tapeout <span aria-hidden="true">↗</span></a> <span aria-hidden="true">·</span> <a href="https://dillingerstaffing.github.io/old-iron/" target="_blank" rel="noopener">Old Iron <span aria-hidden="true">↗</span></a> <span aria-hidden="true">·</span> <a href="https://dillingerstaffing.github.io/unstuck/" target="_blank" rel="noopener">Unstuck <span aria-hidden="true">↗</span></a></span>
-  </footer>
-  <script src="feed-ranker.js"></script>
-  <script src="feed-ranker-console.js"></script>
+  <div class="post-offer"><p>Stuck on a board or a crash? Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up from $500, C audit from $350. <a href="/portfolio/#contact">Send the details</a>.</p></div>
+  <footer class="post-foot"><a href="/portfolio/#blog">&larr; All field notes</a></footer>
+  <script>window.__WIGMORE__ = {"the-six-instructions-that-run-before-yours|ISA": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "ISA", "probandum": "matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte."}, {"n": 2, "kind": "evidence", "text": "The firsthand session this run: a bare-metal probe on QEMU 8.2.2 virt with -bios none read 64 bytes at 0x1000 back through the UART; the hand decode gave auipc t0,0 / addi a2,t0,40 / csrr a0,mhartid / ld a1,32(t0) / ld t0,24(t0) / jr t0, and every byte matched riscv_setup_rom_reset_vec in hw/riscv/boot.c, including the corrected fifth instruction (ld t0, not ld a1).", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "The reset contract is visible as instruction behavior: six concrete instructions, decoded from the wire, doing exactly what the platform promises."}, {"n": 4, "kind": "generalization", "text": "When the verified property is the exact instruction sequence the machine executes at reset, the ISA slot lights."}, {"n": 5, "kind": "generalization", "text": "A UART dump checked against the emulator's own source is the machine's testimony: the ROM contains what it contains, and the bytes say it."}, {"n": 6, "kind": "explanation", "text": "One could object that a QEMU ROM is an emulator artifact, not the ISA."}, {"n": 7, "kind": "refutation", "text": "The six instructions are ordinary privileged-ISA operations (auipc, csrr mhartid, loads, jr) whose semantics the manual defines; the emulator only hosts the ROM, it does not invent the contract."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|MICROARCH": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "MICROARCH", "probandum": "not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract."}, {"n": 2, "kind": "evidence", "text": "The session recorded only a fixed instruction sequence and arrival counts: six decoded instructions, a 1-2-3-4 counter with no firmware, a single arrival with OpenSBI. No cycle count, no throughput, no timing of any kind.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "Nothing in the result varies with pipeline depth, cache behavior, or issue width: the claim is what the ROM says, not how fast anything runs."}, {"n": 4, "kind": "generalization", "text": "When no measurement of time or throughput supports the claim, the Microarch slot stays dim."}, {"n": 5, "kind": "generalization", "text": "A verdict about which instructions exist is answered by a decoder, not a stopwatch."}, {"n": 6, "kind": "explanation", "text": "One could object that four harts racing to one UART is a concurrency measurement."}, {"n": 7, "kind": "refutation", "text": "The race was guarded by an amoswap ticket spinlock, so the arrivals are ordered facts, not timing data; the count is the claim, and it needs no clock."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|FIRMWARE": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "FIRMWARE", "probandum": "matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware."}, {"n": 2, "kind": "evidence", "text": "The A/B this run: -bios none on smp4, the shared atomic counter read 1, 2, 3, 4, every hart reached the kernel; default OpenSBI on smp4, the counter read 1 only, OpenSBI parked the other three.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "The difference between the two runs is exactly one component: the firmware in the loop."}, {"n": 4, "kind": "generalization", "text": "When the verified property is a behavior that appears or disappears with the firmware, the Firmware slot lights."}, {"n": 5, "kind": "generalization", "text": "An A/B that changes one layer and flips the result attributes the behavior to that layer."}, {"n": 6, "kind": "explanation", "text": "One could object that parking secondaries is the operating system's job, not firmware's."}, {"n": 7, "kind": "refutation", "text": "The parked harts never reached the kernel at all: no OS code ran on them, so only OpenSBI could have held them back, via its HSM wait."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|KERNEL": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "KERNEL", "probandum": "not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed."}, {"n": 2, "kind": "evidence", "text": "The probe ran with -bios none: no kernel booted, no process ran, no trap was delegated, no page was mapped by an OS.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "Every verified fact predates the kernel: the ROM, the hart count, the firmware's parking decision."}, {"n": 4, "kind": "generalization", "text": "When no operating system code executes in the experiment, the Kernel slot stays dim."}, {"n": 5, "kind": "generalization", "text": "Bare metal means exactly this: the claims stop where the first OS instruction would start."}, {"n": 6, "kind": "explanation", "text": "One could object that OpenSBI is system software close enough to a kernel."}, {"n": 7, "kind": "refutation", "text": "OpenSBI is firmware by the experiment's own framing: it runs before any kernel, and the article's claim about it is a firmware claim, already lit in its own slot."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|ALGORITHM": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "ALGORITHM", "probandum": "not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed."}, {"n": 2, "kind": "evidence", "text": "The session built no mechanism: it dumped 64 bytes, decoded six instructions by hand against hw/riscv/boot.c, and counted hart arrivals 1-2-3-4 versus 1.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "Reading and counting are observations, not constructions: nothing was computed that was not already on the wire."}, {"n": 4, "kind": "generalization", "text": "When the verified claim is read off the machine rather than computed by a new mechanism, the Algorithm slot stays dim."}, {"n": 5, "kind": "generalization", "text": "A decoder ring is not an algorithm: the insight is what the bytes say, not a new way to say it."}, {"n": 6, "kind": "explanation", "text": "One could object that hand-decoding is a computational procedure."}, {"n": 7, "kind": "refutation", "text": "The decode verified the ROM against its source; it invented no procedure a reader could reuse, so there is no mechanism to light the slot."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}};</script>
   <script>
 (() => {
-  const rows = [...document.querySelectorAll('.feed-row-wrap')];
-  const list = document.getElementById('feed-rows');
-  const search = document.getElementById('feed-search');
-  const count = document.getElementById('feed-count');
-  const empty = document.getElementById('feed-empty');
-  const chips = [...document.querySelectorAll('.feed-chip')];
-  const sorts = [...document.querySelectorAll('.feed-sort button')];
-  const canRank = typeof FeedRanker !== 'undefined';
-  let topic = 'all', sort = 'newest', q = '';
-  // Session-only hides: while learning is paused, dismissing hides the
-  // item for this session without writing to the profile.
-  const sessionHidden = new Set();
-  function learningPaused() {
-    if (!canRank || !FeedRanker.profile) return false;
-    try { return FeedRanker.profile.isPaused(); } catch (e) { return false; }
-  }
-  let frk = null;
-  let frkWhyKey = '';
-  function frkSync() {
-    if (!frk) return;
-    const key = sort + '|' + rows.filter(r => !r.hidden).map(r => r.dataset.id).join(',');
-    if (key !== frkWhyKey) { frkWhyKey = key; frk.sync(); }
-    else { frk.refresh(); }
-  }
-  function rowItem(r) {
-    return {
-      id: r.dataset.id,
-      url: (r.querySelector('.feed-row') || {}).href || '',
-      topics: (r.dataset.topics || '').split(' ').filter(Boolean),
-      source: r.dataset.source || '',
-      kind: r.dataset.kind || '',
-      signal: Number(r.dataset.signal) || 0,
-      publishedAt: Date.parse(r.dataset.published) || 0
-    };
-  }
-  function dismissedIds() {
-    if (!canRank) return {};
-    try { return FeedRanker.profile.load().seen || {}; }
-    catch (e) { return {}; }
-  }
-  function apply() {
-    const seen = dismissedIds();
-    const visible = [];
-    for (const r of rows) {
-      const okTopic = topic === 'all' || r.dataset.topics.split(' ').includes(topic);
-      const okQ = !q || r.dataset.search.includes(q);
-      const show = okTopic && okQ && seen[r.dataset.id] !== 'dismissed' && !sessionHidden.has(r.dataset.id);
-      r.hidden = !show;
-      if (show) visible.push(r);
-    }
-    let shown = visible;
-    if (sort === 'foryou' && canRank) {
-      const ranked = FeedRanker.rank(visible.map(rowItem));
-      const pos = {};
-      ranked.forEach((it, i) => { pos[it.id] = i; });
-      shown = [];
-      for (const r of visible) {
-        if (Object.prototype.hasOwnProperty.call(pos, r.dataset.id)) {
-          shown.push(r);
-        } else {
-          r.hidden = true;
-        }
-      }
-      shown.sort((a, b) => pos[a.dataset.id] - pos[b.dataset.id]);
-    } else {
-      shown.sort((a, b) => sort === 'signal'
-        ? (Number(b.dataset.signal) - Number(a.dataset.signal))
-          || b.dataset.published.localeCompare(a.dataset.published)
-        : b.dataset.published.localeCompare(a.dataset.published));
-    }
-    for (const r of shown) list.appendChild(r);
-    count.textContent = 'SHOWING ' + shown.length + ' OF ' + rows.length;
-    empty.hidden = shown.length > 0;
-    frkSync();
-  }
-  search.addEventListener('input', () => {
-    q = search.value.trim().toLowerCase();
-    apply();
-  });
-  for (const c of chips) c.addEventListener('click', () => {
-    chips.forEach(x => x.classList.remove('is-active'));
-    c.classList.add('is-active');
-    topic = c.dataset.topic;
-    apply();
-  });
-  for (const s of sorts) s.addEventListener('click', () => {
-    sorts.forEach(x => x.classList.remove('is-active'));
-    s.classList.add('is-active');
-    sort = s.dataset.sort;
-    apply();
-  });
-  if (canRank) {
-    // Outbound reads are bounce-aware. Clicking out only notes the
-    // departure time; when the tab becomes visible again, an absence
-    // under 10s is a bounce (no signal) and a longer one records the
-    // read. The departure timestamp survives a reload via session storage.
-    const ABS_PREFIX = 'feed-ranker/absence/v1:';
-    function noteDepart(id) {
-      try { sessionStorage.setItem(ABS_PREFIX + id, String(Date.now())); } catch (e) {}
-    }
-    function settleAbsences() {
-      if (!FeedRanker.dwell) return;
-      const nowMs = Date.now();
-      let learned = false;
-      for (const r of rows) {
-        const id = r.dataset.id;
-        let t = null;
-        try { t = sessionStorage.getItem(ABS_PREFIX + id); } catch (e) {}
-        if (t === null || t === undefined) continue;
-        try { sessionStorage.removeItem(ABS_PREFIX + id); } catch (e) {}
-        if (FeedRanker.dwell.absenceResult(Number(t), nowMs) === 'read') {
-          try { FeedRanker.feedback.recordRead(rowItem(r)); learned = true; } catch (e) {}
-        }
-      }
-      // A read that lands while the console panel is open refreshes it
-      // live; otherwise the counts sit stale until the panel is reopened.
-      // The feed order itself is left alone: re-sorting the list under the
-      // reader uninvited would be worse than a stale order.
-      if (learned) frkSync();
-    }
-    for (const r of rows) {
-      const link = r.querySelector('.feed-row');
-      if (link) link.addEventListener('click', () => noteDepart(r.dataset.id));
-    }
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') settleAbsences();
-    });
-    window.addEventListener('pageshow', settleAbsences);
-    settleAbsences();
-    for (const d of document.querySelectorAll('.feed-dismiss')) {
-      d.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const r = d.closest('.feed-row-wrap');
-        if (!r) return;
-        if (learningPaused()) {
-          sessionHidden.add(r.dataset.id);
-        } else {
-          try { FeedRanker.feedback.recordDismiss(rowItem(r)); } catch (e) {}
-        }
-        apply();
-      });
-    }
-  }
-  if (canRank && FeedRanker.console) {
-    frk = FeedRanker.console.mount({
-      buttonHost: document.querySelector('.feed-sort'),
-      panelHost: document.getElementById('frk-panel-slot'),
-      getMode: () => sort,
-      getItems: () => rows.filter(r => !r.hidden)
-        .map(r => ({ id: r.dataset.id, item: rowItem(r), el: r })),
-      getAllItems: () => rows
-        .map(r => ({ id: r.dataset.id, item: rowItem(r), el: r })),
-      stickySel: '.feed-controls',
-      rerank: () => apply(),
-      placeWhy: (entry, b) => {
-        b.style.top = '8px';
-        b.style.right = '38px';
-        entry.el.appendChild(b);
-      }
-    });
-  }
-  apply();
+      const FINE = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      // Read lazily at open time: the payload script is deferred, so an early
+      // read here could freeze an empty map forever.
+      const wigmoreData = () => window.__WIGMORE__ || {};
+      const TIER_LABEL = { lab: 'proof log', spec: 'ISA manual', vendor: 'vendor doc', reference: 'reference', community: 'community' };
+      const KIND_LABEL = { probandum: 'conclusion', penultimate: 'step', evidence: 'evidence', generalization: 'warrant', explanation: 'objection', refutation: 'answer' };
+      let l1 = null, l2 = null, l1Key = null, pinned = false, drillStack = [];
+      let intentT = 0, graceT = 0;
+      const clearTimers = () => { clearTimeout(intentT); clearTimeout(graceT); };
+      const short = (t, n) => t.length > n ? t.slice(0, n - 1).trimEnd() + '…' : t;
+      // Local HTML escaper: this IIFE cannot see the app IIFE's block-scoped
+      // helpers, so everything it needs is defined here or on window.
+      const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // Tip chooser: Gmail web compose, native mailto, or copy address.
-  const tipBtn = document.getElementById('feed-tip-btn');
-  const chooser = document.getElementById('feed-chooser');
-  const closeBtn = chooser.querySelector('.chooser-close');
-  const copyBtn = chooser.querySelector('.copy-email');
-  const copyStatus = chooser.querySelector('.copy-status');
-  const email = 'shipthisgroup@gmail.com';
-  tipBtn.addEventListener('click', () => {
-    copyStatus.textContent = '';
-    chooser.showModal();
-    tipBtn.blur();
-  });
-  const closeChooser = () => { chooser.close(); tipBtn.focus(); };
-  closeBtn.addEventListener('click', closeChooser);
-  chooser.addEventListener('click', (event) => {
-    if (event.target === chooser) chooser.close();
-  });
-  chooser.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', () => chooser.close());
-  });
-  copyBtn.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(email);
-    } catch (err) {
-      const field = document.createElement('textarea');
-      field.value = email;
-      field.setAttribute('readonly', '');
-      field.style.position = 'fixed';
-      field.style.opacity = '0';
-      document.body.appendChild(field);
-      field.select();
-      document.execCommand('copy');
-      field.remove();
-    }
-    copyStatus.textContent = 'Email address copied.';
-  });
-})();
-</script>
-  <script>
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/portfolio/sw.js'); }
+      function closeAll() {
+        clearTimers();
+        if (l1) { l1.remove(); l1 = null; }
+        if (l2) { l2.remove(); l2 = null; }
+        l1Key = null; pinned = false; drillStack = [];
+        document.querySelectorAll('.why-marker[aria-expanded="true"]')
+          .forEach((m) => m.setAttribute('aria-expanded', 'false'));
+      }
+
+      /* Keep an open panel fully inside the viewport. The rendered box is
+         the truth: measure after reveal and nudge back on screen if any
+         edge spills, so a font swap, late layout, or zoom can never clip
+         the source-button text inside. */
+      function reseat(panel) {
+        if (!panel || !panel.isConnected) return;
+        const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+        const r = panel.getBoundingClientRect();
+        let dx = 0, dy = 0;
+        if (r.right > vw - M) dx = (vw - M) - r.right;
+        else if (r.left < M) dx = M - r.left;
+        if (r.bottom > vh - M) dy = (vh - M) - r.bottom;
+        else if (r.top < M) dy = M - r.top;
+        if (dx || dy) {
+          panel.style.left = `${(parseFloat(panel.style.left) || r.left) + dx}px`;
+          panel.style.top = `${(parseFloat(panel.style.top) || r.top) + dy}px`;
+        }
+      }
+
+      // Seat now, then once more after the entrance animation settles, so
+      // a late font or layout shift can never leave the panel stranded
+      // half off screen with its source-button text clipped.
+      function keepOnScreen(panel) {
+        reseat(panel);
+        requestAnimationFrame(() => reseat(panel));
+      }
+
+      function place(panel, anchorRect, mode) {
+        panel.style.visibility = 'hidden';
+        document.body.appendChild(panel);
+        const vw = window.innerWidth, vh = window.innerHeight, M = 8;
+        /* Panel width is fixed by CSS (min(340px, 100vw - 32px)): derive it
+           from the live viewport. A pre-paint offsetWidth read can disagree
+           with the rendered box and let the panel spill past the viewport
+           edge, clipping the source-button text inside. */
+        const pw = Math.min(340, vw - 32);
+        const ph = panel.offsetHeight;
+        let x, y;
+        if (mode === 'side') {
+          const roomRight = vw - anchorRect.right - M, roomLeft = anchorRect.left - M;
+          x = roomRight >= pw || roomRight >= roomLeft
+            ? anchorRect.right + M : anchorRect.left - M - pw;
+          y = anchorRect.top;
+        } else {
+          x = Math.min(Math.max(anchorRect.left, M), vw - pw - M);
+          const below = anchorRect.bottom + M, above = anchorRect.top - M - ph;
+          y = (below + ph <= vh || below <= above) ? below : Math.max(M, above);
+        }
+        x = Math.min(Math.max(x, M), Math.max(M, vw - pw - M));
+        y = Math.min(Math.max(y, M), Math.max(M, vh - ph - M));
+        panel.style.left = `${x}px`;
+        panel.style.top = `${y}px`;
+        panel.style.visibility = '';
+        panel.classList.add('wig-in');
+        keepOnScreen(panel);
+      }
+
+      function termButton(a, n) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return esc(`(${n})`);
+        return `<button class="wig-term" type="button" data-node="${n}">(${n}) ${esc(node.text)}</button>`;
+      }
+
+      function nodePanel(a, n, opts) {
+        const node = a.keyList.find((e) => e.n === n);
+        if (!node) return null;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', node.text);
+        let body = `<div class="wig-tip-head"><span>${KIND_LABEL[node.kind] || node.kind} (${node.n})</span></div>`
+          + `<div class="wig-tip-verdict">${esc(node.text)}</div>`;
+        if (node.kind === 'evidence' && node.source) {
+          body += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">source</span>`
+            + `<span class="wig-tip-v"><a class="wig-tip-src" href="${node.source.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener">${esc(TIER_LABEL[node.source.tier] || node.source.tier)}: ${esc(node.source.cite || '')} <span aria-hidden="true">↗</span></a></span></div></div>`;
+        }
+        if (node.kind === 'refutation' && node.refutes) {
+          body += `<div class="wig-tip-foot">answers objection (${node.refutes})</div>`;
+        }
+        if (node.kind === 'generalization') {
+          body += `<div class="wig-tip-foot">warrant: stated explicitly, the license for the inference above it.</div>`;
+        }
+        if (opts && opts.back) {
+          body += `<button class="wig-tip-back" type="button">← back to argument</button>`;
+        }
+        el.innerHTML = body;
+        return el;
+      }
+
+      function l1Panel(a, slotName, applies) {
+        const title = applies ? `why the ${slotName} layer matters` : `why the ${slotName} layer does not apply`;
+        const ev = a.keyList.filter((e) => e.kind === 'evidence');
+        const via = a.keyList.filter((e) => e.kind === 'generalization');
+        const pens = a.keyList.filter((e) => e.kind === 'penultimate');
+        const objs = a.keyList.filter((e) => e.kind === 'explanation');
+        let html = `<div class="wig-tip-head"><span>${esc(title)}</span></div>`
+          + `<div class="wig-tip-verdict">${esc(a.probandum)}</div>`;
+        if (ev.length || via.length) {
+          html += `<div class="wig-tip-rows"><div class="wig-tip-row"><span class="wig-tip-k">support</span><span class="wig-tip-v">`
+            + ev.map((e) => `<span class="num">(${e.n})</span> ${termButton(a, e.n)}`).join('<br>')
+            + (via.length ? `<br><span class="num">via</span> ` + via.map((e) => termButton(a, e.n)).join(' · ') : '')
+            + `</span></div></div>`;
+        }
+        if (pens.length) {
+          html += `<div class="wig-tip-rows">` + pens.map((e) =>
+            `<div class="wig-tip-row"><span class="wig-tip-k">therefore</span><span class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}</span></div>`
+          ).join('') + `</div>`;
+        }
+        if (objs.length) {
+          html += `<div class="wig-tip-obj"><span class="wig-tip-k">objection</span>` + objs.map((e) => {
+            const ref = a.keyList.find((r) => r.kind === 'refutation' && r.refutes === e.n);
+            return `<div class="wig-tip-v"><span class="num">(${e.n})</span> ${esc(e.text)}`
+              + (ref ? `<br><span class="wig-tip-answered">answered ${termButton(a, ref.n)}</span>`
+                     : `<br><span class="wig-tip-answered">no answer recorded</span>`) + `</div>`;
+          }).join('') + `</div>`;
+        }
+        html += `<div class="wig-tip-foot">${a.keyList.length} numbered claims · hover or tap an underlined claim for its evidence</div>`;
+        const el = document.createElement('div');
+        el.className = 'wig-tip';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-label', title);
+        el.innerHTML = html;
+        return el;
+      }
+
+      function openL1(marker) {
+        const key = marker.getAttribute('data-wigmore');
+        const a = wigmoreData()[key];
+        if (!a) return;
+        closeAll();
+        const slotName = key.split('|')[1] || '';
+        const slotEl = marker.closest('.layer-slot');
+        const slotApplies = slotEl ? slotEl.classList.contains('lit') : false;
+        l1 = l1Panel(a, slotName, slotApplies);
+        l1.dataset.wigKey = key;
+        marker.setAttribute('aria-expanded', 'true');
+        place(l1, marker.getBoundingClientRect(), 'below');
+        l1Key = key;
+      }
+
+      function openL2(termBtn) {
+        const key = l1 ? l1.dataset.wigKey : null;
+        const a = key ? wigmoreData()[key] : null;
+        const n = parseInt(termBtn.getAttribute('data-node'), 10);
+        if (!a || !n) return;
+        if (FINE) {
+          if (l2) l2.remove();
+          l2 = nodePanel(a, n, null);
+          if (l2) place(l2, termBtn.getBoundingClientRect(), 'side');
+        } else {
+          // Touch: drill in, one panel at a time, with a back button.
+          drillStack.push(l1.innerHTML);
+          const detail = nodePanel(a, n, { back: true });
+          if (detail) { l1.innerHTML = detail.innerHTML; keepOnScreen(l1); }
+        }
+      }
+
+      function drillBack() {
+        if (!drillStack.length || !l1) return;
+        l1.innerHTML = drillStack.pop();
+      }
+
+      document.addEventListener('click', (event) => {
+        const back = event.target.closest('.wig-tip-back');
+        if (back && l1 && l1.contains(back)) { drillBack(); return; }
+        const term = event.target.closest('.wig-term');
+        if (term && l1 && l1.contains(term)) {
+          if (!FINE) openL2(term);
+          else { pinned = true; openL2(term); }
+          return;
+        }
+        const marker = event.target.closest('.why-marker');
+        if (marker) {
+          const key = marker.getAttribute('data-wigmore');
+          if (l1Key === key && l1) {
+            // Second click/tap on the open marker: desktop pins a
+            // hover-opened panel, otherwise everything closes.
+            if (!FINE || pinned) { closeAll(); return; }
+            pinned = true;
+            return;
+          }
+          closeAll();
+          if (FINE) pinned = true;
+          openL1(marker);
+          return;
+        }
+        if ((l1 && !l1.contains(event.target)) && (!l2 || !l2.contains(event.target))) {
+          closeAll();
+        }
+      });
+
+      if (FINE) {
+        document.addEventListener('mouseover', (event) => {
+          const term = event.target.closest('.wig-term');
+          if (term && l1 && l1.contains(term) && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => openL2(term), 250);
+            return;
+          }
+          const marker = event.target.closest('.why-marker');
+          if (marker && !pinned) {
+            clearTimers();
+            intentT = setTimeout(() => { if (!pinned) openL1(marker); }, 350);
+          }
+        });
+        document.addEventListener('mouseout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || to.closest('.why-marker'));
+          if (!inStack && !pinned) {
+            clearTimers();
+            graceT = setTimeout(closeAll, 250);
+          }
+        });
+        document.addEventListener('keydown', (event) => {
+          if (event.key !== 'Escape') return;
+          if (l2) { l2.remove(); l2 = null; return; }
+          if (l1) closeAll();
+        });
+        document.addEventListener('focusin', (event) => {
+          const marker = event.target.closest('.why-marker');
+          if (marker) { clearTimers(); openL1(marker); }
+        });
+        document.addEventListener('focusout', (event) => {
+          const to = event.relatedTarget;
+          const inStack = to && ((l1 && l1.contains(to)) || (l2 && l2.contains(to)) || (to.closest && to.closest('.why-marker')));
+          if (!inStack && !pinned) closeAll();
+        });
+      } else {
+        // Touch contract: tap toggles, outside tap closes, ESC not needed.
+        document.addEventListener('touchstart', (event) => {
+          const t = event.target;
+          if (t.closest('.why-marker') || (l1 && l1.contains(t))) return;
+          closeAll();
+        }, { passive: true });
+      }
+      window.addEventListener('scroll', () => { if (l1 || l2) closeAll(); }, { passive: true });
+      window.addEventListener('resize', () => { if (l1 || l2) closeAll(); });
+    })();
   </script>
+  <script src="/portfolio/feed/feed-ranker.js"></script>
+  <script>
+  (function () {
+    if (typeof FeedRanker === 'undefined' || !FeedRanker.dwell || !FeedRanker.blog) return;
+    var m = location.pathname.match(/\/blog\/([a-z0-9-]+)\/?$/);
+    if (!m) return;
+    var root = document.querySelector('main .research-note') || document.querySelector('main');
+    if (!root) return;
+    var h3 = root.querySelector('h3');
+    var dt = root.querySelector('time[datetime]');
+    var paras = [];
+    var ps = root.querySelectorAll('.research-body p');
+    for (var i = 0; i < ps.length && i < 3; i++) paras.push(ps[i].textContent);
+    var item = FeedRanker.blog.adapt({
+      slug: m[1],
+      title: h3 ? h3.textContent : document.title,
+      date: dt ? dt.getAttribute('datetime') : '',
+      description: '',
+      paragraphs: paras
+    });
+    FeedRanker.dwell.track(item);
+  })();
+  </script>
+
   <script>
   /* In-app browsers (LinkedIn, Facebook, Instagram, X) often swallow
      target="_blank" taps: the WebView drops the popup and the tap does

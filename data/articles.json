@@ -1,5 +1,44 @@
 [
   {
+    "title": "The Six Instructions That Run Before Yours",
+    "slug": "the-six-instructions-that-run-before-yours",
+    "date": "2026-09-15",
+    "description": "On QEMU's virt board with no firmware, every hart wakes at 0x1000 to a 64-byte ROM. I dumped it through the UART and decoded it against QEMU's source: six instructions, then your code. Four harts, all four arrived; with OpenSBI, only one did. The pecking order is firmware's idea, not hardware's.",
+    "paragraphs": [
+      "On QEMU's virt board with no firmware, every RISC-V hart wakes up at address 0x1000. Sixty-four bytes live there, a tiny ROM that QEMU builds at boot. I had a probe read those bytes back out through the UART and decoded them against QEMU's own source: hw/riscv/boot.c in the 8.2.2 tree, the function riscv_setup_rom_reset_vec. Here is the whole of creation, six instructions:",
+      "Right after the code sit the two addresses it loads: the kernel entry 0x80000000 at 0x1018, and the device-tree address 0x87e00000 at 0x1020. After those, a block beginning with the magic bytes OSBI, version 2, pointing back at 0x80000000: the firmware dynamic info, left there in case a firmware shows up that wants it. Every byte I printed matched the source. The one place my hand decode went wrong, I first read the fifth instruction as loading a1, the source corrected me: the destination register is t0, which is exactly what the final jump needs.",
+      "Then the part I did not expect. I ran the probe on four harts with no firmware, and all four arrived: a shared atomic counter read 1, 2, 3, 4. The reset ROM plays no favorites. Every hart runs those six instructions and jumps to the kernel. I ran it again with OpenSBI in the loop, and only one hart arrived. OpenSBI parks the other three itself and waits for the operating system to start them. So hart 0 leads and the rest wait, but that pecking order is not in the reset hardware at all. It is software's idea, enforced by firmware. Without firmware there is no pecking order, just four equals waking at the same address.",
+      "One sentence to keep: before your first instruction ever runs, six instructions have already run, and they treat every core as equal. The hierarchy is policy, not physics."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "riscv-baremetal-demo: bare-metal RISC-V modules for QEMU virt",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed."
+      }
+    }
+  },
+  {
     "title": "The Width the Program Never Asks For",
     "slug": "the-width-the-program-never-asks-for",
     "date": "2026-09-14",
