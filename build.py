@@ -842,7 +842,7 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="build-version" content="{stamp}" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
@@ -1364,7 +1364,7 @@ def build_feed_page(feed, stamp, template):
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="build-version" content="{stamp}" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
