@@ -2914,15 +2914,20 @@ assert(check == 0x2144DF1C);</code></pre>
       }, { threshold: 0.1 });
       heroObserver.observe(hero);
 
-      document.querySelectorAll('.cta-trigger').forEach((trigger) => {
-        trigger.addEventListener('click', () => {
-          lastTrigger = trigger;
-          copyStatus.textContent = '';
-          // Older in-app WebViews predate <dialog>; fall back to a
-          // non-modal open rather than throwing and doing nothing.
-          if (typeof chooser.showModal === 'function') chooser.showModal();
-          else chooser.setAttribute('open', '');
-        });
+      // Delegated: proof cards render after this binding runs (their card
+      // payload arrives with the deferred cards-data.js at DOMContentLoaded),
+      // so per-element listeners attached here would miss every card-level
+      // CTA. One document-level listener covers static and dynamically
+      // rendered triggers alike with identical behavior.
+      document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('.cta-trigger');
+        if (!trigger) return;
+        lastTrigger = trigger;
+        copyStatus.textContent = '';
+        // Older in-app WebViews predate <dialog>; fall back to a
+        // non-modal open rather than throwing and doing nothing.
+        if (typeof chooser.showModal === 'function') chooser.showModal();
+        else chooser.setAttribute('open', '');
       });
 
       const closeChooser = () => {
