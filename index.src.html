@@ -722,6 +722,20 @@
     .codeblock-body .tok-kw { color: var(--paper); }
     .codeblock-body .tok-label { color: var(--paper); }
     .codeblock-body .tok-com { color: var(--dim); }
+    /* Mobile: long annotated lines reflow instead of hiding behind a swipe.
+       The alignment padding (.com-pad) is dropped and each comment takes its
+       own wrapping line, so nothing scrolls horizontally and the copy text
+       (textContent) keeps its original single-line form. */
+    @media (max-width: 620px) {
+      .codeblock-body pre { font-size: 11px; }
+      .codeblock-body .com-pad { display: none; }
+      .codeblock-body .tok-com {
+        display: block;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        padding: 1px 0 3px 3ch;
+      }
+    }
     .research-code-link { color: var(--muted) !important; font-size: 12px; }
     .research-code-link a { color: var(--acid); text-underline-offset: 4px; }
     .research-code-link a:hover, .research-code-link a:focus-visible { color: var(--acid-soft); }
@@ -1118,19 +1132,19 @@
             <div class="codeblock-head"><span class="codeblock-title">next.s · -O0, annotated</span><button class="codeblock-copy" type="button">Copy</button></div>
             <div class="codeblock-body"><pre><code>
 <span class="cl"><span class="tok-label">next:</span></span>
-<span class="cl">    addi   sp, sp, -48   <span class="tok-com"># claim 48 bytes for the frame</span></span>
-<span class="cl">    sd     s0, 40(sp)    <span class="tok-com"># park the caller&#x27;s frame pointer</span></span>
-<span class="cl">    addi   s0, sp, 48    <span class="tok-com"># anchor the new frame pointer at the frame&#x27;s top</span></span>
-<span class="cl">    mv     a5, a0        <span class="tok-com"># x arrives in a0; copy it to a scratch register</span></span>
-<span class="cl">    sw     a5, -36(s0)   <span class="tok-com"># give x a home address, 36 bytes below the frame pointer</span></span>
-<span class="cl">    lw     a5, -36(s0)   <span class="tok-com"># load x back from its address</span></span>
-<span class="cl">    addiw  a5, a5, 1     <span class="tok-com"># add 1; word-sized because x is a 32-bit int</span></span>
-<span class="cl">    sw     a5, -20(s0)   <span class="tok-com"># give y its address, 20 bytes below the frame pointer</span></span>
-<span class="cl">    lw     a5, -20(s0)   <span class="tok-com"># load y back from its address</span></span>
-<span class="cl">    mv     a0, a5        <span class="tok-com"># the answer travels home in a0</span></span>
-<span class="cl">    ld     s0, 40(sp)    <span class="tok-com"># restore the caller&#x27;s frame pointer</span></span>
-<span class="cl">    addi   sp, sp, 48    <span class="tok-com"># release the frame</span></span>
-<span class="cl">    jr     ra            <span class="tok-com"># return; ret is the usual spelling of this jump</span></span>
+<span class="cl">    addi   sp, sp, -48<span class="com-pad">   </span><span class="tok-com"># claim 48 bytes for the frame</span></span>
+<span class="cl">    sd     s0, 40(sp)<span class="com-pad">    </span><span class="tok-com"># park the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   s0, sp, 48<span class="com-pad">    </span><span class="tok-com"># anchor the new frame pointer at the frame&#x27;s top</span></span>
+<span class="cl">    mv     a5, a0<span class="com-pad">        </span><span class="tok-com"># x arrives in a0; copy it to a scratch register</span></span>
+<span class="cl">    sw     a5, -36(s0)<span class="com-pad">   </span><span class="tok-com"># give x a home address, 36 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -36(s0)<span class="com-pad">   </span><span class="tok-com"># load x back from its address</span></span>
+<span class="cl">    addiw  a5, a5, 1<span class="com-pad">     </span><span class="tok-com"># add 1; word-sized because x is a 32-bit int</span></span>
+<span class="cl">    sw     a5, -20(s0)<span class="com-pad">   </span><span class="tok-com"># give y its address, 20 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -20(s0)<span class="com-pad">   </span><span class="tok-com"># load y back from its address</span></span>
+<span class="cl">    mv     a0, a5<span class="com-pad">        </span><span class="tok-com"># the answer travels home in a0</span></span>
+<span class="cl">    ld     s0, 40(sp)<span class="com-pad">    </span><span class="tok-com"># restore the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   sp, sp, 48<span class="com-pad">    </span><span class="tok-com"># release the frame</span></span>
+<span class="cl">    jr     ra<span class="com-pad">            </span><span class="tok-com"># return; ret is the usual spelling of this jump</span></span>
 </code></pre></div>
           </div>
           <p>Forty-eight bytes is roomier than the sixteen the data strictly needs. The unoptimized compiler does not pack tightly, and the ABI requires the stack pointer to stay 16-byte aligned at all times.</p>
