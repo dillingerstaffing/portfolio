@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260915-152549">
+  <meta name="build-version" content="v20260915-160436">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -645,12 +645,83 @@
       padding: clamp(18px, 3vw, 28px);
       overflow-x: auto;
       border: 1px solid #30382f;
+      border-radius: 3px;
       background: #090c09;
       color: #cbd6c5;
       font: 12px/1.75 var(--mono);
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
+      white-space: pre;
     }
+    /* Codeblock: the AAA treatment. Labeled, line-numbered, one-click
+       copyable. A precision instrument: hairlines, square corners, mono
+       discipline, two tints beyond the base text and nothing else. */
+    .codeblock {
+      margin: 28px 0;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #090c09;
+      overflow: hidden;
+    }
+    .codeblock-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #0d110d;
+    }
+    .codeblock-title {
+      font: 500 10px/1.4 var(--mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .codeblock-copy {
+      flex: none;
+      font: 500 10px/1 var(--mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--dim);
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 7px 11px;
+      cursor: pointer;
+    }
+    .codeblock-copy:hover { color: var(--paper); border-color: var(--dim); }
+    .codeblock-copy:focus-visible { outline: 1px solid var(--acid); outline-offset: 2px; }
+    .codeblock-copy[data-done="1"] { color: var(--acid); border-color: var(--acid); }
+    .codeblock-body { overflow-x: auto; }
+    .codeblock-body pre {
+      margin: 0;
+      padding: 16px 0;
+      color: #cbd6c5;
+      font: 12.5px/1.8 var(--mono);
+      white-space: pre;
+      counter-reset: codeln;
+    }
+    .codeblock-body .cl {
+      display: block;
+      padding-right: 16px;
+      counter-increment: codeln;
+    }
+    .codeblock-body .cl::before {
+      content: counter(codeln);
+      display: inline-block;
+      width: 3.5em;
+      margin-right: 1.4em;
+      text-align: right;
+      color: #3d443c;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .codeblock-body .cl:hover { background: rgba(184, 243, 75, .04); }
+    .codeblock-body .tok-kw { color: var(--paper); }
+    .codeblock-body .tok-label { color: var(--paper); }
+    .codeblock-body .tok-com { color: var(--dim); }
     .research-code-link { color: var(--muted) !important; font-size: 12px; }
     .research-code-link a { color: var(--acid); text-underline-offset: 4px; }
     .research-code-link a:hover, .research-code-link a:focus-visible { color: var(--acid-soft); }
@@ -1018,6 +1089,61 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3><a class="research-permalink" href="/portfolio/blog/the-stack-frame-is-optional/">The Stack Frame Is Optional</a></h3>
+          <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/proving-ground" target="_blank" rel="noopener">proving-ground: bench 67, The Frame Shop <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-stack-frame-is-optional|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the frame is built from the ISA's own contract: addi, sd, and ld move the stack pointer under the ABI's 16-byte alignment rule, and the -O2 output is two instructions, addiw and ret, that the manual defines exactly; the whole comparison was verified against real gcc 13.2.0 output.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-stack-frame-is-optional|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because nothing was timed and no pipeline, cache, or predictor behavior was measured: the claim is which instructions the compiler emits at each level, and it holds on any implementation.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-stack-frame-is-optional|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no boot code, SBI call, or privilege transition appears: both listings run entirely in user mode after the program is already loaded.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-stack-frame-is-optional|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because no system call, trap, or scheduler is involved: the frame is a user-space compiler convention, and the trap path that saves the full register file is a different post.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-stack-frame-is-optional|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism is claimed: the function adds one to its input, and the post's insight is the compiler's frame budget, not how the addition works.</p></div></div>
+          <p class="research-date"><time datetime="2026-09-15">2026-09-15 12:04 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Here is an entire C function compiled two ways. Same source, same compiler, same machine. RISC-V gcc 13.2.0, asked to emit assembly:</p>
+          <div class="codeblock">
+            <div class="codeblock-head"><span class="codeblock-title">next.c</span><button class="codeblock-copy" type="button">Copy</button></div>
+            <div class="codeblock-body"><pre><code>
+<span class="cl"><span class="tok-kw">int</span> next(<span class="tok-kw">int</span> x) {</span>
+<span class="cl">    <span class="tok-kw">int</span> y = x + 1;</span>
+<span class="cl">    <span class="tok-kw">return</span> y;</span>
+<span class="cl">}</span>
+</code></pre></div>
+          </div>
+          <p>At -O2, the whole function is two instructions. No stack frame. Nothing is claimed, nothing is parked, nothing is restored. Against the thirteen-instruction version below, the frame simply is not there:</p>
+          <div class="codeblock">
+            <div class="codeblock-head"><span class="codeblock-title">next.s · -O2</span><button class="codeblock-copy" type="button">Copy</button></div>
+            <div class="codeblock-body"><pre><code>
+<span class="cl"><span class="tok-label">next:</span></span>
+<span class="cl">    addiw   a0, a0, 1</span>
+<span class="cl">    ret</span>
+</code></pre></div>
+          </div>
+          <p>The -O0 output, annotated line by line. Assembler directives trimmed; the instruction sequence is complete:</p>
+          <div class="codeblock">
+            <div class="codeblock-head"><span class="codeblock-title">next.s · -O0, annotated</span><button class="codeblock-copy" type="button">Copy</button></div>
+            <div class="codeblock-body"><pre><code>
+<span class="cl"><span class="tok-label">next:</span></span>
+<span class="cl">    addi   sp, sp, -48   <span class="tok-com"># claim 48 bytes for the frame</span></span>
+<span class="cl">    sd     s0, 40(sp)    <span class="tok-com"># park the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   s0, sp, 48    <span class="tok-com"># anchor the new frame pointer at the frame&#x27;s top</span></span>
+<span class="cl">    mv     a5, a0        <span class="tok-com"># x arrives in a0; copy it to a scratch register</span></span>
+<span class="cl">    sw     a5, -36(s0)   <span class="tok-com"># give x a home address, 36 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -36(s0)   <span class="tok-com"># load x back from its address</span></span>
+<span class="cl">    addiw  a5, a5, 1     <span class="tok-com"># add 1; word-sized because x is a 32-bit int</span></span>
+<span class="cl">    sw     a5, -20(s0)   <span class="tok-com"># give y its address, 20 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -20(s0)   <span class="tok-com"># load y back from its address</span></span>
+<span class="cl">    mv     a0, a5        <span class="tok-com"># the answer travels home in a0</span></span>
+<span class="cl">    ld     s0, 40(sp)    <span class="tok-com"># restore the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   sp, sp, 48    <span class="tok-com"># release the frame</span></span>
+<span class="cl">    jr     ra            <span class="tok-com"># return; ret is the usual spelling of this jump</span></span>
+</code></pre></div>
+          </div>
+          <p>Forty-eight bytes is roomier than the sixteen the data strictly needs. The unoptimized compiler does not pack tightly, and the ABI requires the stack pointer to stay 16-byte aligned at all times.</p>
+          <p>One thing is missing from the longer listing: the return address is never saved. The compiler proved this is a leaf function, a function that calls no other function, so nothing in it can overwrite the return address and saving it would be pure waste. That is the exact reasoning the frame shop drills into you: the return address gets parked because a nested call would destroy it. No nested call, no parking. The compiler applies the rule; it does not worship it.</p>
+          <p>Why does -O0 build all this furniture? The unoptimized compiler has one simple strategy: every local gets a real address in the frame, so a debugger can inspect every variable at any moment and code generation stays simple and predictable. The frame pointer exists so those addresses never move while the function runs. It is built for humans and debuggers, not for the machine.</p>
+          <p>Why does -O2 delete it? The optimizer proved three things: no address of any local is ever taken, the whole computation fits in registers, and the function is a leaf. With nothing to keep and no reason to touch the stack, the frame is pure overhead. Gone. The function is the addition and the return. Everything else was scaffolding.</p>
+          <p>One sentence to keep: the stack frame is not a law of the machine; it is a budget the compiler spends only when the function needs it.</p>
+          <p class="research-code-link">Bench: <a href="https://dillingerstaffing.github.io/proving-ground/#bench=frame-shop" target="_blank" rel="noopener">The Frame Shop</a>, build this frame by hand, instruction by instruction.</p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3><a class="research-permalink" href="/portfolio/blog/the-six-instructions-that-run-before-yours/">The Six Instructions That Run Before Yours</a></h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">riscv-baremetal-demo: bare-metal RISC-V modules for QEMU virt <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed.</p></div></div>
           <p class="research-date"><time datetime="2026-09-15">2026-09-15 11:12 EDT</time></p>
@@ -3708,6 +3834,30 @@ if ('serviceWorker' in navigator) {
     }
 
     applySort(); // hide anything already dismissed
+  })();
+  </script>
+  <script>
+  /* Codeblock copy buttons: one click copies the block's lines exactly,
+     without line numbers. Degrades silently where the clipboard API
+     is unavailable. */
+  (() => {
+    const blocks = document.querySelectorAll('.codeblock');
+    if (!blocks.length || !navigator.clipboard) return;
+    blocks.forEach((block) => {
+      const btn = block.querySelector('.codeblock-copy');
+      const code = block.querySelector('code');
+      if (!btn || !code) return;
+      btn.addEventListener('click', () => {
+        const lines = Array.from(code.querySelectorAll('.cl')).map((el) => el.textContent);
+        const text = (lines.length ? lines.join('\n') : code.textContent) + '\n';
+        navigator.clipboard.writeText(text).then(() => {
+          btn.setAttribute('data-done', '1');
+          const label = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = label; btn.removeAttribute('data-done'); }, 1600);
+        }).catch(() => {});
+      });
+    });
   })();
   </script>
 </body>

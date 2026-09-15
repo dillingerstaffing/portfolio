@@ -795,6 +795,32 @@ def extract_wigmore_tooltip(template):
     return iife
 
 
+CODEBLOCK_COPY_JS = """  <script>
+  /* Codeblock copy buttons: one click copies the block's lines exactly,
+     without line numbers. Degrades silently where the clipboard API
+     is unavailable. */
+  (() => {
+    const blocks = document.querySelectorAll('.codeblock');
+    if (!blocks.length || !navigator.clipboard) return;
+    blocks.forEach((block) => {
+      const btn = block.querySelector('.codeblock-copy');
+      const code = block.querySelector('code');
+      if (!btn || !code) return;
+      btn.addEventListener('click', () => {
+        const lines = Array.from(code.querySelectorAll('.cl')).map((el) => el.textContent);
+        const text = (lines.length ? lines.join('\\n') : code.textContent) + '\\n';
+        navigator.clipboard.writeText(text).then(() => {
+          btn.setAttribute('data-done', '1');
+          const label = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = label; btn.removeAttribute('data-done'); }, 1600);
+        }).catch(() => {});
+      });
+    });
+  })();
+  </script>"""
+
+
 def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     slug = article["slug"]
     title = article["title"]
@@ -851,6 +877,7 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
   <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; All field notes</a></footer>
 {wig_script}
 {dwell}
+{CODEBLOCK_COPY_JS}
   <script>
   /* In-app browsers (LinkedIn, Facebook, Instagram, X) often swallow
      target="_blank" taps: the WebView drops the popup and the tap does

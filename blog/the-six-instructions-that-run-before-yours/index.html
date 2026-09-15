@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="build-version" content="v20260915-152549" />
+  <meta name="build-version" content="v20260915-160436" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The Six Instructions That Run Before Yours &middot; Blog &middot; Chris Dillinger</title>
@@ -588,12 +588,83 @@
       padding: clamp(18px, 3vw, 28px);
       overflow-x: auto;
       border: 1px solid #30382f;
+      border-radius: 3px;
       background: #090c09;
       color: #cbd6c5;
       font: 12px/1.75 var(--mono);
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
+      white-space: pre;
     }
+    /* Codeblock: the AAA treatment. Labeled, line-numbered, one-click
+       copyable. A precision instrument: hairlines, square corners, mono
+       discipline, two tints beyond the base text and nothing else. */
+    .codeblock {
+      margin: 28px 0;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #090c09;
+      overflow: hidden;
+    }
+    .codeblock-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #0d110d;
+    }
+    .codeblock-title {
+      font: 500 10px/1.4 var(--mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .codeblock-copy {
+      flex: none;
+      font: 500 10px/1 var(--mono);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--dim);
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      padding: 7px 11px;
+      cursor: pointer;
+    }
+    .codeblock-copy:hover { color: var(--paper); border-color: var(--dim); }
+    .codeblock-copy:focus-visible { outline: 1px solid var(--acid); outline-offset: 2px; }
+    .codeblock-copy[data-done="1"] { color: var(--acid); border-color: var(--acid); }
+    .codeblock-body { overflow-x: auto; }
+    .codeblock-body pre {
+      margin: 0;
+      padding: 16px 0;
+      color: #cbd6c5;
+      font: 12.5px/1.8 var(--mono);
+      white-space: pre;
+      counter-reset: codeln;
+    }
+    .codeblock-body .cl {
+      display: block;
+      padding-right: 16px;
+      counter-increment: codeln;
+    }
+    .codeblock-body .cl::before {
+      content: counter(codeln);
+      display: inline-block;
+      width: 3.5em;
+      margin-right: 1.4em;
+      text-align: right;
+      color: #3d443c;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .codeblock-body .cl:hover { background: rgba(184, 243, 75, .04); }
+    .codeblock-body .tok-kw { color: var(--paper); }
+    .codeblock-body .tok-label { color: var(--paper); }
+    .codeblock-body .tok-com { color: var(--dim); }
     .research-code-link { color: var(--muted) !important; font-size: 12px; }
     .research-code-link a { color: var(--acid); text-underline-offset: 4px; }
     .research-code-link a:hover, .research-code-link a:focus-visible { color: var(--acid-soft); }
@@ -847,7 +918,6 @@
   <main class="post-wrap">
 <article class="research-note">
         <div>
-          <p class="research-latest">LATEST</p>
           <h3>The Six Instructions That Run Before Yours</h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener">riscv-baremetal-demo: bare-metal RISC-V modules for QEMU virt <span aria-hidden="true">↗</span></a></div><div class="layer-slot lit"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|ISA" aria-expanded="false" aria-label="Show why the ISA layer matters">why</button></div><p class="layer-because">matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract.</p></div><div class="layer-slot lit"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer matters">why</button></div><p class="layer-because">matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware.</p></div><div class="layer-slot dim"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer does not apply">why</button></div><p class="layer-because">not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed.</p></div><div class="layer-slot dim"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-six-instructions-that-run-before-yours|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer does not apply">why</button></div><p class="layer-because">not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed.</p></div></div>
           <p class="research-date"><time datetime="2026-09-15">2026-09-15 11:12 EDT</time></p>
@@ -1158,6 +1228,30 @@
   })();
   </script>
 
+  <script>
+  /* Codeblock copy buttons: one click copies the block's lines exactly,
+     without line numbers. Degrades silently where the clipboard API
+     is unavailable. */
+  (() => {
+    const blocks = document.querySelectorAll('.codeblock');
+    if (!blocks.length || !navigator.clipboard) return;
+    blocks.forEach((block) => {
+      const btn = block.querySelector('.codeblock-copy');
+      const code = block.querySelector('code');
+      if (!btn || !code) return;
+      btn.addEventListener('click', () => {
+        const lines = Array.from(code.querySelectorAll('.cl')).map((el) => el.textContent);
+        const text = (lines.length ? lines.join('\n') : code.textContent) + '\n';
+        navigator.clipboard.writeText(text).then(() => {
+          btn.setAttribute('data-done', '1');
+          const label = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(() => { btn.textContent = label; btn.removeAttribute('data-done'); }, 1600);
+        }).catch(() => {});
+      });
+    });
+  })();
+  </script>
   <script>
   /* In-app browsers (LinkedIn, Facebook, Instagram, X) often swallow
      target="_blank" taps: the WebView drops the popup and the tap does
