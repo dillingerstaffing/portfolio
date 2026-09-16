@@ -1,5 +1,47 @@
 [
   {
+    "title": "The Wire That Never Drives High",
+    "slug": "the-wire-that-never-drives-high",
+    "date": "2026-09-16",
+    "description": "I2C's two lines never drive high: every pin can only pull low or let go, and one resistor charges the whole bus back up. That single fact buys multi-master arbitration and clock stretching for free, and prices the entire bargain in the pull-up value.",
+    "paragraphs": [
+      "Two devices start talking at the same instant. A sends 0xA5, B sends 0xA4. Bit by bit they agree: 1, 0, 1, 0, 0, 1, 0, and then the last bit. A sends a 1, which on this bus means letting go of the line. B sends a 0, which means pulling it hard to ground. The bus reads 0. A sees a 0 where it sent a 1, lets go of the bus, and waits its turn. B's byte lands completely intact, and B never knew A was there. No collision, no corrupted byte, no retry storm. I traced this exact sequence this morning and watched A lose at the last bit, cleanly.",
+      "The trick is in the pins. I2C's two lines, SDA and SCL, are open-drain: a pin can pull the line low, or it can let go. It can never drive the line high. A resistor does the driving high, slowly charging every picofarad of wire, connector, and pin on the bus back toward the supply. So when two devices disagree, low always wins. The line is the logical AND of everyone attached to it, computed in hardware, for free. That one fact buys two features. On the data line it is arbitration, the scene above. On the clock line it is clock stretching: a slow slave simply holds the clock low and the master waits, flow control with zero extra wires and zero extra protocol.",
+      "Why build it this way, and not with ordinary push-pull drivers? Because two push-pull drivers disagreeing is a near short: one slams the line to the supply while the other slams it to ground, and the current goes through both chips. Open-drain makes contention impossible by construction, and then the protocol turns the shared line from a hazard into a feature. Make the dangerous state unrepresentable instead of handling it.",
+      "The cost of the bargain lives in the resistor. Falling edges are a transistor yanking the line to ground, fast and free. Rising edges are a resistor charging a capacitor, slow and exact. With the logic thresholds at 0.3 and 0.7 of the supply, the rise time is 0.8473 times R times C. I re-derived that factor from the exponential itself and got 0.847298, close enough to promote the folklore to a theorem. The resistor is squeezed from both sides. Too small, and the 3 milliamp drivers cannot pull the line below the threshold. Too large, and the rise misses the 300 nanosecond fast-mode budget.",
+      "On a short bench bus, about 50 picofarads, the usual suspects all behave: 1k gives 42 ns, 2.2k gives 93, 4.7k gives 199, and even 10k at 424 ns merely violates the spec while working fine in practice, which is why every breakout board ships 10k pull-ups and gets away with it. But at the spec's full 400 picofarads, the window is empty: the largest resistor that meets the rise budget is 885 ohms against a 967 ohm minimum the drivers demand. The 400 picofarad ceiling is only reachable with Fast-mode Plus's 20 milliamp drivers, which open a valid window from 145 to 354 ohms.",
+      "For the bench, the practical version: 4.7k is the honest default on short wires, and when the edges start looking tired on the scope, suspect the resistor before the code. Current-source pull-ups exist for exactly this problem and the spec allows them, but a resistor costs a cent and a current source costs design, which is why the resistor won. One sentence to keep: I2C turned a hardware limitation, pins that cannot drive high, into its two best features, and priced the entire bargain in a single resistor."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "i2c-pullup-calc: first-principles I2C pull-up workbench",
+      "url": "https://github.com/dillingerstaffing/i2c-pullup-calc"
+    },
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "not at ISA because the whole mechanism is pins, a resistor, and rise times: the open-drain discipline and the charging budget live underneath the machine contract, and no bus claim here is stated in ISA terms."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because no chip-internal timing is claimed: the 300-nanosecond budget is an RC charging curve on an external wire, and the arbitration trace is a logic value read off the line, visible on a scope with or without a pipeline behind it."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because nothing that boots, supervises, or changes privilege drives the bus in this post: the pull-up is solder rather than software, and the arbitration trace reproduces on paper."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because no system call, scheduler, or driver model appears: the workbench behind the post is a small program evaluating the spec's resistor formulas, and the bus behavior follows from the pins alone."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "matters at Algorithm because the rise-time bound is pure computation: tr = 0.8473 x R x C falls out of the RC exponential and evaluates identically on any machine, and the arbitration is a wire-level AND any simulator reproduces bit for bit."
+      }
+    },
+    "offer": "I2C bus misbehaving on a board? Scope-trace diagnosis at the crash-triage rate: $250/symptom, fixed price."
+  },
+  {
     "title": "The Stack Frame Is Optional",
     "slug": "the-stack-frame-is-optional",
     "date": "2026-09-15",
