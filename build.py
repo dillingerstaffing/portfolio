@@ -857,8 +857,10 @@ THEME_INIT_JS = """  <script>
     // the right theme (no flash of the wrong one). Same contract as the
     // main page head script, so permalinks carry the visitor's theme.
     try {
-      document.documentElement.dataset.theme =
-        localStorage.getItem('portfolio-theme') === 'gb' ? 'gb' : 'notebook';
+      // Shared key across all sites; migrate the retired portfolio-only key once.
+      let t = localStorage.getItem('emi-site-theme');
+      if (t !== 'classic' && t !== 'notebook' && localStorage.getItem('portfolio-theme') === 'gb') t = 'classic';
+      document.documentElement.dataset.theme = t === 'classic' ? 'classic' : 'notebook';
     } catch (_) {
       document.documentElement.dataset.theme = 'notebook';
     }
@@ -870,27 +872,27 @@ THEME_ENGINE_JS = """  <script>
       // Theme engine, same as the main page: the head script already set
       // data-theme before first paint; the toggle flips live with a radial
       // view-transition wipe from the toggle (tonal CSS fallback otherwise).
-      const KEY = 'portfolio-theme';
+      const KEY = 'emi-site-theme';
       const root = document.documentElement;
       const meta = document.querySelector('meta[name="theme-color"]');
-      const COLORS = { notebook: '#ece6d5', gb: '#b8f34b' };
+      const COLORS = { notebook: '#ece6d5', classic: '#b8f34b' };
       const btn = document.querySelector('.theme-toggle');
-      const current = () => (root.dataset.theme === 'gb' ? 'gb' : 'notebook');
-      const otherName = (t) => (t === 'gb' ? 'notebook folio' : 'green-black terminal');
+      const current = () => (root.dataset.theme === 'classic' ? 'classic' : 'notebook');
+      const otherName = (t) => (t === 'classic' ? 'notebook folio' : 'green-black terminal');
       function apply(t) {
         root.dataset.theme = t;
         if (meta) meta.setAttribute('content', COLORS[t]);
         if (btn) btn.setAttribute('aria-label', 'Switch to ' + otherName(t) + ' theme');
       }
       function toggle() {
-        const next = current() === 'gb' ? 'notebook' : 'gb';
+        const next = current() === 'classic' ? 'notebook' : 'classic';
         try { localStorage.setItem(KEY, next); } catch (_) {}
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (btn) {
           const r = btn.getBoundingClientRect();
           root.style.setProperty('--tx', Math.round(r.left + r.width / 2) + 'px');
           root.style.setProperty('--ty', Math.round(r.top + r.height / 2) + 'px');
-          btn.classList.toggle('is-flipped', next === 'gb');
+          btn.classList.toggle('is-flipped', next === 'classic');
         }
         if (!reduced && document.startViewTransition) {
           document.startViewTransition(() => apply(next));
@@ -899,7 +901,7 @@ THEME_ENGINE_JS = """  <script>
         }
       }
       if (btn) {
-        btn.classList.toggle('is-flipped', current() === 'gb');
+        btn.classList.toggle('is-flipped', current() === 'classic');
         btn.addEventListener('click', toggle);
       }
       apply(current());
