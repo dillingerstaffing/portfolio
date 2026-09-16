@@ -681,6 +681,34 @@ def node_check_file(path, label):
     print(f"node --check: {label} OK")
 
 
+def mobile_width_gate(articles):
+    """Render the built pages at a 390px phone viewport and fail the build
+    if any article lays out wider than the viewport. Backstop for the
+    no-page-level-horizontal-scrolling contract: grid blowout from one wide
+    child (a pre with long lines) used to stretch whole articles off-screen.
+    Bypass with SKIP_MOBILE_GATE=1 (emergencies only)."""
+    import os
+    if os.environ.get("SKIP_MOBILE_GATE") == "1":
+        print("mobile gate: SKIPPED via SKIP_MOBILE_GATE=1")
+        return
+    gate = HERE / "mobile-gate.js"
+    targets = [str(OUT)]
+    for article in articles[:3]:
+        post = HERE / "blog" / article["slug"] / "index.html"
+        if post.exists():
+            targets.append(str(post))
+    env = dict(os.environ)
+    env["NODE_PATH"] = str(Path.home() / "workspace" / "node_modules")
+    proc = subprocess.run(["node", str(gate)] + targets,
+                          capture_output=True, text=True, cwd=str(HERE), env=env,
+                          timeout=300)
+    sys.stdout.write(proc.stdout)
+    sys.stderr.write(proc.stderr)
+    if proc.returncode != 0:
+        fail("mobile width gate failed: content wider than the 390px viewport")
+    print("mobile width gate: OK")
+
+
 SITE_URL = "https://dillingerstaffing.github.io/portfolio"
 SITE_PATH = "/portfolio"
 
@@ -1576,6 +1604,8 @@ def build(systems_lab, baremetal, xv6):
 
     OUT.write_text(page, encoding="utf-8")
     print(f"wrote {OUT} ({len(page)} bytes)")
+
+    mobile_width_gate(articles)
 
 
 def main(argv=None):
