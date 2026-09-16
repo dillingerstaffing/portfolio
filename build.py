@@ -460,6 +460,8 @@ def load_data():
             fail(f"article {a['title']}: bad date {a['date']!r}")
         check_layers(a["layers"], f"article {a['title']}")
         check_evidence(a.get("evidence"), f"article {a['title']}")
+        if "offer" in a and (not isinstance(a["offer"], str) or not a["offer"].strip() or " " in a["offer"]):
+            fail(f"article {a['title']}: offer must be a non-empty string")
         lint_layer_triggers(
             a["title"] + " " + " ".join(a["paragraphs"]),
             a["layers"], f"article {a['title']}")
@@ -838,6 +840,11 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     json.loads(ld_json)  # never ship malformed JSON-LD
     dwell = DWELL_SCRIPT.replace("__SITE_PATH__", SITE_PATH)
     post_css = css + "\n.post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }\n.post-offer a { color: var(--acid); text-decoration: none; }\n.post-offer a:hover { text-decoration: underline; }"
+    # Per-article offer line (data/articles.json "offer"): a post-specific
+    # buyer call-out rendered in the .post-offer block. Falls back to the
+    # generic line when the article carries no "offer".
+    offer_text = article.get("offer") or "Stuck on a board or a crash? Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up from $500, C audit from $350."
+    offer_html = f'<div class="post-offer"><p>{html.escape(offer_text)} <a href="{SITE_PATH}/#contact">Send the details</a>.</p></div>'
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -873,7 +880,7 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
   <main class="post-wrap">
 {block}
   </main>
-  <div class="post-offer"><p>Stuck on a board or a crash? Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up from $500, C audit from $350. <a href="{SITE_PATH}/#contact">Send the details</a>.</p></div>
+  {offer_html}
   <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; All field notes</a></footer>
 {wig_script}
 {dwell}
