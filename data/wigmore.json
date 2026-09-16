@@ -130070,5 +130070,546 @@
         }
       ]
     }
+,
+  {
+    "item": "medeleg-instr-pagefault",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because medeleg is the privileged machine contract for trap delegation: bit 12 selects the destination for instruction page faults, and the test log shows the same S-mode jump to an unmapped page arriving in M-mode with mcause 0xc when the bit is clear and in S-mode with scause 0xc, sepc and stval at the fault page, when the bit is set.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ISA because medeleg is the privileged machine contract for trap delegation: bit 12 selects the destination for instruction page faults, and the test log shows the same S-mode jump to an unmapped page arriving in M-mode with mcause 0xc when the bit is clear and in S-mode with scause 0xc, sepc and stval at the fault page, when the bit is set."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log records the medeleg write/readback pairs and the per-phase trap records: phase A traps once in S-mode with scause 0xc, sepc 0x80080000 and stval 0x80080000 at the fault page; phase B traps once in M-mode with mcause 0xc, mepc 0x80080000 and mtval 0x80080000.",
+        "source": {
+          "tier": "lab",
+          "cite": "medeleg-instr-pagefault test log, spec rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-instr-pagefault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The RISC-V privileged architecture defines medeleg bit 12 as the delegation bit for instruction page faults (exception code 12).",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verification performs the exact CSR writes the machine contract describes and reads back the contract's defined outcomes, the ISA slot claim is established."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The logged readbacks and trap records match the delegation contract bit 12 defines."
+      }
+    ]
+  },
+  {
+    "item": "medeleg-instr-pagefault",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the test log asserts trap destinations, cause codes, and exact trap pcs across 3 byte-identical runs, never timing. Moving cache or pipeline behavior changes when the fetch faults, never whether medeleg bit 12 selects M-mode or S-mode, and the 32 checks assert only the routing.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the test log asserts trap destinations, cause codes, and exact trap pcs across 3 byte-identical runs, never timing. Moving cache or pipeline behavior changes when the fetch faults, never whether medeleg bit 12 selects M-mode or S-mode, and the 32 checks assert only the routing."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log contains no cycle counts and no timing assertions: the 32 checks assert only trap destinations, cause codes, and exact trap pcs, and the three run logs are byte-identical.",
+        "source": {
+          "tier": "lab",
+          "cite": "medeleg-instr-pagefault test log, spec rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-instr-pagefault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Trap destination selection by the medeleg CSR is an architectural routing decision, independent of pipeline, cache, or predictor behavior.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim whose evidence asserts only architectural outcomes across byte-identical runs cannot depend on microarchitectural timing behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The checks assert routing facts, and no check measures or varies timing."
+      }
+    ]
+  },
+  {
+    "item": "medeleg-instr-pagefault",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because trap delegation is configured by M-mode boot firmware: the test log is exactly that firmware-level act, writing medeleg bit 12, dropping to S-mode, and executing the faulting jump, so the claim leans on boot-time machine-mode configuration.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at FIRMWARE because trap delegation is configured by M-mode boot firmware: the test log is exactly that firmware-level act, writing medeleg bit 12, dropping to S-mode, and executing the faulting jump, so the claim leans on boot-time machine-mode configuration."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log shows M-mode writing medeleg bit 12, verifying the readback, then dropping to S-mode with sret before the faulting jump: the delegation is programmed by machine-mode software at boot time.",
+        "source": {
+          "tier": "lab",
+          "cite": "medeleg-instr-pagefault test log, run output",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-instr-pagefault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The RISC-V privileged architecture reserves trap delegation programming to M-mode; only machine-mode software can write medeleg.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "Trap delegation is programmed by M-mode software before the drop to S-mode, so a claim verified by writing medeleg and dropping privilege levels depends on firmware-level machine-mode configuration."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The delegation write and the privilege drop are both M-mode acts in the log."
+      }
+    ]
+  },
+  {
+    "item": "medeleg-instr-pagefault",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because no kernel subsystem takes part in the claim: the S-mode handler is a test stub recording scause, sepc, and stval, not a scheduler or memory manager, and the routing verdict holds identically under any kernel.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at KERNEL because no kernel subsystem takes part in the claim: the S-mode handler is a test stub recording scause, sepc, and stval, not a scheduler or memory manager, and the routing verdict holds identically under any kernel."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log shows the S-mode handler only recording scause, sepc, sstatus, and stval into a save area and resuming: it schedules nothing, manages no memory, and drives no device.",
+        "source": {
+          "tier": "lab",
+          "cite": "medeleg-instr-pagefault test log, module description",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-instr-pagefault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "A kernel subsystem is a scheduler, memory manager, driver, or similar operating-system mechanism; a register-recording trap stub is none of these.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test stub that only records trap registers implements no kernel subsystem, so a claim verified through it cannot depend on kernel behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The stub's recorded behavior is fully described without any kernel concept."
+      }
+    ]
+  },
+  {
+    "item": "medeleg-instr-pagefault",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because selecting a trap destination through a delegation CSR is a hardware register contract stated in RISC-V privileged terms (medeleg, mcause, scause). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because selecting a trap destination through a delegation CSR is a hardware register contract stated in RISC-V privileged terms (medeleg, mcause, scause). It cannot be restated as an ISA-independent computation, so it fails the identical-on-every-ISA test."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log states its verdict entirely in CSR and trap-code terms: medeleg readbacks, mcause and scause values, mepc, sepc, mtval, and stval. No ISA-independent computation is defined or checked.",
+        "source": {
+          "tier": "lab",
+          "cite": "medeleg-instr-pagefault test log, spec rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-instr-pagefault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "An algorithm claim requires a computation restatable without reference to a particular machine's registers; CSR routing has no such restatement.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim stated entirely in terms of named CSRs and trap codes has no ISA-independent restatement, so it cannot be an algorithm claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "Every verified fact names a RISC-V CSR or trap code."
+      }
+    ]
+  },
+  {
+    "item": "fflags-nx-only",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the F extension defines fcsr and its accrued exception flags: the test log shows one inexact fadd.d setting exactly the NX bit with NV, DZ, OF, and UF clear, and one exact fadd.d leaving fcsr at zero, which is the machine contract for inexact flag accrual in action.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ISA because the F extension defines fcsr and its accrued exception flags: the test log shows one inexact fadd.d setting exactly the NX bit with NV, DZ, OF, and UF clear, and one exact fadd.d leaving fcsr at zero, which is the machine contract for inexact flag accrual in action."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log records the per-phase result and flag pairs: phase A executes fadd.d on (1e16, 1.0) and reads result bits 0x4341c37937e08000 with fcsr exactly 0x1; phase B executes fadd.d on (1.0, 2.0) and reads result bits 0x4008000000000000 with fcsr exactly 0x0.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only test log, spec rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The RISC-V F extension defines fcsr and its accrued exception flags, with NX as the flag set when an operation delivers an inexact result.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, unprivileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "When the verification executes the exact instruction sequence the contract describes and reads back the contract's defined flag outcomes, the ISA slot claim is established."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The logged flag outcomes match the F-extension accrual contract."
+      }
+    ]
+  },
+  {
+    "item": "fflags-nx-only",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the test log asserts only flag bits and result words across 3 byte-identical runs, never timing. A different pipeline or FPU implementation changes how fast the add completes, never which accrued flag the inexact result sets, and the 18 checks assert only the flag outcomes.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the test log asserts only flag bits and result words across 3 byte-identical runs, never timing. A different pipeline or FPU implementation changes how fast the add completes, never which accrued flag the inexact result sets, and the 18 checks assert only the flag outcomes."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log contains no cycle counts and no timing assertions: the 18 checks assert only result bits and fcsr flag values, and the three run logs are byte-identical.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only test log, spec rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Flag accrual on an arithmetic instruction is an architectural outcome; pipeline depth or FPU latency cannot change which flag the contract requires.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, unprivileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim whose evidence asserts only architectural outcomes across byte-identical runs cannot depend on microarchitectural timing behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The checks assert flag facts, and no check measures or varies timing."
+      }
+    ]
+  },
+  {
+    "item": "fflags-nx-only",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because the floating-point unit is enabled by M-mode software: the test log enables FS in mstatus, asserts no interrupt can fire, and installs a counting trap handler as a safety net, so the claim leans on machine-mode configuration of the execution environment.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at FIRMWARE because the floating-point unit is enabled by M-mode software: the test log enables FS in mstatus, asserts no interrupt can fire, and installs a counting trap handler as a safety net, so the claim leans on machine-mode configuration of the execution environment."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log shows M-mode enabling FS in mstatus, asserting mie is zero so no interrupt can fire, and installing a counting M-mode trap handler as a safety net before any FP instruction executes.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only test log, run output",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The RISC-V privileged architecture gates floating-point execution on the mstatus FS field, which only M-mode software can enable.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, unprivileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "Enabling the floating-point unit and silencing interrupts are machine-mode configuration acts, so a claim verified only after those acts depends on firmware-level setup."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The FP enable and interrupt silencing are both M-mode acts in the log."
+      }
+    ]
+  },
+  {
+    "item": "fflags-nx-only",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because the module runs bare metal with no operating system loaded: the trap handler is a counting safety net that never fires, not a scheduler or driver, and the flag verdict holds identically under any kernel.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at KERNEL because the module runs bare metal with no operating system loaded: the trap handler is a counting safety net that never fires, not a scheduler or driver, and the flag verdict holds identically under any kernel."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log shows the trap handler never firing: the trap record reads count 0, and the module runs with no operating system loaded.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only test log, run output",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "A kernel subsystem is a scheduler, memory manager, driver, or similar operating-system mechanism; a never-fired counting trap stub is none of these.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, unprivileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A counting trap handler that never fires implements no kernel subsystem, so a claim verified on bare metal cannot depend on kernel behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The verified run involves no kernel concept at all."
+      }
+    ]
+  },
+  {
+    "item": "fflags-nx-only",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because which accrued flag an inexact operation sets is a hardware CSR contract, not a portable computation. The RNE rounding analysis is mathematics, but the verified claim, that this hart sets NX and nothing else, is stated in RISC-V terms and fails the identical-on-every-ISA test.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because which accrued flag an inexact operation sets is a hardware CSR contract, not a portable computation. The RNE rounding analysis is mathematics, but the verified claim, that this hart sets NX and nothing else, is stated in RISC-V terms and fails the identical-on-every-ISA test."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The test log states its verdict as which fcsr bit the hart set after each fadd.d: NX alone after the inexact add, nothing after the exact add. The claim is about the hart's flag behavior, not about a portable computation.",
+        "source": {
+          "tier": "lab",
+          "cite": "fflags-nx-only test log, spec rows",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "An algorithm claim requires a computation restatable without reference to a particular machine's CSRs; accrued-flag behavior has no such restatement.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, unprivileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim about which accrued flag bit a hart sets after an operation is a CSR contract fact with no ISA-independent restatement, so it cannot be an algorithm claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "Every verified fact names the fcsr flag bits."
+      }
+    ]
+  }
   ]
 }
