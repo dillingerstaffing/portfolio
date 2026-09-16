@@ -182,8 +182,8 @@ def check_feed(items):
 
 def check_evidence(ev, where):
     # Every layer strip's becauses must name primary evidence a reader can
-    # follow: the card's PROOF.md proof log (or the repo itself when no
-    # proof log exists). Claim discipline from Chris 2026-09-10.
+    # follow: the card's PROOF.md test log (or the repo itself when no
+    # test log exists). Claim discipline from Chris 2026-09-10.
     if not isinstance(ev, dict) or set(ev.keys()) != {"label", "url"}:
         fail(f"{where}: evidence must be {{label, url}}")
     if (not isinstance(ev["label"], str) or not ev["label"].strip()
@@ -613,7 +613,7 @@ def slugify(title):
 def article_strip_html(article, wigmore_by_slot):
     # Mirrors the layerStripHTML() renderer in index.src.html, but baked at
     # build time. because strings are validated plain text; escape anyway.
-    # One proof-log link per article, on the strip caption; per-slot evidence
+    # One test-log link per article, on the strip caption; per-slot evidence
     # links were removed as redundant.
     # The why-marker buttons mirror the card renderer's argument affordance:
     # one consistent spot per slot header, wired to the same tooltip IIFE
