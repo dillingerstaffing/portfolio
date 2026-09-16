@@ -960,8 +960,8 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
    top of every per-post page. The header keeps its own sticky rule neutralized
    inside the wrapper; the wrapper carries the safe-area inset for home-screen
    standalone mode. */
-.post-sticky { position: sticky; top: 0; z-index: 60; background: var(--bg); padding-top: env(safe-area-inset-top); }
-.post-sticky header.frame.topline { position: static; padding-top: 0; }
+.post-sticky { position: sticky; top: 0; z-index: 60; background: var(--bg); }
+.post-sticky header.frame.topline { position: static; }
 .post-backbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1180px; margin: 0 auto; padding: 10px 24px; border-bottom: 1px solid var(--line); font: 500 11px/1.6 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
 .post-backbar a.backlink { color: var(--ink); text-decoration: none; white-space: nowrap; }
 .post-backbar a.backlink:hover { text-decoration: underline; }
