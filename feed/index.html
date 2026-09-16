@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260916-213740" />
+  <meta name="build-version" content="v20260916-215107" />
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#b8f34b" />
   <title>The Signal Wire &middot; Chris Dillinger</title>
@@ -26,6 +26,18 @@
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "CollectionPage", "name": "The Signal Wire", "description": "The Signal Wire: the week's reading for low-level engineers. RISC-V, kernels, hardware, and tooling, updated every Monday.", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/feed/"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <script>
+    // Theme: notebook is the default; a stored visitor choice wins.
+    // Runs before the stylesheet is parsed so the first paint is already
+    // the right theme (no flash of the wrong one). Same contract as the
+    // main page head script, so permalinks carry the visitor's theme.
+    try {
+      document.documentElement.dataset.theme =
+        localStorage.getItem('portfolio-theme') === 'gb' ? 'gb' : 'notebook';
+    } catch (_) {
+      document.documentElement.dataset.theme = 'notebook';
+    }
+  </script>
   <style>
     :root {
       --ink: #f0f2eb;
@@ -105,6 +117,7 @@
       width: 100%;
       background: var(--bg);
       isolation: isolate;
+      padding-top: env(safe-area-inset-top);
     }
     .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .signal { width: 8px; height: 8px; background: var(--acid); box-shadow: 0 0 0 4px rgba(184,243,75,.1); }
@@ -1180,6 +1193,9 @@ footer.frame .elsewhere a:hover { color: var(--acid); }
       <a href="/portfolio/feed/" class="is-active" aria-current="page">Feed</a>
       <a href="/portfolio/#services">Services</a>
       <a href="/portfolio/#contact">Contact</a>
+      <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+        <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
+      </button>
     </nav>
   </header>
 
@@ -1477,6 +1493,46 @@ footer.frame .elsewhere a:hover { color: var(--acid); }
       window.location.href = url;
     });
   })();
+  </script>
+  <script>
+    (() => {
+      // Theme engine, same as the main page: the head script already set
+      // data-theme before first paint; the toggle flips live with a radial
+      // view-transition wipe from the toggle (tonal CSS fallback otherwise).
+      const KEY = 'portfolio-theme';
+      const root = document.documentElement;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const COLORS = { notebook: '#ece6d5', gb: '#b8f34b' };
+      const btn = document.querySelector('.theme-toggle');
+      const current = () => (root.dataset.theme === 'gb' ? 'gb' : 'notebook');
+      const otherName = (t) => (t === 'gb' ? 'notebook folio' : 'green-black terminal');
+      function apply(t) {
+        root.dataset.theme = t;
+        if (meta) meta.setAttribute('content', COLORS[t]);
+        if (btn) btn.setAttribute('aria-label', 'Switch to ' + otherName(t) + ' theme');
+      }
+      function toggle() {
+        const next = current() === 'gb' ? 'notebook' : 'gb';
+        try { localStorage.setItem(KEY, next); } catch (_) {}
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (btn) {
+          const r = btn.getBoundingClientRect();
+          root.style.setProperty('--tx', Math.round(r.left + r.width / 2) + 'px');
+          root.style.setProperty('--ty', Math.round(r.top + r.height / 2) + 'px');
+          btn.classList.toggle('is-flipped', next === 'gb');
+        }
+        if (!reduced && document.startViewTransition) {
+          document.startViewTransition(() => apply(next));
+        } else {
+          apply(next);
+        }
+      }
+      if (btn) {
+        btn.classList.toggle('is-flipped', current() === 'gb');
+        btn.addEventListener('click', toggle);
+      }
+      apply(current());
+    })();
   </script>
 </body>
 </html>

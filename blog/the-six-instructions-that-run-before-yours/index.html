@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260916-213740" />
-  <meta name="color-scheme" content="dark" />
-  <meta name="theme-color" content="#b8f34b" />
+  <meta name="build-version" content="v20260916-215107" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#ece6d5" />
   <title>The Six Instructions That Run Before Yours &middot; Blog &middot; Chris Dillinger</title>
   <meta name="description" content="On QEMU&#x27;s virt board with no firmware, every hart wakes at 0x1000 to a 64-byte ROM. I dumped it through the UART and decoded it against QEMU&#x27;s source: six instructions, then your code. Four harts, all four arrived; with OpenSBI, only one did. The pecking order is firmware&#x27;s idea, not hardware&#x27;s." />
   <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/" />
@@ -27,6 +27,18 @@
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Six Instructions That Run Before Yours", "datePublished": "2026-09-15", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <script>
+    // Theme: notebook is the default; a stored visitor choice wins.
+    // Runs before the stylesheet is parsed so the first paint is already
+    // the right theme (no flash of the wrong one). Same contract as the
+    // main page head script, so permalinks carry the visitor's theme.
+    try {
+      document.documentElement.dataset.theme =
+        localStorage.getItem('portfolio-theme') === 'gb' ? 'gb' : 'notebook';
+    } catch (_) {
+      document.documentElement.dataset.theme = 'notebook';
+    }
+  </script>
   <style>
     :root {
       --ink: #f0f2eb;
@@ -106,6 +118,7 @@
       width: 100%;
       background: var(--bg);
       isolation: isolate;
+      padding-top: env(safe-area-inset-top);
     }
     .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .signal { width: 8px; height: 8px; background: var(--acid); box-shadow: 0 0 0 4px rgba(184,243,75,.1); }
@@ -1091,10 +1104,44 @@
   
 .post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }
 .post-offer a { color: var(--acid); text-decoration: none; }
-.post-offer a:hover { text-decoration: underline; }</style>
+.post-offer a:hover { text-decoration: underline; }
+/* Permalink chrome: the site header plus a back bar, stuck together at the
+   top of every per-post page. The header keeps its own sticky rule neutralized
+   inside the wrapper; the wrapper carries the safe-area inset for home-screen
+   standalone mode. */
+.post-sticky { position: sticky; top: 0; z-index: 60; background: var(--bg); padding-top: env(safe-area-inset-top); }
+.post-sticky header.frame.topline { position: static; padding-top: 0; }
+.post-backbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1180px; margin: 0 auto; padding: 10px 24px; border-bottom: 1px solid var(--line); font: 500 11px/1.6 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+.post-backbar a.backlink { color: var(--ink); text-decoration: none; white-space: nowrap; }
+.post-backbar a.backlink:hover { text-decoration: underline; }
+.post-copylink { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 3px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.post-copylink:hover { color: var(--ink); border-color: var(--ink); }
+</style>
 </head>
 <body>
-  <header class="post-crumb"><a href="/portfolio/">Chris Dillinger</a><span> / </span><a href="/portfolio/#blog">Blog</a></header>
+  <div class="post-sticky">
+    <header class="frame topline">
+      <div class="identity">
+        <span class="signal" aria-hidden="true"></span>
+        <strong>Chris</strong>
+        <span>Low-level systems developer</span>
+      </div>
+      <nav aria-label="Primary navigation">
+        <a href="/portfolio/#top">Home</a>
+        <a href="/portfolio/#blog">Blog</a>
+        <a href="/portfolio/feed/">Feed</a>
+        <a href="/portfolio/#services">Services</a>
+        <a href="/portfolio/#contact">Contact</a>
+        <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+          <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
+        </button>
+      </nav>
+    </header>
+    <div class="post-backbar">
+      <a class="backlink" href="/portfolio/#blog">&larr; Back to all posts</a>
+      <button class="post-copylink" type="button" data-url="https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/">Copy permalink</button>
+    </div>
+  </div>
   <main class="post-wrap">
 <article class="research-note">
         <div>
@@ -1117,7 +1164,7 @@
       </article>
   </main>
   <div class="post-offer"><p>Bringing up a board and the boot order is not doing what you expect? Bare-metal bring-up from $500, fixed price. <a href="/portfolio/#contact">Send the details</a>.</p></div>
-  <footer class="post-foot"><a href="/portfolio/#blog">&larr; All field notes</a></footer>
+  <footer class="post-foot"><a href="/portfolio/#blog">&larr; Back to all posts</a></footer>
   <script>window.__WIGMORE__ = {"the-six-instructions-that-run-before-yours|ISA": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "ISA", "probandum": "matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at ISA because the reset contract is an ISA promise every hart honors: begin fetching at the reset vector, and the six-instruction ROM (auipc, addi, csrr mhartid, two loads, jr) was decoded instruction by instruction from a live UART dump and matched QEMU 8.2.2 hw/riscv/boot.c byte for byte."}, {"n": 2, "kind": "evidence", "text": "The firsthand session this run: a bare-metal probe on QEMU 8.2.2 virt with -bios none read 64 bytes at 0x1000 back through the UART; the hand decode gave auipc t0,0 / addi a2,t0,40 / csrr a0,mhartid / ld a1,32(t0) / ld t0,24(t0) / jr t0, and every byte matched riscv_setup_rom_reset_vec in hw/riscv/boot.c, including the corrected fifth instruction (ld t0, not ld a1).", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "The reset contract is visible as instruction behavior: six concrete instructions, decoded from the wire, doing exactly what the platform promises."}, {"n": 4, "kind": "generalization", "text": "When the verified property is the exact instruction sequence the machine executes at reset, the ISA slot lights."}, {"n": 5, "kind": "generalization", "text": "A UART dump checked against the emulator's own source is the machine's testimony: the ROM contains what it contains, and the bytes say it."}, {"n": 6, "kind": "explanation", "text": "One could object that a QEMU ROM is an emulator artifact, not the ISA."}, {"n": 7, "kind": "refutation", "text": "The six instructions are ordinary privileged-ISA operations (auipc, csrr mhartid, loads, jr) whose semantics the manual defines; the emulator only hosts the ROM, it does not invent the contract."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|MICROARCH": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "MICROARCH", "probandum": "not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Microarch because nothing was timed and no pipeline, cache, or execution-port behavior was measured: the verified claim is the reset ROM's fixed instruction sequence and the equal-treatment result, which hold on any implementation of the reset contract."}, {"n": 2, "kind": "evidence", "text": "The session recorded only a fixed instruction sequence and arrival counts: six decoded instructions, a 1-2-3-4 counter with no firmware, a single arrival with OpenSBI. No cycle count, no throughput, no timing of any kind.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "Nothing in the result varies with pipeline depth, cache behavior, or issue width: the claim is what the ROM says, not how fast anything runs."}, {"n": 4, "kind": "generalization", "text": "When no measurement of time or throughput supports the claim, the Microarch slot stays dim."}, {"n": 5, "kind": "generalization", "text": "A verdict about which instructions exist is answered by a decoder, not a stopwatch."}, {"n": 6, "kind": "explanation", "text": "One could object that four harts racing to one UART is a concurrency measurement."}, {"n": 7, "kind": "refutation", "text": "The race was guarded by an amoswap ticket spinlock, so the arrivals are ordered facts, not timing data; the count is the claim, and it needs no clock."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|FIRMWARE": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "FIRMWARE", "probandum": "matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at Firmware because the A/B result is a firmware verdict: with -bios none all four harts arrived (the shared counter read 1, 2, 3, 4), while with OpenSBI in the loop only one arrived, since OpenSBI parks the secondaries itself and waits for the operating system to start them; the hart hierarchy lives in firmware, not in the reset hardware."}, {"n": 2, "kind": "evidence", "text": "The A/B this run: -bios none on smp4, the shared atomic counter read 1, 2, 3, 4, every hart reached the kernel; default OpenSBI on smp4, the counter read 1 only, OpenSBI parked the other three.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "The difference between the two runs is exactly one component: the firmware in the loop."}, {"n": 4, "kind": "generalization", "text": "When the verified property is a behavior that appears or disappears with the firmware, the Firmware slot lights."}, {"n": 5, "kind": "generalization", "text": "An A/B that changes one layer and flips the result attributes the behavior to that layer."}, {"n": 6, "kind": "explanation", "text": "One could object that parking secondaries is the operating system's job, not firmware's."}, {"n": 7, "kind": "refutation", "text": "The parked harts never reached the kernel at all: no OS code ran on them, so only OpenSBI could have held them back, via its HSM wait."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|KERNEL": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "KERNEL", "probandum": "not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Kernel because nothing ran under an operating system: the probe is -bios none bare metal, so no scheduling, system call, or memory-management claim is made or needed."}, {"n": 2, "kind": "evidence", "text": "The probe ran with -bios none: no kernel booted, no process ran, no trap was delegated, no page was mapped by an OS.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "Every verified fact predates the kernel: the ROM, the hart count, the firmware's parking decision."}, {"n": 4, "kind": "generalization", "text": "When no operating system code executes in the experiment, the Kernel slot stays dim."}, {"n": 5, "kind": "generalization", "text": "Bare metal means exactly this: the claims stop where the first OS instruction would start."}, {"n": 6, "kind": "explanation", "text": "One could object that OpenSBI is system software close enough to a kernel."}, {"n": 7, "kind": "refutation", "text": "OpenSBI is firmware by the experiment's own framing: it runs before any kernel, and the article's claim about it is a firmware claim, already lit in its own slot."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-six-instructions-that-run-before-yours|ALGORITHM": {"item": "the-six-instructions-that-run-before-yours", "kind": "article", "slot": "ALGORITHM", "probandum": "not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Algorithm because no computational mechanism was constructed or measured: the verified claim is the fixed six-instruction ROM and the hart-equality result, read off the wire rather than computed."}, {"n": 2, "kind": "evidence", "text": "The session built no mechanism: it dumped 64 bytes, decoded six instructions by hand against hw/riscv/boot.c, and counted hart arrivals 1-2-3-4 versus 1.", "source": {"tier": "reference", "cite": "The Six Instructions That Run Before Yours, as published", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-six-instructions-that-run-before-yours/"}}, {"n": 3, "kind": "penultimate", "text": "Reading and counting are observations, not constructions: nothing was computed that was not already on the wire."}, {"n": 4, "kind": "generalization", "text": "When the verified claim is read off the machine rather than computed by a new mechanism, the Algorithm slot stays dim."}, {"n": 5, "kind": "generalization", "text": "A decoder ring is not an algorithm: the insight is what the bytes say, not a new way to say it."}, {"n": 6, "kind": "explanation", "text": "One could object that hand-decoding is a computational procedure."}, {"n": 7, "kind": "refutation", "text": "The decode verified the ROM against its source; it invented no procedure a reader could reuse, so there is no mechanism to light the slot."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}};</script>
   <script>
 (() => {
@@ -1429,6 +1476,73 @@
           setTimeout(() => { btn.textContent = label; btn.removeAttribute('data-done'); }, 1600);
         }).catch(() => {});
       });
+    });
+  })();
+  </script>
+  <script>
+    (() => {
+      // Theme engine, same as the main page: the head script already set
+      // data-theme before first paint; the toggle flips live with a radial
+      // view-transition wipe from the toggle (tonal CSS fallback otherwise).
+      const KEY = 'portfolio-theme';
+      const root = document.documentElement;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const COLORS = { notebook: '#ece6d5', gb: '#b8f34b' };
+      const btn = document.querySelector('.theme-toggle');
+      const current = () => (root.dataset.theme === 'gb' ? 'gb' : 'notebook');
+      const otherName = (t) => (t === 'gb' ? 'notebook folio' : 'green-black terminal');
+      function apply(t) {
+        root.dataset.theme = t;
+        if (meta) meta.setAttribute('content', COLORS[t]);
+        if (btn) btn.setAttribute('aria-label', 'Switch to ' + otherName(t) + ' theme');
+      }
+      function toggle() {
+        const next = current() === 'gb' ? 'notebook' : 'gb';
+        try { localStorage.setItem(KEY, next); } catch (_) {}
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (btn) {
+          const r = btn.getBoundingClientRect();
+          root.style.setProperty('--tx', Math.round(r.left + r.width / 2) + 'px');
+          root.style.setProperty('--ty', Math.round(r.top + r.height / 2) + 'px');
+          btn.classList.toggle('is-flipped', next === 'gb');
+        }
+        if (!reduced && document.startViewTransition) {
+          document.startViewTransition(() => apply(next));
+        } else {
+          apply(next);
+        }
+      }
+      if (btn) {
+        btn.classList.toggle('is-flipped', current() === 'gb');
+        btn.addEventListener('click', toggle);
+      }
+      apply(current());
+    })();
+  </script>
+  <script>
+  /* Permalink copy button on per-post pages: one click copies the post's
+     canonical URL. Degrades silently where the clipboard API is
+     unavailable. */
+  (() => {
+    const btn = document.querySelector('.post-copylink');
+    if (!btn) return;
+    const url = btn.getAttribute('data-url') || window.location.href;
+    btn.addEventListener('click', () => {
+      const done = () => {
+        const label = 'Copy permalink';
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = label; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => {});
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (_) {}
+        ta.remove();
+      }
     });
   })();
   </script>

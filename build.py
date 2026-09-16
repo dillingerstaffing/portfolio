@@ -851,6 +851,91 @@ CODEBLOCK_COPY_JS = """  <script>
   </script>"""
 
 
+THEME_INIT_JS = """  <script>
+    // Theme: notebook is the default; a stored visitor choice wins.
+    // Runs before the stylesheet is parsed so the first paint is already
+    // the right theme (no flash of the wrong one). Same contract as the
+    // main page head script, so permalinks carry the visitor's theme.
+    try {
+      document.documentElement.dataset.theme =
+        localStorage.getItem('portfolio-theme') === 'gb' ? 'gb' : 'notebook';
+    } catch (_) {
+      document.documentElement.dataset.theme = 'notebook';
+    }
+  </script>"""
+
+
+THEME_ENGINE_JS = """  <script>
+    (() => {
+      // Theme engine, same as the main page: the head script already set
+      // data-theme before first paint; the toggle flips live with a radial
+      // view-transition wipe from the toggle (tonal CSS fallback otherwise).
+      const KEY = 'portfolio-theme';
+      const root = document.documentElement;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const COLORS = { notebook: '#ece6d5', gb: '#b8f34b' };
+      const btn = document.querySelector('.theme-toggle');
+      const current = () => (root.dataset.theme === 'gb' ? 'gb' : 'notebook');
+      const otherName = (t) => (t === 'gb' ? 'notebook folio' : 'green-black terminal');
+      function apply(t) {
+        root.dataset.theme = t;
+        if (meta) meta.setAttribute('content', COLORS[t]);
+        if (btn) btn.setAttribute('aria-label', 'Switch to ' + otherName(t) + ' theme');
+      }
+      function toggle() {
+        const next = current() === 'gb' ? 'notebook' : 'gb';
+        try { localStorage.setItem(KEY, next); } catch (_) {}
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (btn) {
+          const r = btn.getBoundingClientRect();
+          root.style.setProperty('--tx', Math.round(r.left + r.width / 2) + 'px');
+          root.style.setProperty('--ty', Math.round(r.top + r.height / 2) + 'px');
+          btn.classList.toggle('is-flipped', next === 'gb');
+        }
+        if (!reduced && document.startViewTransition) {
+          document.startViewTransition(() => apply(next));
+        } else {
+          apply(next);
+        }
+      }
+      if (btn) {
+        btn.classList.toggle('is-flipped', current() === 'gb');
+        btn.addEventListener('click', toggle);
+      }
+      apply(current());
+    })();
+  </script>"""
+
+
+POST_COPYLINK_JS = """  <script>
+  /* Permalink copy button on per-post pages: one click copies the post's
+     canonical URL. Degrades silently where the clipboard API is
+     unavailable. */
+  (() => {
+    const btn = document.querySelector('.post-copylink');
+    if (!btn) return;
+    const url = btn.getAttribute('data-url') || window.location.href;
+    btn.addEventListener('click', () => {
+      const done = () => {
+        const label = 'Copy permalink';
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = label; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => {});
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (_) {}
+        ta.remove();
+      }
+    });
+  })();
+  </script>"""
+
+
 def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     slug = article["slug"]
     title = article["title"]
@@ -867,7 +952,22 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     ld_json = json.dumps(ld, ensure_ascii=False)
     json.loads(ld_json)  # never ship malformed JSON-LD
     dwell = DWELL_SCRIPT.replace("__SITE_PATH__", SITE_PATH)
-    post_css = css + "\n.post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }\n.post-offer a { color: var(--acid); text-decoration: none; }\n.post-offer a:hover { text-decoration: underline; }"
+    post_css = css + """
+.post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }
+.post-offer a { color: var(--acid); text-decoration: none; }
+.post-offer a:hover { text-decoration: underline; }
+/* Permalink chrome: the site header plus a back bar, stuck together at the
+   top of every per-post page. The header keeps its own sticky rule neutralized
+   inside the wrapper; the wrapper carries the safe-area inset for home-screen
+   standalone mode. */
+.post-sticky { position: sticky; top: 0; z-index: 60; background: var(--bg); padding-top: env(safe-area-inset-top); }
+.post-sticky header.frame.topline { position: static; padding-top: 0; }
+.post-backbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1180px; margin: 0 auto; padding: 10px 24px; border-bottom: 1px solid var(--line); font: 500 11px/1.6 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+.post-backbar a.backlink { color: var(--ink); text-decoration: none; white-space: nowrap; }
+.post-backbar a.backlink:hover { text-decoration: underline; }
+.post-copylink { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 3px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.post-copylink:hover { color: var(--ink); border-color: var(--ink); }
+"""
     # Per-article offer line (data/articles.json "offer"): a post-specific
     # buyer call-out rendered in the .post-offer block. Falls back to the
     # generic line when the article carries no "offer".
@@ -879,8 +979,8 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="build-version" content="{stamp}" />
-  <meta name="color-scheme" content="dark" />
-  <meta name="theme-color" content="#b8f34b" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#ece6d5" />
   <title>{social_title}</title>
   <meta name="description" content="{desc_attr}" />
   <link rel="canonical" href="{url}" />
@@ -901,18 +1001,43 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
   <meta property="article:published_time" content="{article['date']}T00:00:00-04:00" />
   <script type="application/ld+json">{ld_json}</script>
 {font_links}
+{THEME_INIT_JS}
   <style>{post_css}</style>
 </head>
 <body>
-  <header class="post-crumb"><a href="{SITE_PATH}/">Chris Dillinger</a><span> / </span><a href="{SITE_PATH}/#blog">Blog</a></header>
+  <div class="post-sticky">
+    <header class="frame topline">
+      <div class="identity">
+        <span class="signal" aria-hidden="true"></span>
+        <strong>Chris</strong>
+        <span>Low-level systems developer</span>
+      </div>
+      <nav aria-label="Primary navigation">
+        <a href="{SITE_PATH}/#top">Home</a>
+        <a href="{SITE_PATH}/#blog">Blog</a>
+        <a href="{SITE_PATH}/feed/">Feed</a>
+        <a href="{SITE_PATH}/#services">Services</a>
+        <a href="{SITE_PATH}/#contact">Contact</a>
+        <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+          <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
+        </button>
+      </nav>
+    </header>
+    <div class="post-backbar">
+      <a class="backlink" href="{SITE_PATH}/#blog">&larr; Back to all posts</a>
+      <button class="post-copylink" type="button" data-url="{url}">Copy permalink</button>
+    </div>
+  </div>
   <main class="post-wrap">
 {block}
   </main>
   {offer_html}
-  <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; All field notes</a></footer>
+  <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; Back to all posts</a></footer>
 {wig_script}
 {dwell}
 {CODEBLOCK_COPY_JS}
+{THEME_ENGINE_JS}
+{POST_COPYLINK_JS}
   <script>
   /* In-app browsers (LinkedIn, Facebook, Instagram, X) often swallow
      target="_blank" taps: the WebView drops the popup and the tap does
@@ -1127,6 +1252,9 @@ def build_feed_page(feed, stamp, template):
         f'      <a href="{SITE_PATH}/feed/" class="is-active" aria-current="page">Feed</a>\n'
         f'      <a href="{SITE_PATH}/#services">Services</a>\n'
         f'      <a href="{SITE_PATH}/#contact">Contact</a>\n'
+        '      <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">\n'
+        '        <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>\n'
+        '      </button>\n'
         '    </nav>\n'
         '  </header>\n'
     )
@@ -1422,6 +1550,7 @@ def build_feed_page(feed, stamp, template):
   <meta name="twitter:image:alt" content="{OG_IMAGE_ALT}" />
   <script type="application/ld+json">{ld_json}</script>
 {font_links}
+{THEME_INIT_JS}
   <style>{css}</style>
   <style>{FEED_CSS}</style>
 </head>
@@ -1519,6 +1648,7 @@ def build_feed_page(feed, stamp, template):
     }});
   }})();
   </script>
+{THEME_ENGINE_JS}
 </body>
 </html>
 """

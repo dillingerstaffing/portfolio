@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260916-213740" />
-  <meta name="color-scheme" content="dark" />
-  <meta name="theme-color" content="#b8f34b" />
+  <meta name="build-version" content="v20260916-215107" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#ece6d5" />
   <title>The Write That Sleeps &middot; Blog &middot; Chris Dillinger</title>
   <meta name="description" content="Fill an xv6 pipe to exactly 512 bytes, write one more byte, and the write does not return for 40 ticks. A user-space proof of a kernel sleep, measured with the uptime tick counter as the stopwatch." />
   <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/" />
@@ -27,6 +27,18 @@
   <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Write That Sleeps", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <script>
+    // Theme: notebook is the default; a stored visitor choice wins.
+    // Runs before the stylesheet is parsed so the first paint is already
+    // the right theme (no flash of the wrong one). Same contract as the
+    // main page head script, so permalinks carry the visitor's theme.
+    try {
+      document.documentElement.dataset.theme =
+        localStorage.getItem('portfolio-theme') === 'gb' ? 'gb' : 'notebook';
+    } catch (_) {
+      document.documentElement.dataset.theme = 'notebook';
+    }
+  </script>
   <style>
     :root {
       --ink: #f0f2eb;
@@ -106,6 +118,7 @@
       width: 100%;
       background: var(--bg);
       isolation: isolate;
+      padding-top: env(safe-area-inset-top);
     }
     .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .signal { width: 8px; height: 8px; background: var(--acid); box-shadow: 0 0 0 4px rgba(184,243,75,.1); }
@@ -1091,10 +1104,44 @@
   
 .post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }
 .post-offer a { color: var(--acid); text-decoration: none; }
-.post-offer a:hover { text-decoration: underline; }</style>
+.post-offer a:hover { text-decoration: underline; }
+/* Permalink chrome: the site header plus a back bar, stuck together at the
+   top of every per-post page. The header keeps its own sticky rule neutralized
+   inside the wrapper; the wrapper carries the safe-area inset for home-screen
+   standalone mode. */
+.post-sticky { position: sticky; top: 0; z-index: 60; background: var(--bg); padding-top: env(safe-area-inset-top); }
+.post-sticky header.frame.topline { position: static; padding-top: 0; }
+.post-backbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1180px; margin: 0 auto; padding: 10px 24px; border-bottom: 1px solid var(--line); font: 500 11px/1.6 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); background: var(--bg); }
+.post-backbar a.backlink { color: var(--ink); text-decoration: none; white-space: nowrap; }
+.post-backbar a.backlink:hover { text-decoration: underline; }
+.post-copylink { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 3px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
+.post-copylink:hover { color: var(--ink); border-color: var(--ink); }
+</style>
 </head>
 <body>
-  <header class="post-crumb"><a href="/portfolio/">Chris Dillinger</a><span> / </span><a href="/portfolio/#blog">Blog</a></header>
+  <div class="post-sticky">
+    <header class="frame topline">
+      <div class="identity">
+        <span class="signal" aria-hidden="true"></span>
+        <strong>Chris</strong>
+        <span>Low-level systems developer</span>
+      </div>
+      <nav aria-label="Primary navigation">
+        <a href="/portfolio/#top">Home</a>
+        <a href="/portfolio/#blog">Blog</a>
+        <a href="/portfolio/feed/">Feed</a>
+        <a href="/portfolio/#services">Services</a>
+        <a href="/portfolio/#contact">Contact</a>
+        <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+          <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
+        </button>
+      </nav>
+    </header>
+    <div class="post-backbar">
+      <a class="backlink" href="/portfolio/#blog">&larr; Back to all posts</a>
+      <button class="post-copylink" type="button" data-url="https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/">Copy permalink</button>
+    </div>
+  </div>
   <main class="post-wrap">
 <article class="research-note">
         <div>
@@ -1117,7 +1164,7 @@ pid = fork();</code></pre>
       </article>
   </main>
   <div class="post-offer"><p>A syscall not returning when you think it should? Crash triage is $250/symptom, fixed price. <a href="/portfolio/#contact">Send the details</a>.</p></div>
-  <footer class="post-foot"><a href="/portfolio/#blog">&larr; All field notes</a></footer>
+  <footer class="post-foot"><a href="/portfolio/#blog">&larr; Back to all posts</a></footer>
   <script>window.__WIGMORE__ = {"the-write-that-sleeps|ISA": {"item": "the-write-that-sleeps", "kind": "article", "slot": "ISA", "probandum": "not at ISA because the verified property is the kernel's scheduling decision, when a full pipe makes a write sleep, and that decision is identical for the same kernel on any instruction set: the proof asserts nothing about any instruction's specified behavior, and no ISA rule distinguishes a sleeping write from a returning one.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at ISA because the verified property is the kernel's scheduling decision, when a full pipe makes a write sleep, and that decision is identical for the same kernel on any instruction set: the proof asserts nothing about any instruction's specified behavior, and no ISA rule distinguishes a sleeping write from a returning one."}, {"n": 2, "kind": "evidence", "text": "The module PROOF.md records the pipebuf protocol: a 512-byte fill, one more byte, 40 measured ticks of block against a 30-tick gate, 7 checks, 0 mismatches, 3 byte-identical QEMU runs. Every assertion is about kernel scheduling behavior; none is about any instruction's specified semantics.", "source": {"cite": "user/pipebuf-PROOF.md", "tier": "lab", "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"}}, {"n": 3, "kind": "penultimate", "text": "The verified property is a fact about the kernel's scheduling decision, statable and provable without any instruction-level invariant."}, {"n": 4, "kind": "generalization", "text": "A test that asserts no instruction-level property proves no ISA-level property."}, {"n": 5, "kind": "generalization", "text": "The ISA layer lights when the verified property is the specified behavior of an instruction, including its privilege gate."}, {"n": 6, "kind": "explanation", "text": "One could object that the module runs on a RISC-V QEMU."}, {"n": 7, "kind": "refutation", "text": "Running on RISC-V does not make a kernel scheduling test about the ISA; QEMU is the harness, and the same kernel ported to another ISA would block the same way."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-write-that-sleeps|MICROARCH": {"item": "the-write-that-sleeps", "kind": "article", "slot": "MICROARCH", "probandum": "not at Microarch because the measured quantity is scheduler time in whole timer ticks, forty of them against a thirty-tick gate: pipeline, cache, and predictor effects live orders of magnitude below the gate, so no implementation detail could change whether the verdict passes. The timing the module measured is kernel-visible, not machine-visible.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Microarch because the measured quantity is scheduler time in whole timer ticks, forty of them against a thirty-tick gate: pipeline, cache, and predictor effects live orders of magnitude below the gate, so no implementation detail could change whether the verdict passes. The timing the module measured is kernel-visible, not machine-visible."}, {"n": 2, "kind": "evidence", "text": "The module PROOF.md measures block time in whole uptime ticks: 40 ticks against a 30-tick gate, with the exact count pinned by the tick-edge capture discipline. No check times anything at pipeline, cache, or predictor scale.", "source": {"cite": "user/pipebuf-PROOF.md", "tier": "lab", "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"}}, {"n": 3, "kind": "penultimate", "text": "The claim is decided by comparing a tick count against a gate ten ticks wide, so it carries no information about any pipeline, cache, or predictor."}, {"n": 4, "kind": "generalization", "text": "A test whose margin is whole scheduler ticks cannot discriminate between microarchitectures."}, {"n": 5, "kind": "generalization", "text": "The Microarch layer stays dim when the verified property would read identically on every implementation of the same spec."}, {"n": 6, "kind": "explanation", "text": "One could object that QEMU's timing is not silicon timing."}, {"n": 7, "kind": "refutation", "text": "The gate has ten ticks of slack precisely so the verdict does not depend on the model's timing fidelity; it measures kernel scheduling, not the machine."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-write-that-sleeps|FIRMWARE": {"item": "the-write-that-sleeps", "kind": "article", "slot": "FIRMWARE", "probandum": "not at Firmware because the measured path never leaves the kernel: the sleep and the wakeup happen between user processes and xv6's scheduler, with no privilege register, trap vector, or SBI call under the kernel under test. Nothing configured beneath the kernel stands between the syscall and the stall.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Firmware because the measured path never leaves the kernel: the sleep and the wakeup happen between user processes and xv6's scheduler, with no privilege register, trap vector, or SBI call under the kernel under test. Nothing configured beneath the kernel stands between the syscall and the stall."}, {"n": 2, "kind": "evidence", "text": "The module PROOF.md exercises only the user-to-kernel path: pipe, write, fork, uptime, wait. No check reads or writes any privilege register, trap vector, or firmware interface.", "source": {"cite": "user/pipebuf-PROOF.md", "tier": "lab", "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"}}, {"n": 3, "kind": "penultimate", "text": "The sleep, the wakeup, and the measurement all happen between user processes and the kernel scheduler, with no firmware boundary crossed."}, {"n": 4, "kind": "generalization", "text": "A test that never crosses beneath the kernel proves nothing about the layer beneath it."}, {"n": 5, "kind": "generalization", "text": "The Firmware layer stays dim when nothing the proof measured crosses the boundary beneath the kernel."}, {"n": 6, "kind": "explanation", "text": "One could object that the trap into the kernel passes through firmware-owned vectors."}, {"n": 7, "kind": "refutation", "text": "The trap path is the kernel's own; nothing configured under the kernel varies the block, so firmware is not load-bearing for the verdict."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-write-that-sleeps|KERNEL": {"item": "the-write-that-sleeps", "kind": "article", "slot": "KERNEL", "probandum": "matters at Kernel because the property under test is the kernel's own pipe scheduling contract: a full pipe makes pipewrite sleep on the nwrite channel instead of spinning, and piperead wakes that channel when it drains. The module proves the block from outside the kernel with the uptime tick counter as a stopwatch, 40 ticks against a 30-tick gate, the shadow of a sleep measured in time.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at Kernel because the property under test is the kernel's own pipe scheduling contract: a full pipe makes pipewrite sleep on the nwrite channel instead of spinning, and piperead wakes that channel when it drains. The module proves the block from outside the kernel with the uptime tick counter as a stopwatch, 40 ticks against a 30-tick gate, the shadow of a sleep measured in time."}, {"n": 2, "kind": "evidence", "text": "The module PROOF.md records the kernel-side rule under test: with the pipe full, pipewrite sleeps on the nwrite channel until piperead's wakeup on the same channel, and the user-space test proves the sleep by its shadow in time, 40 ticks against the 30-tick gate.", "source": {"cite": "user/pipebuf-PROOF.md", "tier": "lab", "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"}}, {"n": 3, "kind": "penultimate", "text": "The property is the kernel's own pipe scheduling contract, verified end to end from user space."}, {"n": 4, "kind": "generalization", "text": "A test that proves a kernel scheduling rule by measuring its observable effect is a claim about kernel behavior."}, {"n": 5, "kind": "generalization", "text": "The Kernel layer lights when the verified property is the kernel's own scheduling or interface contract."}, {"n": 6, "kind": "explanation", "text": "One could object that the test never inspects kernel state directly."}, {"n": 7, "kind": "refutation", "text": "That is the point of the discipline: the block is real exactly because nothing but the stall can explain the 40 ticks, so the kernel's contract is what the measurement proves."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-write-that-sleeps|ALGORITHM": {"item": "the-write-that-sleeps", "kind": "article", "slot": "ALGORITHM", "probandum": "not at Algorithm because the claim is a kernel scheduling decision, when a write sleeps for a reader, not a computational mechanism: the tick-edge choreography that makes the measurement repeatable is craft around the claim, not the claim itself, and the FNV-1a fold only collapses the measured values into one checkable number.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Algorithm because the claim is a kernel scheduling decision, when a write sleeps for a reader, not a computational mechanism: the tick-edge choreography that makes the measurement repeatable is craft around the claim, not the claim itself, and the FNV-1a fold only collapses the measured values into one checkable number."}, {"n": 2, "kind": "evidence", "text": "The module PROOF.md separates the claim from the craft: the claim is the 40-tick block on a full pipe, while the tick-edge capture, the shared absolute deadline, and the FNV-1a stream fold are the measurement machinery that makes the claim checkable.", "source": {"cite": "user/pipebuf-PROOF.md", "tier": "lab", "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/user/pipebuf-PROOF.md"}}, {"n": 3, "kind": "penultimate", "text": "The claim is a kernel scheduling decision, when a write sleeps for a reader; the deterministic timing discipline is craft around the claim, not a computational mechanism under test."}, {"n": 4, "kind": "generalization", "text": "A test whose mechanism is measurement craft, not computation, proves a system property, not an algorithmic one."}, {"n": 5, "kind": "generalization", "text": "The Algorithm layer lights when the verified property is a computational mechanism, not a system decision."}, {"n": 6, "kind": "explanation", "text": "One could object that the deadline choreography is itself an algorithm."}, {"n": 7, "kind": "refutation", "text": "The choreography removes timing noise; it computes nothing about pipes, and the verdict would stand under any other deterministic schedule."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}};</script>
   <script>
 (() => {
@@ -1429,6 +1476,73 @@ pid = fork();</code></pre>
           setTimeout(() => { btn.textContent = label; btn.removeAttribute('data-done'); }, 1600);
         }).catch(() => {});
       });
+    });
+  })();
+  </script>
+  <script>
+    (() => {
+      // Theme engine, same as the main page: the head script already set
+      // data-theme before first paint; the toggle flips live with a radial
+      // view-transition wipe from the toggle (tonal CSS fallback otherwise).
+      const KEY = 'portfolio-theme';
+      const root = document.documentElement;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const COLORS = { notebook: '#ece6d5', gb: '#b8f34b' };
+      const btn = document.querySelector('.theme-toggle');
+      const current = () => (root.dataset.theme === 'gb' ? 'gb' : 'notebook');
+      const otherName = (t) => (t === 'gb' ? 'notebook folio' : 'green-black terminal');
+      function apply(t) {
+        root.dataset.theme = t;
+        if (meta) meta.setAttribute('content', COLORS[t]);
+        if (btn) btn.setAttribute('aria-label', 'Switch to ' + otherName(t) + ' theme');
+      }
+      function toggle() {
+        const next = current() === 'gb' ? 'notebook' : 'gb';
+        try { localStorage.setItem(KEY, next); } catch (_) {}
+        const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (btn) {
+          const r = btn.getBoundingClientRect();
+          root.style.setProperty('--tx', Math.round(r.left + r.width / 2) + 'px');
+          root.style.setProperty('--ty', Math.round(r.top + r.height / 2) + 'px');
+          btn.classList.toggle('is-flipped', next === 'gb');
+        }
+        if (!reduced && document.startViewTransition) {
+          document.startViewTransition(() => apply(next));
+        } else {
+          apply(next);
+        }
+      }
+      if (btn) {
+        btn.classList.toggle('is-flipped', current() === 'gb');
+        btn.addEventListener('click', toggle);
+      }
+      apply(current());
+    })();
+  </script>
+  <script>
+  /* Permalink copy button on per-post pages: one click copies the post's
+     canonical URL. Degrades silently where the clipboard API is
+     unavailable. */
+  (() => {
+    const btn = document.querySelector('.post-copylink');
+    if (!btn) return;
+    const url = btn.getAttribute('data-url') || window.location.href;
+    btn.addEventListener('click', () => {
+      const done = () => {
+        const label = 'Copy permalink';
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = label; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => {});
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (_) {}
+        ta.remove();
+      }
     });
   })();
   </script>
