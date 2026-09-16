@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260916-164654">
+  <meta name="build-version" content="v20260916-165803">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#b8f34b">
@@ -3885,7 +3885,10 @@ if ('serviceWorker' in navigator) {
         const byId = new Map(order.map((r) => [r.item.id, r]));
         order = ranked.map((it) => byId.get(it.id)).filter(Boolean);
       }
-      order.forEach(({ el }) => section.appendChild(el));
+      // Articles are re-appended on every sort. If the section ends in a
+      // section-closing CTA, insert before it so the CTA stays at the end.
+      const endGuard = section.querySelector(':scope > .section-cta');
+      order.forEach(({ el }) => section.insertBefore(el, endGuard));
       frkSync();
     }
 
