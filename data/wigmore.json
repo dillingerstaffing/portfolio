@@ -78178,6 +78178,298 @@
           "note": "Every verified fact names the fcsr flag bits."
         }
       ]
-    }
-  ]
+    },
+  {
+    "item": "src-medeleg-store-access-fault",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "Matters at ISA because the verified claim is machine-contract routing: the privileged architecture assigns store/AMO access faults to medeleg bit 7 and treats a PMP deny as an access fault rather than a page fault, and the test log shows the same store trapping with scause 7 in S-mode when the bit is set and mcause 7 in M-mode when it is clear.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at ISA because the verified claim is machine-contract routing: the privileged architecture assigns store/AMO access faults to medeleg bit 7 and treats a PMP deny as an access fault rather than a page fault, and the test log shows the same store trapping with scause 7 in S-mode when the bit is set and mcause 7 in M-mode when it is clear."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "Phase A: with medeleg bit 7 set (readback 0x80), the S-mode store into the PMP-denied page trapped exactly once in S-mode with scause 0x7, sepc 0x80000312 at the store, stval 0x80080000 at the denied page, and sstatus.SPP 1; M-mode saw only the phase-return ecall.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "Phase B: with the bit clear (readback 0x0), the same store trapped in M-mode with mcause 0x7, mepc 0x800003b6 at the store, mtval 0x80080000, and mstatus.MPP 1, while the S-mode trap count stayed at 1.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "The privileged architecture routes store/AMO access faults through medeleg bit 7, and defines a PMP permission denial as an access fault rather than a page fault.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "When the same fault lands in different privilege levels with matching cause codes as a single CSR bit flips, the routing is machine-contract behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The two phases differ only in medeleg bit 7, and the trap records match the privileged contract on both sides."
+      }
+    ]
+  },
+  {
+    "item": "src-medeleg-store-access-fault",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "Not at MICROARCH because the test log records trap records only, never timing: a different pipeline changes how quickly the faulting store faults, never which cause code the PMP deny produces.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at MICROARCH because the test log records trap records only, never timing: a different pipeline changes how quickly the faulting store faults, never which cause code the PMP deny produces."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "All 41 checks compare trap records (scause, mcause, sepc, mepc, stval, mtval, SPP, MPP, counters, CSR readbacks); no check records a cycle count or any timing.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The store access fault cause code 7 is fixed by the privileged architecture for every compliant implementation.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "Cause-code routing is architecturally determined, so it cannot vary with pipeline depth, width, or caching; only timing can."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "With no timing recorded, the log says nothing about the pipeline, and the pipeline changes nothing about the logged cause codes."
+      }
+    ]
+  },
+  {
+    "item": "src-medeleg-store-access-fault",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "Matters at FIRMWARE because the delegation switch is machine-mode software configuring the trap destination: M-mode programmed the locked PMP TOR deny entry over the store page and the medeleg bit, built the Sv39 identity map with the valid store-page PTE, and dropped to S-mode for each phase.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Matters at FIRMWARE because the delegation switch is machine-mode software configuring the trap destination: M-mode programmed the locked PMP TOR deny entry over the store page and the medeleg bit, built the Sv39 identity map with the valid store-page PTE, and dropped to S-mode for each phase."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "M-mode programmed pmpcfg0 to 0x000f880f with entry 1 locked, bounding the denied store page [0x80080000, 0x80081000) in TOR, and every pmpcfg and pmpaddr readback matched in-code.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "M-mode set medeleg bit 7 for phase A (readback 0x80), cleared it for phase B (readback 0x0), and restored medeleg to 0x0 afterward.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "evidence",
+        "text": "PMP entries, pmpaddr CSRs, and medeleg are machine-mode resources: S-mode cannot program them, so their configuration is boot firmware's job.",
+        "source": {
+          "tier": "spec",
+          "cite": "RISC-V ISA Manual, privileged architecture",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "When every trap-destination outcome depends on machine-mode software configuring CSRs and PMP before the test runs, the claim is a firmware claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The delegation outcomes exist only because M-mode set up the PMP and medeleg first."
+      }
+    ]
+  },
+  {
+    "item": "src-medeleg-store-access-fault",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "Not at KERNEL because the module runs bare metal with no operating system loaded: the two trap handlers record trap records and resume, they schedule nothing, and the trap-destination verdict holds identically under any kernel.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at KERNEL because the module runs bare metal with no operating system loaded: the two trap handlers record trap records and resume, they schedule nothing, and the trap-destination verdict holds identically under any kernel."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "QEMU jumps straight to the module's _start, which builds its own Sv39 table and PMP config; no kernel image is ever loaded.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The S-mode and M-mode handlers record trap records and resume; they allocate nothing, schedule nothing, and touch no device.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A bare-metal test that configures its own PMP and trap handlers verifies the machine behavior that any kernel would inherit unchanged."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "Nothing in the module is kernel work, so the kernel slot stays dim."
+      }
+    ]
+  },
+  {
+    "item": "src-medeleg-store-access-fault",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (medeleg bit 7, PMP TOR deny, scause and mcause 7) with no ISA-independent restatement: the portable framing would be that delegation behaves the same in emulation, which is tautological rather than a defensible portability argument.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (medeleg bit 7, PMP TOR deny, scause and mcause 7) with no ISA-independent restatement: the portable framing would be that delegation behaves the same in emulation, which is tautological rather than a defensible portability argument."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The verified facts are RISC-V-specific: medeleg bit 7, the locked PMP TOR deny entry, scause and mcause 7, sepc and stval at the store.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The module's C and assembly reference RISC-V CSRs and trap records directly; removing the ISA leaves no computation to port.",
+        "source": {
+          "tier": "lab",
+          "cite": "src/medeleg-store-access-fault PROOF.md",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A claim with no ISA-independent restatement is not a portable computation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "strength": "strong",
+        "note": "The only honest portability framing is tautological, so the slot stays dim."
+      }
+    ]
+  }
+]
 }
