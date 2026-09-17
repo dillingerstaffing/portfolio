@@ -1331,6 +1331,24 @@
       
       <article class="research-note">
         <div>
+          <h3>The Most Honest Lie in C</h3>
+          <!-- LAYER-STRIP:the-most-honest-lie-in-c -->
+          <p class="research-date"><time datetime="2026-09-13">2026-09-13 11:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I compiled two one-line functions this morning, gcc 13.2.0 at -O2 for rv64g, and read the disassembly. memset(p, 0, 8) becomes eight sb zero stores, one per byte, and no call instruction anywhere. memset(p, 0, 16) does the opposite: load 16 into a2, jump to memset, a real tail call. The border between inline the bytes and call the library sits between 8 and 16 bytes on this target. The compiler is not running your function. It is deciding what your function meant.</p>
+          <p>The decision that matters lives in a dumber function. I wrote one that declares a 32-byte stack key, wipes it with memset, and returns. Its compiled body, the whole of it:</p>
+          <pre><code>0000000000000044 &lt;secret&gt;:
+  44:   00008067    ret</code></pre>
+          <p>One instruction: ret. The wipe is gone. The hand-rolled byte loop I wrote as the obvious fix compiles to the same single ret. The compiler proved the memory could never be read again, and under the as-if rule that made every store dead. You can see the wipe in the source. It is not in the binary.</p>
+          <p>The as-if rule is the contract behind the deletion. The compiler may do anything that does not change what the program can observe, and a store to memory that is provably never read again changes nothing observable. So it deletes the stores, the call and the loop alike. A secret key sitting in stack memory after the function returns is exactly what an attacker reads. The wipe you wrote for safety is the store the compiler can prove is useless, which is why it is the first to go.</p>
+          <p>Two spellings survived my objects. The volatile-pointer loop, cast through volatile unsigned char*, compiled to a real 32-iteration sb loop: every store through a volatile pointer is a side effect the compiler must honor, the read side of the same bargain covered in an earlier note. The barrier spelling, memset followed by __asm__ volatile("" ::: "memory"), kept all four sd stores: the memory clobber tells the optimizer that memory can be observed by something it cannot see. glibc ships exactly this bargain as explicit_bzero, memset plus a compiler barrier, with the promise that the call will not be deleted even when the buffer is dead afterward. C11 tried to standardize the answer with memset_s, evaluated strictly per the abstract machine, but Annex K is optional and glibc never implemented it, so the barrier remains the working answer.</p>
+          <p>This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never the adversary. It was a contract reader, and the contract said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret is not a function call, it is a negotiation with the optimizer, and the only winning move is a barrier.</p>
+        </div>
+      </article>
+      
+      <article class="research-note">
+        <div>
           <h3>The Division That Always Answers</h3>
           <!-- LAYER-STRIP:the-division-that-always-answers -->
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 16:05 EDT</time></p>
