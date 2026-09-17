@@ -1290,81 +1290,8 @@
       <div id="frk-blog-panel-slot"></div>
 
 
-      <article class="research-note">
-        <div>
-          <p class="research-latest">LATEST</p>
-          <h3>The Wire That Never Drives High</h3>
-          <!-- LAYER-STRIP:the-wire-that-never-drives-high -->
-          <p class="research-date"><time datetime="2026-09-16">2026-09-16 11:30 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Two devices start talking at the same instant. A sends 0xA5, B sends 0xA4. Bit by bit they agree: 1, 0, 1, 0, 0, 1, 0, and then the last bit. A sends a 1, which on this bus means letting go of the line. B sends a 0, which means pulling it hard to ground. The bus reads 0. A sees a 0 where it sent a 1, lets go of the bus, and waits its turn. B's byte lands completely intact, and B never knew A was there. No collision, no corrupted byte, no retry storm. I traced this exact sequence this morning and watched A lose at the last bit, cleanly.</p>
-          <p>The trick is in the pins. I2C's two lines, SDA and SCL, are open-drain: a pin can pull the line low, or it can let go. It can never drive the line high. A resistor does the driving high, slowly charging every picofarad of wire, connector, and pin on the bus back toward the supply. So when two devices disagree, low always wins. The line is the logical AND of everyone attached to it, computed in hardware, for free. That one fact buys two features. On the data line it is arbitration, the scene above. On the clock line it is clock stretching: a slow slave simply holds the clock low and the master waits, flow control with zero extra wires and zero extra protocol.</p>
-          <p>Why build it this way, and not with ordinary push-pull drivers? Because two push-pull drivers disagreeing is a near short: one slams the line to the supply while the other slams it to ground, and the current goes through both chips. Open-drain makes contention impossible by construction, and then the protocol turns the shared line from a hazard into a feature. Make the dangerous state unrepresentable instead of handling it.</p>
-          <p>The cost of the bargain lives in the resistor. Falling edges are a transistor yanking the line to ground, fast and free. Rising edges are a resistor charging a capacitor, slow and exact. With the logic thresholds at 0.3 and 0.7 of the supply, the rise time is 0.8473 times R times C. I re-derived that factor from the exponential itself and got 0.847298, close enough to promote the folklore to a theorem. The resistor is squeezed from both sides. Too small, and the 3 milliamp drivers cannot pull the line below the threshold. Too large, and the rise misses the 300 nanosecond fast-mode budget.</p>
-          <pre><code>rp_min = (3.3 - 0.4) / 0.003          # 966.7 ohms: sink below 0.4 V
-rp_max = 300e-9 / (0.8473 * 400e-12) # 885.2 ohms: rise within 300 ns
-rp_min &lt;= rp_max                       # False: no resistor works</code></pre>
-          <p>On a short bench bus, about 50 picofarads, the usual suspects all behave: 1k gives 42 ns, 2.2k gives 93, 4.7k gives 199, and even 10k at 424 ns merely violates the spec while working fine in practice, which is why every breakout board ships 10k pull-ups and gets away with it. But at the spec's full 400 picofarads, the window is empty: the largest resistor that meets the rise budget is 885 ohms against a 967 ohm minimum the drivers demand. The 400 picofarad ceiling is only reachable with Fast-mode Plus's 20 milliamp drivers, which open a valid window from 145 to 354 ohms.</p>
-          <p>For the bench, the practical version: 4.7k is the honest default on short wires, and when the edges start looking tired on the scope, suspect the resistor before the code. Current-source pull-ups exist for exactly this problem and the spec allows them, but a resistor costs a cent and a current source costs design, which is why the resistor won. One sentence to keep: I2C turned a hardware limitation, pins that cannot drive high, into its two best features, and priced the entire bargain in a single resistor.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/i2c-pullup-calc" target="_blank" rel="noopener">i2c-pullup-calc</a>, the pull-up window program and the arbitration trace. Spec: <a href="https://www.nxp.com/docs/en/user-guide/UM10204.pdf" target="_blank" rel="noopener">NXP UM10204</a>, section 7.1.</p>
-        </div>
-      </article>
-      <article class="research-note">
-        <div>
-          
-          <h3>The Stack Frame Is Optional</h3>
-          <!-- LAYER-STRIP:the-stack-frame-is-optional -->
-          <p class="research-date"><time datetime="2026-09-15">2026-09-15 12:04 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Here is an entire C function compiled two ways. Same source, same compiler, same machine. RISC-V gcc 13.2.0, asked to emit assembly:</p>
-          <div class="codeblock">
-            <div class="codeblock-head"><span class="codeblock-title">next.c</span><button class="codeblock-copy" type="button">Copy</button></div>
-            <div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-kw">int</span> next(<span class="tok-kw">int</span> x) {</span>
-<span class="cl">    <span class="tok-kw">int</span> y = x + 1;</span>
-<span class="cl">    <span class="tok-kw">return</span> y;</span>
-<span class="cl">}</span>
-</code></pre></div>
-          </div>
-          <p>At -O2, the whole function is two instructions. No stack frame. Nothing is claimed, nothing is parked, nothing is restored. Against the thirteen-instruction version below, the frame simply is not there:</p>
-          <div class="codeblock">
-            <div class="codeblock-head"><span class="codeblock-title">next.s · -O2</span><button class="codeblock-copy" type="button">Copy</button></div>
-            <div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-label">next:</span></span>
-<span class="cl">    addiw   a0, a0, 1</span>
-<span class="cl">    ret</span>
-</code></pre></div>
-          </div>
-          <p>The -O0 output, annotated line by line. Assembler directives trimmed; the instruction sequence is complete:</p>
-          <div class="codeblock">
-            <div class="codeblock-head"><span class="codeblock-title">next.s · -O0, annotated</span><button class="codeblock-copy" type="button">Copy</button></div>
-            <div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-label">next:</span></span>
-<span class="cl">    addi   sp, sp, -48<span class="com-pad">   </span><span class="tok-com"># claim 48 bytes for the frame</span></span>
-<span class="cl">    sd     s0, 40(sp)<span class="com-pad">    </span><span class="tok-com"># park the caller&#x27;s frame pointer</span></span>
-<span class="cl">    addi   s0, sp, 48<span class="com-pad">    </span><span class="tok-com"># anchor the new frame pointer at the frame&#x27;s top</span></span>
-<span class="cl">    mv     a5, a0<span class="com-pad">        </span><span class="tok-com"># x arrives in a0; copy it to a scratch register</span></span>
-<span class="cl">    sw     a5, -36(s0)<span class="com-pad">   </span><span class="tok-com"># give x a home address, 36 bytes below the frame pointer</span></span>
-<span class="cl">    lw     a5, -36(s0)<span class="com-pad">   </span><span class="tok-com"># load x back from its address</span></span>
-<span class="cl">    addiw  a5, a5, 1<span class="com-pad">     </span><span class="tok-com"># add 1; word-sized because x is a 32-bit int</span></span>
-<span class="cl">    sw     a5, -20(s0)<span class="com-pad">   </span><span class="tok-com"># give y its address, 20 bytes below the frame pointer</span></span>
-<span class="cl">    lw     a5, -20(s0)<span class="com-pad">   </span><span class="tok-com"># load y back from its address</span></span>
-<span class="cl">    mv     a0, a5<span class="com-pad">        </span><span class="tok-com"># the answer travels home in a0</span></span>
-<span class="cl">    ld     s0, 40(sp)<span class="com-pad">    </span><span class="tok-com"># restore the caller&#x27;s frame pointer</span></span>
-<span class="cl">    addi   sp, sp, 48<span class="com-pad">    </span><span class="tok-com"># release the frame</span></span>
-<span class="cl">    jr     ra<span class="com-pad">            </span><span class="tok-com"># return; ret is the usual spelling of this jump</span></span>
-</code></pre></div>
-          </div>
-          <p>Forty-eight bytes is roomier than the sixteen the data strictly needs. The unoptimized compiler does not pack tightly, and the ABI requires the stack pointer to stay 16-byte aligned at all times.</p>
-          <p>One thing is missing from the longer listing: the return address is never saved. The compiler proved this is a leaf function, a function that calls no other function, so nothing in it can overwrite the return address and saving it would be pure waste. That is the exact reasoning the frame shop drills into you: the return address gets parked because a nested call would destroy it. No nested call, no parking. The compiler applies the rule; it does not worship it.</p>
-          <p>Why does -O0 build all this furniture? The unoptimized compiler has one simple strategy: every local gets a real address in the frame, so a debugger can inspect every variable at any moment and code generation stays simple and predictable. The frame pointer exists so those addresses never move while the function runs. It is built for humans and debuggers, not for the machine.</p>
-          <p>Why does -O2 delete it? The optimizer proved three things: no address of any local is ever taken, the whole computation fits in registers, and the function is a leaf. With nothing to keep and no reason to touch the stack, the frame is pure overhead. Gone. The function is the addition and the return. Everything else was scaffolding.</p>
-          <p>One sentence to keep: the stack frame is not a law of the machine; it is a budget the compiler spends only when the function needs it.</p>
-          <p class="research-code-link">Bench: <a href="https://dillingerstaffing.github.io/proving-ground/#bench=frame-shop" target="_blank" rel="noopener">The Frame Shop</a>, build this frame by hand, instruction by instruction.</p>
-        </div>
-      </article>
+      
+      
 
       <article class="research-note">
         <div>
@@ -1401,23 +1328,7 @@ rp_min &lt;= rp_max                       # False: no resistor works</code></pre
           <p>One sentence to keep: RISC-V vector code never asks the machine how wide it is, it asks how many elements it may do, and the machine answers honestly, every single iteration.</p>
         </div>
       </article>
-      <article class="research-note">
-        <div>
-          <h3>The Most Honest Lie in C</h3>
-          <!-- LAYER-STRIP:the-most-honest-lie-in-c -->
-          <p class="research-date"><time datetime="2026-09-13">2026-09-13 11:12 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>I compiled two one-line functions this morning, gcc 13.2.0 at -O2 for rv64g, and read the disassembly. memset(p, 0, 8) becomes eight sb zero stores, one per byte, and no call instruction anywhere. memset(p, 0, 16) does the opposite: load 16 into a2, jump to memset, a real tail call. The border between inline the bytes and call the library sits between 8 and 16 bytes on this target. The compiler is not running your function. It is deciding what your function meant.</p>
-          <p>The decision that matters lives in a dumber function. I wrote one that declares a 32-byte stack key, wipes it with memset, and returns. Its compiled body, the whole of it:</p>
-          <pre><code>0000000000000044 &lt;secret&gt;:
-  44:   00008067    ret</code></pre>
-          <p>One instruction: ret. The wipe is gone. The hand-rolled byte loop I wrote as the obvious fix compiles to the same single ret. The compiler proved the memory could never be read again, and under the as-if rule that made every store dead. You can see the wipe in the source. It is not in the binary.</p>
-          <p>The as-if rule is the contract behind the deletion. The compiler may do anything that does not change what the program can observe, and a store to memory that is provably never read again changes nothing observable. So it deletes the stores, the call and the loop alike. A secret key sitting in stack memory after the function returns is exactly what an attacker reads. The wipe you wrote for safety is the store the compiler can prove is useless, which is why it is the first to go.</p>
-          <p>Two spellings survived my objects. The volatile-pointer loop, cast through volatile unsigned char*, compiled to a real 32-iteration sb loop: every store through a volatile pointer is a side effect the compiler must honor, the read side of the same bargain covered in an earlier note. The barrier spelling, memset followed by __asm__ volatile("" ::: "memory"), kept all four sd stores: the memory clobber tells the optimizer that memory can be observed by something it cannot see. glibc ships exactly this bargain as explicit_bzero, memset plus a compiler barrier, with the promise that the call will not be deleted even when the buffer is dead afterward. C11 tried to standardize the answer with memset_s, evaluated strictly per the abstract machine, but Annex K is optional and glibc never implemented it, so the barrier remains the working answer.</p>
-          <p>This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never the adversary. It was a contract reader, and the contract said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret is not a function call, it is a negotiation with the optimizer, and the only winning move is a barrier.</p>
-        </div>
-      </article>
+      
       <article class="research-note">
         <div>
           <h3>The Division That Always Answers</h3>
@@ -1521,28 +1432,7 @@ or        rd, t0, t1</code></pre>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/09-branchless-bsearch" target="_blank" rel="noopener">lab/09-branchless-bsearch</a></p>
         </div>
       </article>
-      <article class="research-note">
-        <div>
-          <h3>The High Word You Never Multiply For</h3>
-          <!-- LAYER-STRIP:the-high-word-you-never-multiply-for -->
-          <p class="research-date"><time datetime="2026-09-12">2026-09-12 11:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Multiply 0x100000001 by itself. The true answer is 2^64 + 2^33 + 1, so the top 64 bits are exactly 1. A small C module computes that 1 without ever forming the 128-bit product, and without any 128-bit type in the implementation. This note is about the high word of a 64-by-64 unsigned multiply, built from four 32-bit partial products and two carry bits.</p>
-          <p>The obvious attempt is (a * b) &gt;&gt; 64. It fails before it starts. In C, a * b on two uint64_t values is a 64-bit multiply: the top bits are gone by the time the shift runs. You cannot shift what the type has already discarded. Every partial product has to fit inside 64 bits from the start, which is exactly what the construction guarantees.</p>
-          <p>Split each operand into 32-bit halves: a = ah*2^32 + al, b = bh*2^32 + bl. Then a*b = ah*bh*2^64 + (al*bh + ah*bl)*2^32 + al*bl. That is grade-school long multiplication in base 2^32, and every partial product is 32 bits by 32 bits, so each lands safely inside a uint64_t. The high word is p3 + (m1 &lt;&lt; 32) + (mid &gt;&gt; 32) + c, where mid = p1 + p2 is the middle sum computed in wrapping arithmetic.</p>
-          <p>The two carry bits are the whole insight, and they are four lines of source, quoted verbatim from the module&#x27;s header:</p>
-          <pre><code>uint64_t mid = p1 + p2;
-uint64_t m1 = (mid &lt; p1);   /* 1 iff p1 + p2 wrapped */
-uint64_t s = (mid &lt;&lt; 32) + p0;
-uint64_t c = (s &lt; p0);      /* 1 iff (mid &lt;&lt; 32) + p0 wrapped */</code></pre>
-          <p>Unsigned addition in C wraps modulo 2^64, so a sum that carried is strictly smaller than either addend. That turns carry detection into a single comparison each: mid &lt; p1 is true exactly when p1 + p2 wrapped, s &lt; p0 exactly when the low-side sum wrapped. No branch, no wider type. Just the comparison reading off the wrap the arithmetic already did.</p>
-          <p>A note on what this is not. The module does use hardware multiplies: four 32-by-32 ones, one per partial product, exactly as the construction requires. What never appears is the width. The implementation contains no 128-bit type, the binary links no __umulti3 library routine, and there is no single full-width multiply of the original operands. The unsigned __int128 type lives only in the test file, as the exact oracle every check judges against. The honest frame is not multiplication without a multiplier. It is the high 64 bits of a 128-bit product without ever forming one.</p>
-          <p>The verification is honestly sliced. The backlog plan asked for exhaustive 24-bit pairs, 2^48 cases, months of single-core compute, so the shipped slice is the largest fully verifiable one: all 16,777,216 twelve-bit pairs, ten million fixed-seed 64-bit random pairs, and 4,420 directed edges including powers of two from 2^0 to 2^63. That is 26,781,636 differential checks against the oracle, zero mismatches, and the checksum of all result words is identical across the -O0, -O2, and ASan+UBSan builds. The far end of the range is where the carry accounting earns its keep: (2^64 - 1)^2 has high word 2^64 - 2, both carry lanes firing, and the suite hits it.</p>
-          <p>This is the complement of an earlier note, the one that built the low half of a product without a multiplier. That was the bottom word; this is the top word. The signed sibling needs sign-correction subtracts of the full unsigned operand; the unsigned high word needs only the splitting identity plus carry accounting. One sentence to keep: when the product is wider than the register, split the work so every carry is named, detected by one comparison, and checked.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/140-mulhi-unsigned" target="_blank" rel="noopener">lab/140-mulhi-unsigned</a></p>
-        </div>
-      </article>
+      
       <article class="research-note">
         <div>
           <h3>The Receipt for the Bit That Fell Off</h3>
@@ -1600,45 +1490,8 @@ jump to the buffer       # the new bytes run</code></pre>
           <p>Everyone who writes code while the machine is running is a customer for this. A JIT compiles a function, fences, and jumps. A debugger overwrites an instruction with ebreak, the breakpoint instruction, and must fence before resuming its target. The kernel patches its own text for livepatch and ftrace. Linux gave user space a system call for it: __riscv_flush_icache, in the kernel since 4.15 with a glibc wrapper since 2.27, which enforces ordering between stores and instruction-cache fetches; in 6.10 a prctl let a process declare whether it may emit fence.i at all, with the kernel keeping the cache coherent when threads migrate between harts. QEMU has the same problem one layer up: it translates guest code into host code and caches the translations, a software instruction cache, so it write-protects the pages holding them and throws translations away when a write lands. Its own docs note that on RISC targets, correctly written software uses barriers and flushes, so the trick would be unnecessary. One honest footnote: none of my bare-metal labs has ever needed this instruction. They write their code once at load time and never modify it, so the two eyes never disagree. This post is mechanism from the manual and the kernel docs, not a measured lab. One sentence to carry away: the CPU reads memory with two eyes, one for data and one for instructions, and fence.i is the moment they agree.</p>
         </div>
       </article>
-      <article class="research-note">
-        <div>
-          <h3>The Referee With Three Masters</h3>
-          <!-- LAYER-STRIP:the-referee-with-three-masters -->
-          <p class="research-date"><time datetime="2026-09-12">2026-09-12 06:10 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Two masters cannot drive a bus at once. The bits collide and everyone reads garbage. So a tiny referee, the arbiter, watches the request lines and grants exactly one winner per cycle. The bench starts with the simplest possible rule: fixed priority, CPU on top, sixteen cycles, all three masters asking on every cycle. The grants come back 16, 0, 0. The GPU raised its hand sixteen times and was answered never. Nothing is broken. That is the policy working exactly as specified.</p>
-          <p>The bench&#x27;s fixed-priority rule is two lines long, and the starvation is right there in the code:</p>
-          <pre><code>for (qi = 0; qi &lt; 3; qi++)
-  if (pend[qi]) { win = qi; break; }</code></pre>
-          <p>Index 0 is the CPU, the highest priority, and the scan checks it first on every cycle. When the CPU always has a request pending, the loop never reaches the GPU at index 2. The obvious repair is round-robin: take turns, nobody starves, 6, 5, 5 over the same sixteen cycles. But fairness has a price the second trial measures. An urgent page-walk arrives at cycle 7, the one request that cannot wait, and under round-robin it waits a full cycle that the unfair policy would have handed over instantly. Every arbitration rule is a bet about what matters most, and every bet is wrong for somebody. My own ticket-lock lab measured the same wrinkle honestly: round-robin guarantees admission order, not service order.</p>
-          <p>Real hardware got tired of placing that bet in one fixed place, so it made the bet programmable. The AMBA AXI4 protocol added AWQOS and ARQOS, two four-bit QoS identifiers on the address channels, section A8.1 of the spec. Higher value means higher priority; zero means the transaction is not participating in any QoS scheme. The spec&#x27;s most instructive sentence is a refusal: it does not define what the QoS values mean, only recommending that higher means higher. The people who build interconnects describe the world in exactly the bench&#x27;s terms: latency-sensitive managers like CPUs, bandwidth-sensitive managers like GPUs, best-effort ones like USB and SATA, all sharing one DDR controller, and the arbitration scheme decides how bandwidth gets distributed and whose latency stays controlled. Three masters, three classes of manager, and the weight dial is a QoS register.</p>
-          <p>The cautionary tale is from Mars, 1997. Pathfinder&#x27;s flight software ran a fixed-priority scheduler, and a low-priority meteorological task held a mutex the high-priority bus task needed. Medium-priority tasks kept preempting the low one, so the high-priority task sat waiting on a task it outranked, missed its deadline, and the watchdog reset the spacecraft computer. The mutex had been created with priority inheritance turned off, for performance. The fix was one of the great field repairs in engineering history: the VxWorks C interpreter had been left enabled on the spacecraft, so JPL uploaded a short C program that flipped the initialization globals from FALSE to TRUE, and the resets stopped. The engineer&#x27;s lessons were plain: only detailed traces of the actual behavior caught it, leaving the debugging facilities in the shipped system saved the mission, and the reasoning that a time-critical task should not spend time on priority inheritance was exactly wrong. One sentence to carry away: a shared wire needs a referee, every rule the referee follows is a bet about what matters most, and the honest designs write the bet down where it can be measured, whether that is a weight table, four QoS bits per transaction, or a mutex flag someone remembered to leave on.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/proving-ground/blob/main/features.js#L45176" target="_blank" rel="noopener">The Arbiter Room (Bench 63)</a></p>
-        </div>
-      </article>
-      <article class="research-note">
-        <div>
-          <h3>The Promise the Compiler Is Allowed to Break</h3>
-          <!-- LAYER-STRIP:the-promise-the-compiler-is-allowed-to-break -->
-          <p class="research-date"><time datetime="2026-09-12">2026-09-12 05:09 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>This function asks one question and gets two different answers, and the only thing that changes is a compiler flag. Here are all five lines:</p>
-          <pre><code>float f(float *a, int *b) {
-    *a = 1.0f;
-    *b = 0;
-    return *a;
-}</code></pre>
-          <p>Call it with both pointers aimed at the same integer. With -O2 -fstrict-aliasing it returns 1.0; with -O2 -fno-strict-aliasing the identical source returns 0.0. The integer itself reads 0 either way. I re-measured both cases this morning on gcc 13.3, x86-64. Only the answer changes. The disassembly tells the story: under strict aliasing the compiler stores 1.0 to *a, stores 0 to *b, and returns the constant without ever reloading *a. It decided a store through an int pointer could not have touched the float. It was wrong about the program and right about the contract.</p>
-          <p>That contract is C11 section 6.5, paragraph 7: an object may only be accessed through an lvalue of a compatible type, a signed or unsigned counterpart, an aggregate containing one, or a character type. Anything else, and the compiler is licensed to pretend it never happened. The rule buys something real. If the compiler had to assume every int* might alias every float*, it would reload values from memory after every store, and most of what -O2 buys would evaporate. The rule is the price of keeping hot values in registers. So how do you legally mean "these exact bytes, but as another type"? Copy them into an object that already is that type:</p>
-          <pre><code>int i = 0;
-float x;
-memcpy(&amp;x, &amp;i, sizeof x);</code></pre>
-          <p>The write goes through character-type access, which the rule explicitly allows, and the read goes through the object&#x27;s own declared type, which is always allowed. The from-scratch memcpy lab, 1,004,160 differential cases against libc with zero mismatches, is the primitive this whole discipline rests on. Union punning works on GCC and Clang as documented practice, but memcpy is the spelling the standard itself blesses. The Linux kernel, which reinterprets DMA buffers and packet headers for a living, compiles its entire tree with -fno-strict-aliasing: line 610 of the top-level Makefile, verified this morning against the master tree. For systems code that constantly reinterprets memory, certainty is worth the register pressure. Scope, honestly held: one function, one compiler, one flag pair, all re-measured firsthand for this post. One sentence to carry away: the compiler may believe two pointers of different types never touch the same bytes, so the only portable way to say "these bytes, but as another type" is to copy them into an object that already is that type.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/10-from-scratch-memcpy" target="_blank" rel="noopener">lab/10-from-scratch-memcpy</a></p>
-        </div>
-      </article>
+      
+      
       <article class="research-note">
         <div>
           <h3>The Bouncer on the Stopwatch</h3>
@@ -1755,28 +1608,7 @@ unsigned long set = read_menvcfg();       /* 0x2000000000000000: refused */</cod
         </div>
       </article>
 
-      <article class="research-note">
-        <div>
-          <h3>The Adder That Folds Its Carry Back</h3>
-          <!-- LAYER-STRIP:the-adder-that-folds-its-carry-back -->
-          <p class="research-date"><time datetime="2026-09-11">2026-09-11 21:12 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Add 0xFFFF to 0xFFFF. On paper the true sum is 0x1FFFE: the low sixteen bits are 0xFFFE, and one carry escapes off the top. Ordinary addition drops it and answers 0xFFFE. One&#x27;s-complement addition walks the carry around to the front and adds it back in: 0xFFFE plus 1 is 0xFFFF. In one&#x27;s complement there are two zeros, 0x0000 and 0xFFFF, so the folded sum is telling you that negative zero plus negative zero is negative zero. The fold has a name: the end-around carry.</p>
-          <p>The construction recovers the escaped carry without ever holding a wider register. In sixteen-bit wraparound arithmetic, the wrapped sum comes back smaller than an addend exactly when the true seventeen-bit sum overflowed, so the comparison itself yields the carry as a 0 or 1. The whole thing is three lines:</p>
-          <pre><code>uint16_t onesc_add(uint16_t a, uint16_t b)
-{
-    uint16_t s = (uint16_t)(a + b);
-    uint16_t carry = (uint16_t)(s &lt; a);
-    return (uint16_t)(s + carry);
-}</code></pre>
-          <p>The reference it was checked against is deliberately a different shape: it takes the full 32-bit sum and folds the high half back in a loop, the RFC 1071 form, sharing no arithmetic with the code under test. Two shapes agreeing on just over ten million input pairs with zero mismatches: sixty-five thousand directed pairs that force the carry, ten million random pairs, the 0xFFFF plus 0xFFFF edge pinned. The result checksum is identical across the -O0, -O2, and sanitizer builds.</p>
-          <p>This arithmetic exists because the Internet runs on it. Every IP, TCP, and UDP header is checksummed with a 16-bit one&#x27;s-complement sum, and RFC 1071 states the rule plainly: &quot;On a 2&#x27;s complement machine, the 1&#x27;s complement sum must be computed by means of an &#x27;end around carry&#x27;, i.e., any overflows from the most significant bits are added into the least significant bits.&quot; The reason is byte order. The RFC&#x27;s argument is one of the prettiest in networking: sum the words with every byte swapped, and you get the same sum with its bytes swapped, because the carries run the same in both orders, from bit 15 to bit 0 and from bit 7 to bit 8. The end-around carry is the load-bearing quirk. Without the wrap from bit 15 back to bit 0, a byte swap would not commute with the carry, and a little-endian machine would disagree with a big-endian one about the same packet.</p>
-          <p>You can watch the failure on paper. Add 0x00FF and 0x0001 in ordinary arithmetic: 0x0100, and byte-swapped that is 0x0001. Now swap the words first and add: 0xFF00 plus 0x0100 wraps to 0x0000 in sixteen bits. Two different answers for the same bytes. Fold the carry back and the disagreement vanishes: 0xFF00 plus 0x0100 wraps to 0x0000, the escaped carry folds in, and you get 0x0001, exactly the swapped sum. That is why the whole Internet folds its carries back: so any machine, in either byte order, can verify any packet.</p>
-          <p>The discipline around it is just as clean. To send: clear the checksum field, sum the words, complement the sum, store it. To verify: sum everything including the field, and expect all ones, negative zero. Anything else means the bytes changed in transit. The whole proof runs about three nanoseconds a pair, with the input generation inside the timed loop, so ten million pairs finish in about a thirtieth of a second. One sentence to carry away: the carry is never thrown away, it is walked around to the front and added back in, and that single quirk is what lets every machine on the Internet agree on whether a packet survived the trip.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/119-onesc-add" target="_blank" rel="noopener">lab/119-onesc-add</a></p>
-        </div>
-      </article>
+      
 
       <article class="research-note">
         <div>
@@ -1878,34 +1710,7 @@ if (ppn &amp; mask)
         </div>
       </article>
 
-      <article class="research-note">
-        <div>
-          <h3>The Read the Compiler Must Not Skip</h3>
-          <!-- LAYER-STRIP:the-read-the-compiler-must-not-skip -->
-          <p class="research-date"><time datetime="2026-09-11">2026-09-11 13:10 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>The UART driver in the bare-metal RISC-V tree waits on the transmitter with a two-line poll loop. The line status register sits at 0x10000005: the virt board's UART0 base, 0x10000000, plus the register offset 0x05. Until bit 5, the transmitter-holding-register-empty flag, reads set, the loop spins. Every access goes through one helper, a function returning a volatile pointer into that address:</p>
-<pre><code>static volatile unsigned char *uart_reg(unsigned long off) {
-    return (volatile unsigned char *)(UART0_BASE + off);
-}
-while ((*uart_reg(UART_LSR) &amp; LSR_THRE) == 0)
-    ;  // spin until the UART raises the transmitter-empty flag</code></pre>
-          <p>That one qualifier is the difference between a driver that sees the hardware change its mind and one that never does. Remove it and compile the loop's shape with gcc 13.3 at -O2. The compiler reads 0x10000005 exactly once, tests the bit, and if it was clear, drops into an empty spin with no memory access inside it:</p>
-<pre><code>testb $0x20, 0x10000005   # the single read, hoisted out of the loop
-jne   done
-jmp   spin                # empty spin: no load, the stale bit wins</code></pre>
-          <p>The reasoning is visible in the disassembly: the plain build hoists the load out of the loop, because in C's abstract machine that address is ordinary memory, and ordinary memory cannot change under the program's feet. Restore the qualifier and the load moves back inside the loop, a fresh read on every iteration:</p>
-<pre><code>reload:
-movzbl 0x10000005, %eax   # the load lives inside the loop
-test   $0x20, %al
-je     reload</code></pre>
-          <p>Why is the compiler allowed to do that? Because a plain read of that address is not an observable side effect. The compiler may assume the value it read is still there, because in the model where it is right, nothing else touches that byte. Memory-mapped hardware breaks the model: the UART flips the status bit from outside the program, in silicon the compiler cannot see. A volatile access is an observable side effect, and the standard's rule is that the compiler may neither optimize it out nor reorder it across a sequence point. volatile is the program telling the truth about the address: this one changes on its own, go look every time.</p>
-          <p>The temptation is to read volatile as a general safe-to-share marker, and it is exactly wrong. The Linux kernel's volatile-considered-harmful document is the corrective: programmers reach for volatile as an easy atomic, and it gives no atomicity, no synchronization, and no memory ordering. Two threads passing a flag through a volatile int can still race, still tear, still reorder on the hardware. The standard says it plainly too: volatile is not suitable for communication between threads. The qualifier was meant for memory-mapped I/O registers, which is exactly this use. The kernel's own READ_ONCE is modeled as a volatile read with relaxed ordering, and even that implies no barrier.</p>
-          <p>One sentence to carry away: volatile answers 'may the compiler skip this read?' with no. It never answers 'who else is writing?' That second question takes atomics or locks. The UART loop needs the first answer and nothing else, which is why one qualifier is the whole driver.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c" target="_blank" rel="noopener">src/uart.c</a></p>
-        </div>
-      </article>
+      
 
       <article class="research-note">
         <div>
@@ -2157,192 +1962,23 @@ andi t1, t1, 1</code></pre>
         </div>
       </article>
 
-      <article class="research-note">
-        <div>
-          <h3>The Guard That Keeps Zero Honest</h3>
-          <!-- LAYER-STRIP:the-guard-that-keeps-zero-honest -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 22:06 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Take 12, which is 1100 in binary. Subtract 1 and you get 1011: the subtraction borrows through the two trailing zeros and stops at the lowest set bit, flipping exactly those three bits and nothing above them. AND the two together, 1100 and 1011, and you get 1000. One bit survives, so 12 is not a power of two.</p>
-          <p>Try 8 instead: 1000 minus 1 is 0111, and 1000 AND 0111 is 0. Nothing survives, so 8 is a power of two. That is the whole identity: x - 1 differs from x in precisely the lowest set bit and everything below it, so x &amp; (x - 1) erases the lowest set bit of x and leaves everything above it untouched. If x has exactly one bit set, the AND comes out zero; otherwise at least one bit survives.</p>
-          <p>The naive test, (x &amp; (x - 1)) == 0, has a bug the bit-twiddling canon admits in print: it calls 0 a power of two. Zero minus 1 wraps to all-ones, because unsigned subtraction wraps mod 2^64, and 0 AND all-ones is 0, so the test reports true. That is why the lab's function carries a guard. The code is the insight here:</p>
-          <pre><code>uint64_t is_pow2(uint64_t x) {
-    return (x != 0) &amp; ((x &amp; (x - 1)) == 0);
-}</code></pre>
-          <p>Hacker's Delight, section 2-1, gives the formula as turning off the rightmost 1-bit and notes it detects "a power of 2 or 0"; the Bit Twiddling Hacks page says plainly that 0 is incorrectly considered a power of 2, and gives the guarded form as the remedy. The lab is the canon, executed.</p>
-          <p>Why write it without branches? Both the guard and the equality are evaluated through setcc, the x86 instruction that turns a condition flag into a 0 or 1 with no jump, and the two results are combined with a bitwise AND, so gcc 13.3.0 at -O2 emits the construction with zero conditional jumps. No branch means no branch misprediction when the input stream is random, and the test bench feeds it exactly that: ten million fixed-seed random 64-bit values.</p>
-          <p>The full count: 192 directed edges (2^k, 2^k - 1, 2^k + 1 for every k from 0 to 63, including the top corner at 2^63), an exhaustive sweep of all 16,777,216 24-bit values, and the ten million randoms, 26,777,408 checks in all, nearly 27 million, zero mismatches against a hand-written popcount-loop oracle. No compiler builtins anywhere, so the test never leans on the thing it is testing. The checksum of the whole result stream is identical across the -O0, -O2, and sanitizer builds. One honest boundary, stated in the proof file itself: the full 4.29-billion-case 32-bit loop could not finish in one run, so the module ships the largest fully verified slice instead and says so. One sentence to carry away: subtracting 1 erases exactly the lowest set bit, so a number is a power of two exactly when nothing survives the erasure and the number is not zero.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/124-is-pow2" target="_blank" rel="noopener">lab/124-is-pow2</a></p>
-        </div>
-      </article>
+      
 
-      <article class="research-note">
-        <div>
-          <h3>The Division That Adds Up Shifts</h3>
-          <!-- LAYER-STRIP:the-division-that-adds-up-shifts -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 21:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Divide 100 by 7 without a divide instruction. The obvious program is a loop: subtract 7, count, repeat until the remainder drops below 7. For 100 that is 14 subtractions, fine. For four billion it is over 613 million, and the running time is decided by the input: the bigger the number, the longer you wait. A division whose cost grows with its answer is the failure to fix.</p>
-          <p>Here is a fact about 7 that looks like trivia until it becomes a tool. In binary, 1/7 is 0.001001001..., the triplet 001 repeating forever. Why: the series 2^-3 + 2^-6 + 2^-9 + ... has ratio 1/8, so it sums to (1/8) divided by (1 - 1/8), which is 1/7. Three lines, no faith required.</p>
-          <p>Multiply through by x and the division becomes a sum of shifts: x/7 = (x&gt;&gt;3) + (x&gt;&gt;6) + (x&gt;&gt;9) + ..., as exact reals. For x = 100: 100&gt;&gt;3 is 12, 100&gt;&gt;6 is 1, and every term after that shifts to zero. The sum is 13. Shifting drops the fractions, so this estimate can only ever sit at or below the truth, never above it; the lab's test asserted exactly that on every one of its 26.8 million inputs and never saw a violation.</p>
-          <p>Now walk up to the exact answer. The code is the insight here:</p>
-          <pre><code>uint32_t q = (x &gt;&gt; 3) + (x &gt;&gt; 6) + (x &gt;&gt; 9) + (x &gt;&gt; 12) + (x &gt;&gt; 15)
-           + (x &gt;&gt; 18) + (x &gt;&gt; 21) + (x &gt;&gt; 24) + (x &gt;&gt; 27) + (x &gt;&gt; 30);
-uint32_t t = q + (q &lt;&lt; 1) + (q &lt;&lt; 2); /* t = 7q, shifts and adds only */
-while ((x - t) &gt;= 7u) {
-    q += 1u;
-    t += 7u;
-}</code></pre>
-          <p>The first line sums every third right shift, the estimate that can only undershoot. The second builds 7q with no multiply, q + 2q + 4q, shifts and adds only. The loop steps q up one at a time while the remainder is at least 7, and because q never exceeds the true quotient, the subtraction x - t cannot underflow.</p>
-          <p>For x = 100: q starts at 13, t at 91, the remainder 9 is at least 7, so one step up: q = 14, t = 98, remainder 2, done. Fourteen is 100 divided by 7 rounded down, and the whole thing took shifts, adds, and a single walk-up step. The proof bounds the shortfall under 10.58, so the loop can run at most 10 times, and the lab's own run observed exactly 10 as its maximum, theory and measurement agreeing to the digit. The checking, because that is the whole point: 26,777,238 inputs, nearly 27 million, twenty-two hand-built edge rows plus every 24-bit value plus ten million random 32-bit ones, zero wrong answers against the C / oracle, one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds, and a disassembly check confirming the compiler smuggled no divide instruction in behind the shifts. One sentence to carry away: 1/7 repeats as 001 in binary, so dividing by 7 is adding up a number's every-third right shift, then walking up by sevens to collect the fractions the shifts dropped.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/125-div-by-7-shift-add" target="_blank" rel="noopener">lab/125-div-by-7-shift-add</a></p>
-        </div>
-      </article>
+      
 
-      <article class="research-note">
-        <div>
-          <h3>The Exponent That Already Counted</h3>
-          <!-- LAYER-STRIP:the-exponent-that-already-counted -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 20:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-                    <p>The obvious program is a loop: start at bit 63, walk down, stop at the first 1, count the steps. It works, and for x = 2^63 it finishes after a single test. But for x = 1 it inspects 63 zeros first. The running time depends on the answer, and that is the whole problem: one branch per bit, mispredicted on random data, and a timing channel that leaks the input's magnitude. A quick check on this machine: the loop takes about 81 nanoseconds per value on inputs under 256, and about 4 when the top bit is set. About twenty times slower, decided by the input, while the float version below takes about 5 to 7 nanoseconds on both.</p>
-          <p>This lab rebuilds a hardware operation in portable C. Chips count leading zeros as a single hardware operation: x86 calls it LZCNT, ARM calls it CLZ, RISC-V's Zbb has one. Inside, that operation is a priority encoder, not a loop but a mesh of gates that examines all 64 bits at once, in space rather than time, the answer falling out of the wiring as the signal propagates. The lab uses no builtins and no intrinsics, so it cannot call that operation. Instead it borrows a top-bit finder every CPU is guaranteed to have: the float conversion unit. Leading zeros are 63 minus floor(log2(x)), so the real question is what power of two x sits under, and every conversion of an integer to a double must compute that exponent to normalize the value, storing floor(log2) plus a bias of 1023 in bits 62 through 52. The cast does the counting for free. So the trick is never to count at all: reshape x until the question you need is exactly the question the cast already answered, then read the exponent field.</p>
-          <p>Take x = 5, binary 101. Smear the top set bit downward with x |= x &gt;&gt; k for k = 1, 2, 4, 8, 16, 32. The first step turns 101 into 111, each step doubles how far the run of ones reaches, and after all six every bit at or below the top set bit is 1, so the filled value is exactly 2^(n+1) - 1 where n is the top bit's position. Cast that to double and the conversion computes exponent n, stored as n + 1023. Read bits 62 through 52 through a union, subtract the bias, and you have n; 63 minus n is the leading-zero count, 61 for 5. Nothing was counted. The exponent the cast already computed was read back out.</p>
-          <p>The whole implementation, for reference:</p>
-          <pre><code>bits = double_bits((double)x);
-n = ((bits &gt;&gt; 52) &amp; 0x7FFu) - 1023u;
-if (x &gt;&gt; 53)
-    n -= 1;
-return 63 - n;</code></pre>
-          <p>That read is exact only while the filled value converts exactly. Past 2^53, neighboring doubles sit more than 1 apart, so the cast rounds. From n = 54 up it always rounds up to 2^(n+1), a distance of 1 against at least 3 the other way, and the exponent reads one too high. The knife edge is n = 53: 2^54 - 1 is the exact midpoint between 2^54 - 2 and 2^54, and round-ties-to-even picks 2^54, whose significand 1.0 has an even least bit against 1.111...1's odd one. So the field reads one too high exactly when x &gt;&gt; 53 is nonzero, and the correction is one line: subtract 1 in that case. That is what the third line of the code above is for.</p>
-          <p>Re-deriving the tie fixed the correction, and the rerun is clean: 10,065,537 checks, about ten million, zero mismatches, one checksum byte-identical across the -O0, -O2, and sanitizer builds, no sanitizer reports. The oracle is __builtin_clzll on every one of the 65,536 sixteen-bit inputs, x = 0 pinned to 64 by contract, and ten million fixed-seed random 64-bit values, roughly half of them exercising the rounding correction. Best of five benchmark reps: 14.292 nanoseconds a value, about 70 million a second. One sentence to carry away: never count what the hardware already counted; reshape the question until the cast's exponent is the answer.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/115-clz-fp" target="_blank" rel="noopener">lab/115-clz-fp</a></p>
-        </div>
-      </article>
+      
 
-      <article class="research-note">
-        <div>
-          <h3>The Mask That Finds Every Match</h3>
-          <!-- LAYER-STRIP:the-mask-that-finds-every-match -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 19:04 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Take x = 0x19eb and y = 0x18eb, two 16-bit words. Byte 0 is 0xeb in both, so it agrees. Byte 1 is 0x19 against 0x18, so it disagrees. Bytes 2 through 7 are all zero in both, so they agree. The answer is one byte, one bit per byte: bit i set exactly when byte i matched. Bits 0, 2, 3, 4, 5, 6, and 7 are set, bit 1 is clear, and the mask is 0xfd. The lab's whole job is to compute that byte with no branch anywhere.</p>
-          <p>XOR the two words first: d = x ^ y. Every byte that agreed becomes 0x00, every byte that disagreed becomes nonzero. The problem is now a zero-byte mask. The bit-twiddling canon has an old identity for this: subtract 0x0101010101010101, then AND with the complement of d and with 0x8080808080808080. For a zero byte it works beautifully. 0x00 minus 1 is 0xFF, the high bit set, and the complement of 0x00 is 0xFF, its high bit set too. Both tests pass, so the byte is flagged. For a nonzero byte the two high bits can never agree: at 128 or below the subtraction leaves the high bit clear, at 129 or above the complement has it clear. So the identity answers one question: does a zero byte exist somewhere in this word?</p>
-          <p>Run the identity straight on d = 0x0100 and watch it lie. Byte 1 of d is 0x01, a byte that disagrees, but byte 0 borrows during the subtraction, so byte 1 is computed as 0x01 minus 1 minus the borrow: 0xFF. Its high bit is set, and the complement of 0x01 is 0xFE, its high bit set too. Both tests pass on a byte that should fail. The identity reports 0xff, every byte equal, and the honest answer is 0xfd. The hand analysis says exactly when this happens: with no borrow coming in, the naive form has no false positives; with a borrow coming in, 0x01 is the one value that lies. A standalone Python model of both forms confirmed it: 272 mismatches in 1,048,576 values, about one in 3,855, every single one the 0x01-with-borrow shape.</p>
-          <p>The fix is borrow suppression, and the code is the insight here:</p>
-          <pre><code>uint64_t d = x ^ y;
-uint64_t de = (d &amp; 0x00FF00FF00FF00FFULL) | 0xFF00FF00FF00FF00ULL;
-uint64_t te = ((de - 0x0101010101010101ULL) &amp; ~de) &amp; 0x8080808080808080ULL;
-uint64_t do_ = (d &amp; 0xFF00FF00FF00FF00ULL) | 0x00FF00FF00FF00FFULL;
-uint64_t to = ((do_ - 0x0101010101010101ULL) &amp; ~do_) &amp; 0x8080808080808080ULL;
-uint64_t t = te | to;</code></pre>
-          <p>The first line reduces equality to zero bytes. The second parks every odd byte at 0xFF: 0xFF minus 1 minus a borrow never borrows, so every even byte sees a borrow-in of zero and the exact no-false-positive analysis holds for the even half. The third runs the identity on the even half. The fourth and fifth are the mirror image for the odd half. The sixth ORs the two together, leaving a 0x80 marker in exactly the bytes where d is zero, which is exactly the bytes where x and y agreed.</p>
-          <p>A final gather shifts the markers down and compresses the eight 0x80 flags into one byte, bit i set exactly when byte i matched. Then the checking, because that is the whole point: 4,304,967,312 differential checks, about 4.3 billion, sixteen hand-directed rows plus every one of the 4,294,967,296 sixteen-bit pairs plus ten million random 64-bit pairs, zero mismatches. One FNV-1a fingerprint of the whole result stream, identical across the -O0, -O2, and sanitizer builds. Not one conditional jump in the -O2 disassembly. It runs at 4.31 nanoseconds a value, about 232 million values a second.</p>
-          <p>The identity is old. It comes from the Bit Twiddling Hacks page, first posted to a newsgroup by Alan Mycroft in April 1987, with a faster four-operation form suggested by Juha Jarvi in 2005. And the false positive is not just a lab curiosity: a reporter on the hashbrown tracker once traced a heisenbug in their byte-matching routine to exactly this shape of lie. We found ours before it shipped, because the differential test is the point. One sentence to carry away: the zero-byte test says a zero exists somewhere; two passes with the untested half parked at 0xFF say exactly where.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/114-swar-eq-mask" target="_blank" rel="noopener">lab/114-swar-eq-mask</a></p>
-        </div>
-      </article>
+      
 
-      <article class="research-note">
-        <div>
-          <h3>The Comparison That Never Compares</h3>
-          <!-- LAYER-STRIP:the-comparison-that-never-compares -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 18:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Take 3 and 5 and ask which is smaller. The code below does not compare them. It subtracts: d = 3 - 5. In unsigned 64-bit arithmetic there is no negative 2, so the subtraction wraps and d becomes 2^64 - 2, a number enormously larger than 3, nearly the largest the machine knows. Then it asks one question: is d greater than 3? Yes. That single test is the whole verdict: 3 is smaller than 5.</p>
-          <p>The identity is called borrow-out: d &gt; a exactly when a &lt; b. When a is the smaller one, the subtraction cannot be represented, so it borrows, and the wrapped difference overshoots a. When a is larger, a - b is small and honest and never exceeds a. Equality needs no wrapping argument at all, just a == b. The three cases partition the world, so the greater-than flag is whatever is left over: gt = 1 - lt - eq. Check 3 and 5 by hand: lt = 1, eq = 0, gt = 0, answer -1.</p>
-          <p>The whole implementation is five lines, and the code is the insight here:</p>
-          <pre><code>uint64_t d = a - b;        /* wraps modulo 2^64, total */
-uint64_t lt = d &gt; a;       /* borrow-out: 1 exactly when a &lt; b */
-uint64_t eq = a == b;      /* 1 exactly when a == b */
-uint64_t gt = 1 - lt - eq; /* the remaining case, so 1 exactly when a &gt; b */
-return (int64_t)gt - (int64_t)lt;  /* confined to -1, 0, +1 */</code></pre>
-          <p>The first line computes the wrapped difference. The second reads the borrow straight out of it: 1 exactly when a is smaller. The third is plain equality. The fourth is the partition of the world, 1 exactly when a is larger. The last confines the answer to -1, 0, +1, where no signed overflow is possible.</p>
-          <p>The -O2 build is eleven instructions with zero jumps, and the first line is gone. The compiler deleted d = a - b, because the hardware already has that subtraction: cmp performs it, keeps the flags, and discards the number, and setb reads the borrow out of the carry flag. Five lines of C collapsed into the machine's own comparison, the silicon and the source agreeing on what comparison is.</p>
-          <p>This is not a new idea wearing C clothes. The x86 manuals describe CMP exactly as a subtraction without storage of the result that affects flags only. RISC-V threw the flags register away and kept the shape anyway: a BLTU branch is taken exactly when a - b wraps past a, which is the lt bit above, the flags just never escaping into the architecture. The lab held for every 16-bit pair that exists, all 4,294,967,296 of them, about 4.3 billion, plus ten million random 64-bit pairs and fourteen hand-built edge rows: zero mismatches, and one fingerprint of the whole result stream identical across the -O0, -O2, and sanitizer builds. In one sentence: the wrap-around is not the error in the subtraction, it is the verdict, and comparison is subtraction that threw away the answer and kept the truth.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/100-branchless-cmp" target="_blank" rel="noopener">lab/100-branchless-cmp</a></p>
-        </div>
-      </article>
+      
 
-      <article class="research-note">
-        <div>
-          <h3>The Adder With No Plus Sign</h3>
-          <!-- LAYER-STRIP:the-adder-with-no-plus-sign -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 17:04 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Add 11 and 7 the way you learned in school, one column at a time. In binary, 11 is 1011 and 7 is 0111. Rightmost column: 1 plus 1 is 10 in binary, so write 0 and carry 1. Next column: 1 plus 1 plus the carried 1 is 3, write 1, carry 1. Next: 0 plus 1 plus 1 is 2, write 0, carry 1. Leftmost: 1 plus 0 plus 1 is 2, write 0, carry 1. The written bits are 0010 with a final carry of 1, which reads as 10010, or 18. Notice that every column took three inputs: two operand bits and the carry from its neighbor.</p>
-          <p>The simplest circuit for this is the half adder. It adds two bits and nothing else: the sum bit is XOR, 1 when the inputs differ, and the carry bit is AND, 1 only when both inputs are 1. One column with no incoming carry is exactly a half adder. But the moment a carry arrives from the column below, the half adder is out of inputs. It adds two bits, and a column needs three.</p>
-          <p>So chain two half adders. The first adds the two operand bits: p is a XOR b, g is a AND b. The second adds p and the incoming carry, giving the column sum p XOR carry and a second carry p AND carry. The column's carry out is g OR that second carry, which expands to (a AND b) OR (a AND carry) OR (b AND carry). Check it by cases. If a and b are both 1, the first term fires and the second half adder contributes nothing, since p is 0. If they differ, p is 1, so the second carry is exactly the incoming carry. If both are 0, nothing fires. The carry out is 1 exactly when at least two of the three inputs are 1, which is exactly when the column's bits add to 2 or 3: the overflow. Each column is a three-bit majority vote.</p>
-          <p>The lab writes this per-bit stage directly in C, and these three lines are the whole datapath. The first computes the column's sum bit. The second computes the carry out as the majority vote. The third plants the sum bit in its column. Nothing else in the function touches the operands with anything but bitwise operations and shifts.</p>
-          <pre><code>uint64_t si = ai ^ bi ^ carry;
+      
 
-carry = (ai &amp; bi) | (ai &amp; carry) | (bi &amp; carry);
-s |= si &lt;&lt; i;</code></pre>
-          <p>Then the question is whether this construction really is addition. The lab ran 8,590,934,630 cases against the native + operator, about 8.6 billion checks, roughly one for every person on the planet: 38 hand-built edge rows, every 16-bit pair times both carry values exhaustively, 2^33 cases in about six and a half minutes, plus a million fixed-seed random 64-bit pairs. Zero mismatches. The carry out of bit 63 was checked against the native overflow identity on every 64-bit case, and one FNV fingerprint came out identical across the -O0, -O2, and sanitizer builds. The disassembly was read too: only xor, and, or, shifts, moves, and compares, with the two add instructions being the loop counter, not the operands. Throughput is a few hundred nanoseconds per value, and the lab is honest that the number moves with CPU frequency, so treat it as order of magnitude only. In one sentence: a 64-bit adder is 64 three-bit majority votes chained by their own overflow.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/98-half-adder-chain" target="_blank" rel="noopener">lab/98-half-adder-chain</a></p>
-        </div>
-      </article>
+      
 
-      <article class="research-note">
-        <div>
-          <h3>The Stopwatch That Measures Itself</h3>
-          <!-- LAYER-STRIP:the-stopwatch-that-measures-itself -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 16:10 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Every timing measurement pays a price: reading the clock itself takes cycles. If the thing you are measuring costs 200 cycles but the clock read costs 150 of them, your number is more clock than code. So the first benchmark worth writing is one that measures the stopwatch itself. On RISC-V the cycle counter is read with a single instruction, rdcycle, which copies the cycle CSR into a register. The question is simple: how many ticks does that one instruction cost?</p>
-          <p>To find out, run the instruction against itself. The module executes 38 bursts of 27 back-to-back rdcycle reads, each burst a single volatile asm block writing into 27 distinct registers (t0 through t6, a0 through a7, s0 through s11, ra deliberately left out), so the compiler has to emit the 27 reads verbatim with nothing between them. That is not a hope: the shipped binary was disassembled and shows 27 consecutive rdcycle instructions with nothing between the first and the last. Only the 26 consecutive-pair deltas inside each burst count. The intervals between bursts hold stores and loop bookkeeping, so they are excluded by construction, stated up front, not hidden.</p>
-          <p>Three runs, 988 deltas each, every delta strictly positive, zero traps. The minimum is 135 in all three runs, rock stable; medians 165, 180, 165. The maximums are another world: 222,525, 1,530,195, and 9,810. One run's histogram puts 987 of 988 deltas in the first bin and a single outlier in the last. That split is the whole story. On QEMU the "cycle" counter is host ticks: CSR_CYCLE resolves through QEMU 8.2.2's target/riscv/csr.c to get_ticks(), which on x86_64 is the host's rdtsc, so when the host deschedules between two adjacent reads it shows up as a million-tick delta. The minimum is the true floor of the instruction. The maximum is the host being elsewhere.</p>
-          <p>This is an old idea done honestly. The lmbench timing harness measures its own overhead by benchmarking gettimeofday() itself, and its most-used statistical policy is the minimum of a few repetitions, discarding runs contaminated by system noise. This module follows that policy, min equals 135 three times in a row, and then goes one better: it publishes min, median, max, and the full histogram together, so the contamination is shown, not silently thrown away. Even the verdict refuses to be eyeballed: PASS writes 0x5555 to the virt finisher and QEMU exits 0; FAIL parks the hart in wfi until the harness times out. In one sentence: before you trust a clock to measure your code, measure the clock.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/cycle-read-latency" target="_blank" rel="noopener">src/cycle-read-latency</a></p>
-        </div>
-      </article>
+      
 
-      <article class="research-note">
-        <div>
-          <h3>The Six That Catches the Counterfeit Digit</h3>
-          <!-- LAYER-STRIP:the-six-that-catches-the-counterfeit-digit -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 15:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>A 16-bit word is supposed to hold four decimal digits, four bits per digit. Each 4-bit chunk is called a nibble, exactly one hex digit. The values 0 through 9 are honest digits. A through F have no decimal meaning at all: they are counterfeit, and any arithmetic that trusts them goes wrong silently. Before you believe a packed BCD value, you check all four nibbles. The challenge is checking them all at once, with no loop and no branches.</p>
-          <p>Take one nibble and add 6. If it holds 9, you get 15, which still fits in four bits: no overflow. If it holds A, meaning 10, you get 16, which does not fit: a carry spills out of the nibble. F gives 21, also a spill. So adding 6 turns the question "is this digit 10 or more" into "did a carry fall out," and a carry is something the adder reports for free. That is the entire trick, and you can check it on your fingers: 9 + 6 = 15 stays, 10 + 6 = 16 spills.</p>
-          <p>The tempting move is adding 6 to every nibble in a single instruction: w + 0x6666. Try it on 0x9A00, whose nibbles are 9, A, 0, 0, so only the A is counterfeit. The A plus 6 is 16, spilling a carry upward into the 9's lane, where 9 + 6 + 1, the intruding carry, is 16, spilling again. The honest 9 is now flagged counterfeit too. The true verdict is one bad digit; the naive form reports two. Across all 65,536 inputs it misfires 4,572 times, about 7 percent, roughly one word in fourteen. The lab keeps this naive form as a negative control: it earns its keep by being wrong in exactly this instructive way.</p>
-          <p>The carry crossed because the lanes touch. So stop letting them touch. Add the even nibbles and the odd nibbles in two separate sums, leaving dead gaps of zero bits between lanes: (w &amp; 0x0F0F) + 0x0606 handles nibbles 0 and 2. When nibble 0 overflows, its carry lands in bit 4, a gap bit that is zero in both addends. A carry that lands where there is nothing to add to simply stops: 0 + 0 + 1 = 1, and no new carry is born. Every lane starts with carry-in zero by construction, so a carry out of a lane means exactly one thing: the digit was counterfeit.</p>
-          <p>Each lane's verdict sits in a single known bit of its sum: bit 4 reports nibble 0, bit 12 reports nibble 2, and the odd sum, computed wide so the top carry has somewhere to land, puts nibble 1 in bit 8 and nibble 3 in bit 16. Shift those four bits into place and you hold a 4-bit mask of every counterfeit digit. No branches, no loop. In one sentence: add 6 to every digit at once, and wherever a carry spills out of its lane, the digit was counterfeit.</p>
-          <p>All 65,536 inputs were checked against an independent per-nibble loop, plus 18 hand-built trap rows like 0x9A00 designed to fool the naive form: zero mismatches. The output stream is bit-identical at -O0, -O2, and under the sanitizers, so the optimizer preserved the construction instead of outsmarting it. It runs in 4.27 nanoseconds per value.</p>
-          <pre><code>uint32_t t_even = (w &amp; 0x0F0F) + 0x0606;  /* nibbles 0 and 2, dead gaps between */
-uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps between */
-/* bits 4, 8, 12, 16 of the sums: one spill flag per nibble */</code></pre>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/80-bcd-digit-valid" target="_blank" rel="noopener">lab/80-bcd-digit-valid</a></p>
-        </div>
-      </article>
-
-            <article class="research-note">
-        <div>
-          <h3>The Division That Never Divides</h3>
-          <!-- LAYER-STRIP:the-division-that-never-divides -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 13:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>On some chips division is slow, twenty cycles or more against three for a multiply, and on others the instruction barely exists. So compilers never emit a real division when the divisor is a known constant. They multiply by the reciprocal instead, written in fixed point. For division by 3, the reciprocal is 1/3, and at 33 bits of precision the fixed-point 1/3 is the constant 0xAAAAAAAB, the smallest integer just above 2^33 / 3.</p>
-          <p>Try it on 10, where the true answer is 3. Multiply 10 by 0xAAAAAAAB to get 28,633,115,310, then shift right by 33, which divides by 2^33 = 8,589,934,592. The quotient is 3.33, and the shift keeps only the whole part: 3. Exact.</p>
-          <p>The reason it never overshoots is the shape of the product. For every 32-bit input, the 64-bit product holds the true answer above bit 33 and all of the rounding error below it, and the error can never grow large enough to reach bit 33. The shift therefore discards exactly the error and keeps exactly the answer. The lab's proof walks that bound; the short version is that the constant was chosen as the ceiling of 2^33 / 3, and with that choice the error term provably stays under 2^33 for every input.</p>
-          <p>Verified against the native / operator on 19 directed edge rows at the ends of the range, all 65,536 16-bit inputs exhaustively, and 1,000,000 fixed-seed random values: 1,065,555 checks, 0 mismatches, with an identical FNV-1a checksum across -O0, -O2, and ASan+UBSan builds. At -O2 the compiler emits mov, imul, shr, ret, no div instruction, about 2.2 nanoseconds per call.</p>
-          <p>The general construction for any divisor comes from Granlund and Montgomery's 1994 PLDI paper on strength-reducing integer division. The lab pins down the 32-bit divide-by-3 case with the exact error bound, the edge cases, and the measurements. In one sentence: division by a constant is multiplication by a fixed-point reciprocal, and the whole art is proving the rounding error never reaches the bits you keep.</p>
-          <pre><code>uint32_t div3_u32(uint32_t x)
-{
-    return (uint32_t)(((uint64_t)x * 0xAAAAAAABULL) &gt;&gt; 33);
-}</code></pre>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/91-div3-magic" target="_blank" rel="noopener">lab/91-div3-magic</a></p>
-        </div>
-      </article>
+            
 
             <article class="research-note">
         <div>
@@ -2364,97 +2000,13 @@ uint32_t t_odd  = (w &amp; 0xF0F0) + 0x6060;  /* nibbles 1 and 3, dead gaps betw
         </div>
       </article>
 
-            <article class="research-note">
-        <div>
-          <h3>The Lookup Table That Fits in 16 Bits</h3>
-          <!-- LAYER-STRIP:the-lookup-table-that-fits-in-16-bits -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 11:05 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Parity asks a small question: does this 32-bit word hold an odd or an even number of 1-bits? The lab answers it with no popcount instruction, no table in memory, and no branches.</p>
-          <p>First, fold the word down. XOR the top 16 bits into the bottom 16: x ^= x &gt;&gt; 16. Each bit of the result is the XOR of two original bits, and the XOR of two bits is 1 exactly when the pair held an odd number of ones. So the 16-bit result has the same parity as the whole word. Fold again by 8, then by 4, and the parity of all 32 bits now lives in the low nibble.</p>
-          <p>Check it on 0xD2, which is 11010010, four ones, even. Fold by 4: 1101 XOR 0010 = 1111. Fold by 2: 11 XOR 11 = 00. The low nibble is 1100, still even. The count collapsed, but its oddness or evenness survived every step, because XOR-ing pairs can never change the parity of the total.</p>
-          <p>Now the answer is a 4-bit value, and there are only 16 possible answers. Write all 16 down as bits, with bit i holding the parity of the nibble i: bit 0 is 0, bit 1 is 1, bit 2 is 1, bit 3 is 0, and so on through bit 15. Those 16 bits spell 0110 1001 1001 0110, which is 0x6996. Reading the table is one shift: (0x6996 &gt;&gt; v) &amp; 1. For our 0xD2, v is 12, bit 12 of the constant is 0, even, correct.</p>
-          <p>The constant is only trustworthy because every one of its 16 bits was hand-derived against the naive definition in the lab's proof, and the compiler emits movl $27030, that is 0x6996 in decimal, with no popcount in sight: the table really is an immediate, not a memory reference.</p>
-          <p>Verified three ways: all 65,536 16-bit inputs against a naive bit counter, 1,065,536 differential cases over full 32-bit values, and a million random pairs checking the homomorphism the fold relies on, parity(a XOR b) = parity(a) XOR parity(b). Zero mismatches, and one FNV fingerprint shared across -O0, -O2, and sanitizer builds, so the result does not depend on how it was compiled. The shift-and-mask table read is Mathew Hendry's 2002 comp.lang.c trick; the lab's contribution is the fold that shrinks any word to the nibble the table can read. In one sentence: when a table has 16 entries of one bit each, the table fits inside a 16-bit constant.</p>
-          <pre><code>int parity32(uint32_t x)
-{
-    x ^= x &gt;&gt; 16;
-    x ^= x &gt;&gt; 8;
-    x ^= x &gt;&gt; 4;
-    return (int)((0x6996u &gt;&gt; (x &amp; 0xfu)) &amp; 1u);
-}</code></pre>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/97-parity-6996" target="_blank" rel="noopener">lab/97-parity-6996</a></p>
-        </div>
-      </article>
+            
 
-            <article class="research-note">
-        <div>
-          <h3>The Multiply That Never Carries</h3>
-          <!-- LAYER-STRIP:the-multiply-that-never-carries -->
-          <p class="research-date"><time datetime="2026-09-10">2026-09-10 09:15 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Multiply 0xFF by 0xFF the schoolbook way: write out 8 shifted copies of 0xFF, one per set bit, and add the columns. The columns produce carries, and the total is 0xFE01. Now do the same thing but combine the columns with XOR instead of addition. Column 0 holds one 1, column 1 holds two, column 2 holds three, climbing to eight in column 7, then back down. XOR keeps a 1 wherever the count is odd, which is exactly the even-numbered columns, giving 0101010101010101 in binary: 0x5555. No carry ever propagated, because XOR never produces one.</p>
-          <p>That is carryless multiplication: ordinary shift-and-add with XOR as the combine step. Each bit is treated as a coefficient of a polynomial, and the result is the polynomial product. It sounds like a curiosity until you learn that AES-GCM authentication, the machinery that keeps TLS sessions honest, is built on exactly this operation, and that modern chips carry a dedicated PCLMULQDQ instruction for it. A pure-C version matters wherever that instruction is absent and the crypto still has to run.</p>
-          <pre><code>static inline clmul128 clmul64(uint64_t a, uint64_t b)
-{
-    uint64_t lo = 0, hi = 0;
-    for (int i = 0; i &lt; 64; i++) {
-        uint64_t m = 0ULL - ((a &gt;&gt; i) &amp; 1ULL);
-        lo ^= (b &lt;&lt; i) &amp; m;
-        hi ^= (i == 0) ? 0ULL : (b &gt;&gt; (64 - i)) &amp; m;
-    }
-    return (clmul128){ .hi = hi, .lo = lo };
-}</code></pre>
-          <p>For each set bit i of a, the loop XORs b shifted left by i into a 128-bit accumulator. The mask m turns the conditional into arithmetic, so there is no branch; the hi half catches the bits that shift past bit 64. Verified on all 2^32 pairs of 16-bit inputs plus a million random 64-bit pairs, checking the algebraic laws the construction must obey: distributivity over XOR, commutativity, multiply-by-one, multiply-by-zero. Zero mismatches, about 103 nanoseconds per 64-bit multiply. In one sentence: change the combine step from addition to XOR and multiplication becomes carryless, which is exactly the operation cryptography needed badly enough to put in hardware.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/67-clmul" target="_blank" rel="noopener">lab/67-clmul</a></p>
-        </div>
-      </article>
+            
 
-            <article class="research-note">
-        <div>
-          <h3>The Decrement That Leaves Room for the Ceiling</h3>
-          <!-- LAYER-STRIP:the-decrement-that-leaves-room-for-the-ceiling -->
-          <p class="research-date"><time datetime="2026-09-08">2026-09-08 09:15 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Suppose you need the smallest power of two that is at least x. The shape of the answer gives the algorithm away: a power of two in binary is a single 1-bit, so rounding up means finding the highest set bit of x and clearing everything below it. But there is an edge: if x is already a power of two, say 8, which is 0b1000, the highest set bit is already the answer, and any smearing of that bit downward would overshoot to 16.</p>
-          <p>The decrement fixes the edge before anything else happens. Set v = x - 1. If x was exactly 8, v is now 7, 0b0111, whose highest set bit sits one below the answer, and the algorithm will climb back to 8. If x was 9, v is 8, 0b1000, and the algorithm climbs to 16. The subtraction turns "at or below" into "strictly below," which is exactly what the rest of the construction needs.</p>
-          <p>Then smear the top bit downward: each OR with a right-shifted copy doubles how far the highest 1 reaches, so after shifts of 1, 2, 4, 8, 16, and 32, every bit below the top is 1, and v has the form 2^m - 1. One final +1 gives 2^m, the ceiling.</p>
-          <pre><code>uint64_t round_up_pow2_64(uint64_t x) {
-    uint64_t v = x - 1u;
-    v |= v &gt;&gt; 1;
-    v |= v &gt;&gt; 2;
-    v |= v &gt;&gt; 4;
-    v |= v &gt;&gt; 8;
-    v |= v &gt;&gt; 16;
-    v |= v &gt;&gt; 32;
-    return v + 1u;
-}</code></pre>
-          <p>Every line is the algorithm: the decrement handles the already-a-power-of-two case, the six ORs smear the top bit down through all 64 positions, and the increment lands on the ceiling. All 2^32 32-bit inputs plus targeted 64-bit edge cases verify against a naive loop with zero mismatches, in about half a nanosecond per call. In one sentence: round up by first stepping down, because x - 1 makes the highest set bit safe to smear, and the smear plus one is the ceiling.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/84-round-up-pow2" target="_blank" rel="noopener">lab/84-round-up-pow2</a></p>
-        </div>
-      </article>
+            
 
-            <article class="research-note">
-        <div>
-          <h3>The Checksum That Always Lands on 0x2144DF1C</h3>
-          <!-- LAYER-STRIP:the-checksum-that-always-lands-on-0x2144df1c -->
-          <p class="research-date"><time datetime="2026-09-07">2026-09-07 09:15 EDT</time></p>
-        </div>
-        <div class="research-body">
-          <p>Three lines that verify any buffer against corruption:</p>
-          <pre><code>uint32_t c = crc32(buf, len); append_le32(buf + len, c);
-uint32_t check = crc32(buf, len + 4);
-assert(check == 0x2144DF1C);</code></pre>
-          <p>Compute the CRC-32 of a message, append the four checksum bytes in little-endian order, and checksum the whole thing again. The result is always 0x2144DF1C, for every message. Ethernet hardware has relied on this since the 1980s: instead of recomputing and comparing against a stored value, the receiver checks one constant.</p>
-          <p>The reason it lands on a nonzero constant instead of zero is the bit-flip. This CRC variant inverts every bit of the register before returning it, so the appended bytes are not the raw remainder of the message; they are the remainder with every bit flipped. Re-checking therefore does not cancel to zero the way a plain remainder would. The fixed pre- and post-inversions steer every message, long or empty, to the same nonzero residue.</p>
-          <p>Byte order is load-bearing, and the lab proves it with a control: append the checksum big-endian instead, and the second pass gives 0x3CC9742C, not the residue. Get the order wrong and the magic constant silently stops working, which is exactly the kind of bug this check exists to catch.</p>
-          <p>The lab runs the residue check over a million random buffers, including empty messages and the empty-plus-four-zero-bytes case, with zero mismatches, at about 208 MiB/s. The table and bitwise implementations agree on every case, so the constant is a property of the algorithm, not of one implementation. In one sentence: append the checksum and re-check against one constant; the bit-flip is what makes the constant nonzero, and the byte order is what makes it work at all.</p>
-          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/82-crc32-residue" target="_blank" rel="noopener">lab/82-crc32-residue</a></p>
-        </div>
-      </article>
+            
       <div class="section-cta">
         <button class="cta-trigger text-cta" type="button">Start your project <span aria-hidden="true">↗</span></button>
       </div>
