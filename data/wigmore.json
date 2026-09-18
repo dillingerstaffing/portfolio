@@ -79556,6 +79556,386 @@
           "note": "Portability here would be emulation matching the spec, which proves nothing portable."
         }
       ]
+    },
+    {
+      "item": "the-variable-that-is-not-the-same-variable",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "matters at ISA because the access lowering is fixed by the machine contract: on RISC-V the psABI names tp the thread pointer and Variant I TLS lowers to lui/add/lw off tp, verified in the cross-toolchain disassembly, and on x86-64 the %fs-based addressing lowers to the single instruction mov %fs:0xfffffffffffffffc,%ecx, read verbatim from this run's objdump.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at ISA because the access lowering is fixed by the machine contract: on RISC-V the psABI names tp the thread pointer and Variant I TLS lowers to lui/add/lw off tp, verified in the cross-toolchain disassembly, and on x86-64 the %fs-based addressing lowers to the single instruction mov %fs:0xfffffffffffffffc,%ecx, read verbatim from this run's objdump."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The lab disassembly records both lowerings: x86-64 initial-exec reads counter with one instruction, mov %fs:0xfffffffffffffffc,%ecx; the cross-compiled RISC-V bump is lui a5,0x0 then add a5,a5,tp then lw a4,0(a5); the shared library lowers to lea an index plus call __tls_get_addr@plt.",
+          "source": {
+            "tier": "lab",
+            "cite": "test log",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/157-tls/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The shape of each access is fixed by the register the machine contract designates as the thread pointer and the addressing the ISA allows off it."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified property is what the machine contract says an access compiles to, the ISA slot lights."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "One instruction off the thread pointer is the contract's doing, not the program's."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the compiler chose the sequence, so this is a compiler fact."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The compiler's choice is forced by the psABI: tp is the designated thread pointer and Variant I fixes the lowering, so any conforming compiler emits the same shape."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-variable-that-is-not-the-same-variable",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "not at Microarch because nothing was timed and no pipeline, cache, or execution behavior was measured: the verified property is which per-thread storage an access lands on, which holds on any implementation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Microarch because nothing was timed and no pipeline, cache, or execution behavior was measured: the verified property is which per-thread storage an access lands on, which holds on any implementation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The session recorded only identity facts: two addresses 0x786b5c3b873c and 0x786b5c3b76bc, values 7 and 42, 21 assertions passed with 0 mismatches. No cycle count, no throughput, no timing of any kind.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Variable That Is Not the Same Variable, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Nothing in the result varies with pipeline depth, cache behavior, or issue width: the claim is which storage the access lands on, not how fast it got there."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When no measurement of time or throughput supports the claim, the Microarch slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Storage identity is proved by comparing addresses and values, not by matching clocks."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that 21 passing assertions is a sample, and samples smell like statistics."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The assertions check a deterministic verdict (which copy was read, which value was stored), not a distribution; there is no timing claim to generalize from a sample."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-variable-that-is-not-the-same-variable",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "not at Firmware because no boot, machine-mode, or supervisor-interface claim is made: the whole experiment runs in Linux userspace, and the thread pointer is installed by the kernel at thread creation, not by firmware.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Firmware because no boot, machine-mode, or supervisor-interface claim is made: the whole experiment runs in Linux userspace, and the thread pointer is installed by the kernel at thread creation, not by firmware."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The programs ran as ordinary userspace processes on Linux 7.0.0-38-generic: pthread_create, pthread_join, loads and stores. No firmware version appears anywhere in the log; the thread pointer is set by the kernel's thread-creation path.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Variable That Is Not the Same Variable, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Every actor in the experiment is a userspace thread, the loader, or the kernel; firmware never appears as an actor or an assumption."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the whole causal chain runs above the system-call boundary, the Firmware slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A register installed by the kernel at thread creation is a kernel fact, even when the register is named by the ABI."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that tp is a hardware register, so hardware is involved."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The register is hardware, but who writes it and when is decided in kernel code at thread creation; no machine-mode setting or firmware version decides the verdict."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-variable-that-is-not-the-same-variable",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "matters at Kernel because the per-thread copy of the template and the installation of the thread pointer happen at thread creation, arranged by the kernel and the loader: the differing addresses with identical initial values prove the copy, and errno, the kernel-visible per-thread variable, behaved the same (worker 5, main 0).",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at Kernel because the per-thread copy of the template and the installation of the thread pointer happen at thread creation, arranged by the kernel and the loader: the differing addresses with identical initial values prove the copy, and errno, the kernel-visible per-thread variable, behaved the same (worker 5, main 0)."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Three runs, 21 assertions, 0 mismatches: main and worker saw different addresses for counter (0x...873c vs 0x...76bc), both read 7 before any store, the worker's store landed at 42 in its own copy, main still read 7 after the join; errno behaved the same per thread (worker 5, main 0).",
+          "source": {
+            "tier": "lab",
+            "cite": "test log",
+            "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/157-tls/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The loader copies the PT_TLS template into fresh memory per thread and the kernel installs the thread pointer at thread creation: one template, one copy per thread, one register pointing at it."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified property is what the kernel and loader arrange at thread creation, the Kernel slot lights."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A copy proved by differing addresses with identical contents is the loader's testimony."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the userspace loader does the copying, so this is a library fact."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The loader is the kernel's deputy for process setup: it acts on the PT_TLS segment the kernel maps, and the thread pointer itself is installed by the kernel at thread creation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-variable-that-is-not-the-same-variable",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "not at Algorithm because no computational mechanism was constructed or measured: the verified claim is storage identity, which address a name resolves to per thread, read off running threads rather than computed.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Algorithm because no computational mechanism was constructed or measured: the verified claim is storage identity, which address a name resolves to per thread, read off running threads rather than computed."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The session recorded addresses and values, not a computed result: which copy each thread saw, what each store landed on. No algorithm was timed, profiled, or compared.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Variable That Is Not the Same Variable, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The verdict names which storage a name resolves to per thread; no computational mechanism stands between the question and the answer."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified claim is identity rather than computation, the Algorithm slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Address math off a register is arithmetic, not an algorithm under test."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that address computation is a computational step."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The computation is the ISA's addressing mode, already accounted for in the ISA slot; the claim under test is which storage the address names, which no computation decides."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
     }
 ]
 }
