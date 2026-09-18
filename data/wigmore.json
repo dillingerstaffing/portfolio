@@ -79231,5 +79231,331 @@
         }
       ]
   }
+,
+    {
+      "item": "src-pmp-priority",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Matters at ISA because the verified claim is machine-contract priority: the privileged architecture resolves conflicting PMP matches by lowest entry number, and the proof log shows the same S-mode load completing with entry 0 allowing and trapping with mcause 5 when entry 0 denies, entry 1's opposite permission losing both ways.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at ISA because the verified claim is machine-contract priority: the privileged architecture resolves conflicting PMP matches by lowest entry number, and the proof log shows the same S-mode load completing with entry 0 allowing and trapping with mcause 5 when entry 0 denies, entry 1's opposite permission losing both ways."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Phase A: with pmpcfg0 read back as 0x1f181b (entry 0 unlocked NAPOT allow, entry 1 unlocked NAPOT deny over the same 4 KiB page), the S-mode load of the canary completed with s_traps=0 and returned 0xa5; the ecall returned to M-mode with mcause 0x9.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "Phase B: with pmpcfg0 read back as 0x1f1b18 (entry 0 deny, entry 1 allow), the same load trapped in M-mode with mcause 0x5, mepc 0x80000362 at the load, mtval 0x80003000 at the scratch page, and the S-mode trap count stayed 0.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The privileged architecture specifies that when multiple PMP entries match an address, the lowest-numbered entry's permissions are used.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "When two configurations differ only in which of two conflicting entries is numbered lower, and the outcome follows the lower number both ways, the priority rule is machine-contract behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The two phases swap only the permissions of entries 0 and 1; the load's fate follows entry 0 in both phases."
+        }
+      ]
+    },
+    {
+      "item": "src-pmp-priority",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the proof log records trap records only, never timing: a different PMP lookup implementation changes how quickly the deny resolves, never which entry's permission wins.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the proof log records trap records only, never timing: a different PMP lookup implementation changes how quickly the deny resolves, never which entry's permission wins."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log's 33 checks are register readbacks and trap records (mcause, mepc, mtval, trap counts); no cycle counts or timing measurements appear.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "A quiet spin window moved neither trap counter, and the result was byte-identical across 3 runs, so the claim is about which entry wins, not how fast.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The privileged architecture defines PMP priority as a matching rule on entry numbers, independent of implementation timing.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim verified only through functional records, with no timing data, cannot distinguish microarchitectural implementations."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Nothing in the test varies or measures timing, so no microarchitectural claim is supported."
+        }
+      ]
+    },
+    {
+      "item": "src-pmp-priority",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Matters at FIRMWARE because the entry programming is machine-mode software configuring protection: M-mode programmed the two conflicting unlocked NAPOT entries and the broad allow entry, verified every pmpcfg and pmpaddr readback, and dropped to S-mode for each phase.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at FIRMWARE because the entry programming is machine-mode software configuring protection: M-mode programmed the two conflicting unlocked NAPOT entries and the broad allow entry, verified every pmpcfg and pmpaddr readback, and dropped to S-mode for each phase."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "M-mode programmed entry 0 and entry 1 as unlocked NAPOT over 0x80003000 with pmpaddr readbacks 0x20000dff, plus a broad allow entry 2 (pmpaddr2 0x2fffffff), and verified pmpcfg0 as 0x1f181b in phase A and 0x1f1b18 in phase B.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The probe ran in S-mode via sret with satp Bare, because unlocked entries do not apply to M-mode and locked entries cannot be reprogrammed between phases.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "Only M-mode can write pmpcfg and pmpaddr and observe the resulting access fault; configuring protection regions is machine-mode software's job.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Protection configuration that only machine-mode software can perform, verified through its own readbacks, is firmware behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Every register the claim depends on was written and read back by M-mode code."
+        }
+      ]
+    },
+    {
+      "item": "src-pmp-priority",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Not at KERNEL because the module runs bare metal with no operating system loaded: the S-mode probe loads and the M-mode trap handler record trap records and resume, they schedule nothing, and the priority verdict holds identically under any kernel.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at KERNEL because the module runs bare metal with no operating system loaded: the S-mode probe loads and the M-mode trap handler record trap records and resume, they schedule nothing, and the priority verdict holds identically under any kernel."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module runs with no operating system: a bare-metal M-mode trap handler records mcause, mepc, and mtval and resumes past the fault; the S-mode payload performs one load and one ecall.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The 33 checks assert trap records, readbacks, and counters; none involves scheduling, virtual memory, drivers, or syscalls.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The privileged architecture's PMP and trap rules apply before any kernel exists; a kernel runs on top of these guarantees.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A bare-metal test with no scheduler or memory manager cannot support a claim about kernel behavior."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "No kernel code is present, so the verdict is kernel-independent."
+        }
+      ]
+    },
+    {
+      "item": "src-pmp-priority",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (PMP entry priority, NAPOT, mcause 5) with no ISA-independent restatement: the portable framing would be that emulation matches the spec, which is tautological rather than a defensible portability argument.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (PMP entry priority, NAPOT, mcause 5) with no ISA-independent restatement: the portable framing would be that emulation matches the spec, which is tautological rather than a defensible portability argument."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified property is that entry 0's permission decides the S-mode load's fate in both phases; the claim names PMP entries, NAPOT encoding, and mcause 5.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The backlog's TOR phrasing was corrected to NAPOT in the proof log because TOR ranges cannot both match one address; the mechanism is RISC-V specific.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/pmp-priority PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "PMP entry priority has no ISA-independent restatement; it is a rule of the RISC-V privileged architecture.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim with no portable restatement cannot support an algorithm-layer argument."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Portability here would be emulation matching the spec, which proves nothing portable."
+        }
+      ]
+    }
 ]
 }

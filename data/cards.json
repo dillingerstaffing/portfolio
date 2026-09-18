@@ -11197,4 +11197,62 @@
   "repoLabel": "riscv-baremetal-demo/src/medeleg-store-access-fault",
   "showRepoLink": true
 }
+,
+{
+  "id": "src-pmp-priority",
+  "kicker": "RISC-V ISA",
+  "title": "PMP priority: the lowest-numbered matching entry wins",
+  "summary": "Two unlocked NAPOT PMP entries cover the same 4 KiB scratch page with conflicting permissions, and the probe load runs in S-mode. Phase A programs entry 0 as allow and entry 1 as deny: the load of the canary completes with no trap. Phase B swaps the two: the same load traps as a load access fault, proving the lowest-numbered matching entry decides.",
+  "layers": {
+    "ISA": {
+      "applies": true,
+      "because": "Matters at ISA because the verified claim is machine-contract priority: the privileged architecture resolves conflicting PMP matches by lowest entry number, and the proof log shows the same S-mode load completing with entry 0 allowing and trapping with mcause 5 when entry 0 denies, entry 1's opposite permission losing both ways."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "Not at MICROARCH because the proof log records trap records only, never timing: a different PMP lookup implementation changes how quickly the deny resolves, never which entry's permission wins."
+    },
+    "FIRMWARE": {
+      "applies": true,
+      "because": "Matters at FIRMWARE because the entry programming is machine-mode software configuring protection: M-mode programmed the two conflicting unlocked NAPOT entries and the broad allow entry, verified every pmpcfg and pmpaddr readback, and dropped to S-mode for each phase."
+    },
+    "KERNEL": {
+      "applies": false,
+      "because": "Not at KERNEL because the module runs bare metal with no operating system loaded: the S-mode probe loads and the M-mode trap handler record trap records and resume, they schedule nothing, and the priority verdict holds identically under any kernel."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (PMP entry priority, NAPOT, mcause 5) with no ISA-independent restatement: the portable framing would be that emulation matches the spec, which is tautological rather than a defensible portability argument."
+    }
+  },
+  "portability": null,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "Phase A: entry 0 programmed as an unlocked NAPOT allow over the 4 KiB scratch page and entry 1 as an unlocked NAPOT deny over the same page, the S-mode load of the 0xa5 canary completed with zero traps and a control load outside the page returned 0x5a. Phase B: with the two permissions swapped, the same load trapped with mcause 0x5, mepc exactly at the load, and mtval at the scratch page, while the control load still returned 0x5a. A quiet window moved neither trap counter; the boot PMP config and medeleg were restored exactly."
+    ],
+    [
+      "CHECKSUM",
+      "FNV-1a of the byte-identical terminal output: 0xfb7bd8f9f90b987b"
+    ],
+    [
+      "ENVIRONMENT",
+      "QEMU 8.2.2 RISC-V virt, riscv64-unknown-elf-gcc 13.2.0, 3 runs byte-identical"
+    ]
+  ],
+  "terminalOutput": "pmp-priority: PMP entry-priority first-match test\nm-mode: boot medeleg=0x0 pmpcfg0=0x0 pmpaddr0=0x0 pmpaddr1=0x0 pmpaddr2=0x0\nm-mode: phase-A pmpcfg0=0x1f181b pmpaddr0=0x20000dff pmpaddr1=0x20000dff pmpaddr2=0x2fffffff\nm-mode: satp=0x0 (Bare)\nm-mode: entering S-mode (phase A, entry 0 allows)\nm-mode: phase-B pmpcfg0=0x1f1b18 pmpaddr0=0x20000dff pmpaddr1=0x20000dff pmpaddr2=0x2fffffff\npmp-priority: PMP entry-priority first-match test\nboot: medeleg=0x0 restored readback=0x0\nboot: pmpcfg0=0x0 pmpaddr0=0x0 pmpaddr1=0x0 pmpaddr2=0x0\nrestore: pmpcfg0 readback=0x0 pmpaddr0=0x0 pmpaddr1=0x0 pmpaddr2=0x0\nscratch: pa=0x80003000 napot=0x20000dff control=0x80001a8b\npmpA: cfg0=0x1f181b addr0=0x20000dff addr1=0x20000dff addr2=0x2fffffff\npmpB: cfg0=0x1f1b18 addr0=0x20000dff addr1=0x20000dff addr2=0x2fffffff\npA: s_traps=0 canary=0xa5 control=0x5a\npA: m_traps=1 mcause=0x9 mepc=0x80000320 mstatus_mpp=1\npB: m_traps=2 mcause=0x5 mepc=0x80000362 expected=0x80000362 mtval=0x80003000 mstatus_mpp=1 control=0x5a s_traps=0\nquiet: m_traps=2 s_traps=0\nchecksum=0xfb7bd8f9f90b987b\nRESULT: PASS (checks=33)",
+  "terminalName": "riscv-baremetal-demo / src / pmp-priority",
+  "terminalLabel": "Verified src-pmp-priority QEMU output",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "checks": 33,
+  "failures": 0,
+  "stressItems": 0,
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-priority/PROOF.md"
+  },
+  "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-priority",
+  "repoLabel": "riscv-baremetal-demo/src/pmp-priority",
+  "showRepoLink": true
+}
 ]
