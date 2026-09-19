@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260919-123211">
+  <meta name="build-version" content="v20260919-144919">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ece6d5">
@@ -1040,6 +1040,16 @@
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
+      transition: opacity 150ms ease;
+    }
+    /* While the hero is on screen the rail's page-nav controls stand down,
+       so the fixed rail never sits on top of the hero CTAs on narrow
+       viewports. The contact button keeps its own observer-driven rule. */
+    .floating-actions.nav-standby .scroll-to-services,
+    .floating-actions.nav-standby .scroll-to-bottom {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
       transition: opacity 150ms ease;
     }
     .scroll-to-services {
@@ -2979,11 +2989,15 @@ andi t1, t1, 1</code></pre>
 
       const hero = document.querySelector('.hero');
       const floatingContact = document.querySelector('.floating-contact');
+      const floatingActions = document.querySelector('.floating-actions');
       const heroObserver = new IntersectionObserver(([entry]) => {
         const visible = !entry.isIntersecting;
         floatingContact.classList.toggle('is-visible', visible);
         floatingContact.setAttribute('aria-hidden', String(!visible));
         floatingContact.tabIndex = visible ? 0 : -1;
+        // The rail's page-nav controls stand down while the hero is on
+        // screen, so they never cover the hero CTAs on narrow viewports.
+        floatingActions.classList.toggle('nav-standby', !visible);
       }, { threshold: 0.1 });
       heroObserver.observe(hero);
 
