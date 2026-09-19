@@ -991,7 +991,26 @@ POST_CHOOSER_JS = """  <script>
   </script>"""
 
 
-def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
+def post_foot_next(article, next_article):
+    """Post footer: the existing back-to-blog link plus a next-article link.
+
+    A reader who finishes an article is the highest-intent visitor on the
+    site. The back link drops them on the long blog index; the next link
+    keeps them in a reading flow with one tap, and every further article
+    ends at the same offer CTA, so this multiplies offer impressions.
+    The next article is simply the next one in feed order (newest first),
+    wrapping from the oldest back to the newest so every page has a
+    forward path. Append-only: the back link is unchanged."""
+    back = (f'<a class="backlink" href="{SITE_PATH}/#blog">'
+            '&larr; Back to all posts</a>')
+    nxt = (f'<a class="post-next" href="{SITE_PATH}/blog/{next_article["slug"]}/">'
+           '<span class="post-next-kicker">Next article:</span> '
+           f'{html.escape(next_article["title"])} '
+           '<span aria-hidden="true">&rarr;</span></a>')
+    return f'  <footer class="post-foot">{back}{nxt}</footer>'
+
+
+def per_post_html(article, next_article, block, desc, css, font_links, stamp, wig_script):
     slug = article["slug"]
     title = article["title"]
     url = f"{SITE_URL}/blog/{slug}/"
@@ -1130,7 +1149,7 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
 {block}
   </main>
   {offer_html}
-  <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; Back to all posts</a></footer>
+  {post_foot_next(article, next_article)}
 {chooser_dialog}
 {wig_script}
 {dwell}
@@ -1187,9 +1206,13 @@ def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
 
     tooltip_iife = extract_wigmore_tooltip(template)
 
-    for article, block in zip(articles, blocks):
+    for idx, (article, block) in enumerate(zip(articles, blocks)):
         slug = article["slug"]
         title = article["title"]
+        # Next-article navigation: the next feed item in newest-first order,
+        # wrapping from the oldest back to the newest so every post page has
+        # a forward reading path.
+        next_article = articles[(idx + 1) % len(articles)]
         if "\u2014" in title:
             fail(f"article {slug}: em dash in title")
         hm = re.search(r"<h3>(.*?)</h3>", block, re.S)
@@ -1216,8 +1239,8 @@ def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
             fail(f"article {slug}: wigmore data contains a script breaker")
         wig_script = (f'  <script>window.__WIGMORE__ = {wig_data};</script>\n'
                       f'  <script>\n{tooltip_iife}\n  </script>')
-        post = per_post_html(article, block, desc, css, font_links, stamp,
-                             wig_script)
+        post = per_post_html(article, next_article, block, desc, css, font_links,
+                             stamp, wig_script)
         dest = HERE / "blog" / slug / "index.html"
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(post, encoding="utf-8")
