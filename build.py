@@ -36,6 +36,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -938,6 +939,58 @@ POST_COPYLINK_JS = """  <script>
   </script>"""
 
 
+POST_CHOOSER_JS = """  <script>
+  /* Foot-of-article contact chooser: the offer CTA opens the same 3-way
+     email chooser as the main page, in place, with the article named in
+     the message subject. Self-contained: post pages carry no main-page JS,
+     so this wires its own dialog. */
+  (() => {
+    const dialog = document.getElementById('contact-chooser');
+    const cta = document.querySelector('.post-offer-cta');
+    if (!dialog || !cta) return;
+    const closeButton = dialog.querySelector('.chooser-close');
+    const copyButton = dialog.querySelector('.copy-email');
+    const copyStatus = dialog.querySelector('.copy-status');
+    const email = 'shipthisgroup@gmail.com';
+    const open = () => {
+      copyStatus.textContent = '';
+      // Older in-app WebViews predate <dialog>; fall back to a non-modal
+      // open rather than throwing and doing nothing.
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    };
+    const close = () => {
+      dialog.close();
+      cta.focus();
+    };
+    cta.addEventListener('click', open);
+    closeButton.addEventListener('click', close);
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) close();
+    });
+    dialog.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => dialog.close());
+    });
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(email);
+      } catch {
+        const field = document.createElement('textarea');
+        field.value = email;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        document.execCommand('copy');
+        field.remove();
+      }
+      copyStatus.textContent = 'Email address copied.';
+    });
+  })();
+  </script>"""
+
+
 def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     slug = article["slug"]
     title = article["title"]
@@ -958,6 +1011,10 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
 .post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }
 .post-offer a { color: var(--acid); text-decoration: none; }
 .post-offer a:hover { text-decoration: underline; }
+/* The offer CTA is a button (it opens the in-page chooser) styled exactly
+   like the link it replaced, so the offer line looks byte-identical. */
+.post-offer-cta { background: none; border: 0; padding: 0; font: inherit; color: var(--acid); text-decoration: none; cursor: pointer; }
+.post-offer-cta:hover { text-decoration: underline; }
 /* Permalink chrome: the site header plus a back bar, stuck together at the
    top of every per-post page. The header keeps its own sticky rule neutralized
    inside the wrapper; the wrapper carries the safe-area inset for home-screen
@@ -974,7 +1031,46 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     # buyer call-out rendered in the .post-offer block. Falls back to the
     # generic line when the article carries no "offer".
     offer_text = article.get("offer") or "Stuck on a board or a crash? Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up from $500, C audit from $350."
-    offer_html = f'<div class="post-offer"><p>{html.escape(offer_text)} <a href="{SITE_PATH}/#contact">Send the details</a>.</p></div>'
+    offer_html = (f'<div class="post-offer"><p>{html.escape(offer_text)} '
+                  '<button class="post-offer-cta" type="button">Send the details</button>.</p></div>')
+    # In-page contact chooser for post pages. The foot-of-article CTA used to
+    # link away to /portfolio/#contact, a two-tap path that loses the article
+    # and, on phones, the reading context. The dialog below reuses the main
+    # page's contact-chooser markup and CSS (both travel in the shared style
+    # block), opened in place with the article named in the subject so inbound
+    # mail stays attributable to the post that earned it.
+    q = urllib.parse.quote
+    brief_subject = f"Article: {title}"
+    brief_body = ("Device or project:\nChip or board:\n"
+                  "What is going wrong or needs building:\nTimeline:")
+    gmail_href = html.escape(
+        "https://mail.google.com/mail/?view=cm&fs=1"
+        f"&to={q('shipthisgroup@gmail.com')}&su={q(brief_subject)}&body={q(brief_body)}",
+        quote=True)
+    mailto_href = html.escape(
+        f"mailto:shipthisgroup@gmail.com?subject={q(brief_subject)}&body={q(brief_body)}",
+        quote=True)
+    chooser_dialog = f"""  <dialog class="contact-chooser" id="contact-chooser" aria-labelledby="chooser-title" aria-describedby="chooser-description">
+    <div class="chooser-head">
+      <div>
+        <h2 id="chooser-title">Choose how to get in touch</h2>
+        <p id="chooser-description">The project brief is filled in for you.</p>
+      </div>
+      <button class="chooser-close" type="button" aria-label="Close contact options">{"\u00d7"}</button>
+    </div>
+    <div class="chooser-options">
+      <a class="chooser-option" href="{gmail_href}" target="_blank" rel="noopener">
+        <span>Compose in Gmail</span><span aria-hidden="true">{"\u2197"}</span>
+      </a>
+      <a class="chooser-option" href="{mailto_href}">
+        <span>Use my email app</span><span aria-hidden="true">{"\u2197"}</span>
+      </a>
+      <button class="chooser-option copy-email" type="button">
+        <span>Copy email address</span><span aria-hidden="true">+</span>
+      </button>
+      <p class="copy-status" role="status" aria-live="polite"></p>
+    </div>
+  </dialog>"""
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -1035,6 +1131,7 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
   </main>
   {offer_html}
   <footer class="post-foot"><a href="{SITE_PATH}/#blog">&larr; Back to all posts</a></footer>
+{chooser_dialog}
 {wig_script}
 {dwell}
 {CODEBLOCK_COPY_JS}
@@ -1057,6 +1154,7 @@ def per_post_html(article, block, desc, css, font_links, stamp, wig_script):
     }});
   }})();
   </script>
+{POST_CHOOSER_JS}
 </body>
 </html>
 """

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260918-152525" />
+  <meta name="build-version" content="v20260919-025650" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bridge That Doesn&#x27;t Translate &middot; Blog &middot; Chris Dillinger</title>
@@ -1108,6 +1108,10 @@
 .post-offer { max-width: 1180px; margin: 0 auto; padding: 24px 24px 0; font-size: 13px; color: var(--muted); }
 .post-offer a { color: var(--acid); text-decoration: none; }
 .post-offer a:hover { text-decoration: underline; }
+/* The offer CTA is a button (it opens the in-page chooser) styled exactly
+   like the link it replaced, so the offer line looks byte-identical. */
+.post-offer-cta { background: none; border: 0; padding: 0; font: inherit; color: var(--acid); text-decoration: none; cursor: pointer; }
+.post-offer-cta:hover { text-decoration: underline; }
 /* Permalink chrome: the site header plus a back bar, stuck together at the
    top of every per-post page. The header keeps its own sticky rule neutralized
    inside the wrapper; the wrapper carries the safe-area inset for home-screen
@@ -1168,8 +1172,29 @@ fmv.x.d %0, f1</code></pre>
         </div>
       </article>
   </main>
-  <div class="post-offer"><p>Moving bits between register files on an FPU-less core? Bare-metal bring-up from $500, fixed price. <a href="/portfolio/#contact">Send the details</a>.</p></div>
+  <div class="post-offer"><p>Moving bits between register files on an FPU-less core? Bare-metal bring-up from $500, fixed price. <button class="post-offer-cta" type="button">Send the details</button>.</p></div>
   <footer class="post-foot"><a href="/portfolio/#blog">&larr; Back to all posts</a></footer>
+  <dialog class="contact-chooser" id="contact-chooser" aria-labelledby="chooser-title" aria-describedby="chooser-description">
+    <div class="chooser-head">
+      <div>
+        <h2 id="chooser-title">Choose how to get in touch</h2>
+        <p id="chooser-description">The project brief is filled in for you.</p>
+      </div>
+      <button class="chooser-close" type="button" aria-label="Close contact options">×</button>
+    </div>
+    <div class="chooser-options">
+      <a class="chooser-option" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=shipthisgroup%40gmail.com&amp;su=Article%3A%20The%20Bridge%20That%20Doesn%27t%20Translate&amp;body=Device%20or%20project%3A%0AChip%20or%20board%3A%0AWhat%20is%20going%20wrong%20or%20needs%20building%3A%0ATimeline%3A" target="_blank" rel="noopener">
+        <span>Compose in Gmail</span><span aria-hidden="true">↗</span>
+      </a>
+      <a class="chooser-option" href="mailto:shipthisgroup@gmail.com?subject=Article%3A%20The%20Bridge%20That%20Doesn%27t%20Translate&amp;body=Device%20or%20project%3A%0AChip%20or%20board%3A%0AWhat%20is%20going%20wrong%20or%20needs%20building%3A%0ATimeline%3A">
+        <span>Use my email app</span><span aria-hidden="true">↗</span>
+      </a>
+      <button class="chooser-option copy-email" type="button">
+        <span>Copy email address</span><span aria-hidden="true">+</span>
+      </button>
+      <p class="copy-status" role="status" aria-live="polite"></p>
+    </div>
+  </dialog>
   <script>window.__WIGMORE__ = {"the-bridge-that-doesnt-translate|ISA": {"item": "the-bridge-that-doesnt-translate", "kind": "article", "slot": "ISA", "probandum": "matters at ISA because the verified property is an instruction contract: FMV.D.X copies 64 bits from the integer register file to the floating-point file without interpreting them, the manual promises the bits are not modified and noncanonical NaN payloads are preserved, and the post's 1.0 versus 4607182418800017408.0 pair shows the contract is what separates a transport from a translation.", "keyList": [{"n": 1, "kind": "probandum", "text": "matters at ISA because the verified property is an instruction contract: FMV.D.X copies 64 bits from the integer register file to the floating-point file without interpreting them, the manual promises the bits are not modified and noncanonical NaN payloads are preserved, and the post's 1.0 versus 4607182418800017408.0 pair shows the contract is what separates a transport from a translation."}, {"n": 2, "kind": "evidence", "text": "The unprivileged ISA manual states that FMV.X.D and FMV.D.X do not modify the bits being transferred, and that the payloads of noncanonical NaNs are preserved.", "source": {"tier": "spec", "cite": "RISC-V ISA Manual, unprivileged: FMV.X.D / FMV.D.X", "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"}}, {"n": 3, "kind": "penultimate", "text": "The 1.0 result is a property of the bits, not of any conversion: the same 64 bits through FCVT.D.L would read as the integer 4607182418800017408 and convert to that double instead."}, {"n": 4, "kind": "generalization", "text": "When the verified property is an instruction's architecturally defined semantics, the ISA slot lights."}, {"n": 5, "kind": "generalization", "text": "A move that promises not to interpret its payload can only be defined by the machine contract, not by any implementation."}, {"n": 6, "kind": "explanation", "text": "One could object that moving bits is just plumbing, beneath the ISA's notice."}, {"n": 7, "kind": "refutation", "text": "The plumbing is the contract here: which of the two register files a value lands in, and whether the bits survive the trip, is exactly what the manual pins down, and the post verifies that text against a running module."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-bridge-that-doesnt-translate|MICROARCH": {"item": "the-bridge-that-doesnt-translate", "kind": "article", "slot": "MICROARCH", "probandum": "not at Microarch because the promise is implementation-invariant: whether a core renames the two register files together or apart, and through which pipeline it issues the move, the observable result is the same unchanged 64 bits, and the post verifies the contract, not any implementation's choice of how to honor it.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Microarch because the promise is implementation-invariant: whether a core renames the two register files together or apart, and through which pipeline it issues the move, the observable result is the same unchanged 64 bits, and the post verifies the contract, not any implementation's choice of how to honor it."}, {"n": 2, "kind": "evidence", "text": "The manual recounts that the early ISA's half-register transfer instructions were cut because partial register writes would have forced a read-modify-write through renamed pipelines.", "source": {"tier": "spec", "cite": "RISC-V ISA Manual, unprivileged: FMV history note", "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"}}, {"n": 3, "kind": "penultimate", "text": "The cut shows implementations shape how the crossing is built, but the surviving instruction's promise, bits unchanged, is stated in the contract and holds on every core."}, {"n": 4, "kind": "generalization", "text": "A layer stays dim when the verified property is invariant across every implementation choice at that layer."}, {"n": 5, "kind": "generalization", "text": "Design history explains why the contract looks the way it does; it does not turn the post's claim about the contract into an implementation claim."}, {"n": 6, "kind": "explanation", "text": "One could object that the pipeline discussion puts the post at Microarch."}, {"n": 7, "kind": "refutation", "text": "The pipeline enters only as the reason an old instruction was removed, while every number the post stands on, the 1.0 and the unchanged NaN payloads, is verified against the contract and the module, not against a pipeline."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-bridge-that-doesnt-translate|FIRMWARE": {"item": "the-bridge-that-doesnt-translate", "kind": "article", "slot": "FIRMWARE", "probandum": "not at Firmware because the move is privilege-invariant: it executes identically at every privilege level with no trap, no SBI call, and no PMP entry involved, and nothing firmware configures changes what the instruction promises about the bits.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Firmware because the move is privilege-invariant: it executes identically at every privilege level with no trap, no SBI call, and no PMP entry involved, and nothing firmware configures changes what the instruction promises about the bits."}, {"n": 2, "kind": "evidence", "text": "FMV.D.X and FMV.X.D are unprivileged F/D-extension instructions: the module executes them in its normal flow with no trap expected, and its trap counter reads 0 across all runs.", "source": {"tier": "lab", "cite": "fflags-nx-only PROOF.md, dillingerstaffing/riscv-baremetal-demo", "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"}}, {"n": 3, "kind": "penultimate", "text": "No firmware gate stands between the instruction and its promise: privilege changes who may execute it, never what it does to the bits."}, {"n": 4, "kind": "generalization", "text": "A layer stays dim when the verified property does not change under anything that layer controls."}, {"n": 5, "kind": "generalization", "text": "Firmware owns enable gates and machine policy; a bit-move with no gate to configure leaves that layer with nothing to decide."}, {"n": 6, "kind": "explanation", "text": "One could object that machine-mode firmware could emulate or intercept floating-point."}, {"n": 7, "kind": "refutation", "text": "It could, but the post's claim is about the instruction's own contract, verified on a core that implements F and D in hardware, and the promise is stated without a firmware precondition."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-bridge-that-doesnt-translate|KERNEL": {"item": "the-bridge-that-doesnt-translate", "kind": "article", "slot": "KERNEL", "probandum": "not at Kernel because the property is policy-invariant: the kernel's work is managing when the floating-point file is live, the mstatus.FS bookkeeping the post cites, and that lifetime policy is orthogonal to the crossing itself, which moves bits identically whether it runs in a user process, a trap handler, or a bare-metal binary.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Kernel because the property is policy-invariant: the kernel's work is managing when the floating-point file is live, the mstatus.FS bookkeeping the post cites, and that lifetime policy is orthogonal to the crossing itself, which moves bits identically whether it runs in a user process, a trap handler, or a bare-metal binary."}, {"n": 2, "kind": "evidence", "text": "The post cites mstatus.FS, the two-bit field that lets the kernel skip saving the thirty-two floating-point registers when the running code never touched them, as the reason the two register files live apart.", "source": {"tier": "reference", "cite": "The Two Bits That Spare the Kernel Thirty-Two Saves (portfolio blog)", "url": "https://dillingerstaffing.github.io/portfolio/blog/the-two-bits-that-spare-the-kernel-thirty-two-saves/"}}, {"n": 3, "kind": "penultimate", "text": "FS manages the floating-point file's lifetime across the kernel's scheduling; FMV manages the bits' crossing between the files: the two policies touch at the boundary but neither changes the other."}, {"n": 4, "kind": "generalization", "text": "A layer stays dim when the verified property is invariant across every policy decision at that layer."}, {"n": 5, "kind": "generalization", "text": "Citing a layer's mechanism as context is not the same as verifying a property that layer controls."}, {"n": 6, "kind": "explanation", "text": "One could object that the kernel is named as the bridge's second customer."}, {"n": 7, "kind": "refutation", "text": "It is named as the reason the two files live apart, which is context for the bridge's narrowness, while the verified claim, bits move unchanged, is settled by the ISA text and the module, not by any kernel policy."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}, "the-bridge-that-doesnt-translate|ALGORITHM": {"item": "the-bridge-that-doesnt-translate", "kind": "article", "slot": "ALGORITHM", "probandum": "not at Algorithm because the post computes nothing: FMV is a move, not a computation, and the discipline it teaches, knowing whether you want the bits or what they mean, is a property of one instruction's contract, independent of any algorithm that later consumes the bits.", "keyList": [{"n": 1, "kind": "probandum", "text": "not at Algorithm because the post computes nothing: FMV is a move, not a computation, and the discipline it teaches, knowing whether you want the bits or what they mean, is a property of one instruction's contract, independent of any algorithm that later consumes the bits."}, {"n": 2, "kind": "evidence", "text": "The module's four-instruction crossing performs no arithmetic on the moved values: fmv.d.x moves the operands in, fadd.d computes, fmv.x.d moves the result out, and the moves themselves add, round, and convert nothing.", "source": {"tier": "lab", "cite": "fflags-nx-only PROOF.md, dillingerstaffing/riscv-baremetal-demo", "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/fflags-nx-only/PROOF.md"}}, {"n": 3, "kind": "penultimate", "text": "A transport's correctness is bit-identity, not a computed result: there is no algorithm to port, only a contract to honor."}, {"n": 4, "kind": "generalization", "text": "A layer stays dim when the verified property is invariant across every choice at that layer."}, {"n": 5, "kind": "generalization", "text": "Portability arguments belong to computations; a move's promise travels with the ISA text, not with an algorithm."}, {"n": 6, "kind": "explanation", "text": "One could object that choosing transport over translation is an algorithmic decision."}, {"n": 7, "kind": "refutation", "text": "The choice is real, but the post verifies the instruction that implements it, not the decision procedure: the claim is that the bits survive, and that is settled by the manual's sentence."}], "inferences": [{"from": [2], "via": [4], "to": [3], "strength": "strong", "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."}, {"from": [3], "via": [5], "to": [1], "strength": "strong", "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."}]}};</script>
   <script>
 (() => {
@@ -1565,6 +1590,56 @@ fmv.x.d %0, f1</code></pre>
       if (!url || url.startsWith('#')) return;
       event.preventDefault();
       window.location.href = url;
+    });
+  })();
+  </script>
+  <script>
+  /* Foot-of-article contact chooser: the offer CTA opens the same 3-way
+     email chooser as the main page, in place, with the article named in
+     the message subject. Self-contained: post pages carry no main-page JS,
+     so this wires its own dialog. */
+  (() => {
+    const dialog = document.getElementById('contact-chooser');
+    const cta = document.querySelector('.post-offer-cta');
+    if (!dialog || !cta) return;
+    const closeButton = dialog.querySelector('.chooser-close');
+    const copyButton = dialog.querySelector('.copy-email');
+    const copyStatus = dialog.querySelector('.copy-status');
+    const email = 'shipthisgroup@gmail.com';
+    const open = () => {
+      copyStatus.textContent = '';
+      // Older in-app WebViews predate <dialog>; fall back to a non-modal
+      // open rather than throwing and doing nothing.
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    };
+    const close = () => {
+      dialog.close();
+      cta.focus();
+    };
+    cta.addEventListener('click', open);
+    closeButton.addEventListener('click', close);
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) close();
+    });
+    dialog.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => dialog.close());
+    });
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(email);
+      } catch {
+        const field = document.createElement('textarea');
+        field.value = email;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.appendChild(field);
+        field.select();
+        document.execCommand('copy');
+        field.remove();
+      }
+      copyStatus.textContent = 'Email address copied.';
     });
   })();
   </script>

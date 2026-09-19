@@ -28,7 +28,7 @@ function fail(lines) {
 async function launchChrome() {
   const chrome = '/opt/meta-chromium/chrome';
   const proc = spawn(chrome, [
-    '--headless', '--no-sandbox', '--disable-gpu',
+    '--headless', '--no-sandbox', '--disable-background-networking', '--disable-gpu',
     '--remote-debugging-port=0', 'about:blank',
   ], { stdio: ['ignore', 'ignore', 'pipe'] });
   const wsUrl = await new Promise((resolve, reject) => {
