@@ -11254,5 +11254,61 @@
   "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-priority",
   "repoLabel": "riscv-baremetal-demo/src/pmp-priority",
   "showRepoLink": true
-}
+},
+  {
+    "id": "src-pmp-na4-match",
+    "kicker": "RISC-V ISA",
+    "title": "The entry that guards a single word",
+    "summary": "A bare-metal M-mode RISC-V program proves a locked NA4 PMP entry matches exactly one 4-byte word. A load inside the word raises a load access fault with the faulting address recorded; the same load one byte past the word completes with no trap. Because the entry is locked, the probes run as plain M-mode loads with no second allow entry, so the clean completion past the word is the M-mode default-allow rule itself.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines NA4 matching: an entry with A=2 matches exactly the 4-byte naturally aligned word its pmpaddr encodes, and a matching locked entry with no permissions raises a load access fault on M-mode loads. The card proves the boundary byte by byte: inside the word traps, one byte past it completes."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card compares trap records only, never timing. Whether the PMP checker tests the low two address bits with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map, and it locks entries it never wants changed. The card proves the match semantics of a locked entry the program itself programmed, the exact policy real firmware enforces."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued."
+      }
+    },
+    "evidence": {
+      "label": "test log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-na4-match/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "21 checks against the NA4 match invariant (inside the word traps, one byte past it completes), 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Inside load traps with mcause 0x5 and the faulting address in mtval; the load one byte past the word returns the expected byte with no new trap"
+      ],
+      [
+        "CHECKSUM",
+        "0xb3bbd7eb5f7a5e74, identical across 3 runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-na4-match",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel pmp-na4-match.elf\n\ninside: trap mcause=0x5; canary+4: clean, byte 0x6c\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / pmp-na4-match.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 21,
+    "failures": 0,
+    "stressItems": 0
+  }
 ]
