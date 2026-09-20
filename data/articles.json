@@ -3,17 +3,16 @@
     "title": "The Comparison That Leaves No Trace",
     "slug": "the-comparison-that-leaves-no-trace",
     "date": "2026-09-20",
-    "description": "RISC-V keeps no condition flags. A compare-and-branch asks and acts in one instruction and leaves nothing behind; a boolean that must survive gets a named register. Every result lands in a register or the program counter, never in hidden state.",
+    "description": "A trap handler saves 31 registers and 3 CSRs. Count the list: it ends there, because a comparison's verdict lives only in the program counter or a named register. No flags register to save.",
     "paragraphs": [
-      "Is t0 less than t1? On this machine, asking the question and acting on the answer are a single instruction: blt t0, t1, less. The answer never exists anywhere except in what the program counter does next. Assembled and disassembled this run, rv64g:",
-      "When the answer must outlive a single branch, it gets a name. slt t0, t1, t2 writes a 1 or a 0 into t0, an ordinary register the allocator can see, the debugger can print, and the pipeline can rename like any other value:",
-      "Another arrangement gives arithmetic a small flags register outside the register file. A compare or an add records its verdict there (zero? negative? carry?), and a later branch reads it back. The comparison's answer travels not through a named register but through state the allocator never sees.",
-      "Here is what a trap must save. This is real M-mode trap entry from a bare-metal shell module, excerpted with the pattern intact (full source linked below):",
-      "Count the stores with me: thirty-one, x1 through x31, the entire integer register file. Then three CSRs this handler actually uses: mepc, mstatus, mcause. The frame ends there. There is no thirty-second store, because there is no thirty-second piece of integer state. A machine with flags would need one more entry on this list, saved and restored by every handler, even one that never branches, because the interrupted program's next decision might be sitting in it.",
-      "The price is real and worth naming: multi-precision carry chains, the core of bignum arithmetic, take more instructions when the carry must travel through a named register instead of a flag. One workload pays more so that every trap, every context switch, and every pipeline pays less.",
-      "The pipeline feels it too. A branch that reads the flags depends on whichever instruction wrote them last, so the core must track that dependency across everything it reorders, with rename hardware the compiler never sees. And because many instructions share the one flags register, a partial write followed by a full read forces the hardware to merge old bits with new before the read can proceed: a stall that exists only because the register is shared.",
-      "There is exactly one place this ISA keeps flags. IEEE 754 requires accrued exception flags for floating point, so they live in their own CSR, fflags, which integer code never touches. Verified this run: csrr t0, fflags assembles cleanly and reads them. Where an outside standard demanded flags, they got a register of their own; everywhere else, there are none.",
-      "One sentence to keep: a comparison's answer has exactly two places it can be. A named register, or the program counter's next value. There is no third place."
+      "A trap can land at any instruction, so the handler's first job is to save everything the interrupted program will want back. Here is the complete save list from a real M-mode trap entry, excerpted with the pattern intact (full source linked below):",
+      "Count the stores with me: thirty-one, x1 through x31, the entire integer register file. Then three CSRs the handler actually uses: mepc, mstatus, mcause. Thirty-four slots, and the frame ends. A context switch carries the same list. There is no thirty-fifth store, because there is no thirty-fifth piece of integer state.",
+      "Other machines keep a flags register: a compare or an add records its verdict there, and a later branch reads it back. On those machines this list needs one more entry, saved and restored by every handler, even one that never branches, because the interrupted program's next decision might be sitting in it.",
+      "The reason the list ends at thirty-four is in the branch encoding. blt t0, t1, less compares and branches in a single instruction; the verdict exists only in what the program counter does next. Assembled and disassembled this run, rv64g:",
+      "When the verdict must outlive the branch, it gets a name. slt t0, t1, t2 writes a 1 or a 0 into t0, an ordinary register the allocator can see and the debugger can print:",
+      "The price is real: multi-precision carry chains, the core of bignum arithmetic, take more instructions when the carry must travel through a named register instead of a flag. One workload pays more so that every trap frame stays at thirty-four entries.",
+      "Floating-point exception flags do exist, in their own CSR, fflags, because IEEE 754 requires them; integer code never touches them. Verified this run: csrr t0, fflags assembles cleanly.",
+      "One sentence to keep: the trap frame is the complete inventory of integer state, and you can check it by counting."
     ],
     "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/shell/trap.S",
     "evidence": {
@@ -26,8 +25,8 @@
         "because": "matters at ISA because the integer base keeps no condition flags: blt fuses compare and branch so the verdict goes straight to the program counter, and slt materializes a boolean into a named GPR; both encodings were verified against real assembler output this run, and the single flags register that exists, fflags, is quarantined in its own CSR for IEEE 754."
       },
       "MICROARCH": {
-        "applies": true,
-        "because": "matters at Microarch because a branch that reads hidden flags depends on a compare the pipeline cannot see as a register dependency, and shared flag writes force merge stalls on partial updates; with the verdict in a named GPR or the PC, the existing register renamer and dependency tracking handle it with no special cases."
+        "applies": false,
+        "because": "not at Microarch because the post makes no claim about pipelines or hardware internals; it describes what software must save on a trap, a firmware-visible consequence, not a microarchitectural mechanism."
       },
       "FIRMWARE": {
         "applies": true,
