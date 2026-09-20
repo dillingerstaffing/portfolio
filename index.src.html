@@ -1393,6 +1393,60 @@ kmem.freelist = r;</code></pre>
       </article>
       <article class="research-note">
         <div>
+          <h3>The Stack Frame Is Optional</h3>
+          <!-- LAYER-STRIP:the-stack-frame-is-optional -->
+          <p class="research-date"><time datetime="2026-09-15">2026-09-15 12:04 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Here is an entire C function compiled two ways. Same source, same compiler, same machine. RISC-V gcc 13.2.0, asked to emit assembly:</p>
+          <div class="codeblock">
+            <div class="codeblock-head"><span class="codeblock-title">next.c</span><button class="codeblock-copy" type="button">Copy</button></div>
+            <div class="codeblock-body"><pre><code>
+<span class="cl"><span class="tok-kw">int</span> next(<span class="tok-kw">int</span> x) {</span>
+<span class="cl">    <span class="tok-kw">int</span> y = x + 1;</span>
+<span class="cl">    <span class="tok-kw">return</span> y;</span>
+<span class="cl">}</span>
+</code></pre></div>
+          </div>
+          <p>At -O2, the whole function is two instructions. No stack frame. Nothing is claimed, nothing is parked, nothing is restored. Against the thirteen-instruction version below, the frame simply is not there:</p>
+          <div class="codeblock">
+            <div class="codeblock-head"><span class="codeblock-title">next.s · -O2</span><button class="codeblock-copy" type="button">Copy</button></div>
+            <div class="codeblock-body"><pre><code>
+<span class="cl"><span class="tok-label">next:</span></span>
+<span class="cl">    addiw   a0, a0, 1</span>
+<span class="cl">    ret</span>
+</code></pre></div>
+          </div>
+          <p>The -O0 output, annotated line by line. Assembler directives trimmed; the instruction sequence is complete:</p>
+          <div class="codeblock">
+            <div class="codeblock-head"><span class="codeblock-title">next.s · -O0, annotated</span><button class="codeblock-copy" type="button">Copy</button></div>
+            <div class="codeblock-body"><pre><code>
+<span class="cl"><span class="tok-label">next:</span></span>
+<span class="cl">    addi   sp, sp, -48   <span class="tok-com"># claim 48 bytes for the frame</span></span>
+<span class="cl">    sd     s0, 40(sp)    <span class="tok-com"># park the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   s0, sp, 48    <span class="tok-com"># anchor the new frame pointer at the frame&#x27;s top</span></span>
+<span class="cl">    mv     a5, a0        <span class="tok-com"># x arrives in a0; copy it to a scratch register</span></span>
+<span class="cl">    sw     a5, -36(s0)   <span class="tok-com"># give x a home address, 36 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -36(s0)   <span class="tok-com"># load x back from its address</span></span>
+<span class="cl">    addiw  a5, a5, 1     <span class="tok-com"># add 1; word-sized because x is a 32-bit int</span></span>
+<span class="cl">    sw     a5, -20(s0)   <span class="tok-com"># give y its address, 20 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -20(s0)   <span class="tok-com"># load y back from its address</span></span>
+<span class="cl">    mv     a0, a5        <span class="tok-com"># the answer travels home in a0</span></span>
+<span class="cl">    ld     s0, 40(sp)    <span class="tok-com"># restore the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   sp, sp, 48    <span class="tok-com"># release the frame</span></span>
+<span class="cl">    jr     ra            <span class="tok-com"># return; ret is the usual spelling of this jump</span></span>
+</code></pre></div>
+          </div>
+          <p>Forty-eight bytes is roomier than the sixteen the data strictly needs. The unoptimized compiler does not pack tightly, and the ABI requires the stack pointer to stay 16-byte aligned at all times.</p>
+          <p>One thing is missing from the longer listing: the return address is never saved. The compiler proved this is a leaf function, a function that calls no other function, so nothing in it can overwrite the return address and saving it would be pure waste. That is the exact reasoning the frame shop drills into you: the return address gets parked because a nested call would destroy it. No nested call, no parking. The compiler applies the rule; it does not worship it.</p>
+          <p>Why does -O0 build all this furniture? The unoptimized compiler has one simple strategy: every local gets a real address in the frame, so a debugger can inspect every variable at any moment and code generation stays simple and predictable. The frame pointer exists so those addresses never move while the function runs. It is built for humans and debuggers, not for the machine.</p>
+          <p>Why does -O2 delete it? The optimizer proved three things: no address of any local is ever taken, the whole computation fits in registers, and the function is a leaf. With nothing to keep and no reason to touch the stack, the frame is pure overhead. Gone. The function is the addition and the return. Everything else was scaffolding.</p>
+          <p>One sentence to keep: the stack frame is not a law of the machine; it is a budget the compiler spends only when the function needs it.</p>
+          <p class="research-code-link">Bench: <a href="https://dillingerstaffing.github.io/proving-ground/#bench=frame-shop" target="_blank" rel="noopener">The Frame Shop</a>, build this frame by hand, instruction by instruction.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Width the Program Never Asks For</h3>
           <!-- LAYER-STRIP:the-width-the-program-never-asks-for -->
           <p class="research-date"><time datetime="2026-09-14">2026-09-14 11:12 EDT</time></p>

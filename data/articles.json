@@ -161,6 +161,50 @@
     "offer": "Related work: bare-metal bring-up from $500, fixed price."
   },
   {
+    "title": "The Stack Frame Is Optional",
+    "slug": "the-stack-frame-is-optional",
+    "date": "2026-09-15",
+    "description": "Same C function, same compiler, two outputs: thirteen instructions with a full stack frame at -O0, two instructions and no frame at all at -O2. The frame is not a law of the machine; it is a budget the compiler spends only when the function needs it.",
+    "paragraphs": [
+      "Here is an entire C function compiled two ways. Same source, same compiler, same machine. RISC-V gcc 13.2.0, asked to emit assembly:",
+      "At -O2, the whole function is two instructions. No stack frame. Nothing is claimed, nothing is parked, nothing is restored. Against the thirteen-instruction version below, the frame simply is not there:",
+      "The -O0 output, annotated line by line. Assembler directives trimmed; the instruction sequence is complete:",
+      "Forty-eight bytes is roomier than the sixteen the data strictly needs. The unoptimized compiler does not pack tightly, and the ABI requires the stack pointer to stay 16-byte aligned at all times.",
+      "One thing is missing from the longer listing: the return address is never saved. The compiler proved this is a leaf function, a function that calls no other function, so nothing in it can overwrite the return address and saving it would be pure waste. That is the exact reasoning the frame shop drills into you: the return address gets parked because a nested call would destroy it. No nested call, no parking. The compiler applies the rule; it does not worship it.",
+      "Why does -O0 build all this furniture? The unoptimized compiler has one simple strategy: every local gets a real address in the frame, so a debugger can inspect every variable at any moment and code generation stays simple and predictable. The frame pointer exists so those addresses never move while the function runs. It is built for humans and debuggers, not for the machine.",
+      "Why does -O2 delete it? The optimizer proved three things: no address of any local is ever taken, the whole computation fits in registers, and the function is a leaf. With nothing to keep and no reason to touch the stack, the frame is pure overhead. Gone. The function is the addition and the return. Everything else was scaffolding.",
+      "One sentence to keep: the stack frame is not a law of the machine; it is a budget the compiler spends only when the function needs it."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "proving-ground: bench 67, The Frame Shop",
+      "url": "https://github.com/dillingerstaffing/proving-ground"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the frame is built from the ISA's own contract: addi, sd, and ld move the stack pointer under the ABI's 16-byte alignment rule, and the -O2 output is two instructions, addiw and ret, that the manual defines exactly; the whole comparison was verified against real gcc 13.2.0 output."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because nothing was timed and no pipeline, cache, or predictor behavior was measured: the claim is which instructions the compiler emits at each level, and it holds on any implementation."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because no boot code, SBI call, or privilege transition appears: both listings run entirely in user mode after the program is already loaded."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "not at Kernel because no system call, trap, or scheduler is involved: the frame is a user-space compiler convention, and the trap path that saves the full register file is a different post."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because no computational mechanism is claimed: the function adds one to its input, and the post's insight is the compiler's frame budget, not how the addition works."
+      }
+    },
+    "offer": "Related work: C audit from $350, fixed price."
+  },
+  {
     "title": "The Width the Program Never Asks For",
     "slug": "the-width-the-program-never-asks-for",
     "date": "2026-09-14",

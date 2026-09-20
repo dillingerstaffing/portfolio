@@ -78559,298 +78559,298 @@
         }
       ]
     },
-  {
-    "item": "src-medeleg-store-access-fault",
-    "kind": "card",
-    "slot": "ISA",
-    "probandum": "Matters at ISA because the verified claim is machine-contract routing: the privileged architecture assigns store/AMO access faults to medeleg bit 7 and treats a PMP deny as an access fault rather than a page fault, and the test log shows the same store trapping with scause 7 in S-mode when the bit is set and mcause 7 in M-mode when it is clear.",
-    "keyList": [
-      {
-        "n": 1,
-        "kind": "probandum",
-        "text": "Matters at ISA because the verified claim is machine-contract routing: the privileged architecture assigns store/AMO access faults to medeleg bit 7 and treats a PMP deny as an access fault rather than a page fault, and the test log shows the same store trapping with scause 7 in S-mode when the bit is set and mcause 7 in M-mode when it is clear."
-      },
-      {
-        "n": 2,
-        "kind": "evidence",
-        "text": "Phase A: with medeleg bit 7 set (readback 0x80), the S-mode store into the PMP-denied page trapped exactly once in S-mode with scause 0x7, sepc 0x80000312 at the store, stval 0x80080000 at the denied page, and sstatus.SPP 1; M-mode saw only the phase-return ecall.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+    {
+      "item": "src-medeleg-store-access-fault",
+      "kind": "card",
+      "slot": "ISA",
+      "probandum": "Matters at ISA because the verified claim is machine-contract routing: the privileged architecture assigns store/AMO access faults to medeleg bit 7 and treats a PMP deny as an access fault rather than a page fault, and the test log shows the same store trapping with scause 7 in S-mode when the bit is set and mcause 7 in M-mode when it is clear.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at ISA because the verified claim is machine-contract routing: the privileged architecture assigns store/AMO access faults to medeleg bit 7 and treats a PMP deny as an access fault rather than a page fault, and the test log shows the same store trapping with scause 7 in S-mode when the bit is set and mcause 7 in M-mode when it is clear."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Phase A: with medeleg bit 7 set (readback 0x80), the S-mode store into the PMP-denied page trapped exactly once in S-mode with scause 0x7, sepc 0x80000312 at the store, stval 0x80080000 at the denied page, and sstatus.SPP 1; M-mode saw only the phase-return ecall.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "Phase B: with the bit clear (readback 0x0), the same store trapped in M-mode with mcause 0x7, mepc 0x800003b6 at the store, mtval 0x80080000, and mstatus.MPP 1, while the S-mode trap count stayed at 1.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The privileged architecture routes store/AMO access faults through medeleg bit 7, and defines a PMP permission denial as an access fault rather than a page fault.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "When the same fault lands in different privilege levels with matching cause codes as a single CSR bit flips, the routing is machine-contract behavior."
         }
-      },
-      {
-        "n": 3,
-        "kind": "evidence",
-        "text": "Phase B: with the bit clear (readback 0x0), the same store trapped in M-mode with mcause 0x7, mepc 0x800003b6 at the store, mtval 0x80080000, and mstatus.MPP 1, while the S-mode trap count stayed at 1.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The two phases differ only in medeleg bit 7, and the trap records match the privileged contract on both sides."
         }
-      },
-      {
-        "n": 4,
-        "kind": "evidence",
-        "text": "The privileged architecture routes store/AMO access faults through medeleg bit 7, and defines a PMP permission denial as an access fault rather than a page fault.",
-        "source": {
-          "tier": "spec",
-          "cite": "RISC-V ISA Manual, privileged architecture",
-          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+      ]
+    },
+    {
+      "item": "src-medeleg-store-access-fault",
+      "kind": "card",
+      "slot": "MICROARCH",
+      "probandum": "Not at MICROARCH because the test log records trap records only, never timing: a different pipeline changes how quickly the faulting store faults, never which cause code the PMP deny produces.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at MICROARCH because the test log records trap records only, never timing: a different pipeline changes how quickly the faulting store faults, never which cause code the PMP deny produces."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "All 41 checks compare trap records (scause, mcause, sepc, mepc, stval, mtval, SPP, MPP, counters, CSR readbacks); no check records a cycle count or any timing.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The store access fault cause code 7 is fixed by the privileged architecture for every compliant implementation.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "Cause-code routing is architecturally determined, so it cannot vary with pipeline depth, width, or caching; only timing can."
         }
-      },
-      {
-        "n": 5,
-        "kind": "generalization",
-        "text": "When the same fault lands in different privilege levels with matching cause codes as a single CSR bit flips, the routing is machine-contract behavior."
-      }
-    ],
-    "inferences": [
-      {
-        "from": [
-          2,
-          3,
-          4
-        ],
-        "via": [
-          5
-        ],
-        "to": [
-          1
-        ],
-        "strength": "strong",
-        "note": "The two phases differ only in medeleg bit 7, and the trap records match the privileged contract on both sides."
-      }
-    ]
-  },
-  {
-    "item": "src-medeleg-store-access-fault",
-    "kind": "card",
-    "slot": "MICROARCH",
-    "probandum": "Not at MICROARCH because the test log records trap records only, never timing: a different pipeline changes how quickly the faulting store faults, never which cause code the PMP deny produces.",
-    "keyList": [
-      {
-        "n": 1,
-        "kind": "probandum",
-        "text": "Not at MICROARCH because the test log records trap records only, never timing: a different pipeline changes how quickly the faulting store faults, never which cause code the PMP deny produces."
-      },
-      {
-        "n": 2,
-        "kind": "evidence",
-        "text": "All 41 checks compare trap records (scause, mcause, sepc, mepc, stval, mtval, SPP, MPP, counters, CSR readbacks); no check records a cycle count or any timing.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "With no timing recorded, the log says nothing about the pipeline, and the pipeline changes nothing about the logged cause codes."
         }
-      },
-      {
-        "n": 3,
-        "kind": "evidence",
-        "text": "The store access fault cause code 7 is fixed by the privileged architecture for every compliant implementation.",
-        "source": {
-          "tier": "spec",
-          "cite": "RISC-V ISA Manual, privileged architecture",
-          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+      ]
+    },
+    {
+      "item": "src-medeleg-store-access-fault",
+      "kind": "card",
+      "slot": "FIRMWARE",
+      "probandum": "Matters at FIRMWARE because the delegation switch is machine-mode software configuring the trap destination: M-mode programmed the locked PMP TOR deny entry over the store page and the medeleg bit, built the Sv39 identity map with the valid store-page PTE, and dropped to S-mode for each phase.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Matters at FIRMWARE because the delegation switch is machine-mode software configuring the trap destination: M-mode programmed the locked PMP TOR deny entry over the store page and the medeleg bit, built the Sv39 identity map with the valid store-page PTE, and dropped to S-mode for each phase."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "M-mode programmed pmpcfg0 to 0x000f880f with entry 1 locked, bounding the denied store page [0x80080000, 0x80081000) in TOR, and every pmpcfg and pmpaddr readback matched in-code.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "M-mode set medeleg bit 7 for phase A (readback 0x80), cleared it for phase B (readback 0x0), and restored medeleg to 0x0 afterward.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "PMP entries, pmpaddr CSRs, and medeleg are machine-mode resources: S-mode cannot program them, so their configuration is boot firmware's job.",
+          "source": {
+            "tier": "spec",
+            "cite": "RISC-V ISA Manual, privileged architecture",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "When every trap-destination outcome depends on machine-mode software configuring CSRs and PMP before the test runs, the claim is a firmware claim."
         }
-      },
-      {
-        "n": 4,
-        "kind": "generalization",
-        "text": "Cause-code routing is architecturally determined, so it cannot vary with pipeline depth, width, or caching; only timing can."
-      }
-    ],
-    "inferences": [
-      {
-        "from": [
-          2,
-          3
-        ],
-        "via": [
-          4
-        ],
-        "to": [
-          1
-        ],
-        "strength": "strong",
-        "note": "With no timing recorded, the log says nothing about the pipeline, and the pipeline changes nothing about the logged cause codes."
-      }
-    ]
-  },
-  {
-    "item": "src-medeleg-store-access-fault",
-    "kind": "card",
-    "slot": "FIRMWARE",
-    "probandum": "Matters at FIRMWARE because the delegation switch is machine-mode software configuring the trap destination: M-mode programmed the locked PMP TOR deny entry over the store page and the medeleg bit, built the Sv39 identity map with the valid store-page PTE, and dropped to S-mode for each phase.",
-    "keyList": [
-      {
-        "n": 1,
-        "kind": "probandum",
-        "text": "Matters at FIRMWARE because the delegation switch is machine-mode software configuring the trap destination: M-mode programmed the locked PMP TOR deny entry over the store page and the medeleg bit, built the Sv39 identity map with the valid store-page PTE, and dropped to S-mode for each phase."
-      },
-      {
-        "n": 2,
-        "kind": "evidence",
-        "text": "M-mode programmed pmpcfg0 to 0x000f880f with entry 1 locked, bounding the denied store page [0x80080000, 0x80081000) in TOR, and every pmpcfg and pmpaddr readback matched in-code.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The delegation outcomes exist only because M-mode set up the PMP and medeleg first."
         }
-      },
-      {
-        "n": 3,
-        "kind": "evidence",
-        "text": "M-mode set medeleg bit 7 for phase A (readback 0x80), cleared it for phase B (readback 0x0), and restored medeleg to 0x0 afterward.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+      ]
+    },
+    {
+      "item": "src-medeleg-store-access-fault",
+      "kind": "card",
+      "slot": "KERNEL",
+      "probandum": "Not at KERNEL because the module runs bare metal with no operating system loaded: the two trap handlers record trap records and resume, they schedule nothing, and the trap-destination verdict holds identically under any kernel.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at KERNEL because the module runs bare metal with no operating system loaded: the two trap handlers record trap records and resume, they schedule nothing, and the trap-destination verdict holds identically under any kernel."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "QEMU jumps straight to the module's _start, which builds its own Sv39 table and PMP config; no kernel image is ever loaded.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The S-mode and M-mode handlers record trap records and resume; they allocate nothing, schedule nothing, and touch no device.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A bare-metal test that configures its own PMP and trap handlers verifies the machine behavior that any kernel would inherit unchanged."
         }
-      },
-      {
-        "n": 4,
-        "kind": "evidence",
-        "text": "PMP entries, pmpaddr CSRs, and medeleg are machine-mode resources: S-mode cannot program them, so their configuration is boot firmware's job.",
-        "source": {
-          "tier": "spec",
-          "cite": "RISC-V ISA Manual, privileged architecture",
-          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "Nothing in the module is kernel work, so the kernel slot stays dim."
         }
-      },
-      {
-        "n": 5,
-        "kind": "generalization",
-        "text": "When every trap-destination outcome depends on machine-mode software configuring CSRs and PMP before the test runs, the claim is a firmware claim."
-      }
-    ],
-    "inferences": [
-      {
-        "from": [
-          2,
-          3,
-          4
-        ],
-        "via": [
-          5
-        ],
-        "to": [
-          1
-        ],
-        "strength": "strong",
-        "note": "The delegation outcomes exist only because M-mode set up the PMP and medeleg first."
-      }
-    ]
-  },
-  {
-    "item": "src-medeleg-store-access-fault",
-    "kind": "card",
-    "slot": "KERNEL",
-    "probandum": "Not at KERNEL because the module runs bare metal with no operating system loaded: the two trap handlers record trap records and resume, they schedule nothing, and the trap-destination verdict holds identically under any kernel.",
-    "keyList": [
-      {
-        "n": 1,
-        "kind": "probandum",
-        "text": "Not at KERNEL because the module runs bare metal with no operating system loaded: the two trap handlers record trap records and resume, they schedule nothing, and the trap-destination verdict holds identically under any kernel."
-      },
-      {
-        "n": 2,
-        "kind": "evidence",
-        "text": "QEMU jumps straight to the module's _start, which builds its own Sv39 table and PMP config; no kernel image is ever loaded.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+      ]
+    },
+    {
+      "item": "src-medeleg-store-access-fault",
+      "kind": "card",
+      "slot": "ALGORITHM",
+      "probandum": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (medeleg bit 7, PMP TOR deny, scause and mcause 7) with no ISA-independent restatement: the portable framing would be that delegation behaves the same in emulation, which is tautological rather than a defensible portability argument.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (medeleg bit 7, PMP TOR deny, scause and mcause 7) with no ISA-independent restatement: the portable framing would be that delegation behaves the same in emulation, which is tautological rather than a defensible portability argument."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified facts are RISC-V-specific: medeleg bit 7, the locked PMP TOR deny entry, scause and mcause 7, sepc and stval at the store.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The module's C and assembly reference RISC-V CSRs and trap records directly; removing the ISA leaves no computation to port.",
+          "source": {
+            "tier": "lab",
+            "cite": "src/medeleg-store-access-fault PROOF.md",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim with no ISA-independent restatement is not a portable computation."
         }
-      },
-      {
-        "n": 3,
-        "kind": "evidence",
-        "text": "The S-mode and M-mode handlers record trap records and resume; they allocate nothing, schedule nothing, and touch no device.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The only honest portability framing is tautological, so the slot stays dim."
         }
-      },
-      {
-        "n": 4,
-        "kind": "generalization",
-        "text": "A bare-metal test that configures its own PMP and trap handlers verifies the machine behavior that any kernel would inherit unchanged."
-      }
-    ],
-    "inferences": [
-      {
-        "from": [
-          2,
-          3
-        ],
-        "via": [
-          4
-        ],
-        "to": [
-          1
-        ],
-        "strength": "strong",
-        "note": "Nothing in the module is kernel work, so the kernel slot stays dim."
-      }
-    ]
-  },
-  {
-    "item": "src-medeleg-store-access-fault",
-    "kind": "card",
-    "slot": "ALGORITHM",
-    "probandum": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (medeleg bit 7, PMP TOR deny, scause and mcause 7) with no ISA-independent restatement: the portable framing would be that delegation behaves the same in emulation, which is tautological rather than a defensible portability argument.",
-    "keyList": [
-      {
-        "n": 1,
-        "kind": "probandum",
-        "text": "Not at ALGORITHM because the verified claim is stated in RISC-V terms (medeleg bit 7, PMP TOR deny, scause and mcause 7) with no ISA-independent restatement: the portable framing would be that delegation behaves the same in emulation, which is tautological rather than a defensible portability argument."
-      },
-      {
-        "n": 2,
-        "kind": "evidence",
-        "text": "The verified facts are RISC-V-specific: medeleg bit 7, the locked PMP TOR deny entry, scause and mcause 7, sepc and stval at the store.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
-        }
-      },
-      {
-        "n": 3,
-        "kind": "evidence",
-        "text": "The module's C and assembly reference RISC-V CSRs and trap records directly; removing the ISA leaves no computation to port.",
-        "source": {
-          "tier": "lab",
-          "cite": "src/medeleg-store-access-fault PROOF.md",
-          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/medeleg-store-access-fault/PROOF.md"
-        }
-      },
-      {
-        "n": 4,
-        "kind": "generalization",
-        "text": "A claim with no ISA-independent restatement is not a portable computation."
-      }
-    ],
-    "inferences": [
-      {
-        "from": [
-          2,
-          3
-        ],
-        "via": [
-          4
-        ],
-        "to": [
-          1
-        ],
-        "strength": "strong",
-        "note": "The only honest portability framing is tautological, so the slot stays dim."
-      }
-    ]
-  },
+      ]
+    },
     {
       "item": "the-descriptor-that-belongs-to-no-process",
       "kind": "article",
@@ -79230,8 +79230,7 @@
           "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
         }
       ]
-  }
-,
+    },
     {
       "item": "src-pmp-priority",
       "kind": "card",
@@ -80553,6 +80552,386 @@
           "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
         }
       ]
+    },
+    {
+      "item": "the-stack-frame-is-optional",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "matters at ISA because the frame is built from the ISA's own contract: addi, sd, and ld move the stack pointer under the ABI's 16-byte alignment rule, and the -O2 output is two instructions, addiw and ret, that the manual defines exactly; the whole comparison was verified against real gcc 13.2.0 output.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at ISA because the frame is built from the ISA's own contract: addi, sd, and ld move the stack pointer under the ABI's 16-byte alignment rule, and the -O2 output is two instructions, addiw and ret, that the manual defines exactly; the whole comparison was verified against real gcc 13.2.0 output."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The firsthand session this run: RISC-V gcc 13.2.0 compiled a three-line function with -O0 -S and -O2 -S. The -O0 output claims 48 bytes, parks s0, anchors the frame pointer, and spills both locals to fp-relative slots across 13 instructions; the -O2 output is addiw a0,a0,1 followed by ret, touching no stack at all.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Stack Frame Is Optional, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-stack-frame-is-optional/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Both listings are ISA facts: which instructions exist, what the alignment rule demands, and what addiw and ret mean are settled by the manual, not by any implementation."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified claim names specific instructions and the contract that sizes them, the ISA slot is lit."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A verdict about which instructions a compiler emits is answered by reading the output against the manual."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that this is a compiler post, not an ISA post."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The compiler's choices are only legible as ISA facts: the frame exists to satisfy the ABI's alignment and calling-convention rules, and the -O2 deletion is legal because the ISA needs no frame for two instructions."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-stack-frame-is-optional",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "not at Microarch because nothing was timed and no pipeline, cache, or predictor behavior was measured: the claim is which instructions the compiler emits at each level, and it holds on any implementation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Microarch because nothing was timed and no pipeline, cache, or predictor behavior was measured: the claim is which instructions the compiler emits at each level, and it holds on any implementation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The session recorded two static instruction listings and their instruction counts: thirteen at -O0, two at -O2. No cycle count, no throughput, no timing of any kind.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Stack Frame Is Optional, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-stack-frame-is-optional/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Nothing in the result varies with pipeline depth, cache behavior, or issue width: the claim is what the compiler wrote, not how fast anything runs."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When no measurement of time or throughput supports the claim, the Microarch slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A verdict about which instructions exist is answered by a listing, not a stopwatch."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that -O2 exists to make code faster, which sounds like microarchitecture."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The post never claims the two-instruction version runs faster on any particular core; its claim is that the frame is optional, proven by its absence, which needs no clock."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-stack-frame-is-optional",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "not at Firmware because no boot code, SBI call, or privilege transition appears: both listings run entirely in user mode after the program is already loaded.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Firmware because no boot code, SBI call, or privilege transition appears: both listings run entirely in user mode after the program is already loaded."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Both listings are user-mode code: no CSR access, no ecall, no SBI call, no privilege transition. The program was compiled and its assembly read; nothing booted.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Stack Frame Is Optional, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-stack-frame-is-optional/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The frame budget is spent entirely above the firmware line: the compiler's contract with the ABI needs no firmware to explain."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When no boot, trap, or privilege boundary is crossed, the Firmware slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A verdict about user-space code generation is answered by the compiler, not by firmware."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that every program arrives via firmware."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "Arrival is not the claim; the claim is the shape of the frame, which the compiler decides long before firmware runs."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-stack-frame-is-optional",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "not at Kernel because no system call, trap, or scheduler is involved: the frame is a user-space compiler convention, and the trap path that saves the full register file is a different post.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Kernel because no system call, trap, or scheduler is involved: the frame is a user-space compiler convention, and the trap path that saves the full register file is a different post."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The function performs no system call and takes no trap: the thirteen -O0 instructions and the two -O2 instructions contain no ecall and no CSR access.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Stack Frame Is Optional, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-stack-frame-is-optional/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The frame is a user-space compiler convention: caller and callee agree on it with no kernel involvement."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When no trap, syscall, or scheduler decision supports the claim, the Kernel slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A verdict about a calling convention is answered by the compiler's output, not by the kernel."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the trap path also saves registers, which looks like the same topic."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The trap path saves the full register file because interruption is non-cooperative; the post argues the opposite direction, that a cooperative call may save almost nothing, and it stands on the two listings alone."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
+    },
+    {
+      "item": "the-stack-frame-is-optional",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "not at Algorithm because no computational mechanism is claimed: the function adds one to its input, and the post's insight is the compiler's frame budget, not how the addition works.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Algorithm because no computational mechanism is claimed: the function adds one to its input, and the post's insight is the compiler's frame budget, not how the addition works."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The computation is one addition: x plus 1. The post makes no claim about how addition works or about any portable mechanism.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Stack Frame Is Optional, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-stack-frame-is-optional/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The insight is the compiler's budget, not a computational method: when the function needs no frame, the frame is gone."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the post claims no mechanism beyond the example's own arithmetic, the Algorithm slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A verdict about compiler output shape is answered by the listings, not by algorithm analysis."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that liveness analysis and leaf detection are algorithms."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "They are, but the post claims only their verdict as observed in the output, never how they work; the mechanism is the compiler's, not the post's."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
+        }
+      ]
     }
-]
+  ]
 }

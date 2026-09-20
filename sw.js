@@ -1,5 +1,5 @@
 // Auto-generated: updates on every deploy to force SW refresh
-const VERSION = 'v20260919-192045';
+const VERSION = 'v20260920-065641';
 const CACHE = 'portfolio-' + VERSION;
 const OFFLINE_URL = 'index.html';
 
