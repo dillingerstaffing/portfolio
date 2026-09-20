@@ -1348,10 +1348,34 @@
 </code></pre></div>
 </div>
           <p>The older arrangement gives arithmetic a side channel: a small flags register, invisible to the register allocator, where compares and arithmetic leave their verdicts (was the result zero? negative? did it carry?) and where a later branch goes to read them. The comparison&#x27;s answer travels not through a register but through hidden state.</p>
-          <p>Hidden state is a contract with everyone downstream. Any interrupt that fires between the compare and the branch must save the flags and restore them afterward, because the interrupted program&#x27;s next decision may be sitting in them. Every trap frame grows a word, and every handler pays it, even one that never branches.</p>
+          <p>Here is what a trap must save. This is real M-mode trap entry from a bare-metal shell module, excerpted with the pattern intact (full source linked below):</p>
+          <div class="codeblock">
+<div class="codeblock-head"><span class="codeblock-title">trap.S, M-mode trap entry (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
+<div class="codeblock-body"><pre><code>
+<span class="cl">trap_entry:</span>
+<span class="cl">    csrrw t0, mscratch, t0 <span class="tok-com"># frame address into t0; old t0 parked in mscratch</span></span>
+<span class="cl">    sd x1, 0*8(t0) <span class="tok-com"># store 1 of 31</span></span>
+<span class="cl">    sd x2, 1*8(t0) <span class="tok-com"># store 2 of 31</span></span>
+<span class="cl"><span class="tok-com"># ... x3 through x28, one store each (x5 rejoins from mscratch)</span></span>
+<span class="cl">    sd x29, 28*8(t0) <span class="tok-com"># store 29 of 31</span></span>
+<span class="cl">    sd x30, 29*8(t0) <span class="tok-com"># store 30 of 31</span></span>
+<span class="cl">    sd x31, 30*8(t0) <span class="tok-com"># store 31 of 31: the register list ends here</span></span>
+<span class="cl">    csrr t1, mepc</span>
+<span class="cl">    sd t1, 31*8(t0) <span class="tok-com"># three CSRs this handler uses</span></span>
+<span class="cl">    csrr t1, mstatus</span>
+<span class="cl">    sd t1, 32*8(t0)</span>
+<span class="cl">    csrr t1, mcause</span>
+<span class="cl">    sd t1, 33*8(t0)</span>
+<span class="cl">trap_bank:</span>
+<span class="cl">    .space 34*8 <span class="tok-com"># 31 registers + 3 CSRs: the complete frame</span></span>
+</code></pre></div>
+</div>
+          <p>Count the stores with me: thirty-one, x1 through x31, the entire integer register file. Then three CSRs this handler actually uses: mepc, mstatus, mcause. The frame ends there. There is no thirty-second store, because there is no thirty-second piece of integer state. A machine with flags would need one more entry on this list, saved and restored by every handler, even one that never branches, because the interrupted program&#x27;s next decision might be sitting in it.</p>
+          <p>The price is real and worth naming: multi-precision carry chains, the core of bignum arithmetic, take more instructions when the carry must travel through a named register instead of a flag. One workload pays more so that every trap, every context switch, and every pipeline pays less.</p>
           <p>The pipeline pays its own share. A branch that reads hidden flags depends on a compare that may sit hundreds of reordered instructions back, so the core must track an invisible thread the compiler cannot see. And when many instructions share one flags register, a partial write followed by a full read forces the hardware to merge old and new: a stall born entirely of sharing.</p>
           <p>There is exactly one place this ISA keeps flags, and it proves the rule. IEEE 754 demands accrued exception flags for floating point, so they live quarantined in their own CSR, fflags, which integer code never touches. Verified this run: csrr t0, fflags assembles cleanly and reads them. The designers paid for flags precisely once, where an outside standard forced it, and nowhere else.</p>
           <p>One sentence to keep: in this ISA, no instruction ever whispers to a later one. Every result lands in a named register or in the program counter, and there is no third place.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/shell/trap.S" target="_blank" rel="noopener">src/shell/trap.S</a></p>
         </div>
       </article>
       <article class="research-note">
