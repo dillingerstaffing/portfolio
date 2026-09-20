@@ -1117,6 +1117,7 @@ def per_post_html(article, next_article, block, desc, css, font_links, stamp, wi
   <title>{social_title}</title>
   <meta name="description" content="{desc_attr}" />
   <link rel="canonical" href="{url}" />
+  <link rel="icon" href="data:," />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="Chris Dillinger" />
   <meta property="og:url" content="{url}" />
@@ -1682,6 +1683,7 @@ def build_feed_page(feed, stamp, template):
   <title>The Signal Wire &middot; Chris Dillinger</title>
   <meta name="description" content="{html.escape(desc, quote=True)}" />
   <link rel="canonical" href="{url}" />
+  <link rel="icon" href="data:," />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Chris Dillinger" />
   <meta property="og:url" content="{url}" />
