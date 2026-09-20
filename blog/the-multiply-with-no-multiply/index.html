@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Multiply With No Multiply &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-multiply-with-no-multiply/" />
   <meta property="og:title" content="The Multiply With No Multiply · Blog · Chris Dillinger" />
   <meta property="og:description" content="Base RISC-V, RV32I, has no multiply instruction. The mul instruction lives in the M extension, which is optional, and a core that skips M still has to multiply. The software that does it is what…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-multiply-with-no-multiply/the-multiply-with-no-multiply-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="An abacus" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Multiply With No Multiply · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Base RISC-V, RV32I, has no multiply instruction. The mul instruction lives in the M extension, which is optional, and a core that skips M still has to multiply. The software that does it is what…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-multiply-with-no-multiply/the-multiply-with-no-multiply-social.jpg" />
+  <meta name="twitter:image:alt" content="An abacus" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Multiply With No Multiply", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-multiply-with-no-multiply/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Multiply With No Multiply", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-multiply-with-no-multiply/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-multiply-with-no-multiply/the-multiply-with-no-multiply-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Base RISC-V, RV32I, has no multiply instruction. The mul instruction lives in the M extension, which is optional, and a core that skips M still has to multiply. The software that does it is what compilers emit and what this lab writes by hand. The obvious move is to write a * b and trust the compiler; on an M-less core the compiler has no multiply to emit, so it calls a library routine instead. The lab takes the harder road on purpose: it bans the * operator from the source entirely, then checks the compiled object to make sure the compiler did not smuggle one back in. The claim has to hold beneath the abstraction, so the check runs beneath the abstraction.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-multiply-with-no-multiply/the-multiply-with-no-multiply.jpg" alt="An abacus" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">No multiply instruction, just place value discipline.</figcaption>
+</figure>
           <p>One you can check by hand. Take A = 0x00020003 and B = 0x00040005. Split each into 16-bit halves: a1 = 2, a0 = 3, b1 = 4, b0 = 5. Schoolbook multiplication is the grade-school kind: multiply every pair of digits and add the partial products at their positions. The expansion is A*B = a0*b0 + (a0*b1 + a1*b0)*2^16 + a1*b1*2^32. Modulo 2^32, the last term carries a factor of 2^32 and vanishes, and of the middle term only the low 16 bits survive the 2^16 scaling. So a0*b0 = 15, and the cross term is 3*4 + 2*5 = 22, times 65536 is 1,441,792. Add 15: 1,441,807, which is 0x16000F. Check it against the real multiply: 131,075 * 262,149 = 34,361,180,175, and mod 2^32 that is exactly 1,441,807. The shifts and adds agreed with the hardware multiply, without ever being one.</p>
           <p>Each 16-by-16 partial product is exact in 32 bits, built the way lab/126 builds it: for each set bit i of one half, add the other half shifted left by i into a 32-bit accumulator. The lab's function is called mullo32, and the code is the insight here:</p>
           <pre><code>uint32_t r = p0;

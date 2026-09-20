@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bell and the Switch &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-bell-and-the-switch/" />
   <meta property="og:title" content="The Bell and the Switch · Blog · Chris Dillinger" />
   <meta property="og:description" content="Pending is a fact, enable is a decision. Two million silent cycles with the gate closed, then exactly one machine software interrupt when it opens." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bell-and-the-switch/the-bell-and-the-switch-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A brass hand bell resting on a wooden table" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Bell and the Switch · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Pending is a fact, enable is a decision. Two million silent cycles with the gate closed, then exactly one machine software interrupt when it opens." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bell-and-the-switch/the-bell-and-the-switch-social.jpg" />
+  <meta name="twitter:image:alt" content="A brass hand bell resting on a wooden table" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bell and the Switch", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bell-and-the-switch/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bell and the Switch", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bell-and-the-switch/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-bell-and-the-switch/the-bell-and-the-switch-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Boot a bare-metal RISC-V machine in M-mode (machine mode, the most privileged; firmware runs here). Set mstatus.MIE, the master interrupt switch, and write zero to mie, the register with one enable bit per interrupt source. Now ring the bell: write 1 to the CLINT's msip register for hart 0. The CLINT, the core-local interruptor that raises software interrupts, lifts the MSIP bit, bit 3 of the pending register mip. Read mip: 0x8. Then wait. Two million reads of the cycle counter roll by, a window in which an enabled interrupt would have fired within a handful of instructions, and the trap count stays zero, mip still 0x8. The bell is ringing and the hart does not move. One more write: set bit 3 of mie, the MSIE enable. Exactly one trap fires. mcause reads 0x8000000000000003: the top bit says interrupt, the 3 says machine software interrupt. The handler clears the CLINT's msip, and the world goes quiet: the window after shows no re-delivery.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bell-and-the-switch/the-bell-and-the-switch.jpg" alt="A brass hand bell resting on a wooden table" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The bell rings; the switch decides</figcaption>
+</figure>
           <p>Why two bits for one interrupt? The obvious machine needs only one: the pending bit says the interrupt wants attention, so take it. The break is who writes what. The CLINT sets MSIP when someone writes its msip register: that is the outside world talking. Firmware writes MSIE: that is the hart deciding, per source, whether it may be interrupted right now. Without the split, a handler could never keep the timer interrupt armed while it services a software interrupt, because arming would be taking. And the split is what makes a level-triggered source safe: the pending bit stays set until the handler clears the source, so with the gate already open the trap would refire the instant the handler returns. The discipline that follows is to clear the source first, then leave. This is not a convention. A public bug report against an open-source RISC-V core's testbench described its MSIP stuck high from reset, so the first time firmware opened the gate the hart took a machine software interrupt nobody had rung for. Hardware logic, not habit.</p>
           <p>The trap rule, from the privileged architecture's own text: interrupt i is taken when mstatus.MIE is set and both mie[i] and mip[i] are set. Three bits, one decision. mie is the enable half, written by the running code; mip is the pending half, written by the world, here by a 32-bit MMIO write to the CLINT at 0x02000000. The test checked the contract from both directions. With MIE set and mie at 0x0, a pending MSIP must never trap; setting mie bit 3 while MSIP is still pending must deliver the interrupt at the next instruction boundary. The machine timer was disarmed at startup, its compare register set to all ones, so the software interrupt was the only source that could ever fire; MIE stayed set for the whole run, so mie.MSIE was the only gating variable.</p>
           <p>The four checks that carry the argument, verbatim from the module:</p>

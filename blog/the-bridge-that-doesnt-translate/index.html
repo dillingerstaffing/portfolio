@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bridge That Doesn&#x27;t Translate &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-bridge-that-doesnt-translate/" />
   <meta property="og:title" content="The Bridge That Doesn&#x27;t Translate · Blog · Chris Dillinger" />
   <meta property="og:description" content="RISC-V keeps two register files and one narrow bridge between them. FMV.D.X copies 64 bits from the integer file to the floating-point file without reading them, and the discipline is knowing whether you want the bits or what they mean." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bridge-that-doesnt-translate/the-bridge-that-doesnt-translate-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="The Sidney Lanier cable-stayed bridge" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Bridge That Doesn&#x27;t Translate · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="RISC-V keeps two register files and one narrow bridge between them. FMV.D.X copies 64 bits from the integer file to the floating-point file without reading them, and the discipline is knowing whether you want the bits or what they mean." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bridge-that-doesnt-translate/the-bridge-that-doesnt-translate-social.jpg" />
+  <meta name="twitter:image:alt" content="The Sidney Lanier cable-stayed bridge" />
   <meta property="article:published_time" content="2026-09-12T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bridge That Doesn't Translate", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bridge-that-doesnt-translate/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bridge That Doesn't Translate", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bridge-that-doesnt-translate/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-bridge-that-doesnt-translate/the-bridge-that-doesnt-translate-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>The module needed the double 1e16 inside a floating-point register, and it had a problem. It builds with -march=rv64imac_zicsr, a target with no floating point at all, so the compiler cannot name f1, f2, or f3; the source comment says so outright, and the floating-point instructions only assemble because of an in-asm &quot;.option arch, +d&quot;. The way in was the integer 0x4341C37937E08000 sitting in an integer register, then one instruction: fmv.d.x. The bits walked across into the floating-point register file unchanged. On the way back, fmv.x.d carried the result bits out for inspection.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bridge-that-doesnt-translate/the-bridge-that-doesnt-translate.jpg" alt="The Sidney Lanier cable-stayed bridge" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">fmv carries the bits across, unchanged.</figcaption>
+</figure>
           <p>There is a conversion instruction sitting right next to it, and reaching for it is the whole bug. Feed those same 64 bits, 0x3FF0000000000000, to FCVT.D.L, and the machine reads them as the integer 4,607,182,418,800,017,408 and hands you back the double 4607182418800017408.0. Feed them to FMV.D.X and you get exactly 1.0. One instruction translates. The other transports.</p>
           <p>This is the entire crossing, four instructions quoted from the module&#x27;s source:</p>
           <pre><code>fmv.d.x f2, %1

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Register That Never Interrupts You &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-register-that-never-interrupts-you/" />
   <meta property="og:title" content="The Register That Never Interrupts You · Blog · Chris Dillinger" />
   <meta property="og:description" content="The fcsr register steers every floating-point operation with a rounding mode and remembers what went wrong with five sticky flags, and it never raises a trap. Four bare-metal modules prove both halves of the contract on QEMU." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-register-that-never-interrupts-you/the-register-that-never-interrupts-you-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="Cash register receipts showing rounded totals" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Register That Never Interrupts You · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="The fcsr register steers every floating-point operation with a rounding mode and remembers what went wrong with five sticky flags, and it never raises a trap. Four bare-metal modules prove both halves of the contract on QEMU." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-register-that-never-interrupts-you/the-register-that-never-interrupts-you-social.jpg" />
+  <meta name="twitter:image:alt" content="Cash register receipts showing rounded totals" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Register That Never Interrupts You", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-never-interrupts-you/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Register That Never Interrupts You", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-never-interrupts-you/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-never-interrupts-you/the-register-that-never-interrupts-you-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>One third has no exact double, so the true quotient of 1.0 divided by 3.0 sits between two adjacent doubles, one ulp apart. A new module ran fdiv.d 1.0/3.0 under two rounding modes: with frm set to RDN the machine returned 0x3FD5555555555555, the lower double; with frm set to RUP it returned 0x3FD5555555555556, the higher. The mode steered the answer, not the other way around.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-register-that-never-interrupts-you/the-register-that-never-interrupts-you.jpg" alt="Cash register receipts showing rounded totals" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Flags accrue like receipts, never interrupting you</figcaption>
+</figure>
           <p>The register that steers it is fcsr, the floating-point control and status register. It has two jobs in 32 bits. Bits 7:5 are frm, the dynamic rounding mode. Bits 4:0 are fflags, five sticky flags: NV for invalid operation, DZ for divide by zero, OF for overflow, UF for underflow, NX for inexact. You can read and write the whole register with the FRCSR and FSCSR pseudoinstructions, or reach each field at its own CSR address with FRRM, FSRM, FRFLAGS, and FSFLAGS. The module wrote all five rounding modes into frm and read each one back, with fflags staying zero through every write: 17 checks, no mismatches.</p>
           <p>Every floating-point instruction carries its own 3-bit rm field, and that is the second steering wheel. Encode it as 111 and you get DYN, meaning ask frm. Encode anything else and the instruction&#x27;s own choice wins over frm, whatever frm says. A second module proved it: static-RNE fdiv.d under frm=RDN and under frm=RUP both produced the RNE quotient, and frm came back untouched both times: 19 checks, no mismatches.</p>
           <p>Why two mechanisms instead of one? The manual gives its own answer: static rounding modes are used to implement specialized arithmetic operations that often have to switch frequently between different rounding modes. The engineering reason underneath is global state. frm is per-hart and global, so steering per operation through frm would mean a CSR write per operation, plus saving and restoring it so one library does not leave the machine&#x27;s rounding changed behind another&#x27;s back. A static rm puts the choice inside the instruction: no churn, no footgun. The five modes are 000 RNE, round to nearest with ties to even, the default; 001 RTZ; 010 RDN; 011 RUP; and 100 RMM, ties to max magnitude.</p>

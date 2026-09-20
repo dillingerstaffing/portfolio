@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bit That Survives the Context Switch &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-survives-the-context-switch/" />
   <meta property="og:title" content="The Bit That Survives the Context Switch · Blog · Chris Dillinger" />
   <meta property="og:description" content="Take virtual page number 0x12345, mapped with its page-table G bit set. Walk it under address-space IDs 1, 2, and 9: all three land on the same physical address, (0xABCDE shifted left by 12) plus…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-survives-the-context-switch/the-bit-that-survives-the-context-switch-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="The Earth seen from space, the Blue Marble" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Bit That Survives the Context Switch · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Take virtual page number 0x12345, mapped with its page-table G bit set. Walk it under address-space IDs 1, 2, and 9: all three land on the same physical address, (0xABCDE shifted left by 12) plus…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-survives-the-context-switch/the-bit-that-survives-the-context-switch-social.jpg" />
+  <meta name="twitter:image:alt" content="The Earth seen from space, the Blue Marble" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Survives the Context Switch", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-survives-the-context-switch/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Survives the Context Switch", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-survives-the-context-switch/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-survives-the-context-switch/the-bit-that-survives-the-context-switch-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Take virtual page number 0x12345, mapped with its page-table G bit set. Walk it under address-space IDs 1, 2, and 9: all three land on the same physical address, (0xABCDE shifted left by 12) plus the 0x678 offset, and every walk reports global equals 1. The address-space ID is never consulted. Now the contrast: the same virtual page number with G clear under ASID 1 lands on a page built from 0x11111, and under ASID 2 on a page built from 0x22222. Same number, different pages, because without the G bit the address-space name is part of the key.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-survives-the-context-switch/the-bit-that-survives-the-context-switch.jpg" alt="The Earth seen from space, the Blue Marble" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One view that spans every address space.</figcaption>
+</figure>
           <p>Here is the cost it removes. The kernel is mapped at the same virtual addresses in every process, and every context switch loads a new satp register carrying a new ASID. A full TLB flush on every switch would throw away the kernel's translations too, and each one costs three page-table memory reads to rebuild, while the TLB holds only dozens to hundreds of entries. The alternatives are flushing everything every time or storing the kernel's mappings once per address space, the same entry wearing N name tags. The G bit says: this mapping exists in all address spaces, store it once, and when the fence names a single ASID, leave it alone.</p>
           <p>The privileged specification says it plainer than I can. "Global mappings were devised to reduce the cost of context switches." And then the sentence that carries the whole contract: "failing to mark a global mapping as global merely reduces performance, whereas marking a nonglobal mapping as global is an error." G is a performance promise, not a correctness one, and lying in the wrong direction breaks isolation, because one process would start reaching another's pages through a shared cache entry.</p>
           <p>The entire rule fits in one line of the test bench, taken verbatim from the lookup it verified:</p>

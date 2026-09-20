@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Fence the Instruction Cache Never Sees &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-fence-the-instruction-cache-never-sees/" />
   <meta property="og:title" content="The Fence the Instruction Cache Never Sees · Blog · Chris Dillinger" />
   <meta property="og:description" content="A store writes the data eye&#x27;s view of memory, not the instruction eye&#x27;s. fence.i is the announcement that makes the CPU&#x27;s two views of memory agree." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-fence-the-instruction-cache-never-sees/the-fence-the-instruction-cache-never-sees-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A snow-capped wooden fence" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Fence the Instruction Cache Never Sees · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="A store writes the data eye&#x27;s view of memory, not the instruction eye&#x27;s. fence.i is the announcement that makes the CPU&#x27;s two views of memory agree." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-fence-the-instruction-cache-never-sees/the-fence-the-instruction-cache-never-sees-social.jpg" />
+  <meta name="twitter:image:alt" content="A snow-capped wooden fence" />
   <meta property="article:published_time" content="2026-09-12T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Fence the Instruction Cache Never Sees", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-fence-the-instruction-cache-never-sees/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Fence the Instruction Cache Never Sees", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-fence-the-instruction-cache-never-sees/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-fence-the-instruction-cache-never-sees/the-fence-the-instruction-cache-never-sees-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Picture a just-in-time compiler at work. It writes a few dozen bytes of fresh machine code into a buffer, then jumps to the first byte. This should work: the bytes were just stored, and the jump reads them back. On x86, as I understand it, it does work, and that is the trap. Nothing in this picture looks broken until you move it to RISC-V.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-fence-the-instruction-cache-never-sees/the-fence-the-instruction-cache-never-sees.jpg" alt="A snow-capped wooden fence" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">fence.i: the announcement the fetch engine needs.</figcaption>
+</figure>
           <p>The CPU reads memory with two eyes. The data eye is the load/store engine, filling the data cache. The instruction eye is the fetch engine, filling the instruction cache. When your program stores a new byte, it lands in the data eye&#x27;s view. The instruction eye may still hold the old bytes it fetched long ago, and the manual blesses the disagreement: a valid implementation may cache every fetchable byte at the earliest opportunity and never read main memory for instruction fetches again. So the jump runs the old bytes. The new code sits in memory, correct under every load you care to run, and the CPU executes something else.</p>
           <p>The obvious repair is to make the hardware keep the two eyes in sync on every store. The RISC-V designers refused, and the refusal is about cost. Keeping the instruction cache coherent with every store would tax every store in every program for an event that almost never happens: almost no program rewrites its own code. So the architecture moved the price to the rare path. Instead of the hardware watching all stores, the software announces the one store that matters. The announcement is one instruction: fence.i.</p>
           <p>The shape is three steps, in this order, and skipping the middle one is the whole bug:</p>

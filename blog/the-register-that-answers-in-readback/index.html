@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Register That Answers in Readback &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-register-that-answers-in-readback/" />
   <meta property="og:title" content="The Register That Answers in Readback · Blog · Chris Dillinger" />
   <meta property="og:description" content="A RISC-V register field called WARL lets you write anything but only keeps legal values. A new bare-metal probe asks the satp register which address-translation schemes it will accept, and the readback answers: Sv48 and Sv57 stick, the reserved encoding is ignored whole." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-register-that-answers-in-readback/the-register-that-answers-in-readback-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A person throwing a boomerang" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Register That Answers in Readback · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="A RISC-V register field called WARL lets you write anything but only keeps legal values. A new bare-metal probe asks the satp register which address-translation schemes it will accept, and the readback answers: Sv48 and Sv57 stick, the reserved encoding is ignored whole." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-register-that-answers-in-readback/the-register-that-answers-in-readback-social.jpg" />
+  <meta name="twitter:image:alt" content="A person throwing a boomerang" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Register That Answers in Readback", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-answers-in-readback/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Register That Answers in Readback", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-answers-in-readback/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-register-that-answers-in-readback/the-register-that-answers-in-readback-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>The satp register carries the page-table scheme in its MODE field: 0 is Bare, 8 is Sv39, 9 is Sv48, 10 is Sv57. The new module wrote each one and read it back. MODE=8: write 0x8000000000000000, readback 0x8000000000000000, stuck. MODE=9: write 0x9000000000000000, readback 0x9000000000000000, stuck, the whole write took effect. MODE=10: the same, stuck at 0xa000000000000000. Sv48 and Sv57 accepted, which the backlog had not expected. Then MODE=15, a reserved encoding: write 0xf000000000000000, readback 0xa000000000000000, the prior value bit for bit. The whole write ignored.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-register-that-answers-in-readback/the-register-that-answers-in-readback.jpg" alt="A person throwing a boomerang" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Write a value; the register throws it back</figcaption>
+</figure>
           <p>MODE is a WARL field, and WARL is the spec&#x27;s arrangement for registers whose legal values vary by implementation: you may write anything, but what you read back must be one of the legal values. The privileged specification prescribes exactly this experiment in section 2.3.3: the range of supported values can be determined by attempting to write a desired setting and then reading to see if the value was retained. It adds the sentence that makes the experiment safe: implementations will not raise an exception on writes of unsupported values to a WARL field. An illegal write is not a fault. It is a question, and the hardware answers in the readback.</p>
           <p>The MODE=15 row is the one that had to be designed, not just run. The write went in while the register already held MODE=10, and the readback came back identical to the prior value. The nonzero prior matters: had the register held zero, an ignored write would read back zero, exactly what a write that stuck at zero would also produce, and the test could not tell the two answers apart. Running with a nonzero prior makes no-effect and stuck look different, which is what turns the absence of an effect into a finding. The module states the remaining boundary plainly: the readback cannot distinguish a wholly ignored write from every field independently legalized back to its prior value, so the claim is exactly the observed equality, nothing more.</p>
           <p>The probe idiom is three lines:</p>

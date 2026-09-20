@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Four Bytes the Trap Handler Skips &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-four-bytes-the-trap-handler-skips/" />
   <meta property="og:title" content="The Four Bytes the Trap Handler Skips · Blog · Chris Dillinger" />
   <meta property="og:description" content="A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction&#x27;s address into the mepc register and jumps to your handler. When the handler returns, the CPU…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-four-bytes-the-trap-handler-skips/the-four-bytes-the-trap-handler-skips-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A tape measure showing inch subdivisions" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Four Bytes the Trap Handler Skips · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction&#x27;s address into the mepc register and jumps to your handler. When the handler returns, the CPU…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-four-bytes-the-trap-handler-skips/the-four-bytes-the-trap-handler-skips-social.jpg" />
+  <meta name="twitter:image:alt" content="A tape measure showing inch subdivisions" />
   <meta property="article:published_time" content="2026-09-10T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Four Bytes the Trap Handler Skips", "datePublished": "2026-09-10", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-four-bytes-the-trap-handler-skips/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Four Bytes the Trap Handler Skips", "datePublished": "2026-09-10", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-four-bytes-the-trap-handler-skips/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-four-bytes-the-trap-handler-skips/the-four-bytes-the-trap-handler-skips-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction's address into the mepc register and jumps to your handler. When the handler returns, the CPU resumes at whatever mepc points to. If the handler changed nothing, the CPU re-runs the same bad load, traps again, and you have an infinite loop. So the handler's most basic job is to move mepc past the dead instruction before returning.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-four-bytes-the-trap-handler-skips/the-four-bytes-the-trap-handler-skips.jpg" alt="A tape measure showing inch subdivisions" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Measure the instruction before advancing the PC.</figcaption>
+</figure>
           <p>How far past? RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits of the first parcel: anything but 11 there is a 16-bit compressed instruction, and 11 starts the longer forms. A handler that blindly adds 4 will land in the middle of an instruction whenever the faulting one was compressed, and the CPU will try to execute half an instruction.</p>
           <p>This module pins the fault site to exactly 4 bytes, twice over. First it assembles the faulting load under .option norvc, which tells the assembler to emit no compressed instructions in that region. Then it refuses to trust that promise alone: it captures the address on both sides of the faulting load with in-assembly numeric local labels, la t0, 1f before and 1: after, and the test asserts at runtime that the two addresses differ by exactly 4.</p>
           <p>Why in-assembly labels instead of a C labels-as-values label? A C label only stays where the programmer put it if a computed goto can reach it. With no computed goto in range, -O2 is free to merge blocks and move the label, and the captured address follows the label to its new home. An assembler numeric label is resolved by the assembler exactly where written. That is the whole reason, and the construction is trustworthy because of it.</p>

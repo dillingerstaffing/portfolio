@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Brake Pedal on the Stopwatch &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-brake-pedal-on-the-stopwatch/" />
   <meta property="og:title" content="The Brake Pedal on the Stopwatch · Blog · Chris Dillinger" />
   <meta property="og:description" content="Yesterday this blog measured the floor for reading the cycle counter. This note asks the opposite question: what happens when you stop it? One write of 0x1 to the mcountinhibit CSR, setting its…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-brake-pedal-on-the-stopwatch/the-brake-pedal-on-the-stopwatch-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A Casio stopwatch counting hundredths of a second" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Brake Pedal on the Stopwatch · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Yesterday this blog measured the floor for reading the cycle counter. This note asks the opposite question: what happens when you stop it? One write of 0x1 to the mcountinhibit CSR, setting its…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-brake-pedal-on-the-stopwatch/the-brake-pedal-on-the-stopwatch-social.jpg" />
+  <meta name="twitter:image:alt" content="A Casio stopwatch counting hundredths of a second" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Brake Pedal on the Stopwatch", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-brake-pedal-on-the-stopwatch/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Brake Pedal on the Stopwatch", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-brake-pedal-on-the-stopwatch/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-brake-pedal-on-the-stopwatch/the-brake-pedal-on-the-stopwatch-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Yesterday this blog measured the floor for reading the cycle counter. This note asks the opposite question: what happens when you stop it? One write of 0x1 to the mcountinhibit CSR, setting its CY bit, and one thousand back-to-back reads of mcycle came back identical, every one of them 0x0, a delta of exactly zero. One write of 0x0 to clear the bit, and the counter woke up: four samples, strictly increasing, with consecutive deltas in the tens of thousands of ticks. The brake pedal works.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-brake-pedal-on-the-stopwatch/the-brake-pedal-on-the-stopwatch.jpg" alt="A Casio stopwatch counting hundredths of a second" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Hiding a counter never stops the counter.</figcaption>
+</figure>
           <p>But why would a CPU ship a brake pedal for its own stopwatch? The obvious move is to simply not read the counter, or to hide it with mcounteren, and skip the register. The privileged manual breaks that answer in one sentence: mcounteren decides only who may see the counters, and the counters keep incrementing even when nobody can read them. Hiding the stopwatch does not stop it. It still ticks, it still burns power, and any reading you take later is stale by the whole interval you skipped. mcountinhibit is the other promise, the one that actually halts the mechanism. The manual gives two reasons for the brake. The first is energy: a counter nobody is reading is heat and switching power for nothing, so M-mode firmware parks the ones it does not need. The second is atomic sampling, and this is the elegant one: one CSR stops every counter at once, so the cycle count and the instruction count can be read at leisure, knowing neither advanced in the gap between the reads. Without the brake, the two samples are taken a few instructions apart, and the pair lies about the same instant. RustSBI's performance-monitoring documentation says the quiet part out loud: from supervisor mode these counters can only be started, stopped, or configured through mcountinhibit.</p>
           <p>The whole mechanism is one CSR write. Three lines, taken verbatim from the module:</p>
           <pre><code>static void write_mcountinhibit(unsigned long v) {

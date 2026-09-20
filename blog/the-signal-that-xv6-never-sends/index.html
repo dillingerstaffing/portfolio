@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Signal That xv6 Never Sends &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-signal-that-xv6-never-sends/" />
   <meta property="og:title" content="The Signal That xv6 Never Sends · Blog · Chris Dillinger" />
   <meta property="og:description" content="A pipe with no reader leaves the writer&#x27;s bytes with nowhere to go. Linux answers with a signal and an error; xv6 answers with just the error, because it has no signals to send." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-signal-that-xv6-never-sends/the-signal-that-xv6-never-sends-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A red and white megaphone" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Signal That xv6 Never Sends · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="A pipe with no reader leaves the writer&#x27;s bytes with nowhere to go. Linux answers with a signal and an error; xv6 answers with just the error, because it has no signals to send." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-signal-that-xv6-never-sends/the-signal-that-xv6-never-sends-social.jpg" />
+  <meta name="twitter:image:alt" content="A red and white megaphone" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Signal That xv6 Never Sends", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-signal-that-xv6-never-sends/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Signal That xv6 Never Sends", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-signal-that-xv6-never-sends/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-signal-that-xv6-never-sends/the-signal-that-xv6-never-sends-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Make a pipe, close the read end, and write sixteen bytes. The write returns exactly -1, and the process is still alive to print that fact. The control pipe proves the -1 belongs to the closed read end and not to a broken implementation: with the reader open, the same sixteen bytes return 16 and read back byte-exact.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-signal-that-xv6-never-sends/the-signal-that-xv6-never-sends.jpg" alt="A red and white megaphone" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Linux shouts. xv6 just returns minus one.<br><span style="opacity:.7">Photo: Solomon203 (attribution required) (CC BY-SA 4.0)</span></figcaption>
+</figure>
           <p>A pipe is a two-party contract, and with no reader the bytes have nowhere to go. So who tells the writer? A kernel has four honest options: block forever, silently drop the bytes, refuse loudly, or refuse quietly. Blocking is a hang, the quietest failure of all. Dropping the bytes silently is worse, because most programs never check write&#x27;s return value, and corruption nobody notices is worse than an error. That leaves the two refusals, and POSIX chose the loud one.</p>
           <p>The spec says a write to a pipe &quot;not open for reading by any process&quot; fails with EPIPE, and &quot;a SIGPIPE signal shall also be sent to the thread.&quot; Two deliveries, the signal and the error. Linux&#x27;s fs/pipe.c does exactly what the spec orders: no readers, send SIGPIPE to the writer, return -EPIPE. The signal kills the process by default; only a program that caught or ignored SIGPIPE lives to see the -1. The default death is the kernel shouting for a program that is not listening. EPIPE is the polite fallback for the programs that asked to handle it.</p>
           <p>xv6 cannot shout. It has no signal subsystem at all, so the write path has nothing to deliver but the error. In kernel/pipe.c, before a single byte is copied, the write loop checks two things: is anyone still listening, and has this process already been marked for death:</p>

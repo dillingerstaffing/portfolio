@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Variable That Is Not the Same Variable &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/" />
   <meta property="og:title" content="The Variable That Is Not the Same Variable · Blog · Chris Dillinger" />
   <meta property="og:description" content="One __thread int counter = 7, two threads, two addresses: main saw 0x...873c, the worker saw 0x...76bc, and the worker&#x27;s store of 42 left main&#x27;s 7 alone. The loader&#x27;s per-thread template and the thread-pointer register, on x86-64 and RISC-V." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/the-variable-that-is-not-the-same-variable-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="Identical twins in school uniforms" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Variable That Is Not the Same Variable · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="One __thread int counter = 7, two threads, two addresses: main saw 0x...873c, the worker saw 0x...76bc, and the worker&#x27;s store of 42 left main&#x27;s 7 alone. The loader&#x27;s per-thread template and the thread-pointer register, on x86-64 and RISC-V." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/the-variable-that-is-not-the-same-variable-social.jpg" />
+  <meta name="twitter:image:alt" content="Identical twins in school uniforms" />
   <meta property="article:published_time" content="2026-09-18T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Variable That Is Not the Same Variable", "datePublished": "2026-09-18", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Variable That Is Not the Same Variable", "datePublished": "2026-09-18", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-variable-that-is-not-the-same-variable/the-variable-that-is-not-the-same-variable-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>I declared one variable this morning and got two of them. At file scope I wrote __thread int counter = 7;, then main printed the address and value, spawned a worker thread, and the worker printed the same variable's address and value. On this run main saw 0x786b5c3b873c holding 7, and the worker saw 0x786b5c3b76bc holding 7. The worker stored 42 into counter, printed 42, and joined. main printed its counter afterward: 7, untouched. Same name, same line of source, two different pieces of storage.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-variable-that-is-not-the-same-variable/the-variable-that-is-not-the-same-variable.jpg" alt="Identical twins in school uniforms" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Same name, same face, two different people.</figcaption>
+</figure>
           <p>Threads share the whole address space, so per-thread state is a real problem. errno is the famous case: if every thread wrote to one global errno, one thread's failed read would overwrite another thread's clean slate. C still needs per-thread homes for errno, allocator state, and RNG seeds. The loader's answer is a template. The linker gathers every thread-local variable into a TLS template, described by the PT_TLS segment in the ELF: initialized data lives in .tdata, zeroed data in .tbss. When a thread is born, the loader copies the entire template into fresh memory for it. Each thread also gets a thread-pointer register, %fs on x86-64 and tp on RISC-V, and every access to a thread-local variable is address math off that register.</p>
           <p>The access shape depends on what the linker knows. When the variable is defined in the binary being linked, the offset is fixed at link time and the whole access collapses to a single instruction. A shared library cannot know the offset, because the final program lays out the template, so it gets the general-dynamic model instead: load an index, call __tls_get_addr, use the returned address. The linker even rewrites the lazy form into the fast one when it can prove the variable is defined locally. The shapes, all from this run's disassembly:</p>
           <pre><code>    __thread int counter = 7;        /* one name, one copy per thread */

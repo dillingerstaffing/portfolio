@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Return With Nothing to Return From &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-return-with-nothing-to-return-from/" />
   <meta property="og:title" content="The Return With Nothing to Return From · Blog · Chris Dillinger" />
   <meta property="og:description" content="The same four bytes run twice: in S-mode, sret returns from the trap; in U-mode, the machine refuses with an illegal instruction. Eighteen checks on what privilege the ISA refuses to hand out." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-return-with-nothing-to-return-from/the-return-with-nothing-to-return-from-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A full-height metal turnstile" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Return With Nothing to Return From · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="The same four bytes run twice: in S-mode, sret returns from the trap; in U-mode, the machine refuses with an illegal instruction. Eighteen checks on what privilege the ISA refuses to hand out." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-return-with-nothing-to-return-from/the-return-with-nothing-to-return-from-social.jpg" />
+  <meta name="twitter:image:alt" content="A full-height metal turnstile" />
   <meta property="article:published_time" content="2026-09-12T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Return With Nothing to Return From", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-return-with-nothing-to-return-from/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Return With Nothing to Return From", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-return-with-nothing-to-return-from/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-return-with-nothing-to-return-from/the-return-with-nothing-to-return-from-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>The program runs the same four bytes twice: 0x10200073, the encoding of sret, the supervisor return-from-trap instruction. The first run happens in S-mode, and it works: the control phase records control_ok=1 and the program comes back to the pad with no trap fired. The second run executes the identical bytes in U-mode, and the machine refuses. The hart traps to M-mode with mcause=2, illegal instruction. mepc reads 0x80000344, the exact site of the sret. mstatus.MPP reads 0, the hardware&#x27;s own record that the offender was in user mode. And mtval holds 0x10200073, the offending instruction echoed back like a confiscated key.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-return-with-nothing-to-return-from/the-return-with-nothing-to-return-from.jpg" alt="A full-height metal turnstile" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">sret in user mode: no trap to return from.</figcaption>
+</figure>
           <p>sret is the second half of the trap contract. When it executes, privilege is restored from sstatus.SPP, interrupt enable from SPIE, and the program counter from sepc. All three are supervisor-owned state. In U-mode there is no supervisor trap to return from, and no legal way to have built that state, so the ISA does not define the behavior. It refuses the instruction. The formal Sail model of the privileged architecture writes the rule as a bare match: in user mode, sret goes straight to handle_illegal(). No conditions, no escape hatch.</p>
           <p>There is a mirror image in the same manual. The TSR bit in mstatus lets M-mode forbid even S-mode from executing sret, so a hypervisor can intercept it and emulate the missing extension. Returning from a trap is itself a gated privilege. And the night&#x27;s neighboring module, mstatus-tvm-trap, probes the gate next door: the TVM bit makes S-mode writes to satp and sfence.vma trap to M-mode. Taken together the pair maps who is allowed to come back from where.</p>
           <p>The discipline held, too. medeleg was written 0 and read back 0, so the trap could not be delegated away from M-mode; it had to land where the handler was waiting. And the mtval check does not compare the trap&#x27;s evidence against a constant anyone typed from memory. It reads the actual instruction word at mepc and compares the two measured values against each other:</p>

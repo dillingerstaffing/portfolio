@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bit That Reads Execute-Only Pages &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reads-execute-only-pages/" />
   <meta property="og:title" content="The Bit That Reads Execute-Only Pages · Blog · Chris Dillinger" />
   <meta property="og:description" content="One page at virtual address 0x40000000, mapped execute-only: the flags read valid, executable, accessed, dirty, and no read bit. A page-table entry is the 64-bit word the memory-management unit…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reads-execute-only-pages/the-bit-that-reads-execute-only-pages-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A hallway seen through a one-way mirror" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Bit That Reads Execute-Only Pages · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="One page at virtual address 0x40000000, mapped execute-only: the flags read valid, executable, accessed, dirty, and no read bit. A page-table entry is the 64-bit word the memory-management unit…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reads-execute-only-pages/the-bit-that-reads-execute-only-pages-social.jpg" />
+  <meta name="twitter:image:alt" content="A hallway seen through a one-way mirror" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Reads Execute-Only Pages", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reads-execute-only-pages/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Reads Execute-Only Pages", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reads-execute-only-pages/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reads-execute-only-pages/the-bit-that-reads-execute-only-pages-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>One page at virtual address 0x40000000, mapped execute-only: the flags read valid, executable, accessed, dirty, and no read bit. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it; this entry may be executed but not read. Two phases, one load instruction. Phase A runs with MXR explicitly clear: the load raises exactly one trap, scause 0xd, the load page fault, with stval holding the faulting address and sepc pointing at the labeled load. t0 was poisoned to zero right before the load; after the handler advanced sepc past the instruction and returned, t0 was still zero. That is the part that makes it a proof rather than a story: the poison proves the load never completed. Phase B sets MXR with one csrs to sstatus: the identical load from the identical address returns the canary, 0xe4ec0d1edeadbeef, and the trap counter never moves past one. The only thing that changed between a fault and a success was one bit.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-reads-execute-only-pages/the-bit-that-reads-execute-only-pages.jpg" alt="A hallway seen through a one-way mirror" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One bit turns the mirror into a window.</figcaption>
+</figure>
           <p>The natural objection: who marks code execute-only and then reads it? The privileged specification's own commentary answers. Section 4.1.1.6, checked in two copies of the manual this week: MXR was conceived for M-mode routines emulating missing hardware features, misaligned loads and stores being the example. A trap-and-emulate handler has to fetch the very instruction it is about to fake, and if the program's code pages are execute-only, the handler needs a read path that does not relax the page. If you own the pages, the obvious move is to mark them readable too. xv6 does exactly that: its vm.c maps kernel text with read and execute together, so the bit would change nothing there (checked in the tree this week). MXR earns its keep when the code is not yours to re-mark. It is the emulator's bit.</p>
           <p>MXR is bit 19 of sstatus, and the whole mechanism is one CSR write: the hardware's load rule becomes readable or executable instead of readable. The code is the insight here:</p>
           <pre><code>/* Phase A: gate closed. The ld below faults with scause 0xd. */

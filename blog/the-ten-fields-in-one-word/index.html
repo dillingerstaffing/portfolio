@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Ten Fields in One Word &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-ten-fields-in-one-word/" />
   <meta property="og:title" content="The Ten Fields in One Word · Blog · Chris Dillinger" />
   <meta property="og:description" content="Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones,…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-ten-fields-in-one-word/the-ten-fields-in-one-word-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="An opened Swiss Army knife with its tools fanned out" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Ten Fields in One Word · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones,…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-ten-fields-in-one-word/the-ten-fields-in-one-word-social.jpg" />
+  <meta name="twitter:image:alt" content="An opened Swiss Army knife with its tools fanned out" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Ten Fields in One Word", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-ten-fields-in-one-word/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Ten Fields in One Word", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-ten-fields-in-one-word/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-ten-fields-in-one-word/the-ten-fields-in-one-word-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones, and the top field reads back 0x80000. A valid, readable, writable page at physical page 0x80000. Every page fault your kernel will ever handle starts with exactly this parsing step: xv6's walk() reads each level's entry to pull out the page number and check the permission bits. A misdecoded entry is a wrong mapping or a missed fault, so the parsing gets its own proof, small and focused, nothing else.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-ten-fields-in-one-word/the-ten-fields-in-one-word.jpg" alt="An opened Swiss Army knife with its tools fanned out" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Ten tools in one handle, one word.</figcaption>
+</figure>
           <p>The obvious way to parse a fixed bit layout in C is a struct with bitfields, one named field per entry part, widths in the declaration. The honest reason not to is that C leaves bitfield layout implementation-defined. The compiler is free to pack the fields in an order you did not ask for, so the struct expresses a hope, not a contract. The lab decodes with shift-and-mask identities instead: one shift and one mask per field, every boundary explicit in the source. Shifting right by k moves bit k into position 0; masking with a run of ones keeps exactly the field width and clears everything above. The mechanism is portable to every ISA; only the boundaries come from the RISC-V contract.</p>
           <p>The layout is the privileged specification's own: 44 bits of physical page number in bits 53:10, two bits reserved for supervisor software in 9:8, then the eight flags, dirty, accessed, global, user, execute, write, read, valid. The ten field masks are disjoint and cover bits 53:0 with no overlap and no gaps, so the fields partition the word, and shifting each field back to its position and ORing restores the entry exactly. That partition is the whole invariant: encode(decode(pte)) equals pte, and the test checks it on every one of the 4.3 billion cases.</p>
           <p>The code is the insight here:</p>

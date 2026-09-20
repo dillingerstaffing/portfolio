@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Write That Sleeps &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/" />
   <meta property="og:title" content="The Write That Sleeps · Blog · Chris Dillinger" />
   <meta property="og:description" content="Fill an xv6 pipe to exactly 512 bytes, write one more byte, and the write does not return for 40 ticks. A user-space proof of a kernel sleep, measured with the uptime tick counter as the stopwatch." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/the-write-that-sleeps-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="The Hoover Dam from the air" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Write That Sleeps · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Fill an xv6 pipe to exactly 512 bytes, write one more byte, and the write does not return for 40 ticks. A user-space proof of a kernel sleep, measured with the uptime tick counter as the stopwatch." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/the-write-that-sleeps-social.jpg" />
+  <meta name="twitter:image:alt" content="The Hoover Dam from the air" />
   <meta property="article:published_time" content="2026-09-12T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Write That Sleeps", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Write That Sleeps", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-write-that-sleeps/the-write-that-sleeps-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Fill an xv6 pipe with exactly 512 bytes, the whole buffer, and write one more byte. The call does not return. It comes back 40 ticks later, when the child finally drains the pipe, and all 513 bytes arrive byte-exact: seven checks, zero mismatches, three byte-identical runs under QEMU. No one inside the kernel told the test the write slept. It proved the block from outside, with nothing but the uptime tick counter for a stopwatch.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-write-that-sleeps/the-write-that-sleeps.jpg" alt="The Hoover Dam from the air" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Full pipe: the write waits for the drain.</figcaption>
+</figure>
           <p>The determinism is choreography. The parent fills the pipe before the fork, so the fill can never block by accident. Then it spins on the tick counter until a fresh tick edge, captures t0 microseconds after the edge, and only then forks: both sides inherit one absolute deadline, t0 plus 40. The child touches nothing until that tick; the parent&#x27;s second write is issued in tick t0, so it must wait the full 40. An early revision captured t0 after the fork, and the count jittered between 39 and 40 where a tick boundary fell between the fork and the write. The fix was not a bigger gate. It was putting the boundary where it belongs. The capture is four lines of C:</p>
           <pre><code>te = (uint64)uptime();
 while ((uint64)uptime() == te)

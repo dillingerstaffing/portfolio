@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bit That Reroutes a Trap &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/" />
   <meta property="og:title" content="The Bit That Reroutes a Trap · Blog · Chris Dillinger" />
   <meta property="og:description" content="Run the same instruction twice. Boot a bare-metal RISC-V machine, drop from machine mode into supervisor mode, and execute ecall, the instruction that asks the layer above for a service. With the…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/the-bit-that-reroutes-a-trap-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="Railway points where two tracks merge into one" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Bit That Reroutes a Trap · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Run the same instruction twice. Boot a bare-metal RISC-V machine, drop from machine mode into supervisor mode, and execute ecall, the instruction that asks the layer above for a service. With the…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/the-bit-that-reroutes-a-trap-social.jpg" />
+  <meta name="twitter:image:alt" content="Railway points where two tracks merge into one" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Reroutes a Trap", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Reroutes a Trap", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-reroutes-a-trap/the-bit-that-reroutes-a-trap-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Run the same instruction twice. Boot a bare-metal RISC-V machine, drop from machine mode into supervisor mode, and execute ecall, the instruction that asks the layer above for a service. With the medeleg register at zero, the trap lands in the machine-mode handler: its cause register reads mcause = 9, the code for an environment call from supervisor mode. Write 0x200 to medeleg, which is bit 9 set, and execute the identical ecall again. This time the machine handler never fires. The supervisor-mode handler catches the trap instead, with scause = 9. Same instruction, two destinations, one bit of difference.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-reroutes-a-trap/the-bit-that-reroutes-a-trap.jpg" alt="Railway points where two tracks merge into one" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One switch sends the train down another track</figcaption>
+</figure>
           <p>The bit exists because of who pays for every trap. The kernel runs in supervisor mode, and a system call is the most frequent request a machine fields: every file read, every byte on the terminal, every new process. Without delegation, each of those traps would rise to machine mode first, usually firmware, which would then have to forward it back down to the kernel that knows what to do with it. The obvious fix is a forwarder in firmware, but it sits on the hottest path in the system and would have to understand the kernel's business. Delegation removes the middleman: bit 9 of medeleg says supervisor environment calls belong to the supervisor, and the trap goes straight there. Trust, expressed as one bit.</p>
           <p>The mechanism, step by step. RISC-V runs code in privilege modes: M-mode, machine mode, the most privileged, where firmware boots; and S-mode, supervisor mode, where an operating system kernel runs. A trap is the hardware interrupting whatever is running and jumping to a handler; each handler reads its mode's cause register, mcause or scause, to learn what happened. medeleg is an M-mode register with one bit per trap cause: when a bit is set, traps of that cause are delegated to S-mode instead of landing in M-mode. The test checks the contract from both sides. Phase one writes 0 to medeleg, reads back 0, and demands exactly one trap in the M-mode handler with mcause = 9 and the resume address mepc pointing at the captured ecall address. Phase two writes 0x200, reads back bit 9 set, and demands exactly one trap in the S-mode handler with scause = 9 and the supervisor's own resume address sepc at the same ecall.</p>
           <p>The check that carries the argument reads like a receipt:</p>

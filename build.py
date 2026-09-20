@@ -463,6 +463,17 @@ def load_data():
         check_evidence(a.get("evidence"), f"article {a['title']}")
         if "offer" in a and (not isinstance(a["offer"], str) or not a["offer"].strip() or " " in a["offer"]):
             fail(f"article {a['title']}: offer must be a non-empty string")
+        # Every article carries its key image: the body asset, the 1200x630
+        # social rendition, alt text, caption, and provenance. The per-post
+        # page's social preview is built from this metadata, so a missing
+        # field here would ship a post with the wrong preview.
+        for f in ("image", "image_alt", "image_caption", "image_source",
+                  "image_license", "social_image"):
+            if f not in a or not isinstance(a[f], str) or not a[f].strip():
+                fail(f"article {a['title']}: missing image metadata field {f}")
+        for f in ("image", "social_image"):
+            if not (HERE / a[f]).is_file():
+                fail(f"article {a['title']}: missing image asset {a[f]}")
         lint_layer_triggers(
             a["title"] + " " + " ".join(a["paragraphs"]),
             a["layers"], f"article {a['title']}")
@@ -1019,10 +1030,15 @@ def per_post_html(article, next_article, block, desc, css, font_links, stamp, wi
     desc_attr = html.escape(desc, quote=True)
     social_title = f"{title_html} &middot; Blog &middot; Chris Dillinger"
     social_title_attr = f"{title_attr} \u00b7 Blog \u00b7 Chris Dillinger"
+    # The social preview shows this post's key image, never the generic
+    # portfolio card. The 1200x630 card is a center crop plus resize of the
+    # same real photograph, no new pixels drawn.
+    social_img = f"{SITE_URL}/{article['social_image']}"
+    social_img_alt = html.escape(article["image_alt"], quote=True)
     ld = {"@context": "https://schema.org", "@type": "BlogPosting",
           "headline": title, "datePublished": article["date"],
           "author": {"@type": "Person", "name": "Chris Dillinger"},
-          "mainEntityOfPage": url}
+          "mainEntityOfPage": url, "image": social_img}
     ld_json = json.dumps(ld, ensure_ascii=False)
     json.loads(ld_json)  # never ship malformed JSON-LD
     dwell = DWELL_SCRIPT.replace("__SITE_PATH__", SITE_PATH)
@@ -1106,15 +1122,15 @@ def per_post_html(article, next_article, block, desc, css, font_links, stamp, wi
   <meta property="og:url" content="{url}" />
   <meta property="og:title" content="{social_title_attr}" />
   <meta property="og:description" content="{desc_attr}" />
-  <meta property="og:image" content="{OG_IMAGE}" />
+  <meta property="og:image" content="{social_img}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="{OG_IMAGE_ALT}" />
+  <meta property="og:image:alt" content="{social_img_alt}" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="{social_title_attr}" />
   <meta name="twitter:description" content="{desc_attr}" />
-  <meta name="twitter:image" content="{OG_IMAGE}" />
-  <meta name="twitter:image:alt" content="{OG_IMAGE_ALT}" />
+  <meta name="twitter:image" content="{social_img}" />
+  <meta name="twitter:image:alt" content="{social_img_alt}" />
   <meta property="article:published_time" content="{article['date']}T00:00:00-04:00" />
   <script type="application/ld+json">{ld_json}</script>
 {font_links}
@@ -1246,6 +1262,15 @@ def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
         dest.write_text(post, encoding="utf-8")
         if f'<meta property="og:url" content="{SITE_URL}/blog/{slug}/" />' not in post:
             fail(f"article {slug}: per-post page missing its og:url")
+        # The social preview must show this post's key image. The 1200x630
+        # card is a crop plus resize of the same real photograph.
+        want_img = f"{SITE_URL}/{article['social_image']}"
+        if f'<meta property="og:image" content="{want_img}" />' not in post:
+            fail(f"article {slug}: per-post og:image does not match its key image")
+        if f'<meta name="twitter:image" content="{want_img}" />' not in post:
+            fail(f"article {slug}: per-post twitter:image does not match its key image")
+        if OG_IMAGE in post:
+            fail(f"article {slug}: per-post page still uses the generic portfolio image")
 
     write_sitemap(articles)
     sitemap = (HERE / "sitemap.xml").read_text(encoding="utf-8")

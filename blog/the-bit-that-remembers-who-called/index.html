@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bit That Remembers Who Called &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-remembers-who-called/" />
   <meta property="og:title" content="The Bit That Remembers Who Called · Blog · Chris Dillinger" />
   <meta property="og:description" content="A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP…" />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-remembers-who-called/the-bit-that-remembers-who-called-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A metal bookmark with a pink tassel" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Bit That Remembers Who Called · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP…" />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-remembers-who-called/the-bit-that-remembers-who-called-social.jpg" />
+  <meta name="twitter:image:alt" content="A metal bookmark with a pink tassel" />
   <meta property="article:published_time" content="2026-09-11T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Remembers Who Called", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-remembers-who-called/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Bit That Remembers Who Called", "datePublished": "2026-09-11", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-remembers-who-called/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-remembers-who-called/the-bit-that-remembers-who-called-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP NAPOT entry, and dropped into an S-mode payload through sret. The payload issued two ecalls. Each trap landed in the S-mode handler, which read three values: SPP = 1, scause = 9, sepc = 0x800002a8, identical on both traps. The word sitting at that address was 0x73, the ecall instruction itself.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-remembers-who-called/the-bit-that-remembers-who-called.jpg" alt="A metal bookmark with a pink tassel" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">SPP is the hardware&#x27;s bookmark for sret.</figcaption>
+</figure>
           <p>SPP is bit 8 of sstatus, and the hardware writes it at the instant of the trap: the privilege mode the hart was in just before the trap. In the same breath it copies the old interrupt-enable bit into SPIE and clears SIE, so no interrupt can re-enter the handler mid-stream. When the handler executes sret, the reverse happens: the privilege mode is restored from SPP, SIE from SPIE, then SPIE is set to 1, SPP cleared to 0, and the hart resumes at sepc. Push on trap, pop on sret. The trap path has a call stack exactly one frame deep, and the hardware maintains it.</p>
           <p>Why does the hardware keep this record? Because one S-mode handler fields traps from two very different callers, and nothing else remembers which one called. The xv6 source tree checks it the way the hardware means it to be checked. In usertrap(), near the top of the function: if ((r_sstatus() &amp; SSTATUS_SPP) != 0) panic("usertrap: not from user mode"). In kerneltrap(): if ((sstatus &amp; SSTATUS_SPP) == 0) panic("kerneltrap: not from supervisor mode"). And usertrapret() deliberately clears SPP to 0, with the comment "clear SPP to 0 for user mode", before sret returns to the process. The hardware record is the only one that cannot be forged or miscomputed, because it is written at the exact instant of the trap. Without it the handler would have to infer the caller from sepc or saved state, and a kernel should not guess about who it was talking to.</p>
           <p>One wrinkle, and it is the honest kind: one bit is one frame. Every trap overwrites SPP, so a trap taken inside the handler destroys the first record. The module's handler therefore reads sstatus before it dispatches on scause, copying the bit into a sticky per-trap slot. The code is the insight here:</p>

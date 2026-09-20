@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083456" />
+  <meta name="build-version" content="v20260920-083913" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Conditional Move RISC-V Finally Allowed Itself &middot; Blog &middot; Chris Dillinger</title>
@@ -14,17 +14,17 @@
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/" />
   <meta property="og:title" content="The Conditional Move RISC-V Finally Allowed Itself · Blog · Chris Dillinger" />
   <meta property="og:description" content="Base RISC-V has no conditional move, and for years that was deliberate. Two extension instructions, czero.eqz and czero.nez, are the yes that replaced the no: what the ISA refused, why it refused it, and the two-instruction shape of the answer." />
-  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/the-conditional-move-risc-v-finally-allowed-itself-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta property="og:image:alt" content="A manual railway switch beside the tracks" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="The Conditional Move RISC-V Finally Allowed Itself · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="Base RISC-V has no conditional move, and for years that was deliberate. Two extension instructions, czero.eqz and czero.nez, are the yes that replaced the no: what the ISA refused, why it refused it, and the two-instruction shape of the answer." />
-  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
-  <meta name="twitter:image:alt" content="Chris Dillinger: freelance low-level C, RISC-V, and OS kernel systems programmer" />
+  <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/the-conditional-move-risc-v-finally-allowed-itself-social.jpg" />
+  <meta name="twitter:image:alt" content="A manual railway switch beside the tracks" />
   <meta property="article:published_time" content="2026-09-12T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Conditional Move RISC-V Finally Allowed Itself", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Conditional Move RISC-V Finally Allowed Itself", "datePublished": "2026-09-12", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/the-conditional-move-risc-v-finally-allowed-itself-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1177,6 +1177,10 @@
         </div>
         <div class="research-body">
           <p>Pick x when the condition holds and y when it does not, with no branch. Base RISC-V has no instruction for that. An earlier letter built a branchless binary search on the ISA anyway: each iteration&#x27;s comparison produces a 0/1 integer, and the search window is steered with integer arithmetic alone, no data-dependent branch in the loop body. It works, and it is honest code. But the shape advertises a missing instruction.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/the-conditional-move-risc-v-finally-allowed-itself.jpg" alt="A manual railway switch beside the tracks" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The railroad switch: pick a path, branch never taken.</figcaption>
+</figure>
           <p>The missing instruction was deliberate, and the refusals are worth naming, because the yes only makes sense against them. ARM-style predication, where nearly every instruction carries a condition, was refused as decode cost paid on every fetch. The x86 conditional-move family was refused because it needs a condition-flags register, and the ISA pointedly does not have one. The Zicond spec&#x27;s own architecture comment says the quiet part out loud: defining more comparisons does not offer a benefit, given the lack of immediates or an additional register operand to compare against. Minimalism as a load-bearing wall.</p>
           <p>The yes, when it came, is two instructions. czero.eqz rd, rs1, rs2 puts zero in rd if rs2 equals zero, otherwise it moves rs1 into rd. czero.nez is the mirror: zero in rd if rs2 is nonzero, otherwise move rs1. Zero this, unless. The spec gives the reason for this shape and no other: a simple solution that provides most of the benefit and all of the flexibility one would desire for conditional arithmetic and conditional select, while staying true to the RISC-V design philosophy. Branchless sequences come out in typically two instructions, and the spec names the price of admission: no instruction fusion, no special provisions during decoding, and no other microarchitectural provisions.</p>
           <p>The canonical lowering is worth seeing once. cond ? x : y becomes three lines:</p>

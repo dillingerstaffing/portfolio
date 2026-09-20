@@ -1445,6 +1445,10 @@
         </div>
         <div class="research-body">
           <p>A trap can land at any instruction, so the handler&#x27;s first job is to save everything the interrupted program will want back: the 31 general-purpose registers, x1 through x31, plus the few control registers the handler itself needs. Here is the complete save list from a real M-mode trap entry, excerpted with the pattern intact (full source linked below):</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-comparison-that-leaves-no-trace/the-comparison-that-leaves-no-trace.jpg" alt="Ocean waves washing footprints from a beach" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Waves take the footprints. RISC-V takes the flags.</figcaption>
+</figure>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trap.S, M-mode trap entry (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
 <div class="codeblock-body"><pre><code>
@@ -1509,6 +1513,10 @@
         </div>
         <div class="research-body">
           <p>I pointed xv6's page allocator at a 64 MiB arena this morning and watched it drain 16383 pages, every one distinct, aligned, and inside the range. Then I freed three pages, a, b, and c, and asked for three back. It returned c, b, a. The freelist is a stack: last freed, first allocated.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/the-allocator-that-keeps-its-books-in-the-empty-shelves.jpg" alt="Empty wooden archive shelves in a 1930s reading room" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The books live on the empty shelves themselves.</figcaption>
+</figure>
           <p>The allocator is 76 lines of C in kernel/kalloc.c, and it keeps no books. That sounds impossible until you read the struct it is built on, and then the lines that prove it:</p>
           <pre><code>struct run {
   struct run *next;   /* stored in the free page itself */
@@ -1531,6 +1539,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>I declared one variable this morning and got two of them. At file scope I wrote __thread int counter = 7;, then main printed the address and value, spawned a worker thread, and the worker printed the same variable's address and value. On this run main saw 0x786b5c3b873c holding 7, and the worker saw 0x786b5c3b76bc holding 7. The worker stored 42 into counter, printed 42, and joined. main printed its counter afterward: 7, untouched. Same name, same line of source, two different pieces of storage.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-variable-that-is-not-the-same-variable/the-variable-that-is-not-the-same-variable.jpg" alt="Identical twins in school uniforms" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Same name, same face, two different people.</figcaption>
+</figure>
           <p>Threads share the whole address space, so per-thread state is a real problem. errno is the famous case: if every thread wrote to one global errno, one thread's failed read would overwrite another thread's clean slate. C still needs per-thread homes for errno, allocator state, and RNG seeds. The loader's answer is a template. The linker gathers every thread-local variable into a TLS template, described by the PT_TLS segment in the ELF: initialized data lives in .tdata, zeroed data in .tbss. When a thread is born, the loader copies the entire template into fresh memory for it. Each thread also gets a thread-pointer register, %fs on x86-64 and tp on RISC-V, and every access to a thread-local variable is address math off that register.</p>
           <p>The access shape depends on what the linker knows. When the variable is defined in the binary being linked, the offset is fixed at link time and the whole access collapses to a single instruction. A shared library cannot know the offset, because the final program lays out the template, so it gets the general-dynamic model instead: load an index, call __tls_get_addr, use the returned address. The linker even rewrites the lazy form into the fast one when it can prove the variable is defined locally. The shapes, all from this run's disassembly:</p>
           <pre><code>    __thread int counter = 7;        /* one name, one copy per thread */
@@ -1550,6 +1562,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>This morning I reached into another process's file-descriptor table and took one. The setup was a fork: the child opened an unlinked 20-byte tmpfile holding "0123456789ABCDEFGHIJ", its fd 3, sought to offset 5, and reported the fd number over a pipe. I called pidfd_open on the child, then pidfd_getfd to duplicate fd 3 into my own table. Then I read 15 bytes through the new descriptor with no seek of my own, and got "56789ABCDEFGHIJ": the child's file, at the child's offset. Three runs, byte-identical.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-descriptor-that-belongs-to-no-process/the-descriptor-that-belongs-to-no-process.jpg" alt="A close-up of a key with a red arrow on its teeth" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">A copy of a key you never handed over.</figcaption>
+</figure>
           <pre><code>    long pfd    = syscall(SYS_pidfd_open, child, 0);  /* fd 4 */
     int  stolen = syscall(SYS_pidfd_getfd, pfd, 3, 0); /* fd 5 */
     char buf[16];
@@ -1568,6 +1584,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>On QEMU's virt board with no firmware, every RISC-V hart wakes up at address 0x1000. Sixty-four bytes live there, a tiny ROM that QEMU builds at boot. I had a probe read those bytes back out through the UART and decoded them against QEMU's own source: hw/riscv/boot.c in the 8.2.2 tree, the function riscv_setup_rom_reset_vec. Here is the whole of creation, six instructions:</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-six-instructions-that-run-before-yours/the-six-instructions-that-run-before-yours.jpg" alt="A sprinter in the starting blocks" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Every hart runs these six steps first.</figcaption>
+</figure>
           <pre><code>    auipc t0, 0        # t0 = 0x1000, the ROM's own address
     addi  a2, t0, 40   # a2 = 0x1028, a pointer to the firmware info block
     csrr  a0, mhartid  # a0 = this hart's number
@@ -1587,6 +1607,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>Here is an entire C function compiled two ways. Same source, same compiler, same machine. RISC-V gcc 13.2.0, asked to emit assembly:</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-stack-frame-is-optional/the-stack-frame-is-optional.jpg" alt="An empty picture frame on a wall" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">A frame with nothing in it. Just like -O2.</figcaption>
+</figure>
           <div class="codeblock">
             <div class="codeblock-head"><span class="codeblock-title">next.c</span><button class="codeblock-copy" type="button">Copy</button></div>
             <div class="codeblock-body"><pre><code>
@@ -1641,6 +1665,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>I built one bare-metal binary this morning, a ten-element vector add with a strip-mining loop, and ran the identical file under QEMU at three different vector widths. At VLEN 128 it reported vl=4 for sixteen remaining 32-bit elements. At VLEN 256, vl=8. At VLEN 512, vl=16. Asked for a huge request it returned exactly VLMAX; asked for one element it returned one. All three runs printed PASS. Zero changes to the binary on three different machines, because the program never once assumed the width.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-width-the-program-never-asks-for/the-width-the-program-never-asks-for.jpg" alt="An adjustable spanner wrench" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One wrench fits every width. So does vsetvli.</figcaption>
+</figure>
           <p>The negotiation is a single instruction: vsetvli. Give it how many elements remain, plus the element width and the register grouping you want, and it writes back the vl you actually get. The loop re-asks every iteration and advances by whatever came back. The two lines that carry the whole discipline, inside a loop that runs while elements remain:</p>
           <pre><code>    unsigned long vl = vsetvli_e32m1(n);
     a += vl; b += vl; c += vl; n -= vl;</code></pre>
@@ -1658,6 +1686,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>I compiled two one-line functions this morning, gcc 13.2.0 at -O2 for rv64g, and read the disassembly. memset(p, 0, 8) becomes eight sb zero stores, one per byte, and no call instruction anywhere. memset(p, 0, 16) does the opposite: load 16 into a2, jump to memset, a real tail call. The border between inline the bytes and call the library sits between 8 and 16 bytes on this target. The compiler is not running your function. It is deciding what your function meant.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-most-honest-lie-in-c/the-most-honest-lie-in-c.jpg" alt="A chalkboard wiped clean" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">You wrote the wipe. The binary never did.</figcaption>
+</figure>
           <p>The decision that matters lives in a dumber function. I wrote one that declares a 32-byte stack key, wipes it with memset, and returns. Its compiled body, the whole of it:</p>
           <pre><code>0000000000000044 &lt;secret&gt;:
   44:   00008067    ret</code></pre>
@@ -1676,6 +1708,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>I wrote an eight-case assembly program this morning and read its answers off the virt UART on QEMU 8.2.2. Signed 10 divided by 0: all bits set, which reads as -1. Unsigned 10 divided by 0: all bits set, two to the 64th minus one. Signed and unsigned remainder of 10 by 0: both hand back the dividend, 10. The most-negative 64-bit integer divided by -1: the most-negative integer itself, with a zero remainder. A 32-bit divw of the most-negative 32-bit integer by -1: sign-extended 0x80000000. And the sanity case, 22 divided by 7: 3. No trap fired, no flag was set, the exception handler was never consulted. Eight answers to eight questions, three of them questions mathematics refuses to dignify.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-division-that-always-answers/the-division-that-always-answers.jpg" alt="A Magic 8-Ball answering DON&#x27;T COUNT ON IT" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Ask anything, even division by zero. It answers.</figcaption>
+</figure>
           <pre><code>    li   a0, 10
     li   a1, 0
     div  s0, a0, a1
@@ -1695,6 +1731,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>I wrote a thirty-four-line assembly program this afternoon whose entire job was one instruction: csrr s0, misa. It printed sixteen hex digits over the virt UART on QEMU 8.2.2 and then parked: 80000000001411ad. You can read that number by hand and it names the whole machine. The top two bits are 10, MXL equals 2, which the privileged manual&#x27;s Table 11 maps to RV64. The lower twenty-six bits are one per letter of the alphabet, bit 0 for A through bit 25 for Z, and 0x1411ad lights exactly A, C, D, F, H, I, M, S, U. QEMU&#x27;s virt board is RV64IMAFD, the general-purpose set, plus compressed instructions and the H, S, U privilege modes. One read, one register, the entire alphabet.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-id-card-inside-your-cpu/the-id-card-inside-your-cpu.jpg" alt="A Norwegian national ID card specimen" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One card read names the whole machine.</figcaption>
+</figure>
           <pre><code>_start:
     csrr s0, misa            # the ID card, read whole
     li   t1, 0x10000000      # virt UART base
@@ -1714,6 +1754,10 @@ kmem.freelist = r;</code></pre>
         </div>
         <div class="research-body">
           <p>Disassemble a RISC-V object file and look at a call. Where the C source had one function call, you find two instructions: auipc ra, 0x0 followed by jalr ra. Eight bytes of conservative reach. Link the same objects with the default linker and disassemble again. The pair is gone, and in its place stands one instruction: jal 80000016 &lt;target&gt;, encoding 0x00e000ef. The .text section shrank from 40 bytes to 36, exactly the four bytes the auipc had cost. Run the link a second time with --no-relax and the pair survives, both instructions standing where the compiler left them. The control experiment is what turns the observation into an argument.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-eight-bytes-that-became-four/the-eight-bytes-that-became-four.jpg" alt="A lane-merge road sign, two lanes becoming one" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Two lanes in, one out. Relaxation in action.</figcaption>
+</figure>
           <pre><code>auipc   ra, 0x0      ; R_RISCV_CALL_PLT -&gt; target()
 jalr    ra           ; R_RISCV_RELAX -&gt; *ABS*
 
@@ -1736,6 +1780,10 @@ jal     80000016 &lt;target&gt;      ; 0x00e000ef
         </div>
         <div class="research-body">
           <p>Type mv a0, a1 and ask what the machine executes. There is no MOV instruction in the base ISA, not even an opcode for one. What runs is addi a0, a1, 0, encoding 0x00058513, which I read off my own objdump this morning: opcode 0x13, funct3 000, rs1 = a1, immediate = 0, destination = a0. A move is an add against x0, the register that always reads zero. The assembler never told me it was doing arithmetic. The hardware never had to learn what &#x27;move&#x27; means.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-register-that-is-always-zero/the-register-that-is-always-zero.jpg" alt="The Event Horizon Telescope image of the M87 black hole" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">x0, where unwanted results vanish forever.</figcaption>
+</figure>
           <p>Once you see it, the whole family lines up:</p>
           <pre><code>mv   a0, a1         addi  a0, a1, 0        -&gt;  0x00058513
 nop                 addi  x0, x0, 0        -&gt;  0x00000013
@@ -1758,6 +1806,10 @@ csrr a3, mstatus    csrrs a3, mstatus, x0  -&gt;  0x300026f3</code></pre>
         </div>
         <div class="research-body">
           <p>Pick x when the condition holds and y when it does not, with no branch. Base RISC-V has no instruction for that. An earlier letter built a branchless binary search on the ISA anyway: each iteration&#x27;s comparison produces a 0/1 integer, and the search window is steered with integer arithmetic alone, no data-dependent branch in the loop body. It works, and it is honest code. But the shape advertises a missing instruction.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-conditional-move-risc-v-finally-allowed-itself/the-conditional-move-risc-v-finally-allowed-itself.jpg" alt="A manual railway switch beside the tracks" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The railroad switch: pick a path, branch never taken.</figcaption>
+</figure>
           <p>The missing instruction was deliberate, and the refusals are worth naming, because the yes only makes sense against them. ARM-style predication, where nearly every instruction carries a condition, was refused as decode cost paid on every fetch. The x86 conditional-move family was refused because it needs a condition-flags register, and the ISA pointedly does not have one. The Zicond spec&#x27;s own architecture comment says the quiet part out loud: defining more comparisons does not offer a benefit, given the lack of immediates or an additional register operand to compare against. Minimalism as a load-bearing wall.</p>
           <p>The yes, when it came, is two instructions. czero.eqz rd, rs1, rs2 puts zero in rd if rs2 equals zero, otherwise it moves rs1 into rd. czero.nez is the mirror: zero in rd if rs2 is nonzero, otherwise move rs1. Zero this, unless. The spec gives the reason for this shape and no other: a simple solution that provides most of the benefit and all of the flexibility one would desire for conditional arithmetic and conditional select, while staying true to the RISC-V design philosophy. Branchless sequences come out in typically two instructions, and the spec names the price of admission: no instruction fusion, no special provisions during decoding, and no other microarchitectural provisions.</p>
           <p>The canonical lowering is worth seeing once. cond ? x : y becomes three lines:</p>
@@ -1780,6 +1832,10 @@ or        rd, t0, t1</code></pre>
         </div>
         <div class="research-body">
           <p>Add 1.0 to 10^16 and watch the 1 disappear. A bare-metal module ran a single fadd.d on the pair (1e16, 1.0) and read the result bits back: 0x4341C37937E08000, which is exactly 1e16. The +1 vanished without a trace in the result. But it left a receipt. The fcsr register read exactly 0x01 afterward: the NX bit set, the other four exception flags clear. The operation rounded, and the hardware said so in one bit.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-receipt-for-the-bit-that-fell-off/the-receipt-for-the-bit-that-fell-off.jpg" alt="A supermarket receipt" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The hardware&#x27;s receipt for one lost bit.</figcaption>
+</figure>
           <p>The module states the flag layout in two lines of its source:</p>
           <pre><code>#define FFLAGS_NX  0x01UL   // fcsr bit 0: inexact
 #define FFLAGS_ALL 0x1FUL   // fcsr bits 4:0: NV|DZ|OF|UF|NX</code></pre>
@@ -1798,6 +1854,10 @@ or        rd, t0, t1</code></pre>
         </div>
         <div class="research-body">
           <p>The module needed the double 1e16 inside a floating-point register, and it had a problem. It builds with -march=rv64imac_zicsr, a target with no floating point at all, so the compiler cannot name f1, f2, or f3; the source comment says so outright, and the floating-point instructions only assemble because of an in-asm &quot;.option arch, +d&quot;. The way in was the integer 0x4341C37937E08000 sitting in an integer register, then one instruction: fmv.d.x. The bits walked across into the floating-point register file unchanged. On the way back, fmv.x.d carried the result bits out for inspection.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bridge-that-doesnt-translate/the-bridge-that-doesnt-translate.jpg" alt="The Sidney Lanier cable-stayed bridge" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">fmv carries the bits across, unchanged.</figcaption>
+</figure>
           <p>There is a conversion instruction sitting right next to it, and reaching for it is the whole bug. Feed those same 64 bits, 0x3FF0000000000000, to FCVT.D.L, and the machine reads them as the integer 4,607,182,418,800,017,408 and hands you back the double 4607182418800017408.0. Feed them to FMV.D.X and you get exactly 1.0. One instruction translates. The other transports.</p>
           <p>This is the entire crossing, four instructions quoted from the module&#x27;s source:</p>
           <pre><code>fmv.d.x f2, %1
@@ -1819,6 +1879,10 @@ fmv.x.d %0, f1</code></pre>
         </div>
         <div class="research-body">
           <p>Picture a just-in-time compiler at work. It writes a few dozen bytes of fresh machine code into a buffer, then jumps to the first byte. This should work: the bytes were just stored, and the jump reads them back. On x86, as I understand it, it does work, and that is the trap. Nothing in this picture looks broken until you move it to RISC-V.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-fence-the-instruction-cache-never-sees/the-fence-the-instruction-cache-never-sees.jpg" alt="A snow-capped wooden fence" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">fence.i: the announcement the fetch engine needs.</figcaption>
+</figure>
           <p>The CPU reads memory with two eyes. The data eye is the load/store engine, filling the data cache. The instruction eye is the fetch engine, filling the instruction cache. When your program stores a new byte, it lands in the data eye&#x27;s view. The instruction eye may still hold the old bytes it fetched long ago, and the manual blesses the disagreement: a valid implementation may cache every fetchable byte at the earliest opportunity and never read main memory for instruction fetches again. So the jump runs the old bytes. The new code sits in memory, correct under every load you care to run, and the CPU executes something else.</p>
           <p>The obvious repair is to make the hardware keep the two eyes in sync on every store. The RISC-V designers refused, and the refusal is about cost. Keeping the instruction cache coherent with every store would tax every store in every program for an event that almost never happens: almost no program rewrites its own code. So the architecture moved the price to the rare path. Instead of the hardware watching all stores, the software announces the one store that matters. The announcement is one instruction: fence.i.</p>
           <p>The shape is three steps, in this order, and skipping the middle one is the whole bug:</p>
@@ -1839,6 +1903,10 @@ jump to the buffer       # the new bytes run</code></pre>
         </div>
         <div class="research-body">
           <p>At boot, mcounteren reads back 0x0: user mode may see nothing, and nobody granted it. The experiment sets bit 0, CY, then drops from M-mode through S-mode down to user mode and reads the cycle counter twice: no trap, two strictly increasing samples, the door open. Then it clears that one bit, drops to user mode again, and runs the same instruction. This time the machine traps with scause 2, illegal instruction, sepc pointing exactly at the rdcycle site, and the destination register still holding its 0xdeadbeefdeadbeef sentinel, proof the read never happened. Twenty-two checks, zero mismatches, three byte-identical runs under QEMU 8.2.2. One bit decides whether a user process may know what time it is.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bouncer-on-the-stopwatch/the-bouncer-on-the-stopwatch.jpg" alt="A bouncer checking IDs at a nightclub door" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One bit decides who reads the clock.</figcaption>
+</figure>
           <p>Why would a machine hide the time from its own programs? The unprivileged manual says it plainly: "Some execution environments might prohibit access to counters to impede timing side-channel attacks." A cycle counter is an oracle. Diffing two timestamps around someone else&#x27;s code measures what that code did, and measured-then-inferred has a dark literature behind it: keystroke intervals, memory access patterns, the Spectre-era classics. So the privileged ISA puts the bouncer in M-mode. The obvious alternative is to hand back a zero or a clamped value, but a silent zero is a lie the program cannot detect, so the ISA refuses it: a clear CY bit raises illegal instruction, the architectural equivalent of the door staying shut. The manual is careful about what hiding is and is not. "The settings in this register only control accessibility. The act of reading or writing this register does not affect the underlying counters, which continue to increment even when not accessible." The clock still ticks; you simply may not ask it the time. An earlier module proved the brake pedal, mcountinhibit, which stops the clock. This one proves the bouncer, which bars the door. Stopping versus hiding: two different promises, same family.</p>
           <p>The experiment earns its verdict one gate at a time. Two gates sit in series on the road from user code to the cycle counter, the M-level mcounteren and the S-level scounteren, so the module pins the S-level gate open, held set and read back as 0x1 before each phase, and wiggles only the M-level one. A mirror-image module did the reverse, holding the M-level gate open while toggling the S-level one. A single experiment can only blame one gate when the other is nailed open, so the two arrive as a converse pair. And the failure carries its own proof inside the success. The phase-B payload loads the destination register with a sentinel before attempting the read, so a completed read would have overwritten it. The trap alone says the instruction faulted; the untouched register says the read never happened:</p>
           <pre><code>li t0, 0xdeadbeefdeadbeef
@@ -1855,6 +1923,10 @@ rdcycle t0</code></pre>
         </div>
         <div class="research-body">
           <p>Fill an xv6 pipe with exactly 512 bytes, the whole buffer, and write one more byte. The call does not return. It comes back 40 ticks later, when the child finally drains the pipe, and all 513 bytes arrive byte-exact: seven checks, zero mismatches, three byte-identical runs under QEMU. No one inside the kernel told the test the write slept. It proved the block from outside, with nothing but the uptime tick counter for a stopwatch.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-write-that-sleeps/the-write-that-sleeps.jpg" alt="The Hoover Dam from the air" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Full pipe: the write waits for the drain.</figcaption>
+</figure>
           <p>The determinism is choreography. The parent fills the pipe before the fork, so the fill can never block by accident. Then it spins on the tick counter until a fresh tick edge, captures t0 microseconds after the edge, and only then forks: both sides inherit one absolute deadline, t0 plus 40. The child touches nothing until that tick; the parent&#x27;s second write is issued in tick t0, so it must wait the full 40. An early revision captured t0 after the fork, and the count jittered between 39 and 40 where a tick boundary fell between the fork and the write. The fix was not a bigger gate. It was putting the boundary where it belongs. The capture is four lines of C:</p>
           <pre><code>te = (uint64)uptime();
 while ((uint64)uptime() == te)
@@ -1874,6 +1946,10 @@ pid = fork();</code></pre>
         </div>
         <div class="research-body">
           <p>The program runs the same four bytes twice: 0x10200073, the encoding of sret, the supervisor return-from-trap instruction. The first run happens in S-mode, and it works: the control phase records control_ok=1 and the program comes back to the pad with no trap fired. The second run executes the identical bytes in U-mode, and the machine refuses. The hart traps to M-mode with mcause=2, illegal instruction. mepc reads 0x80000344, the exact site of the sret. mstatus.MPP reads 0, the hardware&#x27;s own record that the offender was in user mode. And mtval holds 0x10200073, the offending instruction echoed back like a confiscated key.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-return-with-nothing-to-return-from/the-return-with-nothing-to-return-from.jpg" alt="A full-height metal turnstile" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">sret in user mode: no trap to return from.</figcaption>
+</figure>
           <p>sret is the second half of the trap contract. When it executes, privilege is restored from sstatus.SPP, interrupt enable from SPIE, and the program counter from sepc. All three are supervisor-owned state. In U-mode there is no supervisor trap to return from, and no legal way to have built that state, so the ISA does not define the behavior. It refuses the instruction. The formal Sail model of the privileged architecture writes the rule as a bare match: in user mode, sret goes straight to handle_illegal(). No conditions, no escape hatch.</p>
           <p>There is a mirror image in the same manual. The TSR bit in mstatus lets M-mode forbid even S-mode from executing sret, so a hypervisor can intercept it and emulate the missing extension. Returning from a trap is itself a gated privilege. And the night&#x27;s neighboring module, mstatus-tvm-trap, probes the gate next door: the TVM bit makes S-mode writes to satp and sfence.vma trap to M-mode. Taken together the pair maps who is allowed to come back from where.</p>
           <p>The discipline held, too. medeleg was written 0 and read back 0, so the trap could not be delegated away from M-mode; it had to land where the handler was waiting. And the mtval check does not compare the trap&#x27;s evidence against a constant anyone typed from memory. It reads the actual instruction word at mepc and compares the two measured values against each other:</p>
@@ -1893,6 +1969,10 @@ check(mtval == word_at_mepc,
         </div>
         <div class="research-body">
           <p>Clear fcsr to 0x00, execute one fdiv.d of 0.0 by 0.0, read fcsr back: 0x10. The NV bit, bit 4, stands alone: NX, UF, OF, and DZ all clear, the rounding mode still RNE, the trap counter at zero. The quotient comes back as 0x7FF8000000000000. Fourteen checks, zero mismatches, three byte-identical runs on QEMU 8.2.2. But the interesting half of this proof is not the checks; it is why the standard declares this operation invalid in the first place.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-division-that-isnt/the-division-that-isnt.jpg" alt="A car dashboard glowing with warning lights at night" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">NaN rides along; the flag tells you later.</figcaption>
+</figure>
           <p>Divide 1.0 by 0.0 and the answer is honest: positive infinity, with the DZ flag raised. The earlier divide-by-zero module probed exactly that case. But 0.0 divided by 0.0 has no answer, because the limit depends on how you approach it: x over x tends to 1, 2x over x tends to 2, x-squared over x tends to 0. The arithmetic cannot name a number, so it must not name one. Infinity minus infinity, infinity times zero, and the square root of a negative number sit in the same box, and IEEE 754 gathers them all under one heading: invalid operation.</p>
           <p>The obvious design would be to stop the machine: raise a trap and hand the program an exception. SPARC did exactly that, with hardware trap-enable modes for each flag. RISC-V refused the wire. Its rule is quieter: return a NaN, set the NV bit, keep going. And a NaN is not evasive, it is engineered. Feed a NaN into further arithmetic and a NaN comes back out, so the error rides the data all the way to wherever you finally look. Finish the work, then read the receipt. One register that remembers, no wire that interrupts. The NaN you get is always the canonical one, 0x7FF8000000000000 for a double: positive sign, all significand bits clear except the quiet bit, in the manual&#x27;s own words. Carrying the error&#x27;s origin in payload bits was considered and refused: the manual states plainly that it would have raised the hardware cost, and since payloads are optional in the standard they cannot be used in portable code.</p>
           <p>The module is built so the only floating-point actor in the room is the FPU. It compiles for rv64imac_zicsr, which has no F or D, so the C compiler cannot even name the float registers; the operands travel from integer registers through fmv.d.x, and the divide runs inside volatile in-asm so the compiler cannot fold 0.0/0.0 at compile time. A bare fdiv.d assembles with the dynamic rounding mode, so the source spells out the ,rne. The whole divide is five lines:</p>
@@ -1914,6 +1994,10 @@ check(mtval == word_at_mepc,
         </div>
         <div class="research-body">
           <p>Write 0x6000000000000000 to menvcfg, the M-mode environment configuration register, and read it back: 0x2000000000000000. Bit 62, the PBMTE switch, refused to stick, and every other bit came back exactly as written. Saying it properly took six checks: a set probe, a clear probe, two all-ones legalizations that agreed with each other, a restore of the boot value, and a trap count of zero. Three byte-identical runs on QEMU 8.2.2, one checksum over every readback, verdict PASS. This hart has no Svpbmt.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-switch-with-nothing-behind-it/the-switch-with-nothing-behind-it.jpg" alt="An open knife switch connected to nothing" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The switch is open and nothing is behind it</figcaption>
+</figure>
           <p>The measurement is a WARL probe, and WARL is the whole method. Write-any-read-legal means the register may legalize any value you write, so the experiment writes values and reads back what the hart allows. The set probe is three lines:</p>
           <pre><code>unsigned long boot = read_menvcfg();      /* 0x2000000000000000 */
 write_menvcfg(boot | MENVCFG_PBMTE);      /* ask for bit 62 */
@@ -1934,6 +2018,10 @@ unsigned long set = read_menvcfg();       /* 0x2000000000000000: refused */</cod
         </div>
         <div class="research-body">
           <p>Make a pipe, close the read end, and write sixteen bytes. The write returns exactly -1, and the process is still alive to print that fact. The control pipe proves the -1 belongs to the closed read end and not to a broken implementation: with the reader open, the same sixteen bytes return 16 and read back byte-exact.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-signal-that-xv6-never-sends/the-signal-that-xv6-never-sends.jpg" alt="A red and white megaphone" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Linux shouts. xv6 just returns minus one.<br><span style="opacity:.7">Photo: Solomon203 (attribution required) (CC BY-SA 4.0)</span></figcaption>
+</figure>
           <p>A pipe is a two-party contract, and with no reader the bytes have nowhere to go. So who tells the writer? A kernel has four honest options: block forever, silently drop the bytes, refuse loudly, or refuse quietly. Blocking is a hang, the quietest failure of all. Dropping the bytes silently is worse, because most programs never check write&#x27;s return value, and corruption nobody notices is worse than an error. That leaves the two refusals, and POSIX chose the loud one.</p>
           <p>The spec says a write to a pipe &quot;not open for reading by any process&quot; fails with EPIPE, and &quot;a SIGPIPE signal shall also be sent to the thread.&quot; Two deliveries, the signal and the error. Linux&#x27;s fs/pipe.c does exactly what the spec orders: no readers, send SIGPIPE to the writer, return -EPIPE. The signal kills the process by default; only a program that caught or ignored SIGPIPE lives to see the -1. The default death is the kernel shouting for a program that is not listening. EPIPE is the polite fallback for the programs that asked to handle it.</p>
           <p>xv6 cannot shout. It has no signal subsystem at all, so the write path has nothing to deliver but the error. In kernel/pipe.c, before a single byte is copied, the write loop checks two things: is anyone still listening, and has this process already been marked for death:</p>
@@ -1957,6 +2045,10 @@ unsigned long set = read_menvcfg();       /* 0x2000000000000000: refused */</cod
         </div>
         <div class="research-body">
           <p>One third has no exact double, so the true quotient of 1.0 divided by 3.0 sits between two adjacent doubles, one ulp apart. A new module ran fdiv.d 1.0/3.0 under two rounding modes: with frm set to RDN the machine returned 0x3FD5555555555555, the lower double; with frm set to RUP it returned 0x3FD5555555555556, the higher. The mode steered the answer, not the other way around.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-register-that-never-interrupts-you/the-register-that-never-interrupts-you.jpg" alt="Cash register receipts showing rounded totals" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Flags accrue like receipts, never interrupting you</figcaption>
+</figure>
           <p>The register that steers it is fcsr, the floating-point control and status register. It has two jobs in 32 bits. Bits 7:5 are frm, the dynamic rounding mode. Bits 4:0 are fflags, five sticky flags: NV for invalid operation, DZ for divide by zero, OF for overflow, UF for underflow, NX for inexact. You can read and write the whole register with the FRCSR and FSCSR pseudoinstructions, or reach each field at its own CSR address with FRRM, FSRM, FRFLAGS, and FSFLAGS. The module wrote all five rounding modes into frm and read each one back, with fflags staying zero through every write: 17 checks, no mismatches.</p>
           <p>Every floating-point instruction carries its own 3-bit rm field, and that is the second steering wheel. Encode it as 111 and you get DYN, meaning ask frm. Encode anything else and the instruction&#x27;s own choice wins over frm, whatever frm says. A second module proved it: static-RNE fdiv.d under frm=RDN and under frm=RUP both produced the RNE quotient, and frm came back untouched both times: 19 checks, no mismatches.</p>
           <p>Why two mechanisms instead of one? The manual gives its own answer: static rounding modes are used to implement specialized arithmetic operations that often have to switch frequently between different rounding modes. The engineering reason underneath is global state. frm is per-hart and global, so steering per operation through frm would mean a CSR write per operation, plus saving and restoring it so one library does not leave the machine&#x27;s rounding changed behind another&#x27;s back. A static rm puts the choice inside the instruction: no churn, no footgun. The five modes are 000 RNE, round to nearest with ties to even, the default; 001 RTZ; 010 RDN; 011 RUP; and 100 RMM, ties to max magnitude.</p>
@@ -1977,6 +2069,10 @@ frflags t0      # the receipt</code></pre>
         </div>
         <div class="research-body">
           <p>Four bits at the top of the satp register choose the machine&#x27;s whole memory model. On RV64 exactly four encodings are legal: 0 is Bare, no translation and no protection at all, and 8, 9, and 10 are Sv39, Sv48, and Sv57, page-based virtual addressing with 39, 48, and 57-bit address spaces. The other twelve are not memory models: 1 through 7 and 12 through 13 are reserved for future standard use, 11 is reserved for an Sv64 scheme that does not exist yet, and 14 and 15 are designated for custom use.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-four-legal-ways-to-see-memory/the-four-legal-ways-to-see-memory.jpg" alt="A rotary telephone dial" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Sixteen positions, only four are legal</figcaption>
+</figure>
           <p>Why validate a table? Because legality is not the same as support. The spec says an implementation is not required to support every MODE setting, and that writing an unsupported one has no effect at all. An earlier module probed which MODE values one QEMU model actually accepts; this module validates the table itself, the universe of answers before any one machine narrows it. And the two sides of the check are deliberately shaped nothing alike: the implementation is a range predicate, mode is 0 or in 8 through 10, while the oracle is a 16-row table transcribed by hand from the spec&#x27;s Table 114, the document&#x27;s own row text quoted in the comments. Agreement between two differently-shaped descriptions proves the rule, not shared code.</p>
           <p>The whole implementation is one line:</p>
           <pre><code>int satp_mode_legal_rv64(uint64_t mode) {
@@ -1997,6 +2093,10 @@ frflags t0      # the receipt</code></pre>
         </div>
         <div class="research-body">
           <p>The satp register carries the page-table scheme in its MODE field: 0 is Bare, 8 is Sv39, 9 is Sv48, 10 is Sv57. The new module wrote each one and read it back. MODE=8: write 0x8000000000000000, readback 0x8000000000000000, stuck. MODE=9: write 0x9000000000000000, readback 0x9000000000000000, stuck, the whole write took effect. MODE=10: the same, stuck at 0xa000000000000000. Sv48 and Sv57 accepted, which the backlog had not expected. Then MODE=15, a reserved encoding: write 0xf000000000000000, readback 0xa000000000000000, the prior value bit for bit. The whole write ignored.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-register-that-answers-in-readback/the-register-that-answers-in-readback.jpg" alt="A person throwing a boomerang" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Write a value; the register throws it back</figcaption>
+</figure>
           <p>MODE is a WARL field, and WARL is the spec&#x27;s arrangement for registers whose legal values vary by implementation: you may write anything, but what you read back must be one of the legal values. The privileged specification prescribes exactly this experiment in section 2.3.3: the range of supported values can be determined by attempting to write a desired setting and then reading to see if the value was retained. It adds the sentence that makes the experiment safe: implementations will not raise an exception on writes of unsupported values to a WARL field. An illegal write is not a fault. It is a question, and the hardware answers in the readback.</p>
           <p>The MODE=15 row is the one that had to be designed, not just run. The write went in while the register already held MODE=10, and the readback came back identical to the prior value. The nonzero prior matters: had the register held zero, an ignored write would read back zero, exactly what a write that stuck at zero would also produce, and the test could not tell the two answers apart. Running with a nonzero prior makes no-effect and stuck look different, which is what turns the absence of an effect into a finding. The module states the remaining boundary plainly: the readback cannot distinguish a wholly ignored write from every field independently legalized back to its prior value, so the claim is exactly the observed equality, nothing more.</p>
           <p>The probe idiom is three lines:</p>
@@ -2017,6 +2117,10 @@ uint64_t kept = read_satp();   /* the hardware&#x27;s answer */</code></pre>
         </div>
         <div class="research-body">
           <p>The module starts at boot and reads mstatus: 0xa00000000, with FS, the floating-point status field in bits 14:13, sitting at 0, Off. One csrs sets FS to 1, Initial. One fmv.d.x f1, x0, an instruction that moves a 64-bit value into a floating-point register, which counts as touching the unit, moves FS to 3, Dirty, and bit 63, SD, the summary dirty bit, lights with it. A second fmv.d.x leaves FS at 3: sticky. A csrc clears it back to the exact boot word. The trap counter never moved, across three byte-identical runs on QEMU 8.2.2.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-two-bits-that-spare-the-kernel-thirty-two-saves/the-two-bits-that-spare-the-kernel-thirty-two-saves.jpg" alt="A do-not-disturb hanger on a hotel door handle" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Do not disturb means no save needed.<br><span style="opacity:.7">Photo: Raysonho (Wikimedia Commons user Raysonho) (CC0)</span></figcaption>
+</figure>
           <p>The honest version of that sequence was not the first plan. The plan was to write f1 with FS at Off and watch it go Dirty. The hardware refused: at Off, a floating-point instruction does not execute and get recorded, it raises an illegal-instruction exception instead. Off is not a starting point, it is a locked door. The unit is disabled until software enables it at Initial, and only then does a write dirty it. The plan needed two more corrections of the same kind, and all three shipped in the module&#x27;s PROOF.md: the gloss said to clear FS through fcsr, but FS lives in mstatus bits 14:13; it named sstatus, but the module runs in M-mode and reads mstatus directly, sstatus being only the supervisor&#x27;s view of the same bits. A module that publishes its own corrections is one worth reading.</p>
           <p>Why do the two bits exist at all? A process&#x27;s floating-point state is thirty-two registers plus fcsr, 256 bytes of doubles the kernel must preserve across a context switch. Without FS, every switch saves and restores all of it, even for the integer-only process that never touched floating point. With FS, the trap handler reads one field and skips the spill when the answer is not Dirty. The privileged manual states the whole contract in section 3.1.6.7: the design anticipates that most context switches will not need to save or restore the floating-point state, so it provides a fast check via the SD bit. The four states are Off, where floating-point instructions trap; Initial, where the state holds the constant initial value; Clean, where the state matches the last context save; and Dirty, where the state may have changed since.</p>
           <p>The discipline the manual demands fits in three lines:</p>
@@ -2037,6 +2141,10 @@ if (fs == INITIAL) { zero_fpu(); }  /* constant, never memory */</code></pre>
         </div>
         <div class="research-body">
           <p>Give a level-1 leaf in an Sv39 page table a physical page number of 0x200, which is bit 9 standing alone. The alignment check looks at bits 8 down to 0, finds nothing set, and the translation proceeds. Now flip one bit: a PPN of 0x201. Bit 0 sits inside the checked range, and the translation raises a page fault. Bit 9 is the first bit of the superpage's base address; bit 8 is the last bit of the offset inside the superpage. The boundary is exactly that sharp, and 53 directed rows test the bit on each side of it, plus the all-ones and all-zeros corners.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-alignment-the-page-table-demands-of-itself/the-alignment-the-page-table-demands-of-itself.jpg" alt="A child fitting wooden blocks into the matching shaped holes of a sorter board" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Each shape fits only its own hole.<br><span style="opacity:.7">Photo: Shixart1985 (attribution required) (CC BY 2.0)</span></figcaption>
+</figure>
           <p>Sv39 is RISC-V's 39-bit virtual address scheme: three 9-bit page-number fields, vpn[2], vpn[1], and vpn[0], plus a 12-bit offset inside a 4 KiB page. A normal translation walks all three levels of the page table. A superpage leaf stops the walk early, at level 1 or 2, and the VPN fields the skipped levels would have consumed become the offset inside the large region instead. The finished physical address takes its low segments from the virtual address, not from the entry, so the entry's own low PPN bits, nine per skipped level, go unused. The tempting implementation ignores them. The specification refuses, in its own sentence from the virtual-address translation process, section 4.3.2: if i &gt; 0 and pte.ppn[i-1:0] is not zero, this is a misaligned superpage. A stray bit in a hand-built entry would otherwise describe a region whose base the entry does not fully determine, and the error would be silent. The hardware would rather fault than quietly use an address the entry does not fully describe.</p>
           <p>The check is three lines. The level tells you how many low PPN segments the leaf skipped, nine bits per level, so the mask is one shifted by nine times the level, minus one:</p>
 <pre><code>uint64_t mask = (1ULL &lt;&lt; (9 * level)) - 1;
@@ -2059,6 +2167,10 @@ if (ppn &amp; mask)
         </div>
         <div class="research-body">
           <p>Light a fuse. On a bare-metal RISC-V machine running M-mode firmware, one 64-bit MMIO write of mtime + 5000 ticks lands in the CLINT's mtimecmp register for hart 0 at 0x02004000. The board's mtime runs at 10 MHz, so 5000 ticks is exactly 500 microseconds: a half-millisecond fuse, lit in software. Set mstatus.MIE, the master interrupt switch, but write zero to mie, the register with one enable bit per interrupt source. Poll mip, the pending register. Bit 7, MTIP, reads set: the CLINT, the core-local interruptor, lifted it when the running clock crossed the compare. Two million reads of the cycle counter roll by, a window in which an enabled interrupt would have fired within a handful of instructions, and the trap count stays zero. The fuse burned, the alarm rang, and the hart did not move. Then set bit 7 of mie, the MTIE enable. Exactly one trap fires. mcause reads 0x8000000000000007: the top bit says interrupt, the low bits say code 7, machine timer interrupt. The handler's first duty is to write mtimecmp to all ones, lifting the compare above the running clock so the alarm cannot refire. The second quiet window confirms it: the trap count stays exactly one. Three runs, byte-identical transcripts.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-alarm-that-will-not-leave-its-room/the-alarm-that-will-not-leave-its-room.jpg" alt="A vintage twin-bell alarm clock" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The alarm rings, but the room stays shut</figcaption>
+</figure>
           <p>Why does the enable bit exist at all? The obvious machine needs only one: the pending bit says the alarm wants attention, so take it. The break is who writes what. The CLINT sets MTIP when the clock crosses the compare; no code writes that bit, the hardware raises it and only a disarm clears it. Firmware writes MTIE: that is the running code deciding, per source, whether it may be interrupted right now. Without the split, arming the timer would be taking it: the write that sets the deadline would guarantee a trap at the deadline, with no way to leave the alarm pending while the work in flight finishes. And the split is what makes the handler's discipline load-bearing rather than polite: clear the source first, then leave. With the gate still open and the source uncleared, the trap would refire the instant the handler returns. Phase C, the trap count staying exactly one after the all-ones write, is the test that the disarm actually disarmed.</p>
           <p>Then the module's sibling asked the next question, and the answer is the better half of the story. If MTIP is just bit 7 of the pending register, can the alarm be handed down to S-mode, where a kernel would receive it? The backlog item assumed yes: set bit 7 of mideleg, the machine interrupt delegation register, and the timer interrupt should arrive in supervisor mode. The measurement said no. mideleg is a WARL register, write any value and read back a legal one, and on this machine bit 7 is read-only zero: writes of 0x0, 0x80, and 0x14c4 all read back 0x1444, the bit dropped every time, matching the earlier mideleg-warl module's published delegable mask. The module dropped the hart to S-mode anyway and armed the timer 500 ticks out. Exactly one trap, in M-mode, mcause 0x8000000000000007, zero S-mode arrivals. On QEMU 8.2.2's virt board, the machine timer interrupt has no other room to go to. The honest scope: this is the emulator's CSR model, not silicon; real silicon publishes its own delegable set.</p>
           <p>The checks that carry the argument, verbatim from the two modules:</p>
@@ -2080,6 +2192,10 @@ check(s_regs[0] == 0, "an S-mode trap fired: the interrupt was delegated");</cod
         </div>
         <div class="research-body">
           <p>Boot a bare-metal RISC-V machine in M-mode (machine mode, the most privileged; firmware runs here). Set mstatus.MIE, the master interrupt switch, and write zero to mie, the register with one enable bit per interrupt source. Now ring the bell: write 1 to the CLINT's msip register for hart 0. The CLINT, the core-local interruptor that raises software interrupts, lifts the MSIP bit, bit 3 of the pending register mip. Read mip: 0x8. Then wait. Two million reads of the cycle counter roll by, a window in which an enabled interrupt would have fired within a handful of instructions, and the trap count stays zero, mip still 0x8. The bell is ringing and the hart does not move. One more write: set bit 3 of mie, the MSIE enable. Exactly one trap fires. mcause reads 0x8000000000000003: the top bit says interrupt, the 3 says machine software interrupt. The handler clears the CLINT's msip, and the world goes quiet: the window after shows no re-delivery.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bell-and-the-switch/the-bell-and-the-switch.jpg" alt="A brass hand bell resting on a wooden table" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The bell rings; the switch decides</figcaption>
+</figure>
           <p>Why two bits for one interrupt? The obvious machine needs only one: the pending bit says the interrupt wants attention, so take it. The break is who writes what. The CLINT sets MSIP when someone writes its msip register: that is the outside world talking. Firmware writes MSIE: that is the hart deciding, per source, whether it may be interrupted right now. Without the split, a handler could never keep the timer interrupt armed while it services a software interrupt, because arming would be taking. And the split is what makes a level-triggered source safe: the pending bit stays set until the handler clears the source, so with the gate already open the trap would refire the instant the handler returns. The discipline that follows is to clear the source first, then leave. This is not a convention. A public bug report against an open-source RISC-V core's testbench described its MSIP stuck high from reset, so the first time firmware opened the gate the hart took a machine software interrupt nobody had rung for. Hardware logic, not habit.</p>
           <p>The trap rule, from the privileged architecture's own text: interrupt i is taken when mstatus.MIE is set and both mie[i] and mip[i] are set. Three bits, one decision. mie is the enable half, written by the running code; mip is the pending half, written by the world, here by a 32-bit MMIO write to the CLINT at 0x02000000. The test checked the contract from both directions. With MIE set and mie at 0x0, a pending MSIP must never trap; setting mie bit 3 while MSIP is still pending must deliver the interrupt at the next instruction boundary. The machine timer was disarmed at startup, its compare register set to all ones, so the software interrupt was the only source that could ever fire; MIE stayed set for the whole run, so mie.MSIE was the only gating variable.</p>
           <p>The four checks that carry the argument, verbatim from the module:</p>
@@ -2101,6 +2217,10 @@ check(trap_count == 1, "trap_count != 1 after phase-B enable");</code></pre>
         </div>
         <div class="research-body">
           <p>Run the same instruction twice. Boot a bare-metal RISC-V machine, drop from machine mode into supervisor mode, and execute ecall, the instruction that asks the layer above for a service. With the medeleg register at zero, the trap lands in the machine-mode handler: its cause register reads mcause = 9, the code for an environment call from supervisor mode. Write 0x200 to medeleg, which is bit 9 set, and execute the identical ecall again. This time the machine handler never fires. The supervisor-mode handler catches the trap instead, with scause = 9. Same instruction, two destinations, one bit of difference.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-reroutes-a-trap/the-bit-that-reroutes-a-trap.jpg" alt="Railway points where two tracks merge into one" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One switch sends the train down another track</figcaption>
+</figure>
           <p>The bit exists because of who pays for every trap. The kernel runs in supervisor mode, and a system call is the most frequent request a machine fields: every file read, every byte on the terminal, every new process. Without delegation, each of those traps would rise to machine mode first, usually firmware, which would then have to forward it back down to the kernel that knows what to do with it. The obvious fix is a forwarder in firmware, but it sits on the hottest path in the system and would have to understand the kernel's business. Delegation removes the middleman: bit 9 of medeleg says supervisor environment calls belong to the supervisor, and the trap goes straight there. Trust, expressed as one bit.</p>
           <p>The mechanism, step by step. RISC-V runs code in privilege modes: M-mode, machine mode, the most privileged, where firmware boots; and S-mode, supervisor mode, where an operating system kernel runs. A trap is the hardware interrupting whatever is running and jumping to a handler; each handler reads its mode's cause register, mcause or scause, to learn what happened. medeleg is an M-mode register with one bit per trap cause: when a bit is set, traps of that cause are delegated to S-mode instead of landing in M-mode. The test checks the contract from both sides. Phase one writes 0 to medeleg, reads back 0, and demands exactly one trap in the M-mode handler with mcause = 9 and the resume address mepc pointing at the captured ecall address. Phase two writes 0x200, reads back bit 9 set, and demands exactly one trap in the S-mode handler with scause = 9 and the supervisor's own resume address sepc at the same ecall.</p>
           <p>The check that carries the argument reads like a receipt:</p>
@@ -2123,6 +2243,10 @@ check(s_regs[2] == SCAUSE_S_ECALL,
         </div>
         <div class="research-body">
           <p>Take virtual page number 0x12345, mapped with its page-table G bit set. Walk it under address-space IDs 1, 2, and 9: all three land on the same physical address, (0xABCDE shifted left by 12) plus the 0x678 offset, and every walk reports global equals 1. The address-space ID is never consulted. Now the contrast: the same virtual page number with G clear under ASID 1 lands on a page built from 0x11111, and under ASID 2 on a page built from 0x22222. Same number, different pages, because without the G bit the address-space name is part of the key.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-survives-the-context-switch/the-bit-that-survives-the-context-switch.jpg" alt="The Earth seen from space, the Blue Marble" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One view that spans every address space.</figcaption>
+</figure>
           <p>Here is the cost it removes. The kernel is mapped at the same virtual addresses in every process, and every context switch loads a new satp register carrying a new ASID. A full TLB flush on every switch would throw away the kernel's translations too, and each one costs three page-table memory reads to rebuild, while the TLB holds only dozens to hundreds of entries. The alternatives are flushing everything every time or storing the kernel's mappings once per address space, the same entry wearing N name tags. The G bit says: this mapping exists in all address spaces, store it once, and when the fence names a single ASID, leave it alone.</p>
           <p>The privileged specification says it plainer than I can. "Global mappings were devised to reduce the cost of context switches." And then the sentence that carries the whole contract: "failing to mark a global mapping as global merely reduces performance, whereas marking a nonglobal mapping as global is an error." G is a performance promise, not a correctness one, and lying in the wrong direction breaks isolation, because one process would start reaching another's pages through a shared cache entry.</p>
           <p>The entire rule fits in one line of the test bench, taken verbatim from the lookup it verified:</p>
@@ -2144,6 +2268,10 @@ check(s_regs[2] == SCAUSE_S_ECALL,
         </div>
         <div class="research-body">
           <p>Yesterday this blog measured the floor for reading the cycle counter. This note asks the opposite question: what happens when you stop it? One write of 0x1 to the mcountinhibit CSR, setting its CY bit, and one thousand back-to-back reads of mcycle came back identical, every one of them 0x0, a delta of exactly zero. One write of 0x0 to clear the bit, and the counter woke up: four samples, strictly increasing, with consecutive deltas in the tens of thousands of ticks. The brake pedal works.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-brake-pedal-on-the-stopwatch/the-brake-pedal-on-the-stopwatch.jpg" alt="A Casio stopwatch counting hundredths of a second" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Hiding a counter never stops the counter.</figcaption>
+</figure>
           <p>But why would a CPU ship a brake pedal for its own stopwatch? The obvious move is to simply not read the counter, or to hide it with mcounteren, and skip the register. The privileged manual breaks that answer in one sentence: mcounteren decides only who may see the counters, and the counters keep incrementing even when nobody can read them. Hiding the stopwatch does not stop it. It still ticks, it still burns power, and any reading you take later is stale by the whole interval you skipped. mcountinhibit is the other promise, the one that actually halts the mechanism. The manual gives two reasons for the brake. The first is energy: a counter nobody is reading is heat and switching power for nothing, so M-mode firmware parks the ones it does not need. The second is atomic sampling, and this is the elegant one: one CSR stops every counter at once, so the cycle count and the instruction count can be read at leisure, knowing neither advanced in the gap between the reads. Without the brake, the two samples are taken a few instructions apart, and the pair lies about the same instant. RustSBI's performance-monitoring documentation says the quiet part out loud: from supervisor mode these counters can only be started, stopped, or configured through mcountinhibit.</p>
           <p>The whole mechanism is one CSR write. Three lines, taken verbatim from the module:</p>
           <pre><code>static void write_mcountinhibit(unsigned long v) {
@@ -2163,6 +2291,10 @@ check(s_regs[2] == SCAUSE_S_ECALL,
         </div>
         <div class="research-body">
           <p>Ask the operating system a question most programs never ask: how much memory can I actually have? The sbrkoom test asks it the blunt way: call sbrk(4096), the system call that moves the heap's break one page at a time, until the kernel says no. On a 128 megabyte QEMU machine the answer came back as a measured number: 32,468 pages, 132,988,928 bytes, about 126.8 megabytes. The break started at 0x4000 and stopped at 0x7ED8000, exactly 32,468 pages later, and a second sbrk(4096) still returned -1, so the ceiling is stable, not a hiccup.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-page-that-was-never-there/the-page-that-was-never-there.jpg" alt="A motel with a NO VACANCY sign" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">No free page? The allocator posts this sign.</figcaption>
+</figure>
           <p>Here is why the kernel cannot lie about this number. The test used the eager path, which is also the default: sbrk(n) calls sys_sbrk(n, SBRK_EAGER). The syscall calls growproc, growproc calls uvmalloc, and uvmalloc calls kalloc once per page, mapping each physical frame into the page table before the break moves. The -1 you finally see is kalloc finding its free list empty. No policy is consulted and no limit is configured anywhere; the pool of physical pages is literally exhausted. The machine holds 128 megabytes, the test drank 132,988,928 bytes of it, and the roughly 1.2 megabytes left over are the kernel, its page tables, and everything else alive at boot.</p>
           <p>The obvious alternative is the one most programs live with: ask malloc and trust the number. On a stock Linux box that number can be fiction. The default overcommit mode is heuristic: the kernel approves the mapping and only discovers the shortage when you touch the pages, and then the OOM killer picks a victim and shoots it. The figure malloc hands you is a promise; the truth arrives later, as a dead process. My xv6 tree even ships the lazy twin of that design: sbrklazy moves the break without allocating a thing. The test pinned only the eager ceiling, and the eager one is the honest one: every page paid for in physical frames before the break moves, so the number it reports is measured, not promised.</p>
           <p>The loop is the whole argument, six lines, taken verbatim from the test:</p>
@@ -2185,6 +2317,10 @@ check(s_regs[2] == SCAUSE_S_ECALL,
         </div>
         <div class="research-body">
           <p>Base RISC-V, RV32I, has no multiply instruction. The mul instruction lives in the M extension, which is optional, and a core that skips M still has to multiply. The software that does it is what compilers emit and what this lab writes by hand. The obvious move is to write a * b and trust the compiler; on an M-less core the compiler has no multiply to emit, so it calls a library routine instead. The lab takes the harder road on purpose: it bans the * operator from the source entirely, then checks the compiled object to make sure the compiler did not smuggle one back in. The claim has to hold beneath the abstraction, so the check runs beneath the abstraction.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-multiply-with-no-multiply/the-multiply-with-no-multiply.jpg" alt="An abacus" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">No multiply instruction, just place value discipline.</figcaption>
+</figure>
           <p>One you can check by hand. Take A = 0x00020003 and B = 0x00040005. Split each into 16-bit halves: a1 = 2, a0 = 3, b1 = 4, b0 = 5. Schoolbook multiplication is the grade-school kind: multiply every pair of digits and add the partial products at their positions. The expansion is A*B = a0*b0 + (a0*b1 + a1*b0)*2^16 + a1*b1*2^32. Modulo 2^32, the last term carries a factor of 2^32 and vanishes, and of the middle term only the low 16 bits survive the 2^16 scaling. So a0*b0 = 15, and the cross term is 3*4 + 2*5 = 22, times 65536 is 1,441,792. Add 15: 1,441,807, which is 0x16000F. Check it against the real multiply: 131,075 * 262,149 = 34,361,180,175, and mod 2^32 that is exactly 1,441,807. The shifts and adds agreed with the hardware multiply, without ever being one.</p>
           <p>Each 16-by-16 partial product is exact in 32 bits, built the way lab/126 builds it: for each set bit i of one half, add the other half shifted left by i into a 32-bit accumulator. The lab's function is called mullo32, and the code is the insight here:</p>
           <pre><code>uint32_t r = p0;
@@ -2205,6 +2341,10 @@ return r;</code></pre>
         </div>
         <div class="research-body">
           <p>One page at virtual address 0x40000000, mapped execute-only: the flags read valid, executable, accessed, dirty, and no read bit. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it; this entry may be executed but not read. Two phases, one load instruction. Phase A runs with MXR explicitly clear: the load raises exactly one trap, scause 0xd, the load page fault, with stval holding the faulting address and sepc pointing at the labeled load. t0 was poisoned to zero right before the load; after the handler advanced sepc past the instruction and returned, t0 was still zero. That is the part that makes it a proof rather than a story: the poison proves the load never completed. Phase B sets MXR with one csrs to sstatus: the identical load from the identical address returns the canary, 0xe4ec0d1edeadbeef, and the trap counter never moves past one. The only thing that changed between a fault and a success was one bit.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-reads-execute-only-pages/the-bit-that-reads-execute-only-pages.jpg" alt="A hallway seen through a one-way mirror" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One bit turns the mirror into a window.</figcaption>
+</figure>
           <p>The natural objection: who marks code execute-only and then reads it? The privileged specification's own commentary answers. Section 4.1.1.6, checked in two copies of the manual this week: MXR was conceived for M-mode routines emulating missing hardware features, misaligned loads and stores being the example. A trap-and-emulate handler has to fetch the very instruction it is about to fake, and if the program's code pages are execute-only, the handler needs a read path that does not relax the page. If you own the pages, the obvious move is to mark them readable too. xv6 does exactly that: its vm.c maps kernel text with read and execute together, so the bit would change nothing there (checked in the tree this week). MXR earns its keep when the code is not yours to re-mark. It is the emulator's bit.</p>
           <p>MXR is bit 19 of sstatus, and the whole mechanism is one CSR write: the hardware's load rule becomes readable or executable instead of readable. The code is the insight here:</p>
           <pre><code>/* Phase A: gate closed. The ld below faults with scause 0xd. */
@@ -2226,6 +2366,10 @@ __asm__ volatile("csrs sstatus, %0" :: "r"(SSTATUS_MXR));</code></pre>
         </div>
         <div class="research-body">
           <p>Take a physical page number, say 0x80000, and an offset, say 0xabc. The physical address is 0x80000abc: the page number shifted left by 12, ORed with the offset. A physical page number names which 4 KiB page holds your byte; the offset is the low 12 bits, which pick the byte inside that page. Everything this lab proves hangs on that split.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-twelve-bits-the-walk-never-touches/the-twelve-bits-the-walk-never-touches.jpg" alt="A Hayabusa Shinkansen bullet train at a platform" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The offset rides the walk like an express.</figcaption>
+</figure>
           <p>The part that keeps pulling me back is not the arithmetic, it is what the arithmetic refuses to do. A page-table walk never rewrites the low bits of your address. The privileged specification says it plainly in section 4.3.2: the page offset of the physical address equals the page offset of the virtual address. The tables decide which page your data lives on; the offset rides through the whole walk untouched.</p>
           <p>It generalizes beautifully, and the invariant is the same at every scale. When the walk finds its leaf one level up, a 2 MiB megapage, the pass-through window grows: the upper page-number bits shift by 21 and the low 21 bits of the virtual address are copied verbatim, with the hardware faulting on a misaligned superpage if the low 9 bits of the page number are not zero. At two levels up, a 1 GiB page, the top bits shift by 30 and 30 bits of your address ride through, the low 18 required zero. Translation replaces the page number and copies everything below it untouched. The bigger the page, the more of your address the hardware trusts you with.</p>
           <p>The code is the insight here:</p>
@@ -2247,6 +2391,10 @@ __asm__ volatile("csrs sstatus, %0" :: "r"(SSTATUS_MXR));</code></pre>
         </div>
         <div class="research-body">
           <p>Take a page-table entry with R=1, W=1, X=0, U=0. Read the flags the way the hardware does: readable, writable, not executable, and owned by the supervisor, since U=0 marks a supervisor page. A page-table entry is the 64-bit word the memory-management unit reads on every access to decide what a virtual page maps to and what may be done with it. Now run a load instruction in supervisor mode against this page. The verdict comes from three questions asked in a fixed order. The load passes all three and proceeds. Run the same load from user mode and it dies at the second question.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-gate-with-three-locks/the-gate-with-three-locks.jpg" alt="Padlocks chained along a bridge railing" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Three checks in a row, then you pass.</figcaption>
+</figure>
           <p>The questions, in the order the specification's walk step applies them. First, the contradiction check: if W=1 and R=0, the access faults before any permission logic runs. Second, the privilege check: with the SUM bit clear (the lab states this boundary; SUM is the bit that would let the supervisor read user pages), a U=0 page is closed to user mode and a U=1 page is closed to supervisor mode. Third, the grant: a load needs R, a store needs W, an instruction fetch needs X. An entry with R=W=X=0 is not a leaf at all but a pointer to the next table level, so the grant gives it nothing, which agrees with the truth that it grants nothing.</p>
           <p>The obvious design skips the first question and lets the grant logic sort it out: a page marked W=1, R=0 would simply fail loads and pass stores, writable-but-not-readable. The reason the specification bans the encoding instead is the invariant it protects: every writable page is also readable. If the contradiction could be written into a table, some piece of hardware would have to decide what a store to such a page means, and no two implementations would decide the same way. The fault keeps the contract free of contradictions, so no hardware ever has to interpret one.</p>
           <p>The code is the insight here:</p>
@@ -2268,6 +2416,10 @@ if (w &amp;&amp; !r)
         </div>
         <div class="research-body">
           <p>Take the word 0x20000007 and read it as a page-table entry. Bit 0 is set, so the entry is valid. Bit 1: readable. Bit 2: writable. Bits 3 through 9 are clear. Shift right by 10, mask to 44 ones, and the top field reads back 0x80000. A valid, readable, writable page at physical page 0x80000. Every page fault your kernel will ever handle starts with exactly this parsing step: xv6's walk() reads each level's entry to pull out the page number and check the permission bits. A misdecoded entry is a wrong mapping or a missed fault, so the parsing gets its own proof, small and focused, nothing else.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-ten-fields-in-one-word/the-ten-fields-in-one-word.jpg" alt="An opened Swiss Army knife with its tools fanned out" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Ten tools in one handle, one word.</figcaption>
+</figure>
           <p>The obvious way to parse a fixed bit layout in C is a struct with bitfields, one named field per entry part, widths in the declaration. The honest reason not to is that C leaves bitfield layout implementation-defined. The compiler is free to pack the fields in an order you did not ask for, so the struct expresses a hope, not a contract. The lab decodes with shift-and-mask identities instead: one shift and one mask per field, every boundary explicit in the source. Shifting right by k moves bit k into position 0; masking with a run of ones keeps exactly the field width and clears everything above. The mechanism is portable to every ISA; only the boundaries come from the RISC-V contract.</p>
           <p>The layout is the privileged specification's own: 44 bits of physical page number in bits 53:10, two bits reserved for supervisor software in 9:8, then the eight flags, dirty, accessed, global, user, execute, write, read, valid. The ten field masks are disjoint and cover bits 53:0 with no overlap and no gaps, so the fields partition the word, and shifting each field back to its position and ORing restores the entry exactly. That partition is the whole invariant: encode(decode(pte)) equals pte, and the test checks it on every one of the 4.3 billion cases.</p>
           <p>The code is the insight here:</p>
@@ -2289,6 +2441,10 @@ f.ppn = (pte &gt;&gt; 10) &amp; 0xFFFFFFFFFFFULL;   /* bits 53:10: physical page
         </div>
         <div class="research-body">
           <p>A bare-metal program ran the same trap twice and read the same answer both times. M-mode delegated supervisor ecalls to S-mode with medeleg bit 9, opened the whole address space with one PMP NAPOT entry, and dropped into an S-mode payload through sret. The payload issued two ecalls. Each trap landed in the S-mode handler, which read three values: SPP = 1, scause = 9, sepc = 0x800002a8, identical on both traps. The word sitting at that address was 0x73, the ecall instruction itself.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-remembers-who-called/the-bit-that-remembers-who-called.jpg" alt="A metal bookmark with a pink tassel" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">SPP is the hardware&#x27;s bookmark for sret.</figcaption>
+</figure>
           <p>SPP is bit 8 of sstatus, and the hardware writes it at the instant of the trap: the privilege mode the hart was in just before the trap. In the same breath it copies the old interrupt-enable bit into SPIE and clears SIE, so no interrupt can re-enter the handler mid-stream. When the handler executes sret, the reverse happens: the privilege mode is restored from SPP, SIE from SPIE, then SPIE is set to 1, SPP cleared to 0, and the hart resumes at sepc. Push on trap, pop on sret. The trap path has a call stack exactly one frame deep, and the hardware maintains it.</p>
           <p>Why does the hardware keep this record? Because one S-mode handler fields traps from two very different callers, and nothing else remembers which one called. The xv6 source tree checks it the way the hardware means it to be checked. In usertrap(), near the top of the function: if ((r_sstatus() &amp; SSTATUS_SPP) != 0) panic("usertrap: not from user mode"). In kerneltrap(): if ((sstatus &amp; SSTATUS_SPP) == 0) panic("kerneltrap: not from supervisor mode"). And usertrapret() deliberately clears SPP to 0, with the comment "clear SPP to 0 for user mode", before sret returns to the process. The hardware record is the only one that cannot be forged or miscomputed, because it is written at the exact instant of the trap. Without it the handler would have to infer the caller from sepc or saved state, and a kernel should not guess about who it was talking to.</p>
           <p>One wrinkle, and it is the honest kind: one bit is one frame. Every trap overwrites SPP, so a trap taken inside the handler destroys the first record. The module's handler therefore reads sstatus before it dispatches on scause, copying the bit into a sticky per-trap slot. The code is the insight here:</p>
@@ -2327,6 +2483,10 @@ andi t1, t1, 1</code></pre>
         </div>
         <div class="research-body">
           <p>A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction's address into the mepc register and jumps to your handler. When the handler returns, the CPU resumes at whatever mepc points to. If the handler changed nothing, the CPU re-runs the same bad load, traps again, and you have an infinite loop. So the handler's most basic job is to move mepc past the dead instruction before returning.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-four-bytes-the-trap-handler-skips/the-four-bytes-the-trap-handler-skips.jpg" alt="A tape measure showing inch subdivisions" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Measure the instruction before advancing the PC.</figcaption>
+</figure>
           <p>How far past? RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits of the first parcel: anything but 11 there is a 16-bit compressed instruction, and 11 starts the longer forms. A handler that blindly adds 4 will land in the middle of an instruction whenever the faulting one was compressed, and the CPU will try to execute half an instruction.</p>
           <p>This module pins the fault site to exactly 4 bytes, twice over. First it assembles the faulting load under .option norvc, which tells the assembler to emit no compressed instructions in that region. Then it refuses to trust that promise alone: it captures the address on both sides of the faulting load with in-assembly numeric local labels, la t0, 1f before and 1: after, and the test asserts at runtime that the two addresses differ by exactly 4.</p>
           <p>Why in-assembly labels instead of a C labels-as-values label? A C label only stays where the programmer put it if a computed goto can reach it. With no computed goto in range, -O2 is free to merge blocks and move the label, and the captured address follows the label to its new home. An assembler numeric label is resolved by the assembler exactly where written. That is the whole reason, and the construction is trustworthy because of it.</p>
