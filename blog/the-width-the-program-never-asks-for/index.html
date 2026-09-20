@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Width the Program Never Asks For &middot; Blog &middot; Chris Dillinger</title>
@@ -1184,9 +1184,9 @@
           <p>The negotiation is a single instruction: vsetvli. Give it how many elements remain, plus the element width and the register grouping you want, and it writes back the vl you actually get. The loop re-asks every iteration and advances by whatever came back. The two lines that carry the whole discipline, inside a loop that runs while elements remain:</p>
           <pre><code>    unsigned long vl = vsetvli_e32m1(n);
     a += vl; b += vl; c += vl; n -= vl;</code></pre>
-          <p>VLMAX, the most elements one instruction can touch, is the register width times the number of registers you group, divided by the element width: VLEN times LMUL divided by SEW. At VLEN 128 with one register and 32-bit elements that is four, exactly what the machine reported. The spec's contract is three lines: vl equals the request when the request fits, vl equals VLMAX when the request is huge, and in between, an implementation may hand back fewer lanes to balance the final two iterations. That middle clause is why the loop re-asks every time instead of caching the first answer. Ten elements on a four-lane machine go 4, 4, 2. There is no scalar cleanup loop at the end. The tail vanishes into the discipline.</p>
-          <p>On x86 the width is baked into the opcode: xmm, ymm, and zmm are different instructions, so one binary cannot be width-agnostic and libraries ship several compiled paths with runtime dispatch. RISC-V refused that bargain. The width lives in the machine, not the program, and vsetvli is the negotiation at the boundary. Two footnotes, both honest. At machine mode I had to set the VS bits in mstatus before any vector instruction would execute: the extension is gated even when present. And QEMU's adjustable VLEN is a test convenience. Real silicon fixes VLEN per chip, which is exactly why the negotiation matters.</p>
-          <p>One sentence to keep: RISC-V vector code never asks the machine how wide it is, it asks how many elements it may do, and the machine answers honestly, every single iteration.</p>
+          <p>VLMAX, the most elements one instruction can touch, is the register width times the number of registers you group, divided by the element width: VLEN times LMUL divided by SEW. At VLEN 128 with one register and 32-bit elements that is four, exactly what the machine reported. The spec's contract is three lines: vl equals the request when the request fits, vl equals VLMAX when the request is huge, and in between, an implementation may hand back fewer lanes to balance the final two iterations. That middle clause is why the loop re-asks every time instead of caching the first answer. Ten elements on a four-lane machine go 4, 4, 2. There is no scalar cleanup loop at the end. The leftover elements are handled by the same re-asking loop.</p>
+          <p>On x86 the width is baked into the opcode: xmm, ymm, and zmm are different instructions, so one binary cannot be width-agnostic and libraries ship several compiled paths with runtime dispatch. RISC-V does not bake the width into the opcode. The width lives in the machine, not the program, and vsetvli is the negotiation at the boundary. Two footnotes, both honest. At machine mode I had to set the VS bits in mstatus before any vector instruction would execute: the extension is gated even when present. And QEMU's adjustable VLEN is a test convenience. Real silicon fixes VLEN per chip, which is exactly why the negotiation matters.</p>
+          <p>One sentence to keep: RISC-V vector code never asks the machine how wide it is, it asks how many elements it may do, and the machine returns the vl, every single iteration.</p>
         </div>
       </article>
   </main>

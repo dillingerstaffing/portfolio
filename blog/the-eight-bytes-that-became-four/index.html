@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Eight Bytes That Became Four &middot; Blog &middot; Chris Dillinger</title>
@@ -1189,10 +1189,10 @@ linked, relaxation on:
 jal     80000016 &lt;target&gt;      ; 0x00e000ef
 .text: 40 bytes -&gt; 36 bytes</code></pre>
           <p>The compiler writes the call that works everywhere because it writes blind. target() lives in another translation unit, and at compile time its address is genuinely unknowable. So the compiler emits the sequence that reaches anywhere: auipc covers plus or minus two gigabytes, jalr carries the low twelve bits, and together they can call any address in a flat four-gigabyte window. To ask for a short jump at compile time is to ask the compiler to know the layout, the one thing it cannot see.</p>
-          <p>The linker is the one moment in the whole toolchain when someone sees the entire layout at once. The RISC-V ELF psABI names the rule: an AUIPC plus JALR pair may be relaxed to a single JAL when the procedure sits within minus one mebibyte to plus one mebibyte minus two of the call site. When that distance test passes, the linker deletes the auipc and stitches the jump. Nothing else moves except the bytes after the deleted instruction, whose addresses the linker fixes up. Eight bytes in, four bytes out, decided by a range check.</p>
+          <p>The linker is the one moment in the whole toolchain when someone sees the entire layout at once. The RISC-V ELF psABI names the rule: an AUIPC plus JALR pair may be relaxed to a single JAL when the procedure sits within minus one mebibyte to plus one mebibyte minus two of the call site. When that distance test passes, the linker deletes the auipc and emits the single jal. Nothing else moves except the bytes after the deleted instruction, whose addresses the linker fixes up. Eight bytes in, four bytes out, decided by a range check.</p>
           <p>How does the linker know it is allowed to touch the sequence at all? The relocation table says so. The auipc line carries two relocations. R_RISCV_CALL_PLT names target(), the destination. R_RISCV_RELAX points at *ABS*, absolute nothing. It names no destination at all. The relaxation annotation is a permission slip taped to the instruction sequence itself, separate from the relocation that says where the call goes. The address answers where. The slip answers whether the sequence may be rewritten.</p>
-          <p>Two footnotes from the spec text, both confirmed in the same session. First, R_RISCV_CALL itself is deprecated; the psABI says to use R_RISCV_CALL_PLT instead, and the compiler obliged, emitting CALL_PLT even for a plain static non-PIC call. Second, the assembler manual notes that a region marked .option relax emits R_RISCV_RELAX even when the linker would not relax. The sequence asks. The linker answers. The mark is a request, not a promise.</p>
-          <p>One sentence to keep: the compiler writes the call that works everywhere, and the linker, once it finally knows the addresses, writes the call that was always meant.</p>
+          <p>Two footnotes from the spec text, both confirmed in the same session. First, R_RISCV_CALL itself is deprecated; the psABI says to use R_RISCV_CALL_PLT instead, and the compiler obliged, emitting CALL_PLT even for a plain static non-PIC call. Second, the assembler manual notes that a region marked .option relax emits R_RISCV_RELAX even when the linker would not relax. The compiler marks the sequence as a candidate; the linker decides. The mark is a request, not a promise.</p>
+          <p>One sentence to keep: the compiler writes the call that works everywhere, and the linker, once it finally knows the addresses, replaces the pair with the single jal.</p>
         </div>
       </article>
   </main>

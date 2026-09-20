@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>It&#x27;s a Trap! &middot; Blog &middot; Chris Dillinger</title>
@@ -1209,7 +1209,7 @@
 <span class="cl">        sd t0, 112(a0)</span>
 </code></pre></div>
 </div>
-          <p>sscratch is a CSR the handler may clobber, so a0 is parked there and a0 is pointed at the trapframe, the per-process save area. The stores begin, one per register. Thirty stores later the parked a0 is recovered from sscratch and stored last. Nothing about this is automatic: miss one register and the program resumes with a stranger&#x27;s value in it, failing far from the trap with no trace of the cause. Every word the program owned now sits in the trapframe, and the registers are free.</p>
+          <p>sscratch is a CSR the handler may clobber, so a0 is parked there and a0 is pointed at the trapframe, the per-process save area. The stores begin, one per register. Thirty stores later the parked a0 is recovered from sscratch and stored last. Nothing about this is automatic: miss one register and the program resumes with the wrong value in it, failing far from the trap with no trace of the cause. Every word the program owned now sits in the trapframe, and the registers are free.</p>
           <p>But C still cannot run. It needs a stack, a page table, and a way to be reached. The tail of uservec builds all three, still in assembly:</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trampoline.S, uservec tail (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
@@ -1288,7 +1288,7 @@
 <span class="cl">        sret</span>
 </code></pre></div>
 </div>
-          <p>The mirror image of the entry. The user page table is reinstalled, then the loads rebuild every register from the trapframe, a0 last, because a0 was needed to point at the trapframe until the final load. That last load is the quiet payoff of the whole trip: trapframe-&gt;a0 holds 2, the write&#x27;s return value, so the program&#x27;s a0 comes back carrying its answer. Then sret, and the hardware keeps its half of the contract in reverse: privilege drops to user because SPP is 0, interrupts turn on because SPIE is 1, the program counter becomes sepc, the instruction after the ecall. The program continues and never knew it left.</p>
+          <p>The mirror image of the entry. The user page table is reinstalled, then the loads rebuild every register from the trapframe, a0 last, because a0 was needed to point at the trapframe until the final load. That last load is the point of the whole trip: trapframe-&gt;a0 holds 2, the write&#x27;s return value, so the program&#x27;s a0 comes back carrying its answer. Then sret, and the hardware keeps its half of the contract in reverse: privilege drops to user because SPP is 0, interrupts turn on because SPIE is 1, the program counter becomes sepc, the instruction after the ecall. The program continues and never knew it left.</p>
           <p>One sentence to keep: a trap is a handoff in strict order, hardware to assembly to C and back, and the trapframe is the document they all sign. The assembly writes it, the C code reads and edits it, the assembly restores from it.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/trap.c" target="_blank" rel="noopener">kernel/trap.c</a> &middot; <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/trampoline.S" target="_blank" rel="noopener">kernel/trampoline.S</a> &middot; <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/syscall.c" target="_blank" rel="noopener">kernel/syscall.c</a></p>
         </div>

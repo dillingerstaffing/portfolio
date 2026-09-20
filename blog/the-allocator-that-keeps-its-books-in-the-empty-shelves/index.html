@@ -3,28 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
-  <title>The Allocator That Keeps Its Books in the Empty Shelves &middot; Blog &middot; Chris Dillinger</title>
+  <title>The Allocator That Stores Its Free List in the Free Pages &middot; Blog &middot; Chris Dillinger</title>
   <meta name="description" content="xv6&#x27;s kalloc.c is 76 lines and keeps no metadata of its own: the free list is threaded through the free pages themselves, so handing you a page costs one pointer read. Proved firsthand against a 64 MiB arena, lock discipline included." />
   <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/" />
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="Chris Dillinger" />
   <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/" />
-  <meta property="og:title" content="The Allocator That Keeps Its Books in the Empty Shelves · Blog · Chris Dillinger" />
+  <meta property="og:title" content="The Allocator That Stores Its Free List in the Free Pages · Blog · Chris Dillinger" />
   <meta property="og:description" content="xv6&#x27;s kalloc.c is 76 lines and keeps no metadata of its own: the free list is threaded through the free pages themselves, so handing you a page costs one pointer read. Proved firsthand against a 64 MiB arena, lock discipline included." />
   <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/the-allocator-that-keeps-its-books-in-the-empty-shelves-social.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Empty wooden archive shelves in a 1930s reading room" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="The Allocator That Keeps Its Books in the Empty Shelves · Blog · Chris Dillinger" />
+  <meta name="twitter:title" content="The Allocator That Stores Its Free List in the Free Pages · Blog · Chris Dillinger" />
   <meta name="twitter:description" content="xv6&#x27;s kalloc.c is 76 lines and keeps no metadata of its own: the free list is threaded through the free pages themselves, so handing you a page costs one pointer read. Proved firsthand against a 64 MiB arena, lock discipline included." />
   <meta name="twitter:image" content="https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/the-allocator-that-keeps-its-books-in-the-empty-shelves-social.jpg" />
   <meta name="twitter:image:alt" content="Empty wooden archive shelves in a 1930s reading room" />
   <meta property="article:published_time" content="2026-09-19T00:00:00-04:00" />
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Allocator That Keeps Its Books in the Empty Shelves", "datePublished": "2026-09-19", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/the-allocator-that-keeps-its-books-in-the-empty-shelves-social.jpg"}</script>
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "The Allocator That Stores Its Free List in the Free Pages", "datePublished": "2026-09-19", "author": {"@type": "Person", "name": "Chris Dillinger"}, "mainEntityOfPage": "https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/", "image": "https://dillingerstaffing.github.io/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/the-allocator-that-keeps-its-books-in-the-empty-shelves-social.jpg"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
   <script>
@@ -1171,7 +1171,7 @@
   <main class="post-wrap">
 <article class="research-note">
         <div>
-          <h3>The Allocator That Keeps Its Books in the Empty Shelves</h3>
+          <h3>The Allocator That Stores Its Free List in the Free Pages</h3>
           <div class="layer-strip"><div class="layer-strip-caption"><span>Relevance by layer</span><a class="card-proof" href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/158-kalloc" target="_blank" rel="noopener">systems-lab: lab/158-kalloc, xv6 kalloc proved firsthand <span aria-hidden="true">↗</span></a></div><div class="layer-slot dim"><div class="layer-name">ISA<button class="why-marker" type="button" data-wigmore="the-allocator-that-keeps-its-books-in-the-empty-shelves|ISA" aria-expanded="false" aria-label="Show why the ISA layer does not apply">why</button></div><p class="layer-because">not at ISA because every verified claim is about the freelist algorithm and its guards, which hold under any machine contract: the drained page count, the LIFO return order, the 0x01/0x05 junk fills, and the three guard panics are all properties of the list mechanics, and the article asserts no instruction encoding, register, or ABI behavior.</p></div><div class="layer-slot dim"><div class="layer-name">MICROARCH<button class="why-marker" type="button" data-wigmore="the-allocator-that-keeps-its-books-in-the-empty-shelves|MICROARCH" aria-expanded="false" aria-label="Show why the MICROARCH layer does not apply">why</button></div><p class="layer-because">not at Microarch because nothing was timed and no pipeline, cache, or execution behavior was measured: the verified properties are which page comes back and in what order, which hold on any implementation.</p></div><div class="layer-slot dim"><div class="layer-name">FIRMWARE<button class="why-marker" type="button" data-wigmore="the-allocator-that-keeps-its-books-in-the-empty-shelves|FIRMWARE" aria-expanded="false" aria-label="Show why the FIRMWARE layer does not apply">why</button></div><p class="layer-because">not at Firmware because no boot, machine-mode, or supervisor-interface claim is made: kinit, freerange, kalloc, and kfree are kernel functions exercised against a host arena, and the PHYSTOP bound comes from memlayout.h read as a constant, not executed as firmware.</p></div><div class="layer-slot lit"><div class="layer-name">KERNEL<button class="why-marker" type="button" data-wigmore="the-allocator-that-keeps-its-books-in-the-empty-shelves|KERNEL" aria-expanded="false" aria-label="Show why the KERNEL layer matters">why</button></div><p class="layer-because">matters at Kernel because kalloc.c is the kernel's physical page allocator: kinit, freerange, kalloc, and kfree are kernel functions, and the verified claims are about kernel memory management, the exact list that feeds user pages, kernel stacks, page-table pages, and pipe buffers.</p></div><div class="layer-slot lit"><div class="layer-name">ALGORITHM<button class="why-marker" type="button" data-wigmore="the-allocator-that-keeps-its-books-in-the-empty-shelves|ALGORITHM" aria-expanded="false" aria-label="Show why the ALGORITHM layer matters">why</button></div><p class="layer-because">matters at Algorithm because the verified mechanism is the freelist itself: a stack threaded through free pages with LIFO return order, PGROUNDUP rounding on unaligned ranges, and one pointer read or write per operation, all proved by the harness independent of the kernel it came from.</p></div></div>
           <p class="research-date"><time datetime="2026-09-19">2026-09-19 11:30 EDT</time></p>
         </div>
@@ -1179,9 +1179,9 @@
           <p>I pointed xv6's page allocator at a 64 MiB arena this morning and watched it drain 16383 pages, every one distinct, aligned, and inside the range. Then I freed three pages, a, b, and c, and asked for three back. It returned c, b, a. The freelist is a stack: last freed, first allocated.</p>
 <figure style="margin:28px 0;max-width:560px">
 <img src="/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/the-allocator-that-keeps-its-books-in-the-empty-shelves.jpg" alt="Empty wooden archive shelves in a 1930s reading room" style="width:100%;height:auto;display:block" loading="lazy" />
-<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The books live on the empty shelves themselves.</figcaption>
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The free list lives in the free pages themselves.</figcaption>
 </figure>
-          <p>The allocator is 76 lines of C in kernel/kalloc.c, and it keeps no books. That sounds impossible until you read the struct it is built on, and then the lines that prove it:</p>
+          <p>The allocator is 76 lines of C in kernel/kalloc.c, and it stores no metadata of its own. That sounds impossible until you read the struct it is built on, and then the lines that prove it:</p>
           <pre><code>struct run {
   struct run *next;   /* stored in the free page itself */
 };
@@ -1189,9 +1189,9 @@
 r = (struct run *)pa;
 r->next = kmem.freelist;
 kmem.freelist = r;</code></pre>
-          <p>A free page's first eight bytes hold the link to the next free page. Nothing else is stored in a free page, so the list node lives in the page itself. Allocating is popping the head of the list, one pointer read. Freeing is pushing onto the head, one pointer write, under a single spinlock. Every allocator faces the bootstrap question of where to keep its metadata; xv6 answers by storing it in the empty shelves.</p>
+          <p>A free page's first eight bytes hold the link to the next free page. Nothing else is stored in a free page, so the list node lives in the page itself. Allocating is popping the head of the list, one pointer read. Freeing is pushing onto the head, one pointer write, under a single spinlock. Every allocator faces the bootstrap question of where to keep its metadata; xv6 answers by storing it in the free pages themselves.</p>
           <p>The shape works because everything xv6 hands out comes in whole 4096-byte pages: user pages, kernel stacks, page-table pages, pipe buffers. The allocator never thinks smaller than a page, so one link per page is all the metadata it needs, and there is nothing to allocate in order to store it, which matters when the allocator itself is what provides memory. The obvious alternatives each fail one requirement. A bump allocator cannot free, and every page must come back. A buddy allocator coalesces, but costs complexity this teaching kernel refuses to pay.</p>
-          <p>The honest cost is the single global list under one lock, and MIT's own locks lab exists to fix exactly that, having students split the allocator into per-CPU freelists with stealing because kalloctest contends on kmem.lock. The file also carries its own tripwires. Freeing fills the page with 0x01 and allocating refills it with 0x05, junk that makes a dangling reference visible. Freeing a misaligned address, an address below the kernel's end, or one at or past the 128 MiB mark panics, all three verified this run. One sentence to keep: xv6's physical memory is a linked list threaded through the free pages themselves, so the allocator's books live in the empty shelves, and handing you a page costs one pointer read.</p>
+          <p>The honest cost is the single global list under one lock, and MIT's own locks lab exists to fix exactly that, having students split the allocator into per-CPU freelists with stealing because kalloctest contends on kmem.lock. The file also carries its own tripwires. Freeing fills the page with 0x01 and allocating refills it with 0x05, junk that makes a dangling reference visible. Freeing a misaligned address, an address below the kernel's end, or one at or past the 128 MiB mark panics, all three verified this run. One sentence to keep: xv6&#x27;s physical memory is a linked list threaded through the free pages themselves, so the allocator stores no separate metadata, and handing you a page costs one pointer read.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/158-kalloc" target="_blank" rel="noopener">lab/158-kalloc</a></p>
         </div>
       </article>
@@ -1207,10 +1207,10 @@ kmem.freelist = r;</code></pre>
       <button class="chooser-close" type="button" aria-label="Close contact options">×</button>
     </div>
     <div class="chooser-options">
-      <a class="chooser-option" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=shipthisgroup%40gmail.com&amp;su=Article%3A%20The%20Allocator%20That%20Keeps%20Its%20Books%20in%20the%20Empty%20Shelves&amp;body=Device%20or%20project%3A%0AChip%20or%20board%3A%0AWhat%20is%20going%20wrong%20or%20needs%20building%3A%0ATimeline%3A" target="_blank" rel="noopener">
+      <a class="chooser-option" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=shipthisgroup%40gmail.com&amp;su=Article%3A%20The%20Allocator%20That%20Stores%20Its%20Free%20List%20in%20the%20Free%20Pages&amp;body=Device%20or%20project%3A%0AChip%20or%20board%3A%0AWhat%20is%20going%20wrong%20or%20needs%20building%3A%0ATimeline%3A" target="_blank" rel="noopener">
         <span>Compose in Gmail</span><span aria-hidden="true">↗</span>
       </a>
-      <a class="chooser-option" href="mailto:shipthisgroup@gmail.com?subject=Article%3A%20The%20Allocator%20That%20Keeps%20Its%20Books%20in%20the%20Empty%20Shelves&amp;body=Device%20or%20project%3A%0AChip%20or%20board%3A%0AWhat%20is%20going%20wrong%20or%20needs%20building%3A%0ATimeline%3A">
+      <a class="chooser-option" href="mailto:shipthisgroup@gmail.com?subject=Article%3A%20The%20Allocator%20That%20Stores%20Its%20Free%20List%20in%20the%20Free%20Pages&amp;body=Device%20or%20project%3A%0AChip%20or%20board%3A%0AWhat%20is%20going%20wrong%20or%20needs%20building%3A%0ATimeline%3A">
         <span>Use my email app</span><span aria-hidden="true">↗</span>
       </a>
       <button class="chooser-option copy-email" type="button">

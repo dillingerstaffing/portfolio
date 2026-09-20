@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bit That Reads Execute-Only Pages &middot; Blog &middot; Chris Dillinger</title>
@@ -1181,7 +1181,7 @@
 <img src="/portfolio/blog/the-bit-that-reads-execute-only-pages/the-bit-that-reads-execute-only-pages.jpg" alt="A hallway seen through a one-way mirror" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One bit turns the mirror into a window.</figcaption>
 </figure>
-          <p>The natural objection: who marks code execute-only and then reads it? The privileged specification's own commentary answers. Section 4.1.1.6, checked in two copies of the manual this week: MXR was conceived for M-mode routines emulating missing hardware features, misaligned loads and stores being the example. A trap-and-emulate handler has to fetch the very instruction it is about to fake, and if the program's code pages are execute-only, the handler needs a read path that does not relax the page. If you own the pages, the obvious move is to mark them readable too. xv6 does exactly that: its vm.c maps kernel text with read and execute together, so the bit would change nothing there (checked in the tree this week). MXR earns its keep when the code is not yours to re-mark. It is the emulator's bit.</p>
+          <p>The natural objection: who marks code execute-only and then reads it? The privileged specification's own commentary answers. Section 4.1.1.6, checked in two copies of the manual this week: MXR was conceived for M-mode routines emulating missing hardware features, misaligned loads and stores being the example. A trap-and-emulate handler has to fetch the very instruction it is about to fake, and if the program's code pages are execute-only, the handler needs a read path that does not relax the page. If you own the pages, the obvious move is to mark them readable too. xv6 does exactly that: its vm.c maps kernel text with read and execute together, so the bit would change nothing there (checked in the tree this week). MXR is useful when the code is not yours to re-mark. It is the emulator's bit.</p>
           <p>MXR is bit 19 of sstatus, and the whole mechanism is one CSR write: the hardware's load rule becomes readable or executable instead of readable. The code is the insight here:</p>
           <pre><code>/* Phase A: gate closed. The ld below faults with scause 0xd. */
 __asm__ volatile("csrc sstatus, %0" :: "r"(SSTATUS_MXR));

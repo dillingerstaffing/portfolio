@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bit That Reroutes a Trap &middot; Blog &middot; Chris Dillinger</title>
@@ -1183,7 +1183,7 @@
 </figure>
           <p>The bit exists because of who pays for every trap. The kernel runs in supervisor mode, and a system call is the most frequent request a machine fields: every file read, every byte on the terminal, every new process. Without delegation, each of those traps would rise to machine mode first, usually firmware, which would then have to forward it back down to the kernel that knows what to do with it. The obvious fix is a forwarder in firmware, but it sits on the hottest path in the system and would have to understand the kernel's business. Delegation removes the middleman: bit 9 of medeleg says supervisor environment calls belong to the supervisor, and the trap goes straight there. Trust, expressed as one bit.</p>
           <p>The mechanism, step by step. RISC-V runs code in privilege modes: M-mode, machine mode, the most privileged, where firmware boots; and S-mode, supervisor mode, where an operating system kernel runs. A trap is the hardware interrupting whatever is running and jumping to a handler; each handler reads its mode's cause register, mcause or scause, to learn what happened. medeleg is an M-mode register with one bit per trap cause: when a bit is set, traps of that cause are delegated to S-mode instead of landing in M-mode. The test checks the contract from both sides. Phase one writes 0 to medeleg, reads back 0, and demands exactly one trap in the M-mode handler with mcause = 9 and the resume address mepc pointing at the captured ecall address. Phase two writes 0x200, reads back bit 9 set, and demands exactly one trap in the S-mode handler with scause = 9 and the supervisor's own resume address sepc at the same ecall.</p>
-          <p>The check that carries the argument reads like a receipt:</p>
+          <p>The check that carries the argument is a list of small exact checks:</p>
           <pre><code>check((p2_medeleg_rb &amp; (1UL &lt;&lt; 9)) != 0,
       "phase-2 medeleg readback missing bit 9");
 check(s_regs[0] == 1, "phase-2 S-mode trap did not fire exactly once");

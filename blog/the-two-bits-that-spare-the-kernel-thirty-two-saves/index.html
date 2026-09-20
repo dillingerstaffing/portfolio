@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Two Bits That Spare the Kernel Thirty-Two Saves &middot; Blog &middot; Chris Dillinger</title>
@@ -1181,7 +1181,7 @@
 <img src="/portfolio/blog/the-two-bits-that-spare-the-kernel-thirty-two-saves/the-two-bits-that-spare-the-kernel-thirty-two-saves.jpg" alt="A do-not-disturb hanger on a hotel door handle" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Do not disturb means no save needed.<br><span style="opacity:.7">Photo: Raysonho (Wikimedia Commons user Raysonho) (CC0)</span></figcaption>
 </figure>
-          <p>The honest version of that sequence was not the first plan. The plan was to write f1 with FS at Off and watch it go Dirty. The hardware refused: at Off, a floating-point instruction does not execute and get recorded, it raises an illegal-instruction exception instead. Off is not a starting point, it is a locked door. The unit is disabled until software enables it at Initial, and only then does a write dirty it. The plan needed two more corrections of the same kind, and all three shipped in the module&#x27;s PROOF.md: the gloss said to clear FS through fcsr, but FS lives in mstatus bits 14:13; it named sstatus, but the module runs in M-mode and reads mstatus directly, sstatus being only the supervisor&#x27;s view of the same bits. A module that publishes its own corrections is one worth reading.</p>
+          <p>The honest version of that sequence was not the first plan. The plan was to write f1 with FS at Off and watch it go Dirty. The hardware refused: at Off, a floating-point instruction does not execute and get recorded, it raises an illegal-instruction exception instead. Off is not a starting point: floating-point instructions trap there. The unit is disabled until software enables it at Initial, and only then does a write dirty it. The plan needed two more corrections of the same kind, and all three shipped in the module&#x27;s PROOF.md: the gloss said to clear FS through fcsr, but FS lives in mstatus bits 14:13; it named sstatus, but the module runs in M-mode and reads mstatus directly, sstatus being only the supervisor&#x27;s view of the same bits. A module that publishes its own corrections is one worth reading.</p>
           <p>Why do the two bits exist at all? A process&#x27;s floating-point state is thirty-two registers plus fcsr, 256 bytes of doubles the kernel must preserve across a context switch. Without FS, every switch saves and restores all of it, even for the integer-only process that never touched floating point. With FS, the trap handler reads one field and skips the spill when the answer is not Dirty. The privileged manual states the whole contract in section 3.1.6.7: the design anticipates that most context switches will not need to save or restore the floating-point state, so it provides a fast check via the SD bit. The four states are Off, where floating-point instructions trap; Initial, where the state holds the constant initial value; Clean, where the state matches the last context save; and Dirty, where the state may have changed since.</p>
           <p>The discipline the manual demands fits in three lines:</p>
 <pre><code>if (fs == DIRTY)   { save_fpu(); fs = CLEAN; }
@@ -1194,7 +1194,7 @@ if (fs == INITIAL) { zero_fpu(); }  /* constant, never memory */</code></pre>
       </article>
   </main>
   <div class="post-offer"><p>Related work: crash triage is $250/symptom, fixed price. <button class="post-offer-cta" type="button">Send the details</button>.</p></div>
-    <footer class="post-foot"><a class="backlink" href="/portfolio/#blog">&larr; Back to all posts</a><a class="post-next" href="/portfolio/blog/the-alignment-the-page-table-demands-of-itself/"><span class="post-next-kicker">Next article:</span> The Alignment the Page Table Demands of Itself <span aria-hidden="true">&rarr;</span></a></footer>
+    <footer class="post-foot"><a class="backlink" href="/portfolio/#blog">&larr; Back to all posts</a><a class="post-next" href="/portfolio/blog/the-alignment-the-page-table-demands-of-itself/"><span class="post-next-kicker">Next article:</span> The Alignment the Hardware Checks in the Entry Itself <span aria-hidden="true">&rarr;</span></a></footer>
   <dialog class="contact-chooser" id="contact-chooser" aria-labelledby="chooser-title" aria-describedby="chooser-description">
     <div class="chooser-head">
       <div>

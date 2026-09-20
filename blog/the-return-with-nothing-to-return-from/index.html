@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Return With Nothing to Return From &middot; Blog &middot; Chris Dillinger</title>
@@ -1176,7 +1176,7 @@
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 02:10 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>The program runs the same four bytes twice: 0x10200073, the encoding of sret, the supervisor return-from-trap instruction. The first run happens in S-mode, and it works: the control phase records control_ok=1 and the program comes back to the pad with no trap fired. The second run executes the identical bytes in U-mode, and the machine refuses. The hart traps to M-mode with mcause=2, illegal instruction. mepc reads 0x80000344, the exact site of the sret. mstatus.MPP reads 0, the hardware&#x27;s own record that the offender was in user mode. And mtval holds 0x10200073, the offending instruction echoed back like a confiscated key.</p>
+          <p>The program runs the same four bytes twice: 0x10200073, the encoding of sret, the supervisor return-from-trap instruction. The first run happens in S-mode, and it works: the control phase records control_ok=1 and the program comes back to the pad with no trap fired. The second run executes the identical bytes in U-mode, and the machine refuses. The hart traps to M-mode with mcause=2, illegal instruction. mepc reads 0x80000344, the exact site of the sret. mstatus.MPP reads 0, the hardware&#x27;s own record that the offender was in user mode. And mtval holds 0x10200073, the faulting instruction word itself.</p>
 <figure style="margin:28px 0;max-width:560px">
 <img src="/portfolio/blog/the-return-with-nothing-to-return-from/the-return-with-nothing-to-return-from.jpg" alt="A full-height metal turnstile" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">sret in user mode: no trap to return from.</figcaption>
@@ -1187,7 +1187,7 @@
           <pre><code>unsigned long word_at_mepc = *(volatile unsigned int *)mepc;
 check(mtval == word_at_mepc,
       &quot;mtval does not match the word at mepc&quot;);</code></pre>
-          <p>Eighteen checks, zero mismatches, checksum 0x802872738f9db42a identical across three byte-identical runs on QEMU 8.2.2. One sentence to carry away: sret is a key cut for a lock user mode never had, and the ISA&#x27;s answer to the wrong hands on it is immediate and total, an illegal instruction, the trap delivered to M-mode, the offending bytes echoed in the evidence register.</p>
+          <p>Eighteen checks, zero mismatches, checksum 0x802872738f9db42a identical across three byte-identical runs on QEMU 8.2.2. One sentence to carry away: sret needs supervisor trap state that user mode can never build, so the ISA raises an illegal instruction, delivers the trap to M-mode, and mtval holds the offending instruction word.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sret-to-umode-fault" target="_blank" rel="noopener">src/sret-to-umode-fault</a></p>
         </div>
       </article>

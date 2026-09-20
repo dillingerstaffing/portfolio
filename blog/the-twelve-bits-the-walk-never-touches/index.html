@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-083913" />
+  <meta name="build-version" content="v20260920-092339" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Twelve Bits the Walk Never Touches &middot; Blog &middot; Chris Dillinger</title>
@@ -1182,7 +1182,7 @@
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The offset rides the walk like an express.</figcaption>
 </figure>
           <p>The part that keeps pulling me back is not the arithmetic, it is what the arithmetic refuses to do. A page-table walk never rewrites the low bits of your address. The privileged specification says it plainly in section 4.3.2: the page offset of the physical address equals the page offset of the virtual address. The tables decide which page your data lives on; the offset rides through the whole walk untouched.</p>
-          <p>It generalizes beautifully, and the invariant is the same at every scale. When the walk finds its leaf one level up, a 2 MiB megapage, the pass-through window grows: the upper page-number bits shift by 21 and the low 21 bits of the virtual address are copied verbatim, with the hardware faulting on a misaligned superpage if the low 9 bits of the page number are not zero. At two levels up, a 1 GiB page, the top bits shift by 30 and 30 bits of your address ride through, the low 18 required zero. Translation replaces the page number and copies everything below it untouched. The bigger the page, the more of your address the hardware trusts you with.</p>
+          <p>It generalizes beautifully, and the invariant is the same at every scale. When the walk finds its leaf one level up, a 2 MiB megapage, the pass-through window grows: the upper page-number bits shift by 21 and the low 21 bits of the virtual address are copied verbatim, with the hardware faulting on a misaligned superpage if the low 9 bits of the page number are not zero. At two levels up, a 1 GiB page, the top bits shift by 30 and 30 bits of your address ride through, the low 18 required zero. Translation replaces the page number and copies everything below it untouched. The bigger the page, the more of your address passes through unchanged.</p>
           <p>The code is the insight here:</p>
           <pre><code>uint64_t phys_addr_from_ppn(uint64_t ppn, uint64_t offset) {
     return ((ppn &amp; 0xFFFFFFFFFFFULL) &lt;&lt; 12) | (offset &amp; 0xFFFULL);
