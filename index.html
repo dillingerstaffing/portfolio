@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-075852">
+  <meta name="build-version" content="v20260920-080054">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ece6d5">
@@ -1320,7 +1320,7 @@
           <p class="research-date"><time datetime="2026-09-20">2026-09-20 03:08 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>A trap can land at any instruction, so the handler&#x27;s first job is to save everything the interrupted program will want back. For integer code that means one thing: the 31 general-purpose registers, x1 through x31, every value integer instructions can read or write. That is the integer state. Here is the complete save list from a real M-mode trap entry, excerpted with the pattern intact (full source linked below):</p>
+          <p>A trap can land at any instruction, so the handler&#x27;s first job is to save everything the interrupted program will want back: the 31 general-purpose registers, x1 through x31, plus the few control registers the handler itself needs. Here is the complete save list from a real M-mode trap entry, excerpted with the pattern intact (full source linked below):</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trap.S, M-mode trap entry (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
 <div class="codeblock-body"><pre><code>
@@ -1342,7 +1342,7 @@
 <span class="cl">    .space 34*8 <span class="tok-com"># 31 registers + 3 CSRs: the complete frame</span></span>
 </code></pre></div>
 </div>
-          <p>Count the stores with me: thirty-one, x1 through x31, the entire integer register file. Then three CSRs the handler actually uses: mepc, mstatus, mcause. Thirty-four slots, and the frame ends. A context switch carries the same list. There is no thirty-fifth store, because there is no thirty-fifth piece of integer state.</p>
+          <p>Count the stores with me: thirty-one, x1 through x31, the entire integer register file. Then three CSRs the handler actually uses: mepc, mstatus, mcause. Thirty-four slots, and the frame ends. A context switch carries the same list. There is no thirty-fifth store, because there is nothing else to save: no hidden register where a comparison might have left its verdict.</p>
           <p>Other machines keep a flags register: a compare or an add records its verdict there, and a later branch reads it back. On those machines this list needs one more entry, saved and restored by every handler, even one that never branches, because the interrupted program&#x27;s next decision might be sitting in it.</p>
           <p>The reason the list ends at thirty-four is in the branch encoding. blt t0, t1, less compares and branches in a single instruction; the verdict exists only in what the program counter does next. Assembled and disassembled this run, rv64g:</p>
           <div class="codeblock">
@@ -1372,8 +1372,8 @@
 </code></pre></div>
 </div>
           <p>The price is real: multi-precision carry chains, the core of bignum arithmetic, take more instructions when the carry must travel through a named register instead of a flag. One workload pays more so that every trap frame stays at thirty-four entries.</p>
-          <p>Floating-point exception flags do exist, in their own CSR, fflags, because IEEE 754 requires them; integer code never touches them. Verified this run: csrr t0, fflags assembles cleanly.</p>
-          <p>One sentence to keep: the trap frame is the complete inventory of integer state, and you can check it by counting.</p>
+          <p>Floating-point exception flags do exist, in their own CSR, fflags, because IEEE 754 requires them. Nothing outside floating-point touches them. Verified this run: csrr t0, fflags assembles cleanly.</p>
+          <p>One sentence to keep: the trap frame lists every register there is, and you can check it by counting.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/shell/trap.S" target="_blank" rel="noopener">src/shell/trap.S</a></p>
         </div>
       </article>
