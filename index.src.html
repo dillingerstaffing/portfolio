@@ -1347,7 +1347,7 @@
 <span class="cl">    ret</span>
 </code></pre></div>
 </div>
-          <p>The older arrangement gives arithmetic a side channel: a small flags register, invisible to the register allocator, where compares and arithmetic leave their verdicts (was the result zero? negative? did it carry?) and where a later branch goes to read them. The comparison&#x27;s answer travels not through a register but through hidden state.</p>
+          <p>Another arrangement gives arithmetic a small flags register outside the register file. A compare or an add records its verdict there (zero? negative? carry?), and a later branch reads it back. The comparison&#x27;s answer travels not through a named register but through state the allocator never sees.</p>
           <p>Here is what a trap must save. This is real M-mode trap entry from a bare-metal shell module, excerpted with the pattern intact (full source linked below):</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trap.S, M-mode trap entry (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
@@ -1372,9 +1372,9 @@
 </div>
           <p>Count the stores with me: thirty-one, x1 through x31, the entire integer register file. Then three CSRs this handler actually uses: mepc, mstatus, mcause. The frame ends there. There is no thirty-second store, because there is no thirty-second piece of integer state. A machine with flags would need one more entry on this list, saved and restored by every handler, even one that never branches, because the interrupted program&#x27;s next decision might be sitting in it.</p>
           <p>The price is real and worth naming: multi-precision carry chains, the core of bignum arithmetic, take more instructions when the carry must travel through a named register instead of a flag. One workload pays more so that every trap, every context switch, and every pipeline pays less.</p>
-          <p>The pipeline pays its own share. A branch that reads hidden flags depends on a compare that may sit hundreds of reordered instructions back, so the core must track an invisible thread the compiler cannot see. And when many instructions share one flags register, a partial write followed by a full read forces the hardware to merge old and new: a stall born entirely of sharing.</p>
-          <p>There is exactly one place this ISA keeps flags, and it proves the rule. IEEE 754 demands accrued exception flags for floating point, so they live quarantined in their own CSR, fflags, which integer code never touches. Verified this run: csrr t0, fflags assembles cleanly and reads them. The designers paid for flags precisely once, where an outside standard forced it, and nowhere else.</p>
-          <p>One sentence to keep: in this ISA, no instruction ever whispers to a later one. Every result lands in a named register or in the program counter, and there is no third place.</p>
+          <p>The pipeline feels it too. A branch that reads the flags depends on whichever instruction wrote them last, so the core must track that dependency across everything it reorders, with rename hardware the compiler never sees. And because many instructions share the one flags register, a partial write followed by a full read forces the hardware to merge old bits with new before the read can proceed: a stall that exists only because the register is shared.</p>
+          <p>There is exactly one place this ISA keeps flags. IEEE 754 requires accrued exception flags for floating point, so they live in their own CSR, fflags, which integer code never touches. Verified this run: csrr t0, fflags assembles cleanly and reads them. Where an outside standard demanded flags, they got a register of their own; everywhere else, there are none.</p>
+          <p>One sentence to keep: a comparison&#x27;s answer has exactly two places it can be. A named register, or the program counter&#x27;s next value. There is no third place.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/shell/trap.S" target="_blank" rel="noopener">src/shell/trap.S</a></p>
         </div>
       </article>
