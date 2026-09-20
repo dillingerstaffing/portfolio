@@ -1,5 +1,55 @@
 [
   {
+    "title": "The Trap Is a Contract",
+    "slug": "the-trap-is-a-contract",
+    "date": "2026-09-20",
+    "description": "A trap is a contract: the CPU saves three registers and tells you why, and software must save everything else. xv6's trap path in full, the two flavors of traps, and six ways the contract breaks.",
+    "paragraphs": [
+      "A user program wants to print a line. It cannot touch the UART; only the kernel may. So it asks, with a single instruction: ecall. The CPU stops the program mid-stream and lands in kernel code. That is a trap. System calls, page faults, timer interrupts, an illegal instruction: all of them are the same mechanism wearing different clothes.",
+      "The mechanism is a contract, and the hardware upholds only its half. On a trap the CPU records three things: where you were (sepc), why you came (scause), and for a bad memory access, which address (stval). It switches to supervisor mode and jumps to the address in stvec. That is everything it does. It does not save your registers. The asymmetry between those two halves is the subject of this post.",
+      "The software half begins with a puzzle. To save the registers you need a free register to point at the save area, but every register belongs to the interrupted program. The opening of xv6's uservec, the entry point for traps from user space, solves it:",
+      "sscratch is a CSR the handler may clobber, so a0 is parked there and a0 points at the trapframe. The stores begin, one per register. Thirty stores later the parked a0 is recovered and stored last. Nothing about this is automatic. Miss one register and the program resumes with a stranger's value in it, failing far from the trap with no trace of the cause.",
+      "Traps come in two flavors, and the test is one question: did the program cause it, or did the world? An exception is synchronous: the instruction itself is the reason. ecall (scause 8) asks for the kernel; a page fault on a load (scause 13) or a store (scause 15) is the program's own bad address, and sepc points at the offending instruction. An interrupt is asynchronous: the timer (scause 0x8000000000000005) or a device (0x8000000000000009) can land between any two instructions, and sepc points wherever you happened to be. The top bit of scause tells them apart: set means interrupt.",
+      "The return trip is the entry in reverse, and every step is load-bearing. sepc points at the ecall instruction itself, so xv6's usertrap steps past it:",
+      "Skip that line and the program re-executes the ecall on return, traps again, and never makes progress: an infinite loop that looks like a hang. Then prepare_return sets the return privilege: SPP cleared so sret drops to user mode, SPIE set so interrupts work there, sepc loaded with the resume address, stvec re-armed to uservec for the next trap.",
+      "The contract has sharp edges, and each one has bitten someone. Six of them, concretely:",
+      "Return to the ecall. Forget epc += 4 and the syscall runs again on return, and again. The machine is working perfectly; your program is a loop.",
+      "Lose a register. The hardware saved three CSRs and the other thirty-one words are yours. Restore one wrong and the program fails far from the cause, with nothing in the wreckage pointing at the trap.",
+      "Misread scause. The top bit marks an interrupt, so the timer is 0x8000000000000005, not 5. Decode it as a plain small number and the timer looks like an unknown exception. xv6's devintr reads the full value:",
+      "Leave the interrupt pending. xv6's clockintr writes stimecmp to request the next tick, and that write also clears this one. Return without clearing the source and the CPU re-traps immediately, into a handler that never makes progress.",
+      "Enable interrupts too early. usertrap keeps them off while it reads sepc, scause, and sstatus, because a nested trap would overwrite exactly those registers. The comment in the code says it plainly: an interrupt will change sepc, scause, and sstatus, so enable only now that we are done with those registers.",
+      "Enter through the wrong door. xv6 asserts the contract at runtime: usertrap panics if it was not entered from user mode, and kerneltrap panics if interrupts were enabled on entry:",
+      "One sentence to keep: the hardware saves almost nothing and tells you why; every register, the cause decode, the return address, and the privilege mode are yours to get right. Every trap you will ever debug is one clause of that contract."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/trap.c",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "the contract is drawn by the ISA: ecall raises a synchronous trap, sepc, scause, stval, and stvec are CSRs with architected meanings, and sret is the architected return; the software half exists because the manual puts the line where it does."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "not at Microarch because the post describes the architectural contract between hardware and software, not how any pipeline implements it; no reordering, prediction, or timing claim appears."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "the entire software half of the contract is kernel code: uservec saves the registers one by one, usertrap decodes scause and steps past the ecall, kerneltrap asserts the entry conditions, and the timer interrupt drives preemption."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the post describes a control-transfer contract and its failure modes, not a computational method; no algorithm is stated, timed, or compared."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "not at Firmware because the post never leaves S-mode; it describes the kernel's trap entry, handling, and return, and makes no claim about M-mode delegation or boot firmware."
+      }
+    },
+    "evidence": {
+      "label": "trap.c and trampoline.S, quoted verbatim",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount"
+    }
+  },
+  {
     "title": "The Comparison That Leaves No Trace",
     "slug": "the-comparison-that-leaves-no-trace",
     "date": "2026-09-20",
