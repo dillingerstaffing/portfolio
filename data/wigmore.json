@@ -81602,6 +81602,243 @@
           "note": "The argument in the penultimate plus the layer rule yields the verdict in (1)."
         }
       ]
+    },
+    {
+        "kind": "card",
+        "item": "src-pmp-tor-top",
+        "slot": "ISA",
+        "probandum": "The privileged ISA defines TOR matching: entry i matches the half-open range [pmpaddr[i-1], pmpaddr[i]), inclusive at the bottom, exclusive at the top, and a matching locked entry with no permissions raises a load access fault on M-mode loads. The card proves the exclusive top edge: the last byte inside the range traps, the load exactly at the top bound completes.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "The privileged ISA defines TOR matching: entry i matches the half-open range [pmpaddr[i-1], pmpaddr[i]), inclusive at the bottom, exclusive at the top, and a matching locked entry with no permissions raises a load access fault on M-mode loads. The card proves the exclusive top edge: the last byte inside the range traps, the load exactly at the top bound completes."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "4123 checks against the TOR half-open-range invariant, 0 mismatches; the load at the last byte inside the range traps with mcause 0x5, mepc at the faulting lbu (0x800006e2), mtval at the faulting address (0x80003fff); the load exactly at the top bound (0x80004000) completes with 0 new traps and returns the sentinel 0xa5",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/pmp-tor-top/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-tor-top/PROOF.md"
+                }
+            },
+            {
+                "kind": "evidence",
+                "n": 3,
+                "text": "The pinned RISC-V ISA manual, privileged architecture volume: TOR PMP address matching, the half-open range [pmpaddr[i-1], pmpaddr[i]), and access-fault trap codes are defined there",
+                "source": {
+                    "tier": "lab",
+                    "cite": "riscv-isa-manual (pinned release)",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "kind": "generalization",
+                "n": 4,
+                "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the probandum via the generalization."
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-pmp-tor-top",
+        "slot": "MICROARCH",
+        "probandum": "The card compares trap records only, never timing. Whether the PMP checker tests the address against the bounds with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "The card compares trap records only, never timing. Whether the PMP checker tests the address against the bounds with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "The proof compares trap records only (mcause, mepc, mtval) and measures no timing; all 4123 checks passed identically across 3 runs",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/pmp-tor-top/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-tor-top/PROOF.md"
+                }
+            },
+            {
+                "kind": "generalization",
+                "n": 3,
+                "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2
+                ],
+                "via": [
+                    3
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the probandum via the generalization."
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-pmp-tor-top",
+        "slot": "FIRMWARE",
+        "probandum": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map, and it locks entries it never wants changed. The card proves the boundary semantics of a locked entry the program itself programmed, the exact policy real firmware enforces.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map, and it locks entries it never wants changed. The card proves the boundary semantics of a locked entry the program itself programmed, the exact policy real firmware enforces."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "The program itself wrote pmpaddr0=0x20000c00, pmpaddr1=0x20001000 and pmpcfg0=0x880f (entry 1: L=1, A=TOR, no permissions), read them back exactly, and the restore writes afterward read back the locked entry-1 byte unchanged",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/pmp-tor-top/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-tor-top/PROOF.md"
+                }
+            },
+            {
+                "kind": "evidence",
+                "n": 3,
+                "text": "The pinned RISC-V ISA manual, privileged architecture volume: PMP programming and the lock bit are defined there",
+                "source": {
+                    "tier": "lab",
+                    "cite": "riscv-isa-manual (pinned release)",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "kind": "generalization",
+                "n": 4,
+                "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the probandum via the generalization."
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-pmp-tor-top",
+        "slot": "KERNEL",
+        "probandum": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "The program runs in M-mode from reset with no supervisor software present; every verdict comes from the hart's PMP unit and trap hardware",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/pmp-tor-top/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-tor-top/PROOF.md"
+                }
+            },
+            {
+                "kind": "generalization",
+                "n": 3,
+                "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2
+                ],
+                "via": [
+                    3
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the probandum via the generalization."
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-pmp-tor-top",
+        "slot": "ALGORITHM",
+        "probandum": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued.",
+        "keyList": [
+            {
+                "kind": "probandum",
+                "n": 1,
+                "text": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued."
+            },
+            {
+                "kind": "evidence",
+                "n": 2,
+                "text": "The proof exercises PMP CSRs and trap records only; no portable C equivalent is implemented or compared",
+                "source": {
+                    "tier": "lab",
+                    "cite": "src/pmp-tor-top/PROOF.md",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-tor-top/PROOF.md"
+                }
+            },
+            {
+                "kind": "generalization",
+                "n": 3,
+                "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2
+                ],
+                "via": [
+                    3
+                ],
+                "to": [
+                    1
+                ],
+                "strength": "strong",
+                "note": "The evidence establishes the probandum via the generalization."
+            }
+        ]
     }
   ]
 }

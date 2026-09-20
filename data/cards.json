@@ -11310,5 +11310,61 @@
     "checks": 21,
     "failures": 0,
     "stressItems": 0
+  },
+  {
+    "id": "src-pmp-tor-top",
+    "kicker": "RISC-V ISA",
+    "title": "The top bound the entry never matches",
+    "summary": "A bare-metal M-mode RISC-V program proves a locked TOR PMP entry matches the half-open range [pmpaddr0, pmpaddr1): a load at the last byte inside the range raises a load access fault with the faulting address recorded, while a load exactly at the top bound matches no entry and completes with no trap. The locked entry is entry 1, because a locked deny entry 0 would deny the program's own code, since its TOR bottom is fixed at address 0. With the entry locked, the probes are plain M-mode loads, so the clean completion at the top bound is the M-mode default-allow rule itself.",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines TOR matching: entry i matches the half-open range [pmpaddr[i-1], pmpaddr[i]), inclusive at the bottom, exclusive at the top, and a matching locked entry with no permissions raises a load access fault on M-mode loads. The card proves the exclusive top edge: the last byte inside the range traps, the load exactly at the top bound completes."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card compares trap records only, never timing. Whether the PMP checker tests the address against the bounds with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map, and it locks entries it never wants changed. The card proves the boundary semantics of a locked entry the program itself programmed, the exact policy real firmware enforces."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued."
+      }
+    },
+    "evidence": {
+      "label": "test log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-tor-top/PROOF.md"
+    },
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "4123 checks against the TOR half-open-range invariant (the last byte inside the range traps, exactly at the top bound completes), 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "The load at the last byte inside the range traps with mcause 0x5 and the faulting address in mtval; the load exactly at the top bound returns the expected byte with no new trap"
+      ],
+      [
+        "CHECKSUM",
+        "0x7ebc94761e0d7274, identical across 3 runs"
+      ]
+    ],
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-tor-top",
+    "repoLabel": "riscv-baremetal-demo",
+    "showRepoLink": true,
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel pmp-tor-top.elf\n\ninside: trap mcause=0x5; top bound: clean, byte 0xa5\nRESULT: PASS",
+    "terminalName": "qemu / riscv64 / pmp-tor-top.elf",
+    "terminalLabel": "Verified RISC-V demo output",
+    "checks": 4123,
+    "failures": 0,
+    "stressItems": 0
   }
 ]
