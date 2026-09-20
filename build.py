@@ -1633,19 +1633,43 @@ def build_feed_page(feed, stamp, template):
   }
   apply();
 
-  // Tip chooser: Gmail web compose, native mailto, or copy address.
+  // Tip chooser: Gmail web compose, native mailto, or copy address. The
+  // offer tip ("Stuck on a board or a crash?") opens the same dialog in
+  // place instead of navigating away to the home page contact section; it
+  // keeps its own subject and title so inbound mail stays attributable.
   const tipBtn = document.getElementById('feed-tip-btn');
+  const offerBtn = document.getElementById('feed-offer-btn');
   const chooser = document.getElementById('feed-chooser');
   const closeBtn = chooser.querySelector('.chooser-close');
   const copyBtn = chooser.querySelector('.copy-email');
   const copyStatus = chooser.querySelector('.copy-status');
+  const chooserTitle = document.getElementById('feed-chooser-title');
+  const gmailLink = chooser.querySelector('.chooser-option[href*="mail.google.com"]');
+  const mailtoLink = chooser.querySelector('.chooser-option[href^="mailto:"]');
   const email = 'shipthisgroup@gmail.com';
-  tipBtn.addEventListener('click', () => {
+  const setChooserSubject = (subject) => {
+    const g = new URL(gmailLink.getAttribute('href'));
+    g.searchParams.set('su', subject);
+    gmailLink.setAttribute('href', g.toString());
+    const m = new URL(mailtoLink.getAttribute('href'));
+    m.searchParams.set('subject', subject);
+    mailtoLink.setAttribute('href', m.toString());
+  };
+  let opener = tipBtn;
+  const openChooser = (subject, title, btn) => {
     copyStatus.textContent = '';
-    chooser.showModal();
-    tipBtn.blur();
-  });
-  const closeChooser = () => { chooser.close(); tipBtn.focus(); };
+    setChooserSubject(subject);
+    chooserTitle.textContent = title;
+    // Older in-app WebViews predate <dialog>; fall back to a non-modal
+    // open rather than throwing and doing nothing.
+    if (typeof chooser.showModal === 'function') chooser.showModal();
+    else chooser.setAttribute('open', '');
+    btn.blur();
+    opener = btn;
+  };
+  tipBtn.addEventListener('click', () => openChooser('Feed suggestion', 'Send a tip', tipBtn));
+  if (offerBtn) offerBtn.addEventListener('click', () => openChooser('Feed: project inquiry', 'Start a project', offerBtn));
+  const closeChooser = () => { chooser.close(); opener.focus(); };
   closeBtn.addEventListener('click', closeChooser);
   chooser.addEventListener('click', (event) => {
     if (event.target === chooser) chooser.close();
@@ -1747,7 +1771,7 @@ def build_feed_page(feed, stamp, template):
       <p class="feed-tip">Stuck on a board or a crash?
       Fixed-price firmware work: crash triage $250/symptom, bare-metal bring-up
       from $500, C audit from $350.
-      <a class="feed-tip-btn" href="{SITE_PATH}/#contact">Send the details</a>.</p>
+      <button type="button" class="feed-tip-btn" id="feed-offer-btn">Send the details</button>.</p>
     </section>
     <dialog class="contact-chooser" id="feed-chooser" aria-labelledby="feed-chooser-title">
       <div class="chooser-head">
