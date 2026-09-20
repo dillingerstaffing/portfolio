@@ -1315,6 +1315,47 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Comparison That Leaves No Trace</h3>
+          <!-- LAYER-STRIP:the-comparison-that-leaves-no-trace -->
+          <p class="research-date"><time datetime="2026-09-20">2026-09-20 03:08 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A comparison on this machine settles the question immediately. blt t0, t1, less asks whether t0 is less than t1 and jumps, all in one instruction. The answer never exists anywhere except in what the program counter does next. Assembled and disassembled this run, rv64g:</p>
+          <div class="codeblock">
+<div class="codeblock-head"><span class="codeblock-title">flags.s, objdump -d</span><button class="codeblock-copy" type="button">Copy</button></div>
+<div class="codeblock-body"><pre><code>
+<span class="cl">cmp_demo:</span>
+<span class="cl">    blt    t0, t1, less <span class="tok-com"># compare and branch; verdict goes to the PC</span></span>
+<span class="cl">    li     a0, 0</span>
+<span class="cl">    ret</span>
+<span class="cl">less:</span>
+<span class="cl">    li     a0, 1</span>
+<span class="cl">    ret</span>
+</code></pre></div>
+</div>
+          <p>When the answer must outlive a single branch, it gets a name. slt t0, t1, t2 writes a 1 or a 0 into t0, an ordinary register the allocator can see, the debugger can print, and the pipeline can rename like any other value:</p>
+          <div class="codeblock">
+<div class="codeblock-head"><span class="codeblock-title">flags.s, objdump -d</span><button class="codeblock-copy" type="button">Copy</button></div>
+<div class="codeblock-body"><pre><code>
+<span class="cl">bool_demo:</span>
+<span class="cl">    slt    t0, t1, t2 <span class="tok-com"># the boolean lands in t0, a named register</span></span>
+<span class="cl">    bnez   t0, nonzero <span class="tok-com"># branch reads t0 like any register</span></span>
+<span class="cl">    li     a0, 0</span>
+<span class="cl">    ret</span>
+<span class="cl">nonzero:</span>
+<span class="cl">    li     a0, 1</span>
+<span class="cl">    ret</span>
+</code></pre></div>
+</div>
+          <p>The older arrangement gives arithmetic a side channel: a small flags register, invisible to the register allocator, where compares and arithmetic leave their verdicts (was the result zero? negative? did it carry?) and where a later branch goes to read them. The comparison&#x27;s answer travels not through a register but through hidden state.</p>
+          <p>Hidden state is a contract with everyone downstream. Any interrupt that fires between the compare and the branch must save the flags and restore them afterward, because the interrupted program&#x27;s next decision may be sitting in them. Every trap frame grows a word, and every handler pays it, even one that never branches.</p>
+          <p>The pipeline pays its own share. A branch that reads hidden flags depends on a compare that may sit hundreds of reordered instructions back, so the core must track an invisible thread the compiler cannot see. And when many instructions share one flags register, a partial write followed by a full read forces the hardware to merge old and new: a stall born entirely of sharing.</p>
+          <p>There is exactly one place this ISA keeps flags, and it proves the rule. IEEE 754 demands accrued exception flags for floating point, so they live quarantined in their own CSR, fflags, which integer code never touches. Verified this run: csrr t0, fflags assembles cleanly and reads them. The designers paid for flags precisely once, where an outside standard forced it, and nowhere else.</p>
+          <p>One sentence to keep: in this ISA, no instruction ever whispers to a later one. Every result lands in a named register or in the program counter, and there is no third place.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Allocator That Keeps Its Books in the Empty Shelves</h3>
           <!-- LAYER-STRIP:the-allocator-that-keeps-its-books-in-the-empty-shelves -->
           <p class="research-date"><time datetime="2026-09-19">2026-09-19 11:30 EDT</time></p>

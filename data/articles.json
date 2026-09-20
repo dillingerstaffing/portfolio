@@ -1,5 +1,48 @@
 [
   {
+    "title": "The Comparison That Leaves No Trace",
+    "slug": "the-comparison-that-leaves-no-trace",
+    "date": "2026-09-20",
+    "description": "RISC-V keeps no condition flags. A compare-and-branch settles the question in one instruction and leaves nothing behind; a boolean that must survive gets a named register. Every result lands in a register or the program counter, never in hidden state.",
+    "paragraphs": [
+      "A comparison on this machine settles the question immediately. blt t0, t1, less asks whether t0 is less than t1 and jumps, all in one instruction. The answer never exists anywhere except in what the program counter does next. Assembled and disassembled this run, rv64g:",
+      "When the answer must outlive a single branch, it gets a name. slt t0, t1, t2 writes a 1 or a 0 into t0, an ordinary register the allocator can see, the debugger can print, and the pipeline can rename like any other value:",
+      "The older arrangement gives arithmetic a side channel: a small flags register, invisible to the register allocator, where compares and arithmetic leave their verdicts (was the result zero? negative? did it carry?) and where a later branch goes to read them. The comparison's answer travels not through a register but through hidden state.",
+      "Hidden state is a contract with everyone downstream. Any interrupt that fires between the compare and the branch must save the flags and restore them afterward, because the interrupted program's next decision may be sitting in them. Every trap frame grows a word, and every handler pays it, even one that never branches.",
+      "The pipeline pays its own share. A branch that reads hidden flags depends on a compare that may sit hundreds of reordered instructions back, so the core must track an invisible thread the compiler cannot see. And when many instructions share one flags register, a partial write followed by a full read forces the hardware to merge old and new: a stall born entirely of sharing.",
+      "There is exactly one place this ISA keeps flags, and it proves the rule. IEEE 754 demands accrued exception flags for floating point, so they live quarantined in their own CSR, fflags, which integer code never touches. Verified this run: csrr t0, fflags assembles cleanly and reads them. The designers paid for flags precisely once, where an outside standard forced it, and nowhere else.",
+      "One sentence to keep: in this ISA, no instruction ever whispers to a later one. Every result lands in a named register or in the program counter, and there is no third place."
+    ],
+    "codeLink": null,
+    "evidence": {
+      "label": "firsthand: rv64g assembler session",
+      "url": "https://github.com/dillingerstaffing/systems-lab"
+    },
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "matters at ISA because the integer base keeps no condition flags: blt fuses compare and branch so the verdict goes straight to the program counter, and slt materializes a boolean into a named GPR; both encodings were verified against real assembler output this run, and the single flags register that exists, fflags, is quarantined in its own CSR for IEEE 754."
+      },
+      "MICROARCH": {
+        "applies": true,
+        "because": "matters at Microarch because a branch that reads hidden flags depends on a compare the pipeline cannot see as a register dependency, and shared flag writes force merge stalls on partial updates; with the verdict in a named GPR or the PC, the existing register renamer and dependency tracking handle it with no special cases."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "matters at Firmware because trap entry must preserve exactly the architectural state, and with no flags register the integer trap frame is the 31 general registers plus the few CSRs the handler actually uses; there is no extra word to spill and no hidden compare state for a nested trap to disturb."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "matters at Kernel because a context switch saves and restores exactly the named registers; no hidden compare result can leak from one thread into the next, so the switch path carries one fewer piece of state that could be saved wrong."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "not at Algorithm because the post describes where a comparison result lives, not a computational method; no algorithm is stated, timed, or compared."
+      }
+    },
+    "offer": "Related work: bare-metal bring-up from $500, fixed price."
+  },
+  {
     "title": "The Allocator That Keeps Its Books in the Empty Shelves",
     "slug": "the-allocator-that-keeps-its-books-in-the-empty-shelves",
     "date": "2026-09-19",

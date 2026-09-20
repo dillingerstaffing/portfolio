@@ -80932,6 +80932,346 @@
           "note": "The argument in the penultimate plus the layer rule yields the verdict in (1), with the objection answered by the refutation."
         }
       ]
+    },
+    {
+      "item": "the-comparison-that-leaves-no-trace",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "matters at ISA because the integer base keeps no condition flags: blt fuses compare and branch so the verdict goes straight to the program counter, and slt materializes a boolean into a named GPR; both encodings were verified against real assembler output this run, and the single flags register that exists, fflags, is quarantined in its own CSR for IEEE 754.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at ISA because the integer base keeps no condition flags: blt fuses compare and branch so the verdict goes straight to the program counter, and slt materializes a boolean into a named GPR; both encodings were verified against real assembler output this run, and the single flags register that exists, fflags, is quarantined in its own CSR for IEEE 754."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The firsthand session this run: riscv64-unknown-elf-as assembled blt t0,t1,less and slt t0,t1,t2 under rv64g; objdump shows 0062c663 and 007322b3, compare-and-branch and boolean-into-register with no flags register anywhere in the encoding. csrr t0,fflags assembles, confirming the one flags register lives in its own CSR.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Comparison That Leaves No Trace, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-comparison-that-leaves-no-trace/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Which instructions exist, what their encodings mean, and whether a flags register is part of the integer state are settled by the manual and the assembler, not by any implementation."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the verified claim names specific instructions and their encodings, the ISA slot is lit."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A verdict about what state an instruction touches is answered by reading the encoding against the manual."
+        },
+        {
+          "n": 6,
+          "kind": "explanation",
+          "text": "One could object that the absence of flags is a microarchitecture story."
+        },
+        {
+          "n": 7,
+          "kind": "refutation",
+          "text": "The encodings themselves carry the verdict: no flags field exists to encode, and fflags is addressable only as a CSR, which is an ISA-level fact."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-comparison-that-leaves-no-trace",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "matters at Microarch because a branch that reads hidden flags depends on a compare the pipeline cannot see as a register dependency, and shared flag writes force merge stalls on partial updates; with the verdict in a named GPR or the PC, the existing register renamer and dependency tracking handle it with no special cases.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at Microarch because a branch that reads hidden flags depends on a compare the pipeline cannot see as a register dependency, and shared flag writes force merge stalls on partial updates; with the verdict in a named GPR or the PC, the existing register renamer and dependency tracking handle it with no special cases."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The post's causal chain, grounded in the verified encodings: a branch reading hidden flags depends on a compare with no register name for the pipeline to track, and shared flag writes force merge stalls on partial updates; with the verdict in t0 or the PC, standard register renaming covers it.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Comparison That Leaves No Trace, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-comparison-that-leaves-no-trace/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Dependency tracking, renaming, and stall behavior under reordering are properties of the pipeline, not of any program."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the claim is about what the pipeline must track across reordered instructions, the Microarch slot is lit."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A cost paid in dependency tracking and merge stalls is a microarchitecture verdict."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-comparison-that-leaves-no-trace",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "matters at Firmware because trap entry must preserve exactly the architectural state, and with no flags register the integer trap frame is the 31 general registers plus the few CSRs the handler actually uses; there is no extra word to spill and no hidden compare state for a nested trap to disturb.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at Firmware because trap entry must preserve exactly the architectural state, and with no flags register the integer trap frame is the 31 general registers plus the few CSRs the handler actually uses; there is no extra word to spill and no hidden compare state for a nested trap to disturb."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The post's trap-frame argument: with no flags register, integer trap entry preserves exactly the 31 general registers plus the CSRs the handler uses; no extra word exists to spill and no hidden compare state can be disturbed by a nested trap.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Comparison That Leaves No Trace, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-comparison-that-leaves-no-trace/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "What trap entry must save is dictated by the architectural state, and the handler that saves it is firmware."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the claim names what trap entry must preserve, the Firmware slot is lit."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A smaller trap frame with fewer ways to corrupt nested state is a firmware verdict."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-comparison-that-leaves-no-trace",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "matters at Kernel because a context switch saves and restores exactly the named registers; no hidden compare result can leak from one thread into the next, so the switch path carries one fewer piece of state that could be saved wrong.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "matters at Kernel because a context switch saves and restores exactly the named registers; no hidden compare result can leak from one thread into the next, so the switch path carries one fewer piece of state that could be saved wrong."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The post's context-switch argument: a switch saves and restores exactly the named registers, so no hidden compare result can leak between threads and the switch path carries one fewer piece of state to save wrong.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Comparison That Leaves No Trace, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-comparison-that-leaves-no-trace/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "What a context switch must preserve, and what leaks when it does not, is a property of the kernel's switch path."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the claim is about what the context switch must carry between threads, the Kernel slot is lit."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A state leak that the switch path cannot commit is a kernel verdict."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-comparison-that-leaves-no-trace",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "not at Algorithm because the post describes where a comparison result lives, not a computational method; no algorithm is stated, timed, or compared.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "not at Algorithm because the post describes where a comparison result lives, not a computational method; no algorithm is stated, timed, or compared."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The post states no algorithm: it describes where a comparison result lives (named register or program counter) and never states, times, or compares a computational method.",
+          "source": {
+            "tier": "reference",
+            "cite": "The Comparison That Leaves No Trace, as published",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-comparison-that-leaves-no-trace/"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Whether a computational method is described at all is settled by reading the post, which contains none."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When the post contains no computational method, the Algorithm slot stays dim."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A verdict about the absence of an algorithm is answered by reading the post."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
     }
   ]
 }
