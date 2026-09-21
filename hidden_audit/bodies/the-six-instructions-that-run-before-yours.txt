@@ -1,0 +1,17 @@
+The Six Instructions That Run Before Yours 
+
+ 2026-09-15 11:12 EDT 
+
+ On QEMU's virt board with no firmware, every RISC-V hart wakes up at address 0x1000. Sixty-four bytes live there, a tiny ROM that QEMU builds at boot. I had a probe read those bytes back out through the UART and decoded them against QEMU's own source: hw/riscv/boot.c in the 8.2.2 tree, the function riscv_setup_rom_reset_vec. Here is the complete ROM, six instructions: 
+
+ Every hart runs these six steps first. 
+
+ auipc t0, 0 # t0 = 0x1000, the ROM's own address
+ addi a2, t0, 40 # a2 = 0x1028, a pointer to the firmware info block
+ csrr a0, mhartid # a0 = this hart's number
+ ld a1, 32(t0) # a1 = 0x87e00000, where the device tree was placed
+ ld t0, 24(t0) # t0 = 0x80000000, the kernel's entry address
+ jr t0 # and we are gone, off to your code 
+ Right after the code sit the two addresses it loads: the kernel entry 0x80000000 at 0x1018, and the device-tree address 0x87e00000 at 0x1020. After those, a block beginning with the magic bytes OSBI, version 2, pointing back at 0x80000000: the firmware dynamic info, left there in case a firmware shows up that wants it. Every byte I printed matched the source. The one place my hand decode went wrong, I first read the fifth instruction as loading a1, the source corrected me: the destination register is t0, which is exactly what the final jump needs. 
+ Then the part I did not expect. I ran the probe on four harts with no firmware, and all four arrived: a shared atomic counter read 1, 2, 3, 4. The reset ROM treats every hart the same. Every hart runs those six instructions and jumps to the kernel. I ran it again with OpenSBI in the loop, and only one hart arrived. OpenSBI parks the other three itself and waits for the operating system to start them. So hart 0 leads and the rest wait, but that boot order is not in the reset hardware at all. It is software's idea, enforced by firmware. Without firmware there is no boot order, just four equals waking at the same address. 
+ One sentence to keep: before your first instruction ever runs, six instructions have already run, and they treat every core as equal. The hierarchy is policy, not physics.

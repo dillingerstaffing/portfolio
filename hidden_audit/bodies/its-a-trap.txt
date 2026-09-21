@@ -1,0 +1,110 @@
+It's a Trap! 
+
+ 2026-09-20 04:19 EDT 
+
+ A user program wants to print two characters. It puts 16 in a7, the number for the write system call, the file descriptor, the buffer address, and the length in a0, a1, and a2, then executes a single instruction: ecall. It cannot touch the UART itself; only the kernel may. Everything after that instruction runs in strict order, and this post follows it: the hardware, the assembly, the C, and the way back. 
+
+ Every trap handler's first words. 
+
+ The mechanism is a contract, and the hardware upholds only its half. On the ecall the CPU records where you were (sepc gets the address of the ecall) and why you came (scause gets 8, the code for an environment call from user mode). Inside sstatus it stashes the old privilege mode and the old interrupt setting (SPP and SPIE), then it turns interrupts off, raises itself to supervisor mode, and jumps to the address in stvec, which xv6 has pointed at uservec. That is the whole hardware half. Notice what is missing: not one of the 32 general registers is saved. The program's a0 through a2, holding the arguments, are still sitting in the registers, untouched, waiting for someone to save them. 
+
+ THE CONTRACT 
+ hardware parks sepc where you were scause why you came stval which address, on a fault privilege raised to supervisor interrupts off until sret 
+
+ stvec 
+ software saves x1-x31 one store per register sstatus SPP: user return; SPIE: irq on sepc resume addr, stepped past ecall stvec re-armed for the next trap kernel/trap.c, kernel/trampoline.S 
+ The hardware half is automatic and fixed. Everything else is the handler's job. 
+
+ That someone is assembly, and it has to be: C cannot run yet, because there is no stack. The opening of uservec, the entry point for traps from user space, faces a puzzle. To save the registers you need a free register to point at the save area, but every register belongs to the interrupted program. 
+
+ trampoline.S, uservec (excerpt) Copy 
+
+ # save user a0 in sscratch so 
+ # a0 can be used to get at TRAPFRAME. 
+ csrw sscratch, a0 
+ li a0, TRAPFRAME 
+ # save the user registers in TRAPFRAME 
+ sd ra, 40(a0) 
+ sd sp, 48(a0) 
+ # ... one store per register ... 
+ # save the user a0 in p->trapframe->a0 
+ csrr t0, sscratch 
+ sd t0, 112(a0) 
+
+ sscratch is a CSR the handler may clobber, so a0 is parked there and a0 is pointed at the trapframe, the per-process save area. The stores begin, one per register. Thirty stores later the parked a0 is recovered from sscratch and stored last. Nothing about this is automatic: miss one register and the program resumes with the wrong value in it, failing far from the trap with no trace of the cause. Every word the program owned now sits in the trapframe, and the registers are free. 
+ But C still cannot run. It needs a stack, a page table, and a way to be reached. The tail of uservec builds all three, still in assembly: 
+
+ trampoline.S, uservec tail (excerpt) Copy 
+
+ # initialize kernel stack pointer, from p->trapframe->kernel_sp 
+ ld sp, 8(a0) 
+ # make tp hold the current hartid, from p->trapframe->kernel_hartid 
+ ld tp, 32(a0) 
+ # load the address of usertrap(), from p->trapframe->kernel_trap 
+ ld t0, 16(a0) 
+ # fetch the kernel page table address, from p->trapframe->kernel_satp. 
+ ld t1, 0(a0) 
+ # ... fences ... 
+ # install the kernel page table. 
+ csrw satp, t1 
+ # call usertrap() 
+ jalr t0 
+
+ Four loads from the trapframe: the kernel stack pointer into sp, the hart id into tp, the address of usertrap() into t0, the kernel page table into t1. A fence, the page-table switch, another fence, and then jalr t0: the exact moment assembly hands control to C. Everything the C code will read as p->trapframe->a7 or p->trapframe->a0 was placed there by the stores above. The trapframe is the handoff document between the two languages. 
+ usertrap() starts by reading what the hardware left behind, before anything can disturb it: 
+
+ trap.c, usertrap (excerpt) Copy 
+
+ // save user program counter. 
+ p->trapframe->epc = r_sepc(); 
+ if (r_scause() == 8) { 
+ // system call 
+ // ... killed check ... 
+ // sepc points to the ecall instruction, 
+ // but we want to return to the next instruction. 
+ p->trapframe->epc += 4; 
+ // an interrupt will change sepc, scause, and sstatus, 
+ // so enable only now that we're done with those registers. 
+ intr_on(); 
+ syscall(); 
+
+ Line by line, in order. First the program counter is parked in the trapframe while sepc is still pristine. Then the cause check: scause 8 means this trap was an ecall, a system call. Inside that branch comes the chronological fix this post is really about: sepc still points at the ecall instruction itself, so epc is stepped past it by 4. Return to the unstepped address and the program would re-execute the ecall, trap again, and never make progress. Only now, with sepc, scause, and sstatus consumed, are interrupts enabled; the comment says why, and the order is the point. Then syscall(). 
+ syscall() never touches a real register. It reads the trapframe the assembly filled: 
+
+ syscall.c, syscall (excerpt) Copy 
+
+ num = p->trapframe->a7; 
+ if (num > 0 && num < NELEM(syscalls) && syscalls[num]) { 
+ // ... count the call ... 
+ // Use num to lookup the system call function for num, call it, 
+ // and store its return value in p->trapframe->a0 
+ p->trapframe->a0 = syscalls[num](); 
+
+ The number comes from trapframe->a7, the exact word uservec stored from the user's a7, holding 16. The dispatch calls the write handler, which fetches its arguments the same way: argraw case 0 returns trapframe->a0, case 1 returns trapframe->a1, case 2 returns trapframe->a2, the descriptor, the buffer, the length, exactly as the program left them. The handler writes the two characters and returns 2, and syscall() stores that return value in trapframe->a0. Note where it is not: the real a0 still holds the trapframe address from li a0, TRAPFRAME. The program's registers will be rebuilt from the trapframe on the way out, so writing the answer into the trapframe is writing the answer into the program's future a0. 
+ The trap is handled. The return trip is the entry in reverse, and usertrap's last act is to prepare it: 
+
+ trap.c, prepare_return (excerpt) Copy 
+
+ // set S Previous Privilege mode to User. 
+ unsigned long x = r_sstatus(); 
+ x &= ~SSTATUS_SPP; // clear SPP to 0 for user mode 
+ x |= SSTATUS_SPIE; // enable interrupts in user mode 
+ w_sstatus(x); 
+ // ... stvec and trapframe refresh ... 
+ // set S Exception Program Counter to the saved user pc. 
+ w_sepc(p->trapframe->epc); 
+
+ prepare_return() sets everything sret will need. Interrupts go off first, because a trap landing mid-return would be a disaster. stvec is re-armed to uservec for the next trap, and the trapframe fields uservec will need next time are refreshed. Then sstatus: SPP cleared to 0, so sret will drop to user mode; SPIE set, so interrupts work there. And sepc loaded with trapframe->epc, the stepped-past address. usertrap then returns the user page-table address in a0, and that return lands directly in userret: uservec's jalr t0 left the return address pointing at the instruction after the jump, which is userret's first line. The C function never really comes back to its caller; it falls into the second half of the assembly. 
+
+ trampoline.S, userret tail (excerpt) Copy 
+
+ # ... one load per register ... 
+ # restore user a0 
+ ld a0, 112(a0) 
+ # return to user mode and user pc. 
+ # prepare_return() sets up sstatus and sepc. 
+ sret 
+
+ The mirror image of the entry. The user page table is reinstalled, then the loads rebuild every register from the trapframe, a0 last, because a0 was needed to point at the trapframe until the final load. That last load is the point of the whole trip: trapframe->a0 holds 2, the write's return value, so the program's a0 comes back carrying its answer. Then sret, and the hardware keeps its half of the contract in reverse: privilege drops to user because SPP is 0, interrupts turn on because SPIE is 1, the program counter becomes sepc, the instruction after the ecall. The program continues and never knew it left. 
+ One sentence to keep: a trap is a handoff in strict order, hardware to assembly to C and back, and the trapframe is the document they all sign. The assembly writes it, the C code reads and edits it, the assembly restores from it. 
+ Code: kernel/trap.c · kernel/trampoline.S · kernel/syscall.c

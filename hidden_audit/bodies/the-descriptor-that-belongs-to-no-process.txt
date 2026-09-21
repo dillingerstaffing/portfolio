@@ -1,0 +1,16 @@
+The Descriptor That Belongs to No Process 
+
+ 2026-09-17 11:12 EDT 
+
+ This morning I reached into another process's file-descriptor table and took one. The setup was a fork: the child opened an unlinked 20-byte tmpfile holding "0123456789ABCDEFGHIJ", its fd 3, sought to offset 5, and reported the fd number over a pipe. I called pidfd_open on the child, then pidfd_getfd to duplicate fd 3 into my own table. Then I read 15 bytes through the new descriptor with no seek of my own, and got "56789ABCDEFGHIJ": the child's file, at the child's offset. Three runs, byte-identical. 
+
+ A copy of a key you never handed over. 
+
+ long pfd = syscall(SYS_pidfd_open, child, 0); /* fd 4 */
+ int stolen = syscall(SYS_pidfd_getfd, pfd, 3, 0); /* fd 5 */
+ char buf[16];
+ read(stolen, buf, 15); /* "56789ABCDEFGHIJ", the child's offset */ 
+ The two calls are the whole mechanism. pidfd_open turns a pid into a pidfd, a handle on the process itself. pidfd_getfd(pidfd, targetfd, 0) asks the kernel to copy that process's descriptor into your table. The duplicate refers to the same open file description, so the two descriptors share the file status flags and the file offset: the shared offset, which advances as either side reads, not a snapshot. There is no glibc wrapper for either call (Linux 5.6 and up), so both go through syscall(2) directly. Two details the man page promises and the run confirmed: the returned descriptor arrives with FD_CLOEXEC already set, and a flags argument of 1 is refused with EINVAL, because the flags are reserved for future use. 
+ The usual way to pass a descriptor between processes is SCM_RIGHTS over a Unix domain socket, and it demands two things: a connection already established, and the cooperation of the process whose descriptor is being copied. pidfd_getfd demands neither. It needs only the pidfd and one permission check, PTRACE_MODE_ATTACH_REALCREDS, the same ptrace gate that guards non-dumpable processes. Without that permission it answers EPERM. So this is the supervisor's primitive: no socket, no handshake, no cooperation, just the ptrace permission check, and the duplicate shares the file offset with the original descriptor in the other process. 
+ One sentence to keep: a file descriptor names an entry in your process's table, but the open file description it points to belongs to no process at all, which is why pidfd_getfd can hand you one. 
+ Code: lab/156-pidfd-getfd

@@ -1,0 +1,19 @@
+The Signal That xv6 Never Sends 
+
+ 2026-09-11 23:14 EDT 
+
+ Make a pipe, close the read end, and write sixteen bytes. The write returns exactly -1, and the process is still alive to print that fact. The control pipe proves the -1 belongs to the closed read end and not to a broken implementation: with the reader open, the same sixteen bytes return 16 and read back byte-exact. 
+
+ Linux shouts. xv6 just returns minus one.
+ Photo: Solomon203 (attribution required) (CC BY-SA 4.0) 
+
+ A pipe is a two-party contract, and with no reader the bytes have nowhere to go. So who tells the writer? A kernel has four honest options: block forever, silently drop the bytes, refuse loudly, or refuse quietly. Blocking is a hang, the quietest failure of all. Dropping the bytes silently is worse, because most programs never check write's return value, and corruption nobody notices is worse than an error. That leaves the two refusals, and POSIX chose the loud one. 
+ The spec says a write to a pipe "not open for reading by any process" fails with EPIPE, and "a SIGPIPE signal shall also be sent to the thread." Two deliveries, the signal and the error. Linux's fs/pipe.c does exactly what the spec orders: no readers, send SIGPIPE to the writer, return -EPIPE. The signal kills the process by default; only a program that caught or ignored SIGPIPE lives to see the -1. The default death is the kernel shouting for a program that is not listening. EPIPE is the polite fallback for the programs that asked to handle it. 
+ xv6 cannot shout. It has no signal subsystem at all, so the write path has nothing to deliver but the error. In kernel/pipe.c, before a single byte is copied, the write loop checks two things: is anyone still listening, and has this process already been marked for death: 
+ if (pi->readopen == 0 || killed(pr)) {
+ release(&pi->lock);
+ return -1;
+} 
+ readopen counts the open read ends; killed is the per-process death flag. When the last reader is gone, the loop drops the lock and returns -1. The -1 is the SIGPIPE, in the only language xv6 speaks. Which is why the module's "writer is not killed" check is the load-bearing one: on Linux the writer dies unless it asked otherwise, on xv6 there is nothing that could kill it, and the proof shows the writer living to read its own error. 
+ Nine checks, zero mismatches, one FNV-1a checksum byte-identical across three QEMU 8.2.2 runs. One sentence to carry away: a pipe with no reader leaves the bytes with nowhere to go; Linux shouts and then hands you a note, xv6 just hands you the note. 
+ Code: user/pipewrclosed.c

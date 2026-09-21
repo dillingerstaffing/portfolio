@@ -1,0 +1,17 @@
+The Four Bytes the Trap Handler Skips 
+
+ 2026-09-10 12:01 EDT 
+
+ A trap fires, say a load from an unmapped address. The hardware writes the faulting instruction's address into the mepc register and jumps to your handler. When the handler returns, the CPU resumes at whatever mepc points to. If the handler changed nothing, the CPU re-runs the same bad load, traps again, and you have an infinite loop. So the handler's most basic job is to move mepc past the dead instruction before returning. 
+
+ Measure the instruction before advancing the PC. 
+
+ How far past? RISC-V instructions arrive in 16-bit parcels, and the length hides in the lowest two bits of the first parcel: anything but 11 there is a 16-bit compressed instruction, and 11 starts the longer forms. A handler that blindly adds 4 will land in the middle of an instruction whenever the faulting one was compressed, and the CPU will try to execute half an instruction. 
+ This module pins the fault site to exactly 4 bytes, twice over. First it assembles the faulting load under .option norvc, which tells the assembler to emit no compressed instructions in that region. Then it refuses to trust that promise alone: it captures the address on both sides of the faulting load with in-assembly numeric local labels, la t0, 1f before and 1: after, and the test asserts at runtime that the two addresses differ by exactly 4. 
+ Why in-assembly labels instead of a C labels-as-values label? A C label only stays where the programmer put it if a computed goto can reach it. With no computed goto in range, -O2 is free to merge blocks and move the label, and the captured address follows the label to its new home. An assembler numeric label is resolved by the assembler exactly where written. That is the whole reason, and the construction is trustworthy because of it. 
+ The test then proves the skip happened exactly once: the trap counter reads exactly 1, since a re-trap would have made it 2; the 0xdeadbeefdeadbeef marker still sits at its address, since a skip of 8 would have sailed over it; mcause reads 5 for a load access fault with the bad address in mtval; the instruction word at the fault address reads 0x0005a503, the intended lw; and the destination register still holds its pre-fault sentinel, proving the faulting load never committed. Three QEMU runs, byte-identical. 
+ One honest boundary. The xv6 kernel gets away with mepc += 4 after an ecall only because ecall has no compressed form. This module is the general case: prove the instruction's length first, then skip it. And the verification is against QEMU's M-mode model, which is faithful, but it is still a model, not silicon. In one sentence: a trap handler that skips must know the instruction's length, and the only length worth trusting is one measured at runtime from both sides of the fault. 
+ la t0, 1f # capture the address before the faulting load
+ lw a0, 0(a1) # the fault: 4 bytes, guaranteed by .option norvc
+1: # mepc advances here; the test asserts the gap is 4 
+ Code: src/mepc-resume-skip

@@ -1,0 +1,20 @@
+The Allocator That Stores Its Free List in the Free Pages 
+
+ 2026-09-19 11:30 EDT 
+
+ I pointed xv6's page allocator at a 64 MiB arena this morning and watched it drain 16383 pages, every one distinct, aligned, and inside the range. Then I freed three pages, a, b, and c, and asked for three back. It returned c, b, a. The freelist is a stack: last freed, first allocated. 
+
+ The free list lives in the free pages themselves. 
+
+ The allocator is 76 lines of C in kernel/kalloc.c, and it stores no metadata of its own. That sounds impossible until you read the struct it is built on, and then the lines that prove it: 
+ struct run {
+ struct run *next; /* stored in the free page itself */
+};
+/* freeing page pa: the page becomes its own list node */
+r = (struct run *)pa;
+r->next = kmem.freelist;
+kmem.freelist = r; 
+ A free page's first eight bytes hold the link to the next free page. Nothing else is stored in a free page, so the list node lives in the page itself. Allocating is popping the head of the list, one pointer read. Freeing is pushing onto the head, one pointer write, under a single spinlock. Every allocator faces the bootstrap question of where to keep its metadata; xv6 answers by storing it in the free pages themselves. 
+ The shape works because everything xv6 hands out comes in whole 4096-byte pages: user pages, kernel stacks, page-table pages, pipe buffers. The allocator never thinks smaller than a page, so one link per page is all the metadata it needs, and there is nothing to allocate in order to store it, which matters when the allocator itself is what provides memory. The obvious alternatives each fail one requirement. A bump allocator cannot free, and every page must come back. A buddy allocator coalesces, but costs complexity this teaching kernel refuses to pay. 
+ The honest cost is the single global list under one lock, and MIT's own locks lab exists to fix exactly that, having students split the allocator into per-CPU freelists with stealing because kalloctest contends on kmem.lock. The file also carries its own tripwires. Freeing fills the page with 0x01 and allocating refills it with 0x05, junk that makes a dangling reference visible. Freeing a misaligned address, an address below the kernel's end, or one at or past the 128 MiB mark panics, all three verified this run. One sentence to keep: xv6's physical memory is a linked list threaded through the free pages themselves, so the allocator stores no separate metadata, and handing you a page costs one pointer read. 
+ Code: lab/158-kalloc

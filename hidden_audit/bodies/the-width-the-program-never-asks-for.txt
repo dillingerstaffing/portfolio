@@ -1,0 +1,14 @@
+The Width the Program Never Asks For 
+
+ 2026-09-14 11:12 EDT 
+
+ I built one bare-metal binary this morning, a ten-element vector add with a strip-mining loop, and ran the identical file under QEMU at three different vector widths. At VLEN 128 it reported vl=4 for sixteen remaining 32-bit elements. At VLEN 256, vl=8. At VLEN 512, vl=16. Asked for a huge request it returned exactly VLMAX; asked for one element it returned one. All three runs printed PASS. Zero changes to the binary on three different machines, because the program never once assumed the width. 
+
+ One wrench fits every width. So does vsetvli. 
+
+ The negotiation is a single instruction: vsetvli. Give it how many elements remain, plus the element width and the register grouping you want, and it writes back the vl you actually get. The loop re-asks every iteration and advances by whatever came back. The two lines that carry the whole discipline, inside a loop that runs while elements remain: 
+ unsigned long vl = vsetvli_e32m1(n);
+ a += vl; b += vl; c += vl; n -= vl; 
+ VLMAX, the most elements one instruction can touch, is the register width times the number of registers you group, divided by the element width: VLEN times LMUL divided by SEW. At VLEN 128 with one register and 32-bit elements that is four, exactly what the machine reported. The spec's contract is three lines: vl equals the request when the request fits, vl equals VLMAX when the request is huge, and in between, an implementation may hand back fewer lanes to balance the final two iterations. That middle clause is why the loop re-asks every time instead of caching the first answer. Ten elements on a four-lane machine go 4, 4, 2. There is no scalar cleanup loop at the end. The leftover elements are handled by the same re-asking loop. 
+ On x86 the width is baked into the opcode: xmm, ymm, and zmm are different instructions, so one binary cannot be width-agnostic and libraries ship several compiled paths with runtime dispatch. RISC-V does not bake the width into the opcode. The width lives in the machine, not the program, and vsetvli is the negotiation at the boundary. Two footnotes, both honest. At machine mode I had to set the VS bits in mstatus before any vector instruction would execute: the extension is gated even when present. And QEMU's adjustable VLEN is a test convenience. Real silicon fixes VLEN per chip, which is exactly why the negotiation matters. 
+ One sentence to keep: RISC-V vector code never asks the machine how wide it is, it asks how many elements it may do, and the machine returns the vl, every single iteration.

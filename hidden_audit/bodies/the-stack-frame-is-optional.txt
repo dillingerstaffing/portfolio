@@ -1,0 +1,48 @@
+The Stack Frame Is Optional 
+
+ 2026-09-15 12:04 EDT 
+
+ Here is an entire C function compiled two ways. Same source, same compiler, same machine. RISC-V gcc 13.2.0, asked to emit assembly: 
+
+ A frame with nothing in it. Just like -O2. 
+
+ next.c Copy 
+
+ int next( int x) { 
+ int y = x + 1; 
+ return y; 
+ } 
+
+ At -O2, the whole function is two instructions. No stack frame. Nothing is claimed, nothing is parked, nothing is restored. Against the thirteen-instruction version below, the frame simply is not there: 
+
+ next.s · -O2 Copy 
+
+ next: 
+ addiw a0, a0, 1 
+ ret 
+
+ The -O0 output, annotated line by line. Assembler directives trimmed; the instruction sequence is complete: 
+
+ next.s · -O0, annotated Copy 
+
+ next: 
+ addi sp, sp, -48 # claim 48 bytes for the frame 
+ sd s0, 40(sp) # park the caller's frame pointer 
+ addi s0, sp, 48 # anchor the new frame pointer at the frame's top 
+ mv a5, a0 # x arrives in a0; copy it to a scratch register 
+ sw a5, -36(s0) # give x a home address, 36 bytes below the frame pointer 
+ lw a5, -36(s0) # load x back from its address 
+ addiw a5, a5, 1 # add 1; word-sized because x is a 32-bit int 
+ sw a5, -20(s0) # give y its address, 20 bytes below the frame pointer 
+ lw a5, -20(s0) # load y back from its address 
+ mv a0, a5 # the answer travels home in a0 
+ ld s0, 40(sp) # restore the caller's frame pointer 
+ addi sp, sp, 48 # release the frame 
+ jr ra # return; ret is the usual spelling of this jump 
+
+ Forty-eight bytes is roomier than the sixteen the data strictly needs. The unoptimized compiler does not pack tightly, and the ABI requires the stack pointer to stay 16-byte aligned at all times. 
+ One thing is missing from the longer listing: the return address is never saved. The compiler proved this is a leaf function, a function that calls no other function, so nothing in it can overwrite the return address and saving it would be pure waste. That is the exact reasoning the frame shop drills into you: the return address gets parked because a nested call would destroy it. No nested call, no parking. The compiler applies the rule where it saves work and skips it where it does not. 
+ Why does -O0 emit all these frame instructions? The unoptimized compiler has one simple strategy: every local gets a real address in the frame, so a debugger can inspect every variable at any moment and code generation stays simple and predictable. The frame pointer exists so those addresses never move while the function runs. It is built for humans and debuggers, not for the machine. 
+ Why does -O2 delete it? The optimizer proved three things: no address of any local is ever taken, the whole computation fits in registers, and the function is a leaf. With nothing to keep and no reason to touch the stack, the frame is pure overhead. Gone. The function is the addition and the return. Everything else was overhead. 
+ One sentence to keep: the stack frame is not a law of the machine; it is a budget the compiler spends only when the function needs it. 
+ Bench: The Frame Shop , build this frame by hand, instruction by instruction.

@@ -1,0 +1,58 @@
+The Comparison That Leaves No Trace 
+
+ 2026-09-20 03:08 EDT 
+
+ A trap can land at any instruction, so the handler's first job is to save everything the interrupted program will want back: the 31 general-purpose registers, x1 through x31, plus the few control registers the handler itself needs. Here is the complete save list from a real M-mode trap entry, excerpted with the pattern intact (full source linked below): 
+
+ No flags register exists, so the trap save list ends at 34 entries. 
+
+ trap.S, M-mode trap entry (excerpt) Copy 
+
+ trap_entry: 
+ csrrw t0, mscratch, t0 # frame address into t0; old t0 parked in mscratch 
+ sd x1, 0*8(t0) # store 1 of 31 
+ sd x2, 1*8(t0) # store 2 of 31 
+ # ... x3 through x28, one store each (x5 rejoins from mscratch) 
+ sd x29, 28*8(t0) # store 29 of 31 
+ sd x30, 29*8(t0) # store 30 of 31 
+ sd x31, 30*8(t0) # store 31 of 31: the register list ends here 
+ csrr t1, mepc 
+ sd t1, 31*8(t0) # three CSRs this handler uses 
+ csrr t1, mstatus 
+ sd t1, 32*8(t0) 
+ csrr t1, mcause 
+ sd t1, 33*8(t0) 
+ trap_bank: 
+ .space 34*8 # 31 registers + 3 CSRs: the complete frame 
+
+ Count the stores with me: thirty-one, x1 through x31, the entire integer register file. Then three CSRs the handler actually uses: mepc, mstatus, mcause. Thirty-four slots, and the frame ends. A context switch carries the same list. There is no thirty-fifth store, because there is nothing else to save: no hidden register where a comparison might have left its verdict. 
+ Other machines keep a flags register: a compare or an add records its verdict there, and a later branch reads it back. On those machines this list needs one more entry, saved and restored by every handler, even one that never branches, because the interrupted program's next decision might be sitting in it. 
+ The reason the list ends at thirty-four is in the branch encoding. blt t0, t1, less compares and branches in a single instruction; the verdict exists only in what the program counter does next. Assembled and disassembled this run, rv64g: 
+
+ flags.s, objdump -d Copy 
+
+ cmp_demo: 
+ blt t0, t1, less # compare and branch; verdict goes to the PC 
+ li a0, 0 
+ ret 
+ less: 
+ li a0, 1 
+ ret 
+
+ When the verdict must outlive the branch, it gets a name. slt t0, t1, t2 writes a 1 or a 0 into t0, an ordinary register the allocator can see and the debugger can print: 
+
+ flags.s, objdump -d Copy 
+
+ bool_demo: 
+ slt t0, t1, t2 # the boolean lands in t0, a named register 
+ bnez t0, nonzero # branch reads t0 like any register 
+ li a0, 0 
+ ret 
+ nonzero: 
+ li a0, 1 
+ ret 
+
+ The price is real: multi-precision carry chains, the core of bignum arithmetic, take more instructions when the carry must travel through a named register instead of a flag. One workload pays more so that every trap frame stays at thirty-four entries. 
+ Floating-point exception flags do exist, in their own CSR, fflags, because IEEE 754 requires them. Nothing outside floating-point touches them. Verified this run: csrr t0, fflags assembles cleanly. 
+ One sentence to keep: the trap frame lists every register there is, and you can check it by counting. 
+ Code: src/shell/trap.S

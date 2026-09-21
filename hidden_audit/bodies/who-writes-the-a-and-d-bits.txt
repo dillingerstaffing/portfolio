@@ -1,0 +1,23 @@
+LATEST 
+ The Bit That Decides Who Writes the A and D Bits 
+
+ 2026-09-20 11:30 EDT 
+
+ Take one page, at virtual address 0x80100000, identity mapped so virtual equals physical, its page-table entry starting with the Accessed and Dirty bits clear. Accessed means the page has been touched; Dirty means it has been written and must be written back before the OS reuses the frame. Now store a word to that page. What happens next depends on one bit: ADUE, bit 61 of the M-mode CSR menvcfg, the Svadu extension. 
+
+ The hand stamp marks the paper. The post asks who stamps the A and D bits: the hardware walker or the software handler. 
+
+ With ADUE=0, the store traps exactly once. scause reads 15, a store page fault, and stval holds the faulting address. The S-mode handler sets A and D in the entry, issues sfence.vma to make the update visible, and the retried store succeeds; the entry reads 0x200400c7. A load traps exactly once too, scause 13, and the handler sets A only: 0x20040047. Loads need A, stores need A and D, and the software side of the switch respects exactly that split. 
+
+ svadu.c, S-mode trap handler (excerpt) Copy 
+
+ if(scause==15){ /* store/AMO page fault: software sets A and D */ 
+ if(stval != TEST_VA){ uputs("S-UNEXPECTED store tval="); uputhex(stval); uputc('\n'); for(;;); } 
+ *test_pte |= (PTE_A|PTE_D); 
+ sfence_vma(); /* retry the faulting store (sepc unchanged) */ 
+ return sepc; 
+ } 
+
+ With ADUE=1, the same store traps zero times. The page-table walker sets A and D itself with an atomic update; the load leaves D clear with A set. QEMU 8.2.2 implements exactly this switch: ADUE gates an atomic compare-and-swap on the entry, otherwise the walk fails into a page fault. Four checks, four passes, three byte-identical runs. 
+ The obvious alternative would be to fix the behavior in silicon, but simple implementations may not want the atomic walker-update logic, so the architecture makes it a runtime bit and standard supervisor software assumes either scheme may be in effect. One bit of configuration replaces a fixed property of the chip, and the trap count tells you who did the writing. 
+ Code: lab/159-svadu-adue

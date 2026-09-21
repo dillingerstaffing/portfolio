@@ -1,0 +1,16 @@
+The Return With Nothing to Return From 
+
+ 2026-09-12 02:10 EDT 
+
+ The program runs the same four bytes twice: 0x10200073, the encoding of sret, the supervisor return-from-trap instruction. The first run happens in S-mode, and it works: the control phase records control_ok=1 and the program comes back to the pad with no trap fired. The second run executes the identical bytes in U-mode, and the machine refuses. The hart traps to M-mode with mcause=2, illegal instruction. mepc reads 0x80000344, the exact site of the sret. mstatus.MPP reads 0, the hardware's own record that the offender was in user mode. And mtval holds 0x10200073, the faulting instruction word itself. 
+
+ sret in user mode: no trap to return from. 
+
+ sret is the second half of the trap contract. When it executes, privilege is restored from sstatus.SPP, interrupt enable from SPIE, and the program counter from sepc. All three are supervisor-owned state. In U-mode there is no supervisor trap to return from, and no legal way to have built that state, so the ISA does not define the behavior. It refuses the instruction. The formal Sail model of the privileged architecture writes the rule as a bare match: in user mode, sret goes straight to handle_illegal(). No conditions, no escape hatch. 
+ There is a mirror image in the same manual. The TSR bit in mstatus lets M-mode forbid even S-mode from executing sret, so a hypervisor can intercept it and emulate the missing extension. Returning from a trap is itself a gated privilege. And the night's neighboring module, mstatus-tvm-trap, probes the gate next door: the TVM bit makes S-mode writes to satp and sfence.vma trap to M-mode. Taken together the pair maps who is allowed to come back from where. 
+ The discipline held, too. medeleg was written 0 and read back 0, so the trap could not be delegated away from M-mode; it had to land where the handler was waiting. And the mtval check does not compare the trap's evidence against a constant anyone typed from memory. It reads the actual instruction word at mepc and compares the two measured values against each other: 
+ unsigned long word_at_mepc = *(volatile unsigned int *)mepc;
+check(mtval == word_at_mepc,
+ "mtval does not match the word at mepc"); 
+ Eighteen checks, zero mismatches, checksum 0x802872738f9db42a identical across three byte-identical runs on QEMU 8.2.2. One sentence to carry away: sret needs supervisor trap state that user mode can never build, so the ISA raises an illegal instruction, delivers the trap to M-mode, and mtval holds the offending instruction word. 
+ Code: src/sret-to-umode-fault

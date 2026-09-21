@@ -1382,6 +1382,9 @@
           <p class="research-date"><time datetime="2026-09-21">2026-09-21 09:15 EDT</time></p>
         </div>
         <div class="research-body">
+          <hr class="post-update-rule" />
+          <p class="post-update-kicker">Update, <time datetime="2026-09-21">September 21, 2026</time></p>
+          <p>This post was cut down to the single mechanism: one poll loop, one keyword, one store. The sections on the init ritual, interrupts, doorbells, and memory barriers are gone.</p>
           <p>I compiled two one-byte functions this morning, gcc 13.2.0 at -O2 for rv64, and read the disassembly. Both wait for bit 5 of the byte at address 0x10000005, then store a byte to 0x10000000. The volatile one asks the device every iteration: lbu, andi, beqz back to the load. The plain one asks once: a single lbu before the loop, and if the bit is clear it falls into j ., a jump to itself that never touches the device again. The hardware can become ready a microsecond later; that loop will never notice. One keyword is the difference between polling the device and polling a stale copy of it.</p>
 <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">mmio.c compiled: gcc 13.2.0 -O2, rv64 (excerpts)</span><button class="codeblock-copy" type="button">Copy</button></div>
@@ -1421,35 +1424,8 @@
 <img src="/portfolio/blog/the-store-that-isnt/the-store-that-isnt.jpg" alt="An NS16550AFN UART chip in a ceramic package, the kind of serial hardware xv6's driver speaks to" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The store instruction ends here: an NS16550AFN UART, National Semiconductor, 1992.</figcaption>
 </figure>
-          <p>The compiler's model of memory says a load from an address nothing wrote is redundant, and a store to an address nothing reads is dead. The UART breaks both halves: its loads return bytes the CPU never stored, because input arrives on the device's own schedule, and its stores have effects no load will ever observe, because the byte leaves on a wire. volatile is how C marks an address that is not memory: every access through a volatile lvalue is a visible side effect the optimizer must honor <a class="cite" href="#src-the-store-that-isnt-2">[2]</a>, so it emits the loads and stores exactly as written, in order. That is why the poll loop survives -O2, and why the plain-pointer version degrades into a jump to itself. The Most Honest Lie in C showed the compiler deleting stores it could prove dead; this is the same contract from the other side, forbidding the compiler from touching accesses it cannot prove are mere memory.</p>
-          <p>The device is also a machine with its own timing, so the driver may only transmit when permitted. That permission is what the LSR poll checks: the status register is the device talking back. Read and write can even mean different things at the same offset. RHR and THR both live at register 0; a load takes a received byte while a store transmits one, and no RAM behaves that way. Then there is the init ritual in uartinit, in a strict order: silence the interrupts, enter baud-latch mode, write the divisor low byte then high byte, leave the mode, set eight bits no parity, reset and enable the FIFOs, then enable transmit and receive interrupts <a class="cite" href="#src-the-store-that-isnt-1">[1]</a>. You are programming a state machine across a wire; the order is the program.</p>
-          <p>Spinning on a status bit wastes the CPU, so the device gets a doorbell. When input arrives or the transmitter goes idle, the UART raises an interrupt, and uartintr answers: read ISR to acknowledge, wake the sleeping writer if the transmitter is idle, then drain every waiting byte into the console's input buffer <a class="cite" href="#src-the-store-that-isnt-1">[1]</a>.</p>
-<div class="codeblock">
-<div class="codeblock-head"><span class="codeblock-title">xv6 kernel/uart.c: uartintr</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl">void</span>
-<span class="cl">uartintr(void)</span>
-<span class="cl">{</span>
-<span class="cl">  ReadReg(ISR); <span class="tok-com">// acknowledge the interrupt</span></span>
-<span class="cl"></span>
-<span class="cl">  if (ReadReg(LSR) &amp; LSR_TX_IDLE) {</span>
-<span class="cl">    <span class="tok-com">// UART finished transmitting; wake up sending thread.</span></span>
-<span class="cl">    wakeup(&amp;tx_chan);</span>
-<span class="cl">  }</span>
-<span class="cl"></span>
-<span class="cl">  <span class="tok-com">// read and process incoming characters, if any.</span></span>
-<span class="cl">  while (1) {</span>
-<span class="cl">    int c = uartgetc();</span>
-<span class="cl">    if (c == -1)</span>
-<span class="cl">      break;</span>
-<span class="cl">    consoleintr(c);</span>
-<span class="cl">  }</span>
-<span class="cl">}</span>
-</code></pre></div>
-</div>
-          <p>The direction reverses. Now the peripheral initiates and the driver reacts. uartwrite is the polite version of the poll loop: instead of spinning on LSR it sleeps on a wait channel and lets the doorbell wake it. Two ways to wait on the same machine: ask repeatedly, or sleep until rung.</p>
-          <p>The industry never outgrew this shape. NVMe, the fastest storage protocol in your machine, still calls its MMIO registers doorbells: the host rings the Submission Queue Tail Doorbell with a store and the device answers through the completion queue <a class="cite" href="#src-the-store-that-isnt-3">[3]</a>. And the Linux kernel documentation adds the sequel this experiment only hints at: volatile tames the compiler, but it says nothing to the CPU about ordering, so real drivers use accessor functions with memory barriers instead of raw volatile pointers <a class="cite" href="#src-the-store-that-isnt-4">[4]</a>. Same first principle, one level up: the "memory" has opinions about ordering as well as timing.</p>
-          <p>One sentence to keep: a device is a second computer, and a driver is the protocol you speak with it, conducted entirely in loads and stores to addresses that are not memory, so the driver's whole job is speaking precisely, in order and on the device's schedule, and listening when it rings.</p>
+          <p>The compiler's model of memory says a load from an address nothing wrote is redundant, and a store to an address nothing reads is dead. The UART breaks both halves: its loads return bytes the CPU never stored, because input arrives on the device's own schedule, and its stores have effects no load will ever observe, because the byte leaves on a wire. volatile is how C marks an address that is not memory: every access through a volatile lvalue is a visible side effect the optimizer must honor <a class="cite" href="#src-the-store-that-isnt-2">[2]</a>, so it emits the loads and stores exactly as written, in order. That is why the poll loop survives -O2, and why the plain-pointer version degrades into a jump to itself.</p>
+          <p>xv6's driver is the same loop as a function. uartputc_sync spins on bit 5 of the Line Status Register, then calls WriteReg, which is one sb through a volatile pointer to 0x10000000 <a class="cite" href="#src-the-store-that-isnt-1">[1]</a>. Ask the device if it is ready, then store the byte. The store is not a write to memory; it is a message to a second computer, delivered by an instruction that thinks it is writing RAM.</p>
         </div>
       </article>
       <article class="research-note">
