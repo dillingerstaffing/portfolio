@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-061132" />
+  <meta name="build-version" content="v20260921-061435" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Most Honest Lie in C &middot; Blog &middot; Chris Dillinger</title>
@@ -763,6 +763,8 @@
     }
     .research-latest::before { content: ""; width: 14px; border-top: 1px solid #465245; }
     .research-date { margin: 16px 0 0; color: var(--acid); font-size: 11px; }
+    .post-update-rule { border: 0; border-top: 1px solid var(--line); margin: 44px 0 22px; }
+    .post-update-kicker { margin: 0 0 22px; color: var(--muted); font: 500 10px/1.7 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
     .research-body { max-width: 780px; }
     .research-body p { margin: 0 0 20px; color: var(--paper); line-height: 1.85; }
     .research-body pre {
@@ -1249,6 +1251,8 @@
           <p>The as-if rule is the contract behind the deletion. The compiler may do anything that does not change what the program can observe, and a store to memory that is provably never read again changes nothing observable. So it deletes the stores, the call and the loop alike. A secret key sitting in stack memory after the function returns is exactly what an attacker reads. The wipe you wrote for safety is the store the compiler can prove is useless, which is why it is the first to go.</p>
           <p>Two spellings survived my objects. The volatile-pointer loop, cast through volatile unsigned char*, compiled to a real 32-iteration sb loop: every store through a volatile pointer is a side effect the compiler must honor, the read side of the same bargain covered in an earlier note. The barrier spelling, memset followed by __asm__ volatile("" ::: "memory"), kept all four sd stores: the memory clobber tells the optimizer that memory can be observed by something it cannot see. glibc ships exactly this bargain as explicit_bzero, memset plus a compiler barrier, with the promise that the call will not be deleted even when the buffer is dead afterward <a class="cite" href="#src-the-most-honest-lie-in-c-2">[2]</a>. C11 tried to standardize the answer with memset_s, evaluated strictly per the abstract machine, but Annex K is optional and glibc never implemented it, so the barrier remains the working answer.</p>
           <p>This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper <a class="cite" href="#src-the-most-honest-lie-in-c-6">[6]</a> and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never working against you. It applied the as-if rule, and the rule said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret takes not just a function call but a barrier that stops the optimizer from deleting the stores.</p>
+          <hr class="post-update-rule" />
+          <p class="post-update-kicker">Update, <time datetime="2026-09-21">September 21, 2026</time>, prompted by a reader</p>
           <p>The wipe can survive and still lose. There is a second deletion that no compiler barrier stops: the kernel paging the secret to swap. Watch the shape where this applies clearly.</p>
           <pre><code>char *key = malloc(32);
 read_key(key);
