@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-142133" />
+  <meta name="build-version" content="v20260921-142422" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>It&#x27;s a Trap! &middot; Blog &middot; Chris Dillinger</title>
@@ -1246,7 +1246,7 @@
 <img src="/portfolio/blog/its-a-trap/its-a-trap.jpg" alt="The It's a trap meme: Admiral Ackbar at the bridge window, captioned IT'S A TRAP!" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Every trap handler&#x27;s first words.</figcaption>
 </figure>
-          <p>The mechanism is a contract, and the hardware upholds only its half. On the ecall the CPU records where you were (sepc gets the address of the ecall) and why you came (scause gets 8, the code for an environment call from user mode). Inside sstatus it stashes the old privilege mode and the old interrupt setting (SPP and SPIE), then it turns interrupts off, raises itself to supervisor mode, and jumps to the address in stvec, which xv6 has pointed at uservec. That is the whole hardware half. Notice what is missing: not one of the 32 general registers is saved. The program&#x27;s a0 through a2, holding the arguments, are still sitting in the registers, untouched, waiting for someone to save them.</p>
+          <p>The mechanism is a contract, and the hardware upholds only its half. On the <code>ecall</code> the CPU writes four CSRs and nothing else: <code>sepc</code> gets the address of the <code>ecall</code>, <code>scause</code> gets <code>8</code>, the code for an environment call from user mode, <code>stval</code> gets zero, and <code>sstatus</code> stashes the old privilege mode and interrupt setting in <code>SPP</code> and <code>SPIE</code> while interrupts go off. Then privilege rises to supervisor mode and the program counter jumps to <code>stvec</code>, which xv6 has pointed at <code>uservec</code>. That is the whole hardware half. What it does not write is any of the 32 general registers: the program&#x27;s <code>a0</code> through <code>a2</code>, holding the system call arguments, are still sitting there untouched. They have to be saved because everything the handler is about to run, <code>usertrap</code>, <code>syscall</code>, the write handler, is ordinary code that uses those same registers. Skip saving one and the program resumes with the handler&#x27;s leftovers in it, failing far from the trap with no trace of the cause.</p>
                     <figure style="margin:28px 0;max-width:560px">
 <svg viewBox="0 0 360 396" style="width:100%;height:auto;display:block" role="img" aria-label="The trap contract: hardware parks the program counter, the cause, and the mode; software saves everything else">
 <text x="0" y="18" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono);letter-spacing:3px">THE CONTRACT</text><rect x="0" y="30" width="360" height="150" fill="none" stroke="var(--line)"/>
