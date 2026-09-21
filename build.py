@@ -105,7 +105,8 @@ LAYER_TRIGGERS = {
     "FIRMWARE": (r"\bSBI\b", r"\bPMP\b", r"\bmisa\b", r"M-mode",
                  r"machine mode", r"bootloader", r"boot ROM"),
     "KERNEL": (r"syscall", r"schedul", r"page table", r"virtual memory",
-               r"context switch", r"\bdriver\b"),
+               r"context switch", r"\bdriver\b", r"\bswap\b", r"\bmlock\b",
+               r"paging", r"\bkernel\b"),
     "ISA": (r"instruction", r"\bCSR\b", r"opcode", r"illegal instruction",
             r"extension", r"memory model", r"\bfence\b"),
 }
@@ -186,7 +187,9 @@ def check_sources(sources, where):
     # articles.json, rendered identically in the feed block and on per-post
     # pages by render_post_sources. Same discipline as the feed wire:
     # https-only URLs, plain text, no markup, no em dashes. A source with no
-    # url is allowed (print books, working practice) and renders as text.
+    # url is allowed only for print books (no URL to give) and renders as
+    # text. Every entry needs a publisher and a note saying exactly which
+    # claim it supports: a citation with no stated support is a link dump.
     if sources is None:
         return
     if not isinstance(sources, list) or not sources:
@@ -200,8 +203,9 @@ def check_sources(sources, where):
         if not isinstance(title, str) or not title.strip() or len(title) > 200:
             fail(f"{tag}: title must be 1-200 chars of plain text")
         for f in ("publisher", "note"):
-            if not isinstance(s.get(f, ""), str):
-                fail(f"{tag}: {f} must be a string")
+            v = s.get(f, "")
+            if not isinstance(v, str) or not v.strip():
+                fail(f"{tag}: {f} must be a non-empty string")
         url = s.get("url", "")
         if not isinstance(url, str):
             fail(f"{tag}: url must be a string")
@@ -1274,7 +1278,8 @@ def render_post_sources(article):
 def check_source_cites(feed_block, article):
     # Inline citations must resolve: every href="#src-<slug>-<n>" in the
     # prose needs a matching rendered entry. An entry nobody cites is a
-    # reading list, not a citation, so that only warns.
+    # reading list, not a citation, so the build fails on those too: every
+    # ledger entry must back a claim in the prose.
     slug = article["slug"]
     n_sources = len(article.get("sources") or [])
     pat = re.compile(r"src-" + re.escape(slug) + r"-(\d+)")
@@ -1291,7 +1296,7 @@ def check_source_cites(feed_block, article):
         cited.add(num)
     for i in range(1, n_sources + 1):
         if i not in cited:
-            warn(f"article {slug}: source {i} is never cited in the prose")
+            fail(f"article {slug}: source {i} is never cited in the prose")
 
 
 def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):

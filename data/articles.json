@@ -473,8 +473,8 @@
         "because": "not at Firmware because no firmware contract is involved: the objects were compiled and read with objdump, never linked into a boot image and never booted, so trap delegation and the machine-mode handoff never enter the argument."
       },
       "KERNEL": {
-        "applies": false,
-        "because": "not at Kernel because nothing was ever executed: the experiment is compile-and-read, so no scheduling, system call, or memory-management claim is made or needed."
+        "applies": true,
+        "because": "matters at Kernel because the second half makes explicit kernel claims: the kernel may page the secret's anonymous page to the swap device at any time, and the mlock, munlock, and RLIMIT_MEMLOCK sequence is a system-call contract with the kernel's memory manager. Those claims rest on the cited manual and documentation pages; the firsthand bench work here remains compile-and-read, nothing was executed."
       },
       "ALGORITHM": {
         "applies": true,
@@ -484,10 +484,10 @@
     "offer": "Related work: C audit from $350, fixed price.",
     "sources": [
       {
-        "title": "OpenSSL documentation: the secure heap and OPENSSL_cleanse",
+        "title": "OpenSSL documentation: OPENSSL_cleanse",
         "publisher": "OpenSSL Project",
-        "url": "https://docs.openssl.org/3.1/man3/OPENSSL_secure_malloc/",
-        "note": "OPENSSL_cleanse is documented as memory overwritten so it is 'not optimised out by compiler optimisations such as dead store elimination (as memset(3) may be)'. That is the compiler half. For long-lived secrets OpenSSL offers a secure heap, and the docs warn that its guarantees 'depend on the operating system', advising reviewers to check the code against their own threat model."
+        "url": "https://docs.openssl.org/3.1/man3/OPENSSL_cleanse/",
+        "note": "The manual's wipe half, stated plainly: OPENSSL_cleanse() fills ptr of size len with a string of 0's, and OPENSSL_clear_realloc() and OPENSSL_clear_free() 'should be used when the buffer at addr holds sensitive information', zeroizing the old buffer via OPENSSL_cleanse before freeing it."
       },
       {
         "title": "explicit_bzero(3), OpenBSD manual pages",
@@ -505,19 +505,13 @@
         "title": "Cryptography Engineering: Design Principles and Practical Applications",
         "publisher": "Wiley, 2010. Ferguson, Schneier, Kohno",
         "url": "",
-        "note": "Chapter 21, 'Storing Secrets', section 21.10, 'Wiping Secrets': as soon as a secret is no longer needed, its storage location should be wiped to avoid any further compromise, because magnetic media are very hard to wipe and a security system is only as strong as its weakest link. A page the kernel copied to swap is a storage location you can no longer wipe: the weak link this chapter warns about."
+        "note": "Chapter 21, 'Storing Secrets', section 21.10, 'Wiping Secrets': states the general law that a secret's storage location should be wiped as soon as the secret is no longer needed. A page the kernel copied to swap is a storage location you can no longer wipe, which is the gap this section warns about."
       },
       {
         "title": "SEI CERT C Coding Standard, MSC06-C",
         "publisher": "Carnegie Mellon SEI",
         "url": "https://cmu-sei.github.io/secure-coding-standards/sei-cert-c-coding-standard/recommendations/miscellaneous-msc/msc06-c/",
-        "note": "The curriculum's canonical instance: a memset meant to clear a password can be removed by compiler optimization when the buffer is never read afterward, so the optimized release assembly must be inspected to confirm the clearing survived. Risk assessment: 'If the compiler optimizes out memory-clearing code, an attacker can gain access to sensitive data.'"
-      },
-      {
-        "title": "Practical C cryptography review work",
-        "publisher": "Practice, not a document",
-        "url": "",
-        "note": "Not a document and not citable as one. It is the working practice the other five feed: a reviewer checks the pair, in this order. The pages are locked before the secret arrives, and the wipe is spelled so the optimizer cannot delete it. Lock without a wipe leaves the live copy; a wipe without a lock leaves the swapped copy."
+        "note": "The standard's canonical instance: a memset meant to clear a password can be removed by compiler optimization when the buffer is never read afterward, so the optimized release assembly must be inspected to confirm the clearing survived. Risk assessment: 'If the compiler optimizes out memory-clearing code, an attacker can gain access to sensitive data.'"
       },
       {
         "title": "Dead Store Elimination (Still) Considered Harmful",
