@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-140733" />
+  <meta name="build-version" content="v20260921-140956" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Store That Isn&#x27;t &middot; Blog &middot; Chris Dillinger</title>
@@ -1278,7 +1278,7 @@
 </code></pre></div>
 </div>
           <p><code>Reg</code> casts <code>UART0 + reg</code> to <code>volatile unsigned char *</code>. The arithmetic is in bytes, so <code>Reg(5)</code> is exactly <code>0x10000005</code>; there is no scaling to get wrong. The <code>volatile</code> is the entire contract: every dereference is one bus transaction, emitted exactly as written, in order. <code>ReadReg</code> is one load, <code>WriteReg</code> one store. That cuts both ways: an extra <code>ReadReg</code> dropped in for debugging is not a free peek, it is another transaction on the wire. Count your accesses.</p>
-          <p>The CPU cannot tell the difference: <code>sb</code> is the same instruction it uses for the stack. But the bus routes <code>0x10000000</code> to the UART instead of DRAM, and the byte lands in the transmit holding register, which the chip clocks out at 38.4K baud. Memory-mapped I/O means the address is a wire wearing a memory costume. The instruction is honest. The address lies. DRAM is storage: writes park values that later reads retrieve. A UART register is a conversation: a read asks the hardware its current state, and a write is a command, the byte leaving on a wire no read will ever see again.</p>
+          <p>The CPU cannot tell the difference: <code>sb</code> is the same instruction it uses for the stack. But the bus routes <code>0x10000000</code> to the UART instead of DRAM, and the byte lands in the transmit holding register, which the chip clocks out at 38.4K baud. Memory-mapped I/O means the address is a wire wearing a memory costume. The instruction is honest. The address lies. DRAM is storage: a store saves a value, a load brings it back. A UART register controls hardware: a load reports the device's live state, which no store can set, and a store sends a byte out the serial line, which no load can read back.</p>
 <figure style="margin:28px 0;max-width:560px">
 <img src="/portfolio/blog/the-store-that-isnt/the-store-that-isnt.jpg" alt="An NS16550AFN UART chip in a ceramic package, the kind of serial hardware xv6's driver speaks to" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The store instruction ends here: an NS16550AFN UART, National Semiconductor, 1992.</figcaption>
