@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Eight Bytes That Became Four &middot; Blog &middot; Chris Dillinger</title>
@@ -1240,23 +1240,21 @@
           <p class="research-date"><time datetime="2026-09-12">2026-09-12 14:05 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>Disassemble a RISC-V object file and look at a call. Where the C source had one function call, you find two instructions: auipc ra, 0x0 followed by jalr ra. Eight bytes of conservative reach. Link the same objects with the default linker and disassemble again. The pair is gone, and in its place stands one instruction: jal 80000016 &lt;target&gt;, encoding 0x00e000ef. The .text section shrank from 40 bytes to 36, exactly the four bytes the auipc had cost. Run the link a second time with --no-relax and the pair survives, both instructions standing where the compiler left them. The control experiment is what turns the observation into an argument.</p>
+          <p>Disassemble a RISC-V object file and look at a call. Where the C source had one function call, you find two instructions: <code>auipc</code> <code>ra</code>, 0x0 followed by <code>jalr</code> <code>ra</code>. Eight bytes of conservative reach. Link the same objects with the default linker and disassemble again. The pair is gone, and in its place stands one instruction: <code>jal</code> 80000016 &lt;target&gt;, encoding 0x00e000ef. The .text section shrank from 40 bytes to 36, exactly the four bytes the <code>auipc</code> had cost. Run the link a second time with --no-relax and the pair survives, both instructions standing where the compiler left them. The control experiment is what turns the observation into an argument.</p>
 <figure style="margin:28px 0;max-width:560px">
 <img src="/portfolio/blog/the-eight-bytes-that-became-four/the-eight-bytes-that-became-four.jpg" alt="A lane-merge road sign, two lanes becoming one" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Two lanes in, one out. Relaxation in action.</figcaption>
 </figure>
           <pre><code>auipc   ra, 0x0      ; R_RISCV_CALL_PLT -&gt; target()
 jalr    ra           ; R_RISCV_RELAX -&gt; *ABS*
-
 linked, relaxation on:
-
 jal     80000016 &lt;target&gt;      ; 0x00e000ef
 .text: 40 bytes -&gt; 36 bytes</code></pre>
-          <p>The compiler writes the call that works everywhere because it writes blind. target() lives in another translation unit, and at compile time its address is genuinely unknowable. So the compiler emits the sequence that reaches anywhere: auipc covers plus or minus two gigabytes, jalr carries the low twelve bits, and together they can call any address in a flat four-gigabyte window. To ask for a short jump at compile time is to ask the compiler to know the layout, the one thing it cannot see.</p>
-          <p>The linker is the one moment in the whole toolchain when someone sees the entire layout at once. The RISC-V ELF psABI names the rule: an AUIPC plus JALR pair may be relaxed to a single JAL when the procedure sits within minus one mebibyte to plus one mebibyte minus two of the call site. When that distance test passes, the linker deletes the auipc and emits the single jal. Nothing else moves except the bytes after the deleted instruction, whose addresses the linker fixes up. Eight bytes in, four bytes out, decided by a range check.</p>
-          <p>How does the linker know it is allowed to touch the sequence at all? The relocation table says so. The auipc line carries two relocations. R_RISCV_CALL_PLT names target(), the destination. R_RISCV_RELAX points at *ABS*, absolute nothing. It names no destination at all. The relaxation annotation is a permission slip taped to the instruction sequence itself, separate from the relocation that says where the call goes. The address answers where. The slip answers whether the sequence may be rewritten.</p>
-          <p>Two footnotes from the spec text, both confirmed in the same session. First, R_RISCV_CALL itself is deprecated; the psABI says to use R_RISCV_CALL_PLT instead, and the compiler obliged, emitting CALL_PLT even for a plain static non-PIC call. Second, the assembler manual notes that a region marked .option relax emits R_RISCV_RELAX even when the linker would not relax. The compiler marks the sequence as a candidate; the linker decides. The mark is a request, not a promise.</p>
-          <p>One sentence to keep: the compiler writes the call that works everywhere, and the linker, once it finally knows the addresses, replaces the pair with the single jal.</p>
+          <p>The compiler writes the call that works everywhere because it writes blind. <code>target</code>() lives in another translation unit, and at compile time its address is genuinely unknowable. So the compiler emits the sequence that reaches anywhere: <code>auipc</code> covers plus or minus two gigabytes, <code>jalr</code> carries the low twelve bits, and together they can call any address in a flat four-gigabyte window. To ask for a short jump at compile time is to ask the compiler to know the layout, the one thing it cannot see.</p>
+          <p>The linker is the one moment in the whole toolchain when someone sees the entire layout at once. The RISC-V ELF <code>psABI</code> names the rule: an AUIPC plus JALR pair may be relaxed to a single JAL when the procedure sits within minus one mebibyte to plus one mebibyte minus two of the call site. When that distance test passes, the linker deletes the <code>auipc</code> and emits the single <code>jal</code>. Nothing else moves except the bytes after the deleted instruction, whose addresses the linker fixes up. Eight bytes in, four bytes out, decided by a range check.</p>
+          <p>How does the linker know it is allowed to touch the sequence at all? The relocation table says so. The <code>auipc</code> line carries two relocations. <code>R_RISCV_CALL_PLT</code> names <code>target</code>(), the destination. <code>R_RISCV_RELAX</code> points at *ABS*, absolute nothing. It names no destination at all. The relaxation annotation is a permission slip taped to the instruction sequence itself, separate from the relocation that says where the call goes. The address answers where. The slip answers whether the sequence may be rewritten.</p>
+          <p>Two footnotes from the spec text, both confirmed in the same session. First, <code>R_RISCV_CALL</code> itself is deprecated; the <code>psABI</code> says to use <code>R_RISCV_CALL_PLT</code> instead, and the compiler obliged, emitting <code>CALL_PLT</code> even for a plain <code>static</code> non-PIC call. Second, the assembler manual notes that a region marked .option relax emits <code>R_RISCV_RELAX</code> even when the linker would not relax. The compiler marks the sequence as a candidate; the linker decides. The mark is a request, not a promise.</p>
+          <p>One sentence to keep: the compiler writes the call that works everywhere, and the linker, once it finally knows the addresses, replaces the pair with the single <code>jal</code>.</p>
         </div>
       </article>
   </main>

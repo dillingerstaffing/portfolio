@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Variable That Is Not the Same Variable &middot; Blog &middot; Chris Dillinger</title>
@@ -1245,13 +1245,11 @@
 <img src="/portfolio/blog/the-variable-that-is-not-the-same-variable/the-variable-that-is-not-the-same-variable.jpg" alt="Identical twins in school uniforms" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One name in the source, two separate copies, one per thread.</figcaption>
 </figure>
-          <p>Threads share the whole address space, so per-thread state is a real problem. errno is the famous case: if every thread wrote to one global errno, one thread's failed read would overwrite another thread's clean slate. C still needs per-thread homes for errno, allocator state, and RNG seeds. The loader's answer is a template. The linker gathers every thread-local variable into a TLS template, described by the PT_TLS segment in the ELF: initialized data lives in .tdata, zeroed data in .tbss. When a thread is born, the loader copies the entire template into fresh memory for it. Each thread also gets a thread-pointer register, %fs on x86-64 and tp on RISC-V, and every access to a thread-local variable is address math off that register.</p>
+          <p>Threads share the whole address space, so per-thread state is a real problem. errno is the famous case: if every thread wrote to one global errno, one thread's failed read would overwrite another thread's clean slate. C still needs per-thread homes for errno, allocator state, and RNG seeds. The loader's answer is a template. The linker gathers every thread-local variable into a TLS template, described by the <code>PT_TLS</code> segment in the ELF: initialized data lives in .tdata, zeroed data in .tbss. When a thread is born, the loader copies the entire template into fresh memory for it. Each thread also gets a thread-pointer register, %fs on x86-64 and <code>tp</code> on RISC-V, and every access to a thread-local variable is address math off that register.</p>
           <p>The access shape depends on what the linker knows. When the variable is defined in the binary being linked, the offset is fixed at link time and the whole access collapses to a single instruction. A shared library cannot know the offset, because the final program lays out the template, so it gets the general-dynamic model instead: load an index, call __tls_get_addr, use the returned address. The linker even rewrites the lazy form into the fast one when it can prove the variable is defined locally. The shapes, all from this run's disassembly:</p>
-          <pre><code>    __thread int counter = 7;        /* one name, one copy per thread */
-    /* x86-64, offset fixed at link time: the whole access is one insn */
-    mov %fs:0xfffffffffffffffc,%ecx
-    /* RISC-V: the same idea, three instructions off the thread pointer tp */
-    lui a5,0x0; add a5,a5,tp; lw a4,0(a5)</code></pre>
+          <pre><code>    __thread int counter = 7;              /* one name, one copy per thread */
+    mov %fs:0xfffffffffffffffc,%ecx        /* x86-64, offset fixed at link time: the whole access is one insn */
+    lui a5,0x0; add a5,a5,tp; lw a4,0(a5)  /* RISC-V: the same idea, three instructions off the thread pointer tp */</code></pre>
           <p>Why not the obvious alternatives? pthread keys charge a dynamic lookup on every access, a tax on each read. A context pointer threaded through every function means rewriting every signature. A thread-id-indexed array hashes on every access. The thread pointer is already sitting in a register, so the access costs one load, and the per-thread template copy is what keeps errno, allocator state, and RNG seeds from colliding. One sentence to keep: threads share every address but not every variable, because the loader gives each thread its own copy of the TLS template, and the address of your variable is whatever your thread pointer says it is.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/157-tls" target="_blank" rel="noopener">lab/157-tls</a></p>
         </div>

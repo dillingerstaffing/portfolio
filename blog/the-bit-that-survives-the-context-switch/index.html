@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bit That Survives the Context Switch &middot; Blog &middot; Chris Dillinger</title>
@@ -1245,7 +1245,7 @@
 <img src="/portfolio/blog/the-bit-that-survives-the-context-switch/the-bit-that-survives-the-context-switch.jpg" alt="The Earth seen from space, the Blue Marble" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One mapping shared by every address space.</figcaption>
 </figure>
-          <p>Here is the cost it removes. The kernel is mapped at the same virtual addresses in every process, and every context switch loads a new satp register carrying a new ASID. A full TLB flush on every switch would throw away the kernel's translations too, and each one costs three page-table memory reads to rebuild, while the TLB holds only dozens to hundreds of entries. The alternatives are flushing everything every time or storing the kernel's mappings once per address space, the same entry wearing N name tags. The G bit says: this mapping exists in all address spaces, store it once, and when the fence names a single ASID, leave it alone.</p>
+          <p>Here is the cost it removes. The kernel is mapped at the same virtual addresses in every process, and every context switch loads a new <code>satp</code> register carrying a new ASID. A full TLB flush on every switch would throw away the kernel's translations too, and each one costs three page-table memory reads to rebuild, while the TLB holds only dozens to hundreds of entries. The alternatives are flushing everything every time or storing the kernel's mappings once per address space, the same entry wearing N name tags. The G bit says: this mapping exists in all address spaces, store it once, and when the <code>fence</code> names a single ASID, leave it alone.</p>
           <p>The privileged specification says it plainer than I can. "Global mappings were devised to reduce the cost of context switches." And then the sentence that carries the whole contract: "failing to mark a global mapping as global merely reduces performance, whereas marking a nonglobal mapping as global is an error." G is a performance promise, not a correctness one, and lying in the wrong direction breaks isolation, because one process would start reaching another's pages through a shared cache entry.</p>
           <p>The entire rule fits in one line of the test bench, taken verbatim from the lookup it verified:</p>
           <pre><code>if (e-&gt;valid &amp;&amp; e-&gt;vpn == vpn &amp;&amp; (e-&gt;global || e-&gt;asid == asid)) {
@@ -1253,7 +1253,7 @@
     r.pa = e-&gt;pa;
     return r;
 }</code></pre>
-          <p>Global entries skip the ASID check entirely; non-global entries match only on an ID match. The module proved the decision procedure, not silicon: 201,850 checks against an independently written spec table, zero mismatches, with the full result stream checksumming identically under -O0, -O2, and ASan plus UBSan. The rule held for 4K pages, 2M megapages, and 1G gigapages alike, and a branch entry's G bit was correctly ignored, because only the leaf's G decides. Two honest boundaries: the spec's own wording forks on whether a non-leaf G implies globality below it, so the lab tested the leaf-only reading and named the other as an open question. And the boundary I like best: xv6 sets no G bits and builds every satp with ASID 0, so the kernel I study never asks this question. One sentence to carry away: a translation is either named by its address space or it belongs to all of them, and one bit in the page table is the entire difference.</p>
+          <p>Global entries skip the ASID check entirely; non-global entries match only on an ID match. The module proved the decision procedure, not silicon: 201,850 checks against an independently written spec table, <code>zero</code> mismatches, with the full result stream checksumming identically under -O0, -O2, and ASan plus UBSan. The rule held for 4K pages, 2M megapages, and 1G gigapages alike, and a branch entry's G bit was correctly ignored, because only the leaf's G decides. Two honest boundaries: the spec's own wording forks on whether a non-leaf G implies globality below it, so the lab tested the leaf-only reading and named the other as an open question. And the boundary I like best: xv6 sets no G bits and builds every <code>satp</code> with ASID 0, so the kernel I study never asks this question. One sentence to carry away: a translation is either named by its address space or it belongs to all of them, and one bit in the page table is the entire difference.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/147-pte-global-bit" target="_blank" rel="noopener">lab/147-pte-global-bit</a></p>
         </div>
       </article>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Store That Isn&#x27;t &middot; Blog &middot; Chris Dillinger</title>
@@ -1244,38 +1244,33 @@
           <p>I compiled two one-byte functions, <code>gcc</code> 13.2.0 at <code>-O2</code> for rv64, and read the disassembly. Both poll bit <code>5</code> of the byte at <code>0x10000005</code>, then store a byte to <code>0x10000000</code>. Polling means asking the device, over and over, "ready yet?": the loop reads the status register on every iteration until the bit says yes. The source differs by one keyword.</p>
 <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">mmio.c compiled: gcc 13.2.0 -O2, rv64 (excerpts)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl">putc_nv:                        <span class="tok-com">; plain pointer</span></span>
-<span class="cl">  lbu a5,5(a4)                  <span class="tok-com">; ask once</span></span>
+<div class="codeblock-body"><pre><code><span class="cl">putc_nv:        <span class="tok-com">; plain pointer</span></span>
+<span class="cl">  lbu a5,5(a4)  <span class="tok-com">; ask once</span></span>
 <span class="cl">  andi a5,a5,32</span>
 <span class="cl">  bnez a5,.write</span>
 <span class="cl">.spin:</span>
-<span class="cl">  j .spin                       <span class="tok-com">; never asks again</span></span>
+<span class="cl">  j .spin       <span class="tok-com">; never asks again</span></span>
 <span class="cl">.write:</span>
-<span class="cl">  sb a0,0(a5)                   <span class="tok-com">; 0x10000000: the store that sends</span></span>
+<span class="cl">  sb a0,0(a5)   <span class="tok-com">; 0x10000000: the store that sends</span></span>
 <span class="cl"></span>
-<span class="cl">putc_v:                         <span class="tok-com">; volatile pointer</span></span>
+<span class="cl">putc_v:         <span class="tok-com">; volatile pointer</span></span>
 <span class="cl">.poll:</span>
-<span class="cl">  lbu a5,0(a4)                  <span class="tok-com">; ask every iteration</span></span>
+<span class="cl">  lbu a5,0(a4)  <span class="tok-com">; ask every iteration</span></span>
 <span class="cl">  andi a5,a5,32</span>
 <span class="cl">  beqz a5,.poll</span>
-<span class="cl">  sb a0,0(a5)                   <span class="tok-com">; 0x10000000: the store that sends</span></span>
-</code></pre></div>
+<span class="cl">  sb a0,0(a5)   <span class="tok-com">; 0x10000000: the store that sends</span></span></code></pre></div>
 </div>
           <p><code>putc_nv</code> takes a plain pointer. <code>a4</code> arrives holding <code>0x10000000</code> (the excerpt trims the <code>lui</code>), so <code>lbu a5,5(a4)</code> loads the Line Status Register at <code>0x10000005</code>, once, before the loop. The compiler hoists it: in its model of memory, a load from an address nothing in the program writes cannot change between iterations. <code>andi a5,a5,32</code> keeps only bit <code>5</code>, the transmitter-idle bit. <code>bnez a5,.write</code> skips the spin if the UART was already ready. Otherwise the loop body is empty, and an empty loop is <code>j .spin</code>, a jump to itself. The device can raise the bit a microsecond later; this code will never ask again. <code>sb a0,0(a5)</code> stores the argument byte to <code>0x10000000</code>; the excerpt trims a second <code>lui</code> that reloads <code>a5</code> with the base, the polled value being dead after the branch.</p>
           <p><code>putc_v</code> takes a <code>volatile</code> pointer, and the load stays inside the loop. <code>lbu a5,0(a4)</code> reads the register every iteration (<code>a4</code> holds <code>0x10000005</code> here, setup trimmed the same way). <code>andi</code> isolates the bit; <code>beqz a5,.poll</code> goes back while it is clear. A <code>volatile</code> access is a visible side effect: the optimizer may not hoist it, delete it, or merge two of them. The loop survives <code>-O2</code> because the compiler is forbidden from assuming what the device does between two reads.</p>
           <p>Those two addresses are the whole story. This is xv6's UART driver turning an integer into a pointer <a class="cite" href="#src-the-store-that-isnt-1">[1]</a>:</p>
 <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">xv6 kernel/uart.c (excerpts)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-com">/* the UART control registers are memory-mapped</span></span>
+<div class="codeblock-body"><pre><code><span class="cl"><span class="tok-com">/* the UART control registers are memory-mapped</span></span>
 <span class="cl"><span class="tok-com">   at address UART0. this macro returns the</span></span>
 <span class="cl"><span class="tok-com">   address of one of the registers. */</span></span>
 <span class="cl">#define Reg(reg) ((volatile unsigned char *)(UART0 + (reg)))</span>
-<span class="cl"></span>
 <span class="cl">#define ReadReg(reg)     (*(Reg(reg)))</span>
-<span class="cl">#define WriteReg(reg, v) (*(Reg(reg)) = (v))</span>
-</code></pre></div>
+<span class="cl">#define WriteReg(reg, v) (*(Reg(reg)) = (v))</span></code></pre></div>
 </div>
           <p><code>Reg</code> casts <code>UART0 + reg</code> to <code>volatile unsigned char *</code>. The arithmetic is in bytes, so <code>Reg(5)</code> is exactly <code>0x10000005</code>; there is no scaling to get wrong. The <code>volatile</code> is the entire contract: every dereference is one bus transaction, emitted exactly as written, in order. <code>ReadReg</code> is one load, <code>WriteReg</code> one store. That cuts both ways: an extra <code>ReadReg</code> dropped in for debugging is not a free peek, it is another transaction on the wire. Count your accesses.</p>
           <p>The CPU runs the same <code>sb</code> whether the target is DRAM or a device register; the instruction itself cannot tell the two apart. The address decides: the hardware sends different address ranges to different destinations, and <code>0x10000000</code> goes to the UART, not to RAM. So the same instruction does two different jobs. To DRAM, <code>sb</code> saves a byte a later load can read back. To <code>0x10000000</code>, <code>sb</code> drops the byte into the transmit holding register, and the UART clocks it out over the serial line. That is what memory-mapped I/O means: the address selects the destination, not just a cell. DRAM is storage: a store saves a value, a load brings it back. A UART register is a hardware interface: a load returns bits the hardware computed, for example bit <code>5</code>, which the UART sets itself when its transmitter goes idle and no store from the CPU can set; the store itself is what sends the byte out the serial line.</p>

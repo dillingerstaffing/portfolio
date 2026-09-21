@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Six Instructions That Run Before Yours &middot; Blog &middot; Chris Dillinger</title>
@@ -1240,7 +1240,7 @@
           <p class="research-date"><time datetime="2026-09-15">2026-09-15 11:12 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>On QEMU's virt board with no firmware, every RISC-V hart wakes up at address 0x1000. Sixty-four bytes live there, a tiny ROM that QEMU builds at boot. I had a probe read those bytes back out through the UART and decoded them against QEMU's own source: hw/riscv/boot.c in the 8.2.2 tree, the function riscv_setup_rom_reset_vec. Here is the complete ROM, six instructions:</p>
+          <p>On QEMU's virt board with no firmware, every RISC-V hart wakes up at address 0x1000. Sixty-four bytes live there, a tiny ROM that QEMU builds at boot. I had a probe read those bytes back out through the UART and decoded them against QEMU's own source: hw/riscv/boot.c in the 8.2.2 tree, the function <code>riscv_setup_rom_reset_vec</code>. Here is the complete ROM, six instructions:</p>
 <figure style="margin:28px 0;max-width:560px">
 <img src="/portfolio/blog/the-six-instructions-that-run-before-yours/the-six-instructions-that-run-before-yours.jpg" alt="A sprinter in the starting blocks" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Every hart runs these six steps first.</figcaption>
@@ -1251,7 +1251,7 @@
     ld    a1, 32(t0)   # a1 = 0x87e00000, where the device tree was placed
     ld    t0, 24(t0)   # t0 = 0x80000000, the kernel's entry address
     jr    t0           # and we are gone, off to your code</code></pre>
-          <p>Right after the code sit the two addresses it loads: the kernel entry 0x80000000 at 0x1018, and the device-tree address 0x87e00000 at 0x1020. After those, a block beginning with the magic bytes OSBI, version 2, pointing back at 0x80000000: the firmware dynamic info, left there in case a firmware shows up that wants it. Every byte I printed matched the source. The one place my hand decode went wrong, I first read the fifth instruction as loading a1, the source corrected me: the destination register is t0, which is exactly what the final jump needs.</p>
+          <p>Right after the code sit the two addresses it loads: the kernel entry 0x80000000 at 0x1018, and the device-tree address 0x87e00000 at 0x1020. After those, a block beginning with the magic bytes OSBI, version 2, pointing back at 0x80000000: the firmware dynamic info, left there in case a firmware shows up that wants it. Every byte I printed matched the source. The one place my hand decode went wrong, I first read the fifth instruction as loading <code>a1</code>, the source corrected me: the destination register is <code>t0</code>, which is exactly what the final jump needs.</p>
           <p>Then the part I did not expect. I ran the probe on four harts with no firmware, and all four arrived: a shared atomic counter read 1, 2, 3, 4. The reset ROM treats every hart the same. Every hart runs those six instructions and jumps to the kernel. I ran it again with OpenSBI in the loop, and only one hart arrived. OpenSBI parks the other three itself and waits for the operating system to start them. So hart 0 leads and the rest wait, but that boot order is not in the reset hardware at all. It is software's idea, enforced by firmware. Without firmware there is no boot order, just four equals waking at the same address.</p>
           <p>One sentence to keep: before your first instruction ever runs, six instructions have already run, and they treat every core as equal. The hierarchy is policy, not physics.</p>
         </div>

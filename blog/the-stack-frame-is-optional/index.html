@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Stack Frame Is Optional &middot; Blog &middot; Chris Dillinger</title>
@@ -1247,41 +1247,35 @@
 </figure>
           <div class="codeblock">
             <div class="codeblock-head"><span class="codeblock-title">next.c</span><button class="codeblock-copy" type="button">Copy</button></div>
-            <div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-kw">int</span> next(<span class="tok-kw">int</span> x) {</span>
+            <div class="codeblock-body"><pre><code><span class="cl"><span class="tok-kw">int</span> next(<span class="tok-kw">int</span> x) {</span>
 <span class="cl">    <span class="tok-kw">int</span> y = x + 1;</span>
 <span class="cl">    <span class="tok-kw">return</span> y;</span>
-<span class="cl">}</span>
-</code></pre></div>
+<span class="cl">}</span></code></pre></div>
           </div>
           <p>At -O2, the whole function is two instructions. No stack frame. Nothing is claimed, nothing is parked, nothing is restored. Against the thirteen-instruction version below, the frame simply is not there:</p>
           <div class="codeblock">
             <div class="codeblock-head"><span class="codeblock-title">next.s · -O2</span><button class="codeblock-copy" type="button">Copy</button></div>
-            <div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-label">next:</span></span>
+            <div class="codeblock-body"><pre><code><span class="cl"><span class="tok-label">next:</span></span>
 <span class="cl">    addiw   a0, a0, 1</span>
-<span class="cl">    ret</span>
-</code></pre></div>
+<span class="cl">    ret</span></code></pre></div>
           </div>
           <p>The -O0 output, annotated line by line. Assembler directives trimmed; the instruction sequence is complete:</p>
           <div class="codeblock">
             <div class="codeblock-head"><span class="codeblock-title">next.s · -O0, annotated</span><button class="codeblock-copy" type="button">Copy</button></div>
-            <div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-label">next:</span></span>
-<span class="cl">    addi   sp, sp, -48   <span class="tok-com"># claim 48 bytes for the frame</span></span>
-<span class="cl">    sd     s0, 40(sp)    <span class="tok-com"># park the caller&#x27;s frame pointer</span></span>
-<span class="cl">    addi   s0, sp, 48    <span class="tok-com"># anchor the new frame pointer at the frame&#x27;s top</span></span>
-<span class="cl">    mv     a5, a0        <span class="tok-com"># x arrives in a0; copy it to a scratch register</span></span>
-<span class="cl">    sw     a5, -36(s0)   <span class="tok-com"># give x a home address, 36 bytes below the frame pointer</span></span>
-<span class="cl">    lw     a5, -36(s0)   <span class="tok-com"># load x back from its address</span></span>
-<span class="cl">    addiw  a5, a5, 1     <span class="tok-com"># add 1; word-sized because x is a 32-bit int</span></span>
-<span class="cl">    sw     a5, -20(s0)   <span class="tok-com"># give y its address, 20 bytes below the frame pointer</span></span>
-<span class="cl">    lw     a5, -20(s0)   <span class="tok-com"># load y back from its address</span></span>
-<span class="cl">    mv     a0, a5        <span class="tok-com"># the answer travels home in a0</span></span>
-<span class="cl">    ld     s0, 40(sp)    <span class="tok-com"># restore the caller&#x27;s frame pointer</span></span>
-<span class="cl">    addi   sp, sp, 48    <span class="tok-com"># release the frame</span></span>
-<span class="cl">    jr     ra            <span class="tok-com"># return; ret is the usual spelling of this jump</span></span>
-</code></pre></div>
+            <div class="codeblock-body"><pre><code><span class="cl"><span class="tok-label">next:</span></span>
+<span class="cl">    addi   sp, sp, -48  <span class="tok-com"># claim 48 bytes for the frame</span></span>
+<span class="cl">    sd     s0, 40(sp)   <span class="tok-com"># park the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   s0, sp, 48   <span class="tok-com"># anchor the new frame pointer at the frame&#x27;s top</span></span>
+<span class="cl">    mv     a5, a0       <span class="tok-com"># x arrives in a0; copy it to a scratch register</span></span>
+<span class="cl">    sw     a5, -36(s0)  <span class="tok-com"># give x a home address, 36 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -36(s0)  <span class="tok-com"># load x back from its address</span></span>
+<span class="cl">    addiw  a5, a5, 1    <span class="tok-com"># add 1; word-sized because x is a 32-bit int</span></span>
+<span class="cl">    sw     a5, -20(s0)  <span class="tok-com"># give y its address, 20 bytes below the frame pointer</span></span>
+<span class="cl">    lw     a5, -20(s0)  <span class="tok-com"># load y back from its address</span></span>
+<span class="cl">    mv     a0, a5       <span class="tok-com"># the answer travels home in a0</span></span>
+<span class="cl">    ld     s0, 40(sp)   <span class="tok-com"># restore the caller&#x27;s frame pointer</span></span>
+<span class="cl">    addi   sp, sp, 48   <span class="tok-com"># release the frame</span></span>
+<span class="cl">    jr     ra           <span class="tok-com"># return; ret is the usual spelling of this jump</span></span></code></pre></div>
           </div>
           <p>Forty-eight bytes is roomier than the sixteen the data strictly needs. The unoptimized compiler does not pack tightly, and the ABI requires the stack pointer to stay 16-byte aligned at all times.</p>
           <p>One thing is missing from the longer listing: the return address is never saved. The compiler proved this is a leaf function, a function that calls no other function, so nothing in it can overwrite the return address and saving it would be pure waste. That is the exact reasoning the frame shop drills into you: the return address gets parked because a nested call would destroy it. No nested call, no parking. The compiler applies the rule where it saves work and skips it where it does not.</p>

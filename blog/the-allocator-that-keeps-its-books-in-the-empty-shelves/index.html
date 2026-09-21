@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Allocator That Stores Its Free List in the Free Pages &middot; Blog &middot; Chris Dillinger</title>
@@ -1245,12 +1245,11 @@
 <img src="/portfolio/blog/the-allocator-that-keeps-its-books-in-the-empty-shelves/the-allocator-that-keeps-its-books-in-the-empty-shelves.jpg" alt="Empty wooden archive shelves in a 1930s reading room" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The free list lives in the free pages themselves.</figcaption>
 </figure>
-          <p>The allocator is 76 lines of C in kernel/kalloc.c, and it stores no metadata of its own. That sounds impossible until you read the struct it is built on, and then the lines that prove it:</p>
+          <p>The allocator is 76 lines of C in kernel/kalloc.c, and it stores no metadata of its own. That sounds impossible until you read the <code>struct</code> it is built on, and then the lines that prove it:</p>
           <pre><code>struct run {
-  struct run *next;   /* stored in the free page itself */
+  struct run *next;    /* stored in the free page itself */
 };
-/* freeing page pa: the page becomes its own list node */
-r = (struct run *)pa;
+r = (struct run *)pa;  /* freeing page pa: the page becomes its own list node */
 r->next = kmem.freelist;
 kmem.freelist = r;</code></pre>
           <p>A free page's first eight bytes hold the link to the next free page. Nothing else is stored in a free page, so the list node lives in the page itself. Allocating is popping the head of the list, one pointer read. Freeing is pushing onto the head, one pointer write, under a single spinlock. Every allocator faces the bootstrap question of where to keep its metadata; xv6 answers by storing it in the free pages themselves.</p>

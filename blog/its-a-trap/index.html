@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260921-143041" />
+  <meta name="build-version" content="v20260921-143930" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>It&#x27;s a Trap! &middot; Blog &middot; Chris Dillinger</title>
@@ -1241,118 +1241,87 @@
           <p class="research-date"><time datetime="2026-09-20">2026-09-20 04:19 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>A user program wants to print two characters. It puts 16 in a7, the number for the write system call, the file descriptor, the buffer address, and the length in a0, a1, and a2, then executes a single instruction: ecall. It cannot touch the UART itself; only the kernel may. Everything after that instruction runs in strict order, and this post follows it: the hardware, the assembly, the C, and the way back.</p>
+          <p>A user program wants to print two characters. It puts 16 in <code>a7</code>, the number for the write system call, the file descriptor, the buffer address, and the length in <code>a0</code>, <code>a1</code>, and <code>a2</code>, then executes a single instruction: <code>ecall</code>. It cannot touch the UART itself; only the kernel may. Everything after that instruction runs in strict order, and this post follows it: the hardware, the assembly, the C, and the way back.</p>
                     <figure style="margin:28px 0;max-width:560px">
 <img src="/portfolio/blog/its-a-trap/its-a-trap.jpg" alt="The It's a trap meme: Admiral Ackbar at the bridge window, captioned IT'S A TRAP!" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Every trap handler&#x27;s first words.</figcaption>
 </figure>
-          <p>The mechanism is a contract, and the hardware upholds only its half. On the <code>ecall</code> the CPU writes four CSRs and nothing else: <code>sepc</code> gets the address of the <code>ecall</code>, <code>scause</code> gets <code>8</code>, the code for an environment call from user mode, <code>stval</code> gets zero, and <code>sstatus</code> stashes the old privilege mode and interrupt setting in <code>SPP</code> and <code>SPIE</code> while interrupts go off. Then privilege rises to supervisor mode and the program counter jumps to <code>stvec</code>, which xv6 has pointed at <code>uservec</code>. That is the whole hardware half. What it does not write is any of the 32 general registers: the program&#x27;s <code>a0</code> through <code>a2</code>, holding the system call arguments, are still sitting there untouched. They have to be saved because the handler is ordinary compiled code, <code>usertrap</code>, <code>syscall</code>, the write handler, and compiled code keeps its working values in those same registers. Skip saving one and the program resumes with the handler&#x27;s leftovers in it, then breaks later in innocent-looking code, with nothing at the failure pointing back at the trap.</p>
+          <p>The mechanism is a contract, and the hardware upholds only its half. On the <code>ecall</code> the CPU writes four CSRs and nothing else: <code>sepc</code> gets the address of the <code>ecall</code>, <code>scause</code> gets <code>8</code>, the code for an environment call from user mode, <code>stval</code> gets <code>zero</code>, and <code>sstatus</code> stashes the old privilege mode and interrupt setting in <code>SPP</code> and <code>SPIE</code> while interrupts go off. Then privilege rises to supervisor mode and the program counter jumps to <code>stvec</code>, which xv6 has pointed at <code>uservec</code>. That is the whole hardware half. What it does not write is any of the 32 general registers: the program&#x27;s <code>a0</code> through <code>a2</code>, holding the system call arguments, are still sitting there untouched. They have to be saved because the handler is ordinary compiled code, <code>usertrap</code>, <code>syscall</code>, the write handler, and compiled code keeps its working values in those same registers. Skip saving one and the program resumes with the handler&#x27;s leftovers in it, then breaks later in innocent-looking code, with nothing at the failure pointing back at the trap.</p>
                     <figure style="margin:28px 0;max-width:560px">
 <svg viewBox="0 0 360 396" style="width:100%;height:auto;display:block" role="img" aria-label="The trap contract: hardware parks the program counter, the cause, and the mode; software saves everything else">
 <text x="0" y="18" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono);letter-spacing:3px">THE CONTRACT</text><rect x="0" y="30" width="360" height="150" fill="none" stroke="var(--line)"/>
 <text x="12" y="54" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono);font-weight:bold">hardware parks</text><text x="12" y="78" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">sepc</text><text x="150" y="78" font-size="12" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">where you were</text><text x="12" y="100" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">scause</text><text x="150" y="100" font-size="12" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">why you came</text><text x="12" y="122" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">stval</text><text x="150" y="122" font-size="12" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">which address, on a fault</text><text x="12" y="144" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">privilege</text><text x="150" y="144" font-size="12" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">raised to supervisor</text><text x="12" y="166" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">interrupts</text><text x="150" y="166" font-size="12" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">off until sret</text><line x1="180" y1="186" x2="180" y2="198" stroke="var(--muted)"/>
 <polygon points="176,198 184,198 180,204" fill="var(--muted)"/>
-<text x="196" y="198" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">stvec</text><rect x="0" y="206" width="360" height="178" fill="none" stroke="var(--line)"/>
-<text x="12" y="230" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono);font-weight:bold">software saves</text><text x="12" y="254" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">x1-x31</text><text x="120" y="254" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">one store per register</text><text x="12" y="278" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">sstatus</text><text x="120" y="278" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">SPP: user return; SPIE: irq on</text><text x="12" y="302" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">sepc</text><text x="120" y="302" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">resume addr, stepped past ecall</text><text x="12" y="326" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)">stvec</text><text x="120" y="326" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">re-armed for the next trap</text><text x="12" y="356" font-size="10.5" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">kernel/trap.c, kernel/trampoline.S</text></svg>
+<text x="196" y="198" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)"><code>stvec</code></text><rect x="0" y="206" width="360" height="178" fill="none" stroke="var(--line)"/>
+<text x="12" y="230" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono);font-weight:bold">software saves</text><text x="12" y="254" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)"><code>x1</code>-<code>x31</code></text><text x="120" y="254" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">one store per register</text><text x="12" y="278" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)"><code>sstatus</code></text><text x="120" y="278" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">SPP: user return; SPIE: irq on</text><text x="12" y="302" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)"><code>sepc</code></text><text x="120" y="302" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">resume addr, stepped past <code>ecall</code></text><text x="12" y="326" font-size="12" fill="var(--ink)" text-anchor="start" style="font-family:var(--mono)"><code>stvec</code></text><text x="120" y="326" font-size="11" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">re-armed for the next trap</text><text x="12" y="356" font-size="10.5" fill="var(--muted)" text-anchor="start" style="font-family:var(--mono)">kernel/trap.c, kernel/trampoline.S</text></svg>
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The hardware half is automatic and fixed. Everything else is the handler&#x27;s job.</figcaption>
 </figure>
           <p>That someone is assembly, and it has to be: C cannot run yet, because there is no stack. The opening of uservec, the entry point for traps from user space, faces a puzzle. To save the registers you need a free register to point at the save area, but every register belongs to the interrupted program.</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trampoline.S, uservec (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-com">        # save user a0 in sscratch so</span></span>
-<span class="cl"><span class="tok-com">        # a0 can be used to get at TRAPFRAME.</span></span>
-<span class="cl">        csrw sscratch, a0</span>
+<div class="codeblock-body"><pre><code><span class="cl">        csrw sscratch, a0  <span class="tok-com"># save user a0 in sscratch so a0 can be used to get at TRAPFRAME.</span></span>
 <span class="cl">        li a0, TRAPFRAME</span>
-<span class="cl"><span class="tok-com">        # save the user registers in TRAPFRAME</span></span>
-<span class="cl">        sd ra, 40(a0)</span>
+<span class="cl">        sd ra, 40(a0)      <span class="tok-com"># save the user registers in TRAPFRAME</span></span>
 <span class="cl">        sd sp, 48(a0)</span>
 <span class="cl"><span class="tok-com">        # ... one store per register ...</span></span>
-<span class="cl"><span class="tok-com">	# save the user a0 in p-&gt;trapframe-&gt;a0</span></span>
-<span class="cl">        csrr t0, sscratch</span>
-<span class="cl">        sd t0, 112(a0)</span>
-</code></pre></div>
+<span class="cl">        csrr t0, sscratch  <span class="tok-com"># save the user a0 in p-&gt;trapframe-&gt;a0</span></span>
+<span class="cl">        sd t0, 112(a0)</span></code></pre></div>
 </div>
-          <p>sscratch is a CSR the handler may clobber, so a0 is parked there and a0 is pointed at the trapframe, the per-process save area. The stores begin, one per register. Thirty stores later the parked a0 is recovered from sscratch and stored last. Nothing about this is automatic: miss one register and the program resumes with the wrong value in it, failing far from the trap with no trace of the cause. Every word the program owned now sits in the trapframe, and the registers are free.</p>
+          <p><code>sscratch</code> is a CSR the handler may clobber, so <code>a0</code> is parked there and <code>a0</code> is pointed at the trapframe, the per-process save area. The stores begin, one per register. Thirty stores later the parked <code>a0</code> is recovered from <code>sscratch</code> and stored last. Nothing about this is automatic: miss one register and the program resumes with the wrong value in it, failing far from the trap with no trace of the cause. Every word the program owned now sits in the trapframe, and the registers are free.</p>
           <p>But C still cannot run. It needs a stack, a page table, and a way to be reached. The tail of uservec builds all three, still in assembly:</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trampoline.S, uservec tail (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-com">        # initialize kernel stack pointer, from p-&gt;trapframe-&gt;kernel_sp</span></span>
-<span class="cl">        ld sp, 8(a0)</span>
-<span class="cl"><span class="tok-com">        # make tp hold the current hartid, from p-&gt;trapframe-&gt;kernel_hartid</span></span>
-<span class="cl">        ld tp, 32(a0)</span>
-<span class="cl"><span class="tok-com">        # load the address of usertrap(), from p-&gt;trapframe-&gt;kernel_trap</span></span>
-<span class="cl">        ld t0, 16(a0)</span>
-<span class="cl"><span class="tok-com">        # fetch the kernel page table address, from p-&gt;trapframe-&gt;kernel_satp.</span></span>
-<span class="cl">        ld t1, 0(a0)</span>
+<div class="codeblock-body"><pre><code><span class="cl">        ld sp, 8(a0)   <span class="tok-com"># initialize kernel stack pointer, from p-&gt;trapframe-&gt;kernel_sp</span></span>
+<span class="cl">        ld tp, 32(a0)  <span class="tok-com"># make tp hold the current hartid, from p-&gt;trapframe-&gt;kernel_hartid</span></span>
+<span class="cl">        ld t0, 16(a0)  <span class="tok-com"># load the address of usertrap(), from p-&gt;trapframe-&gt;kernel_trap</span></span>
+<span class="cl">        ld t1, 0(a0)   <span class="tok-com"># fetch the kernel page table address, from p-&gt;trapframe-&gt;kernel_satp.</span></span>
 <span class="cl"><span class="tok-com">        # ... fences ...</span></span>
-<span class="cl"><span class="tok-com">        # install the kernel page table.</span></span>
-<span class="cl">        csrw satp, t1</span>
-<span class="cl"><span class="tok-com">        # call usertrap()</span></span>
-<span class="cl">        jalr t0</span>
-</code></pre></div>
+<span class="cl">        csrw satp, t1  <span class="tok-com"># install the kernel page table.</span></span>
+<span class="cl">        jalr t0        <span class="tok-com"># call usertrap()</span></span></code></pre></div>
 </div>
-          <p>Four loads from the trapframe: the kernel stack pointer into sp, the hart id into tp, the address of usertrap() into t0, the kernel page table into t1. A fence, the page-table switch, another fence, and then jalr t0: the exact moment assembly hands control to C. Everything the C code will read as p-&gt;trapframe-&gt;a7 or p-&gt;trapframe-&gt;a0 was placed there by the stores above. The trapframe is the handoff document between the two languages.</p>
-          <p>usertrap() starts by reading what the hardware left behind, before anything can disturb it:</p>
+          <p>Four loads from the trapframe: the kernel stack pointer into <code>sp</code>, the hart id into <code>tp</code>, the address of <code>usertrap</code>() into <code>t0</code>, the kernel page table into <code>t1</code>. A <code>fence</code>, the page-table switch, another <code>fence</code>, and then <code>jalr</code> <code>t0</code>: the exact moment assembly hands control to C. Everything the C code will read as p-&gt;trapframe-&gt;<code>a7</code> or p-&gt;trapframe-&gt;<code>a0</code> was placed there by the stores above. The trapframe is the handoff document between the two languages.</p>
+          <p><code>usertrap</code>() starts by reading what the hardware left behind, before anything can disturb it:</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trap.c, usertrap (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-com">  // save user program counter.</span></span>
-<span class="cl">  p-&gt;trapframe-&gt;epc = r_sepc();</span>
-<span class="cl">  if (r_scause() == 8) {</span>
-<span class="cl"><span class="tok-com">    // system call</span></span>
+<div class="codeblock-body"><pre><code><span class="cl">  p-&gt;trapframe-&gt;epc = r_sepc();  <span class="tok-com">// save user program counter.</span></span>
+<span class="cl">  if (r_scause() == 8) {         <span class="tok-com">// system call</span></span>
 <span class="cl"><span class="tok-com">    // ... killed check ...</span></span>
-<span class="cl"><span class="tok-com">    // sepc points to the ecall instruction,</span></span>
-<span class="cl"><span class="tok-com">    // but we want to return to the next instruction.</span></span>
-<span class="cl">    p-&gt;trapframe-&gt;epc += 4;</span>
+<span class="cl">    p-&gt;trapframe-&gt;epc += 4;      <span class="tok-com">// sepc points to the ecall instruction, but we want to return to the next instruction.</span></span>
 <span class="cl"><span class="tok-com">    // an interrupt will change sepc, scause, and sstatus,</span></span>
 <span class="cl"><span class="tok-com">    // so enable only now that we&#x27;re done with those registers.</span></span>
 <span class="cl">    intr_on();</span>
-<span class="cl">    syscall();</span>
-</code></pre></div>
+<span class="cl">    syscall();</span></code></pre></div>
 </div>
-          <p>Line by line, in order. First the program counter is parked in the trapframe while sepc is still pristine. Then the cause check: scause 8 means this trap was an ecall, a system call. Inside that branch comes the chronological fix this post is really about: sepc still points at the ecall instruction itself, so epc is stepped past it by 4. Return to the unstepped address and the program would re-execute the ecall, trap again, and never make progress. Only now, with sepc, scause, and sstatus consumed, are interrupts enabled; the comment says why, and the order is the point. Then syscall().</p>
-          <p>syscall() never touches a real register. It reads the trapframe the assembly filled:</p>
+          <p>Line by line, in order. First the program counter is parked in the trapframe while <code>sepc</code> is still pristine. Then the cause check: <code>scause</code> 8 means this trap was an <code>ecall</code>, a system call. Inside that branch comes the chronological fix this post is really about: <code>sepc</code> still points at the <code>ecall</code> instruction itself, so epc is stepped past it by 4. Return to the unstepped address and the program would re-execute the <code>ecall</code>, trap again, and never make progress. Only now, with <code>sepc</code>, <code>scause</code>, and <code>sstatus</code> consumed, are interrupts enabled; the comment says why, and the order is the point. Then <code>syscall</code>().</p>
+          <p><code>syscall</code>() never touches a real register. It reads the trapframe the assembly filled:</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">syscall.c, syscall (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl">  num = p-&gt;trapframe-&gt;a7;</span>
+<div class="codeblock-body"><pre><code><span class="cl">  num = p-&gt;trapframe-&gt;a7;</span>
 <span class="cl">  if (num &gt; 0 &amp;&amp; num &lt; NELEM(syscalls) &amp;&amp; syscalls[num]) {</span>
 <span class="cl"><span class="tok-com">    // ... count the call ...</span></span>
 <span class="cl"><span class="tok-com">    // Use num to lookup the system call function for num, call it,</span></span>
 <span class="cl"><span class="tok-com">    // and store its return value in p-&gt;trapframe-&gt;a0</span></span>
-<span class="cl">    p-&gt;trapframe-&gt;a0 = syscalls[num]();</span>
-</code></pre></div>
+<span class="cl">    p-&gt;trapframe-&gt;a0 = syscalls[num]();</span></code></pre></div>
 </div>
-          <p>The number comes from trapframe-&gt;a7, the exact word uservec stored from the user&#x27;s a7, holding 16. The dispatch calls the write handler, which fetches its arguments the same way: argraw case 0 returns trapframe-&gt;a0, case 1 returns trapframe-&gt;a1, case 2 returns trapframe-&gt;a2, the descriptor, the buffer, the length, exactly as the program left them. The handler writes the two characters and returns 2, and syscall() stores that return value in trapframe-&gt;a0. Note where it is not: the real a0 still holds the trapframe address from li a0, TRAPFRAME. The program&#x27;s registers will be rebuilt from the trapframe on the way out, so writing the answer into the trapframe is writing the answer into the program&#x27;s future a0.</p>
+          <p>The number comes from trapframe-&gt;<code>a7</code>, the exact word uservec stored from the user&#x27;s <code>a7</code>, holding 16. The dispatch calls the write handler, which fetches its arguments the same way: argraw case 0 returns trapframe-&gt;<code>a0</code>, case 1 returns trapframe-&gt;<code>a1</code>, case 2 returns trapframe-&gt;<code>a2</code>, the descriptor, the buffer, the length, exactly as the program left them. The handler writes the two characters and returns 2, and <code>syscall</code>() stores that return value in trapframe-&gt;<code>a0</code>. Note where it is not: the real <code>a0</code> still holds the trapframe address from <code>li</code> <code>a0</code>, TRAPFRAME. The program&#x27;s registers will be rebuilt from the trapframe on the way out, so writing the answer into the trapframe is writing the answer into the program&#x27;s future <code>a0</code>.</p>
           <p>The trap is handled. The return trip is the entry in reverse, and usertrap&#x27;s last act is to prepare it:</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trap.c, prepare_return (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-com">  // set S Previous Privilege mode to User.</span></span>
-<span class="cl">  unsigned long x = r_sstatus();</span>
-<span class="cl">  x &amp;= ~SSTATUS_SPP; // clear SPP to 0 for user mode</span>
-<span class="cl">  x |= SSTATUS_SPIE; // enable interrupts in user mode</span>
+<div class="codeblock-body"><pre><code><span class="cl">  unsigned long x = r_sstatus();  <span class="tok-com">// set S Previous Privilege mode to User.</span></span>
+<span class="cl">  x &amp;= ~SSTATUS_SPP;              <span class="tok-com">// clear SPP to 0 for user mode</span></span>
+<span class="cl">  x |= SSTATUS_SPIE;              <span class="tok-com">// enable interrupts in user mode</span></span>
 <span class="cl">  w_sstatus(x);</span>
 <span class="cl"><span class="tok-com">  // ... stvec and trapframe refresh ...</span></span>
-<span class="cl"><span class="tok-com">  // set S Exception Program Counter to the saved user pc.</span></span>
-<span class="cl">  w_sepc(p-&gt;trapframe-&gt;epc);</span>
-</code></pre></div>
+<span class="cl">  w_sepc(p-&gt;trapframe-&gt;epc);      <span class="tok-com">// set S Exception Program Counter to the saved user pc.</span></span></code></pre></div>
 </div>
-          <p>prepare_return() sets everything sret will need. Interrupts go off first, because a trap landing mid-return would be a disaster. stvec is re-armed to uservec for the next trap, and the trapframe fields uservec will need next time are refreshed. Then sstatus: SPP cleared to 0, so sret will drop to user mode; SPIE set, so interrupts work there. And sepc loaded with trapframe-&gt;epc, the stepped-past address. usertrap then returns the user page-table address in a0, and that return lands directly in userret: uservec&#x27;s jalr t0 left the return address pointing at the instruction after the jump, which is userret&#x27;s first line. The C function never really comes back to its caller; it falls into the second half of the assembly.</p>
+          <p><code>prepare_return</code>() sets everything <code>sret</code> will need. Interrupts go off first, because a trap landing mid-return would be a disaster. <code>stvec</code> is re-armed to uservec for the next trap, and the trapframe fields uservec will need next time are refreshed. Then <code>sstatus</code>: SPP cleared to 0, so <code>sret</code> will drop to user mode; SPIE set, so interrupts work there. And <code>sepc</code> loaded with trapframe-&gt;epc, the stepped-past address. usertrap then returns the user page-table address in <code>a0</code>, and that return lands directly in userret: uservec&#x27;s <code>jalr</code> <code>t0</code> left the return address pointing at the instruction after the jump, which is userret&#x27;s first line. The C function never really comes back to its caller; it falls into the second half of the assembly.</p>
           <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">trampoline.S, userret tail (excerpt)</span><button class="codeblock-copy" type="button">Copy</button></div>
-<div class="codeblock-body"><pre><code>
-<span class="cl"><span class="tok-com">        # ... one load per register ...</span></span>
-<span class="cl"><span class="tok-com">	# restore user a0</span></span>
-<span class="cl">        ld a0, 112(a0)</span>
-<span class="cl"><span class="tok-com">        # return to user mode and user pc.</span></span>
-<span class="cl"><span class="tok-com">        # prepare_return() sets up sstatus and sepc.</span></span>
-<span class="cl">        sret</span>
-</code></pre></div>
+<div class="codeblock-body"><pre><code><span class="cl"><span class="tok-com">        # ... one load per register ...</span></span>
+<span class="cl">        ld a0, 112(a0)  <span class="tok-com"># restore user a0</span></span>
+<span class="cl">        sret            <span class="tok-com"># return to user mode and user pc. prepare_return() sets up sstatus and sepc.</span></span></code></pre></div>
 </div>
-          <p>The mirror image of the entry. The user page table is reinstalled, then the loads rebuild every register from the trapframe, a0 last, because a0 was needed to point at the trapframe until the final load. That last load is the point of the whole trip: trapframe-&gt;a0 holds 2, the write&#x27;s return value, so the program&#x27;s a0 comes back carrying its answer. Then sret, and the hardware keeps its half of the contract in reverse: privilege drops to user because SPP is 0, interrupts turn on because SPIE is 1, the program counter becomes sepc, the instruction after the ecall. The program continues and never knew it left.</p>
+          <p>The mirror image of the entry. The user page table is reinstalled, then the loads rebuild every register from the trapframe, <code>a0</code> last, because <code>a0</code> was needed to point at the trapframe until the final load. That last load is the point of the whole trip: trapframe-&gt;<code>a0</code> holds 2, the write&#x27;s return value, so the program&#x27;s <code>a0</code> comes back carrying its answer. Then <code>sret</code>, and the hardware keeps its half of the contract in reverse: privilege drops to user because SPP is 0, interrupts turn on because SPIE is 1, the program counter becomes <code>sepc</code>, the instruction after the <code>ecall</code>. The program continues and never knew it left.</p>
           <p>One sentence to keep: a trap is a handoff in strict order, hardware to assembly to C and back, and the trapframe is the document they all sign. The assembly writes it, the C code reads and edits it, the assembly restores from it.</p>
           <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/trap.c" target="_blank" rel="noopener">kernel/trap.c</a> &middot; <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/trampoline.S" target="_blank" rel="noopener">kernel/trampoline.S</a> &middot; <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/syscall.c" target="_blank" rel="noopener">kernel/syscall.c</a></p>
         </div>
