@@ -1378,6 +1378,30 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Promise That Names a Byte Range</h3>
+          <!-- LAYER-STRIP:the-promise-that-names-a-byte-range -->
+          <p class="research-date"><time datetime="2026-09-21">2026-09-21 11:55 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I wrote 8 MiB of dirty pages to a file and asked the kernel to make them durable two ways. <code>fsync</code> took 18 to 19.5 milliseconds. <code>sync_file_range</code> with all three flags took 8.5 to 10. Same bytes, same disk, roughly half the time. The difference is what each call promises: <code>fsync</code> promises the whole file, metadata included <a class="cite" href="#src-the-promise-that-names-a-byte-range-2">[2]</a>, while the range call promises only the bytes you name <a class="cite" href="#src-the-promise-that-names-a-byte-range-1">[1]</a>.</p>
+          <p>The signature is <code>sync_file_range(fd, offset, nbytes, flags)</code>, in Linux since 2.6.17 <a class="cite" href="#src-the-promise-that-names-a-byte-range-1">[1]</a>. The range is page-grained: the offset rounds down, the end rounds up, and an <code>nbytes</code> of 0 means offset through end of file. The flags are the point. <code>SYNC_FILE_RANGE_WRITE</code> alone starts writeback of the range's dirty pages and returns immediately; the man page says outright it is not suitable for data integrity. Add <code>WAIT_BEFORE</code> and the call first waits for already-submitted writeback, then starts the range's write: the start-for-data-integrity operation. Add <code>WAIT_AFTER</code> too and it waits after as well: all three flags together are the range's write-for-data-integrity operation.</p>
+          <p>Splitting start from wait is the whole design. On 8 MiB of dirty pages, <code>WRITE</code> alone returned in about 2.3 milliseconds because it only started the write; a separate <code>WAIT_AFTER</code> then took about 40 milliseconds doing the actual waiting. Two calls where <code>fsync</code> is one, and the gap between them is yours to use: start the write, do other work, wait later. That is why a database overwriting a hot 4 MiB region of a 40 GiB file wants this call. It does not drag every cold page along, it does not pay the metadata tax, and it can pipeline the writeback instead of blocking on it.</p>
+<div class="codeblock">
+<div class="codeblock-head"><span class="codeblock-title">the split: start and wait are two calls</span><button class="codeblock-copy" type="button">Copy</button></div>
+<div class="codeblock-body"><pre><code><span class="cl">sync_file_range(fd, 0, 0, SYNC_FILE_RANGE_WRITE);      <span class="tok-com">/* start: returns now */</span></span>
+<span class="cl">do_other_work();                                       <span class="tok-com">/* the gap is yours */</span></span>
+<span class="cl">sync_file_range(fd, 0, 0, SYNC_FILE_RANGE_WAIT_AFTER);  <span class="tok-com">/* done: waits */</span></span></code></pre></div>
+</div>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-promise-that-names-a-byte-range/the-promise-that-names-a-byte-range.jpg" alt="A hard disk drive actuator arm assembly photographed on a white background: the metal arm that moves the read/write head across the disk platters" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The part that puts the bytes where the promise lands: a hard disk drive actuator arm assembly, the arm that carries the read/write head across the platters.<br><span style="opacity:.7">Photo: Malcolm Koo (CC BY 4.0), via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>The man page calls this call extremely dangerous, and the warning is part of the mechanism, not decoration <a class="cite" href="#src-the-promise-that-names-a-byte-range-1">[1]</a>. It writes no metadata. It gives no guarantees unless the program is purely overwriting blocks that are already instantiated, which no userspace interface can confirm, and which is impossible on copy-on-write filesystems. It does not flush the drive's onboard write buffer. So the promise is narrow by construction: the bytes you named, written out, nothing else. Where that narrow promise is exactly what you need, this is the tool; everywhere else, reach for <code>fsync</code>.</p>
+          <p><code>fsync</code> is a promise about a file. <code>sync_file_range</code> is a promise about a byte range, split into start and done.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Store That Isn't</h3>
           <!-- LAYER-STRIP:the-store-that-isnt -->
           <p class="research-date"><time datetime="2026-09-21">2026-09-21 09:15 EDT</time></p>

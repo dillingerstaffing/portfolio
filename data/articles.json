@@ -1,5 +1,67 @@
 [
   {
+    "title": "The Promise That Names a Byte Range",
+    "slug": "the-promise-that-names-a-byte-range",
+    "date": "2026-09-21",
+    "description": "fsync() promises a whole file. sync_file_range() promises a byte range, and its flags split the promise into start and wait. Firsthand on 8 MiB of dirty pages: the full-range combination at 8.5 to 10 ms where fsync took 18 to 19.5, plus the man page's warning that this call is extremely dangerous.",
+    "paragraphs": [
+      "I wrote 8 MiB of dirty pages to a file and asked the kernel to make them durable two ways. fsync took 18 to 19.5 milliseconds. sync_file_range with all three flags took 8.5 to 10. Same bytes, same disk, roughly half the time. The difference is what each call promises: fsync promises the whole file, metadata included, while the range call promises only the bytes you name.",
+      "The signature is sync_file_range(fd, offset, nbytes, flags), in Linux since 2.6.17. The range is page-grained: the offset rounds down, the end rounds up, and an nbytes of 0 means offset through end of file. The flags are the point. SYNC_FILE_RANGE_WRITE alone starts writeback of the range's dirty pages and returns immediately; the man page says outright it is not suitable for data integrity. Add WAIT_BEFORE and the call first waits for already-submitted writeback, then starts the range's write: the start-for-data-integrity operation. Add WAIT_AFTER too and it waits after as well: all three flags together are the range's write-for-data-integrity operation.",
+      "Splitting start from wait is the whole design. On 8 MiB of dirty pages, WRITE alone returned in about 2.3 milliseconds because it only started the write; a separate WAIT_AFTER then took about 40 milliseconds doing the actual waiting. Two calls where fsync is one, and the gap between them is yours to use: start the write, do other work, wait later. That is why a database overwriting a hot 4 MiB region of a 40 GiB file wants this call. It does not drag every cold page along, it does not pay the metadata tax, and it can pipeline the writeback instead of blocking on it.",
+      "The man page calls this call extremely dangerous, and the warning is part of the mechanism, not decoration. It writes no metadata. It gives no guarantees unless the program is purely overwriting blocks that are already instantiated, which no userspace interface can confirm, and which is impossible on copy-on-write filesystems. It does not flush the drive's onboard write buffer. So the promise is narrow by construction: the bytes you named, written out, nothing else. Where that narrow promise is exactly what you need, this is the tool; everywhere else, reach for fsync.",
+      "fsync is a promise about a file. sync_file_range is a promise about a byte range, split into start and done."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/160-sync-file-range",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "Nothing in the post depends on the instruction set: the range granularity comes from the kernel's page cache, not from any instruction's semantics, and the same flag contract holds on x86-64, ARM, and RISC-V (the latter via sync_file_range2)."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The post never reasons about pipelines, predictors, or on-chip caches; the only hardware it names is the drive's onboard write buffer, which the call explicitly does not flush, and the timing numbers are presented as ratios from a shared VM, not as microarchitectural measurements."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No bootloader, machine mode, or device firmware takes part: the demo runs as an unprivileged userspace program against the host kernel, and the drive firmware is named only to say the syscall does not reach it."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The whole mechanism is a Linux syscall interpreted by the kernel's writeback path: the flags, the page-grained rounding of the range, and the EINVAL and ESPIPE error returns are all kernel ABI, verified firsthand against the running kernel."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The post's insight is a two-phase protocol, start writeback with WRITE and wait with WAIT_AFTER, with documented flag combinations for start-for-integrity and write-for-data-integrity; the phases are separately observable and the gap between them is usable work time."
+      }
+    },
+    "evidence": {
+      "label": "dillingerstaffing/systems-lab lab/160-sync-file-range",
+      "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/160-sync-file-range"
+    },
+    "image": "blog/the-promise-that-names-a-byte-range/the-promise-that-names-a-byte-range.jpg",
+    "image_alt": "A hard disk drive actuator arm assembly photographed on a white background: the metal arm that moves the read/write head across the disk platters",
+    "image_caption": "The part that puts the bytes where the promise lands: a hard disk drive's actuator arm assembly, the arm that carries the read/write head across the platters.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Actuator_arm_assembly_of_a_hard_disk_drive.jpg",
+    "image_license": "CC BY 4.0",
+    "image_attribution": "Malcolm Koo",
+    "social_image": "blog/the-promise-that-names-a-byte-range/the-promise-that-names-a-byte-range-social.jpg",
+    "offer": "Related work: crash triage is $250/symptom, C audit from $350.",
+    "sources": [
+      {
+        "title": "sync_file_range(2) man page",
+        "publisher": "Linux man-pages project (man7.org)",
+        "url": "https://man7.org/linux/man-pages/man2/sync_file_range.2.html",
+        "note": "The contract this post proves firsthand: the three flags and their documented combinations, page-grained ranges, the flags=0 no-op, the EINVAL and ESPIPE errors, and the 'extremely dangerous' warning covering metadata, overwrites of instantiated blocks, and disk write caches."
+      },
+      {
+        "title": "fsync(2) man page",
+        "publisher": "Linux man-pages project (man7.org)",
+        "url": "https://man7.org/linux/man-pages/man2/fsync.2.html",
+        "note": "The comparison point: fsync flushes all modified in-core data of the file plus the metadata associated with it, which is why it costs more than the range-scoped call on the same dirty pages."
+      }
+    ]
+  },
+  {
     "title": "The Store That Isn't",
     "slug": "the-store-that-isnt",
     "date": "2026-09-21",
