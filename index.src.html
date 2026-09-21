@@ -824,6 +824,7 @@
     .post-update-kicker { margin: 0 0 22px; color: var(--muted); font: 500 10px/1.7 var(--mono); letter-spacing: .18em; text-transform: uppercase; }
     .research-body { max-width: 780px; }
     .research-body p { margin: 0 0 20px; color: var(--paper); line-height: 1.85; }
+    .research-body p code { font-family: var(--mono); font-size: .88em; background: rgba(127,127,127,.14); padding: .1em .35em; border-radius: 3px; }
     .research-body pre {
       margin: 28px 0;
       padding: clamp(18px, 3vw, 28px);
@@ -1382,7 +1383,7 @@
           <p class="research-date"><time datetime="2026-09-21">2026-09-21 09:15 EDT</time></p>
         </div>
         <div class="research-body">
-          <p>I compiled two one-byte functions this morning, gcc 13.2.0 at -O2 for rv64, and read the disassembly. Both wait for bit 5 of the byte at address 0x10000005, then store a byte to 0x10000000. The volatile one asks the device every iteration: lbu, andi, beqz back to the load. The plain one asks once: a single lbu before the loop, and if the bit is clear it falls into j ., a jump to itself that never touches the device again. The hardware can become ready a microsecond later; that loop will never notice. One keyword is the difference between polling the device and polling a stale copy of it.</p>
+          <p>I compiled two one-byte functions, <code>gcc</code> 13.2.0 at <code>-O2</code> for rv64, and read the disassembly. Both poll bit <code>5</code> of the byte at <code>0x10000005</code>, then store a byte to <code>0x10000000</code>. The source differs by one keyword.</p>
 <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">mmio.c compiled: gcc 13.2.0 -O2, rv64 (excerpts)</span><button class="codeblock-copy" type="button">Copy</button></div>
 <div class="codeblock-body"><pre><code>
@@ -1403,6 +1404,8 @@
 <span class="cl">  sb a0,0(a5)                   <span class="tok-com">; 0x10000000: the store that sends</span></span>
 </code></pre></div>
 </div>
+          <p><code>putc_nv</code> takes a plain pointer. <code>a4</code> arrives holding <code>0x10000000</code> (the excerpt trims the <code>lui</code>), so <code>lbu a5,5(a4)</code> loads the Line Status Register at <code>0x10000005</code>, once, before the loop. The compiler hoists it: in its model of memory, a load from an address nothing in the program writes cannot change between iterations. <code>andi a5,a5,32</code> keeps only bit <code>5</code>, the transmitter-idle bit. <code>bnez a5,.write</code> skips the spin if the UART was already ready. Otherwise the loop body is empty, and an empty loop is <code>j .spin</code>, a jump to itself. The device can raise the bit a microsecond later; this code will never ask again. <code>sb a0,0(a5)</code> stores the argument byte to <code>0x10000000</code>; the excerpt trims a second <code>lui</code> that reloads <code>a5</code> with the base, the polled value being dead after the branch.</p>
+          <p><code>putc_v</code> takes a <code>volatile</code> pointer, and the load stays inside the loop. <code>lbu a5,0(a4)</code> reads the register every iteration (<code>a4</code> holds <code>0x10000005</code> here, setup trimmed the same way). <code>andi</code> isolates the bit; <code>beqz a5,.poll</code> goes back while it is clear. A <code>volatile</code> access is a visible side effect: the optimizer may not hoist it, delete it, or merge two of them. The loop survives <code>-O2</code> because the compiler is forbidden from assuming what the device does between two reads.</p>
           <p>Those two addresses are the whole story. This is xv6's UART driver turning an integer into a pointer <a class="cite" href="#src-the-store-that-isnt-1">[1]</a>:</p>
 <div class="codeblock">
 <div class="codeblock-head"><span class="codeblock-title">xv6 kernel/uart.c (excerpts)</span><button class="codeblock-copy" type="button">Copy</button></div>
@@ -1416,13 +1419,14 @@
 <span class="cl">#define WriteReg(reg, v) (*(Reg(reg)) = (v))</span>
 </code></pre></div>
 </div>
-          <p>The CPU cannot tell the difference: it issues the same sb it would for the stack. But the bus routes 0x10000000 to the UART instead of DRAM, and the byte lands in the transmit holding register, where the chip clocks it out at 38.4K baud. Memory-mapped I/O means the address is a wire wearing a memory costume. The instruction is honest. The address lies.</p>
+          <p><code>Reg</code> casts <code>UART0 + reg</code> to <code>volatile unsigned char *</code>. The arithmetic is in bytes, so <code>Reg(5)</code> is exactly <code>0x10000005</code>; there is no scaling to get wrong. The <code>volatile</code> is the entire contract: every dereference is one bus transaction, emitted exactly as written, in order. <code>ReadReg</code> is one load, <code>WriteReg</code> one store. That cuts both ways: an extra <code>ReadReg</code> dropped in for debugging is not a free peek, it is another transaction on the wire. Count your accesses.</p>
+          <p>The CPU cannot tell the difference: <code>sb</code> is the same instruction it uses for the stack. But the bus routes <code>0x10000000</code> to the UART instead of DRAM, and the byte lands in the transmit holding register, which the chip clocks out at 38.4K baud. Memory-mapped I/O means the address is a wire wearing a memory costume. The instruction is honest. The address lies.</p>
 <figure style="margin:28px 0;max-width:560px">
 <img src="/portfolio/blog/the-store-that-isnt/the-store-that-isnt.jpg" alt="An NS16550AFN UART chip in a ceramic package, the kind of serial hardware xv6's driver speaks to" style="width:100%;height:auto;display:block" loading="lazy" />
 <figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The store instruction ends here: an NS16550AFN UART, National Semiconductor, 1992.</figcaption>
 </figure>
-          <p>The compiler's model of memory says a load from an address nothing wrote is redundant, and a store to an address nothing reads is dead. The UART breaks both halves: its loads return bytes the CPU never stored, because input arrives on the device's own schedule, and its stores have effects no load will ever observe, because the byte leaves on a wire. volatile is how C marks an address that is not memory: every access through a volatile lvalue is a visible side effect the optimizer must honor <a class="cite" href="#src-the-store-that-isnt-2">[2]</a>, so it emits the loads and stores exactly as written, in order. That is why the poll loop survives -O2, and why the plain-pointer version degrades into a jump to itself.</p>
-          <p>xv6's driver is the same loop as a function. uartputc_sync spins on bit 5 of the Line Status Register, then calls WriteReg, which is one sb through a volatile pointer to 0x10000000 <a class="cite" href="#src-the-store-that-isnt-1">[1]</a>. Ask the device if it is ready, then store the byte. The store is not a write to memory; it is a message to a second computer, delivered by an instruction that thinks it is writing RAM.</p>
+          <p>The compiler's model of memory says a load from an address nothing wrote is redundant, and a store to an address nothing reads is dead. The UART breaks both halves: its loads return bytes the CPU never stored, and its stores have effects no load will ever observe. <code>volatile</code> marks an address that is not memory. Every access through a <code>volatile</code> lvalue is a visible side effect the optimizer must honor <a class="cite" href="#src-the-store-that-isnt-2">[2]</a>, emitted exactly as written, in order. That is why the poll loop survives <code>-O2</code>, and why the plain-pointer version degrades into a jump to itself.</p>
+          <p>xv6's driver is the same loop as a function. <code>uartputc_sync</code> spins on bit <code>5</code> of the Line Status Register, then calls <code>WriteReg</code>, which is one <code>sb</code> through a <code>volatile</code> pointer to <code>0x10000000</code> <a class="cite" href="#src-the-store-that-isnt-1">[1]</a>. Ask the device if it is ready, then store the byte. The store is not a write to memory; it is a message to a second computer, delivered by an instruction that thinks it is writing RAM.</p>
         </div>
       </article>
       <article class="research-note">
