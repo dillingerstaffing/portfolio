@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260920-205757">
+  <meta name="build-version" content="v20260921-060523">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ece6d5">
@@ -922,6 +922,66 @@
     .research-code-link { color: var(--muted) !important; font-size: 12px; }
     .research-code-link a { color: var(--acid); text-underline-offset: 4px; }
     .research-code-link a:hover, .research-code-link a:focus-visible { color: var(--acid-soft); }
+    /* Post sources: the citation ledger. One design for every post, past
+       and future. The entries are data (articles.json "sources"); build.py
+       renders this section byte-identically in the feed block and on
+       per-post pages. Inline citations are
+       <a class="cite" href="#src-<slug>-<n>">[n]</a>, each pointing at its
+       numbered entry below. */
+    .post-sources {
+      margin: 34px 0 8px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+    .post-sources > h4 {
+      margin: 0 0 4px;
+      font: 600 11px/1.6 var(--mono);
+      letter-spacing: .22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .post-sources ol { list-style: none; margin: 0; padding: 0; }
+    .post-sources li {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 12px;
+      padding: 13px 0;
+      border-top: 1px solid var(--line);
+      scroll-margin-top: 150px;
+    }
+    .post-sources li:first-child { border-top: 0; }
+    .src-num { font: 500 12px/1.7 var(--mono); color: var(--dim); }
+    .src-title { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+    .src-title a {
+      color: var(--ink);
+      text-decoration: none;
+      border-bottom: 1px solid var(--dim);
+    }
+    .src-title a:hover { color: var(--acid); border-color: var(--acid); }
+    .src-pub {
+      display: block;
+      margin-top: 3px;
+      font: 500 10.5px/1.6 var(--mono);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .src-note {
+      margin: 7px 0 0;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--muted);
+      max-width: 74ch;
+    }
+    a.cite {
+      font: 600 11px/1 var(--mono);
+      color: var(--acid);
+      text-decoration: none;
+      white-space: nowrap;
+      padding: 2px 1px;
+    }
+    a.cite:hover { text-decoration: underline; text-underline-offset: 3px; }
+    a.cite:focus-visible { outline: 1px solid var(--acid); outline-offset: 2px; }
 
     .contact-chooser {
       width: min(440px, calc(100vw - 32px));
@@ -1726,9 +1786,30 @@ kmem.freelist = r;</code></pre>
   44:   00008067    ret</code></pre>
           <p>One instruction: ret. The wipe is gone. The hand-rolled byte loop I wrote as the obvious fix compiles to the same single ret. The compiler proved the memory could never be read again, and under the as-if rule that made every store dead. You can see the wipe in the source. It is not in the binary.</p>
           <p>The as-if rule is the contract behind the deletion. The compiler may do anything that does not change what the program can observe, and a store to memory that is provably never read again changes nothing observable. So it deletes the stores, the call and the loop alike. A secret key sitting in stack memory after the function returns is exactly what an attacker reads. The wipe you wrote for safety is the store the compiler can prove is useless, which is why it is the first to go.</p>
-          <p>Two spellings survived my objects. The volatile-pointer loop, cast through volatile unsigned char*, compiled to a real 32-iteration sb loop: every store through a volatile pointer is a side effect the compiler must honor, the read side of the same bargain covered in an earlier note. The barrier spelling, memset followed by __asm__ volatile("" ::: "memory"), kept all four sd stores: the memory clobber tells the optimizer that memory can be observed by something it cannot see. glibc ships exactly this bargain as explicit_bzero, memset plus a compiler barrier, with the promise that the call will not be deleted even when the buffer is dead afterward. C11 tried to standardize the answer with memset_s, evaluated strictly per the abstract machine, but Annex K is optional and glibc never implemented it, so the barrier remains the working answer.</p>
-          <p>This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never working against you. It applied the as-if rule, and the rule said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret takes not just a function call but a barrier that stops the optimizer from deleting the stores.</p>
+          <p>Two spellings survived my objects. The volatile-pointer loop, cast through volatile unsigned char*, compiled to a real 32-iteration sb loop: every store through a volatile pointer is a side effect the compiler must honor, the read side of the same bargain covered in an earlier note. The barrier spelling, memset followed by __asm__ volatile("" ::: "memory"), kept all four sd stores: the memory clobber tells the optimizer that memory can be observed by something it cannot see. glibc ships exactly this bargain as explicit_bzero, memset plus a compiler barrier, with the promise that the call will not be deleted even when the buffer is dead afterward <a class="cite" href="#src-the-most-honest-lie-in-c-2">[2]</a>. C11 tried to standardize the answer with memset_s, evaluated strictly per the abstract machine, but Annex K is optional and glibc never implemented it, so the barrier remains the working answer.</p>
+          <p>This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper <a class="cite" href="#src-the-most-honest-lie-in-c-7">[7]</a> and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never working against you. It applied the as-if rule, and the rule said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret takes not just a function call but a barrier that stops the optimizer from deleting the stores.</p>
+          <p>The wipe can survive and still lose. There is a second deletion that no compiler barrier stops: the kernel paging the secret to swap. Watch the shape where this applies clearly.</p>
+          <pre><code>char *key = malloc(32);
+read_key(key);
+serve_clients(key);
+explicit_bzero(key, 32);
+free(key);</code></pre>
+          <p>The wipe ran. The 32 bytes in RAM are zero. But the kernel was free to page that anonymous page out to the swap device at any point while the secret sat there, and page it back in when the process touched it next. The copy on disk was written before the wipe and is never touched by the wipe. It outlives the process. Anyone who can read the swap partition, a forensics image, a stolen laptop, a cloud disk snapshot, reads the key in the clear. Your program cannot observe the kernel doing this, which is the same as-if reasoning as the first half: what the program cannot observe, the system is free to do.</p>
+          <p>The fix is to tell the kernel the pages are not pageable, and to do it before the secret arrives:</p>
+          <pre><code>char *key = malloc(32);
+if (mlock(key, 32) != 0)
+    exit(1); /* no lock, no secret */
+read_key(key);
+serve_clients(key);
+explicit_bzero(key, 32); /* locked */
+munlock(key, 32);
+free(key);</code></pre>
+          <p>Three details carry the whole fix. First, the lock comes before the secret, because a page already written to swap is already lost. Second, the mlock return value is checked: the call can fail, the per-process lock limit RLIMIT_MEMLOCK is the usual reason, and an unchecked failure is the same as no lock. Third, the wipe happens while the pages are still locked: munlock marks the pages swappable again, so wiping after the unlock reopens the window. libsodium gets this ordering right, zeroing the memory in sodium_munlock before the pages become swappable again <a class="cite" href="#src-the-most-honest-lie-in-c-3">[3]</a>.</p>
+          <p>When does this not apply? Two conditions have to hold for the risk to be real: the secret sits in ordinary pageable memory, and the process lives long enough under enough memory pressure for the kernel to page it out. A TLS server holding its private key for weeks on a machine with swap: applies. A password checked and dropped in the same second on a box with no swap: does not.</p>
+          <p>What the six resources say, each in one line. OpenSSL documents the wipe half: OPENSSL_cleanse is memory overwritten so it is "not optimised out by compiler optimisations such as dead store elimination (as memset(3) may be)", and for long-lived secrets it offers a secure heap, whose guarantees the docs warn "depend on the operating system" <a class="cite" href="#src-the-most-honest-lie-in-c-1">[1]</a>. The OpenBSD manual states the wipe half as the reason explicit_bzero exists: it "will not be removed by a compiler's dead store optimization pass, making it useful for clearing sensitive memory such as a password"; the swap control lives one man page over, in mlock(2) <a class="cite" href="#src-the-most-honest-lie-in-c-2">[2]</a>. libsodium is the one source that names swap directly and hands you the mechanism: sodium_mlock "can help avoid swapping sensitive data to disk", its guarded allocator locks memory by default, and it recommends disabling swap or using encrypted swap <a class="cite" href="#src-the-most-honest-lie-in-c-3">[3]</a>. The book states the general law: as soon as a secret is no longer needed, its storage location should be wiped, because magnetic media are very hard to wipe and a security system is only as strong as its weakest link <a class="cite" href="#src-the-most-honest-lie-in-c-4">[4]</a>. The courses teach the wipe as curriculum: inspect the optimized release assembly, because if the compiler optimizes out memory-clearing code, an attacker can gain access to sensitive data <a class="cite" href="#src-the-most-honest-lie-in-c-5">[5]</a>. And the review practice checks the pair, in this order: the pages are locked before the secret arrives, and the wipe is spelled so the optimizer cannot delete it <a class="cite" href="#src-the-most-honest-lie-in-c-6">[6]</a>.</p>
+          <p>One more sentence to keep: a wipe that survives the compiler cleans only RAM, because the kernel may already have copied the secret to swap, so lock the pages before the secret arrives.</p>
         </div>
+      <section class="post-sources" aria-label="Sources"><h4>Sources</h4><ol><li id="src-the-most-honest-lie-in-c-1"><span class="src-num">01</span><div><span class="src-title"><a href="https://docs.openssl.org/3.1/man3/OPENSSL_secure_malloc/" target="_blank" rel="noopener">OpenSSL documentation: the secure heap and OPENSSL_cleanse</a></span><span class="src-pub">OpenSSL Project</span><p class="src-note">OPENSSL_cleanse is documented as memory overwritten so it is &#x27;not optimised out by compiler optimisations such as dead store elimination (as memset(3) may be)&#x27;. That is the compiler half. For long-lived secrets OpenSSL offers a secure heap, and the docs warn that its guarantees &#x27;depend on the operating system&#x27;, advising reviewers to check the code against their own threat model.</p></div></li><li id="src-the-most-honest-lie-in-c-2"><span class="src-num">02</span><div><span class="src-title"><a href="https://man.openbsd.org/OpenBSD-5.5/bzero.3" target="_blank" rel="noopener">explicit_bzero(3), OpenBSD manual pages</a></span><span class="src-pub">OpenBSD</span><p class="src-note">The manual states the wipe half as the reason the function exists: explicit_bzero &#x27;will not be removed by a compiler&#x27;s dead store optimization pass, making it useful for clearing sensitive memory such as a password&#x27;. The swap control lives one man page over, in mlock(2).</p></div></li><li id="src-the-most-honest-lie-in-c-3"><span class="src-num">03</span><div><span class="src-title"><a href="https://github.com/jedisct1/libsodium-doc/blob/HEAD/helpers/memory_management.md" target="_blank" rel="noopener">Memory management, libsodium documentation</a></span><span class="src-pub">libsodium</span><p class="src-note">The one source that names swap directly: sodium_mlock &#x27;locks at least len bytes of memory starting at addr. This can help avoid swapping sensitive data to disk.&#x27; Locking can fail because operating systems limit locked memory, so sodium_mlock returns -1 on failure; sodium_munlock zeroes the memory before making the pages swappable again; the guarded allocator locks by default and may use MAP_NOCORE or MADV_DONTDUMP. The docs recommend disabling swap on machines handling sensitive data, with encrypted swap as second choice, and disabling core dumps.</p></div></li><li id="src-the-most-honest-lie-in-c-4"><span class="src-num">04</span><div><span class="src-title"><span>Cryptography Engineering: Design Principles and Practical Applications</span></span><span class="src-pub">Wiley, 2010. Ferguson, Schneier, Kohno</span><p class="src-note">Chapter 21, &#x27;Storing Secrets&#x27;, section 21.10, &#x27;Wiping Secrets&#x27;: as soon as a secret is no longer needed, its storage location should be wiped to avoid any further compromise, because magnetic media are very hard to wipe and a security system is only as strong as its weakest link. A page the kernel copied to swap is a storage location you can no longer wipe: the weak link this chapter warns about.</p></div></li><li id="src-the-most-honest-lie-in-c-5"><span class="src-num">05</span><div><span class="src-title"><a href="https://cmu-sei.github.io/secure-coding-standards/sei-cert-c-coding-standard/recommendations/miscellaneous-msc/msc06-c/" target="_blank" rel="noopener">SEI CERT C Coding Standard, MSC06-C</a></span><span class="src-pub">Carnegie Mellon SEI</span><p class="src-note">The curriculum&#x27;s canonical instance: a memset meant to clear a password can be removed by compiler optimization when the buffer is never read afterward, so the optimized release assembly must be inspected to confirm the clearing survived. Risk assessment: &#x27;If the compiler optimizes out memory-clearing code, an attacker can gain access to sensitive data.&#x27;</p></div></li><li id="src-the-most-honest-lie-in-c-6"><span class="src-num">06</span><div><span class="src-title"><span>Practical C cryptography review work</span></span><span class="src-pub">Practice, not a document</span><p class="src-note">Not a document and not citable as one. It is the working practice the other five feed: a reviewer checks the pair, in this order. The pages are locked before the secret arrives, and the wipe is spelled so the optimizer cannot delete it. Lock without a wipe leaves the live copy; a wipe without a lock leaves the swapped copy.</p></div></li><li id="src-the-most-honest-lie-in-c-7"><span class="src-num">07</span><div><span class="src-title"><a href="https://www.usenix.org/system/files/conference/usenixsecurity17/sec17-yang.pdf" target="_blank" rel="noopener">Dead Store Elimination (Still) Considered Harmful</a></span><span class="src-pub">USENIX Security 2017. Yang, Johannesmeyer, Olesen, Lerner, Levchenko</span><p class="src-note">Examined eleven open-source security projects: four used flawed scrubbing techniques that may fail to scrub sensitive data, and four more owned a scrubbing function but used it inconsistently. The paper the post&#x27;s compiler half is measured against.</p></div></li></ol></section>
       </article>
       
       <article class="research-note">

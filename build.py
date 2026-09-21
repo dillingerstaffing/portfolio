@@ -181,6 +181,42 @@ def check_feed(items):
                  f"text, no markup, no em dashes")
 
 
+def check_sources(sources, where):
+    # The citation ledger: a post may carry a "sources" list in
+    # articles.json, rendered identically in the feed block and on per-post
+    # pages by render_post_sources. Same discipline as the feed wire:
+    # https-only URLs, plain text, no markup, no em dashes. A source with no
+    # url is allowed (print books, working practice) and renders as text.
+    if sources is None:
+        return
+    if not isinstance(sources, list) or not sources:
+        fail(f"{where}: sources must be a non-empty list")
+    seen_urls = set()
+    for i, s in enumerate(sources, 1):
+        tag = f"{where}: source {i}"
+        if not isinstance(s, dict):
+            fail(f"{tag}: must be an object")
+        title = s.get("title", "")
+        if not isinstance(title, str) or not title.strip() or len(title) > 200:
+            fail(f"{tag}: title must be 1-200 chars of plain text")
+        for f in ("publisher", "note"):
+            if not isinstance(s.get(f, ""), str):
+                fail(f"{tag}: {f} must be a string")
+        url = s.get("url", "")
+        if not isinstance(url, str):
+            fail(f"{tag}: url must be a string")
+        if url:
+            if not url.startswith("https://") or any(ch in url for ch in " '\"<>"):
+                fail(f"{tag}: url must be a safe https URL")
+            if url in seen_urls:
+                fail(f"{tag}: duplicate source url {url}")
+            seen_urls.add(url)
+        for f in ("title", "publisher", "note"):
+            v = s.get(f, "")
+            if "\u2014" in v or any(ch in v for ch in "<>&"):
+                fail(f"{tag}: {f} carries markup or an em dash")
+
+
 def check_evidence(ev, where):
     # Every layer strip's becauses must name primary evidence a reader can
     # follow: the card's PROOF.md test log (or the repo itself when no
@@ -477,6 +513,10 @@ def load_data():
         lint_layer_triggers(
             a["title"] + " " + " ".join(a["paragraphs"]),
             a["layers"], f"article {a['title']}")
+        # The citation ledger is optional per post, but when present it must
+        # be well-formed: render_post_sources turns it into the SOURCES
+        # section on both the feed block and the per-post page.
+        check_sources(a.get("sources"), f"article {a['title']}")
 
     article_slugs = {a["slug"] for a in articles}
     wigmore_by_slot = check_wigmore(wigmore, set(seen), article_slugs)
@@ -1196,6 +1236,64 @@ def per_post_html(article, next_article, block, desc, css, font_links, stamp, wi
 """
 
 
+def render_post_sources(article):
+    """Render the citation ledger for one article.
+
+    The SOURCES section is data-driven (articles.json "sources") and byte
+    identical in the feed block and on the per-post page, so citations work
+    the same on every post, past and future. Inline citations in the prose
+    are <a class="cite" href="#src-<slug>-<n>">[n]</a>; each entry carries
+    the matching id. Returns "" when the article has no sources.
+    """
+    sources = article.get("sources") or []
+    if not sources:
+        return ""
+    slug = article["slug"]
+    items = []
+    for i, s in enumerate(sources, 1):
+        anchor = f"src-{slug}-{i}"
+        title = html.escape(s["title"])
+        url = s.get("url", "")
+        if url:
+            title_html = (f'<a href="{html.escape(url)}" target="_blank" '
+                          f'rel="noopener">{title}</a>')
+        else:
+            title_html = f"<span>{title}</span>"
+        pub = html.escape(s.get("publisher", ""))
+        pub_html = f'<span class="src-pub">{pub}</span>' if pub else ""
+        note = html.escape(s.get("note", ""))
+        note_html = f'<p class="src-note">{note}</p>' if note else ""
+        items.append(
+            f'<li id="{anchor}"><span class="src-num">{i:02d}</span>'
+            f'<div><span class="src-title">{title_html}</span>'
+            f"{pub_html}{note_html}</div></li>")
+    return ('<section class="post-sources" aria-label="Sources">'
+            '<h4>Sources</h4><ol>' + "".join(items) + "</ol></section>")
+
+
+def check_source_cites(feed_block, article):
+    # Inline citations must resolve: every href="#src-<slug>-<n>" in the
+    # prose needs a matching rendered entry. An entry nobody cites is a
+    # reading list, not a citation, so that only warns.
+    slug = article["slug"]
+    n_sources = len(article.get("sources") or [])
+    pat = re.compile(r"src-" + re.escape(slug) + r"-(\d+)")
+    cited = set()
+    for m in re.finditer(r'href="#(src-[A-Za-z0-9-]+)"', feed_block):
+        anchor = m.group(1)
+        sm = pat.fullmatch(anchor)
+        if not sm:
+            fail(f"article {slug}: citation anchor #{anchor} is not "
+                 f"src-{slug}-<n>")
+        num = int(sm.group(1))
+        if num < 1 or num > n_sources:
+            fail(f"article {slug}: citation #{anchor} has no matching source")
+        cited.add(num)
+    for i in range(1, n_sources + 1):
+        if i not in cited:
+            warn(f"article {slug}: source {i} is never cited in the prose")
+
+
 def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
     """Emit one static page per article at blog/<slug>/index.html.
 
@@ -1245,7 +1343,17 @@ def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
                      f"{hm.group(1)}</a></h3>")
         if page.count(block) != 1:
             fail(f"article {slug}: feed block not unique in page")
-        page = page.replace(block, block.replace(plain_h3, linked_h3, 1), 1)
+        # The citation ledger rides inside the feed block, so the SOURCES
+        # section is identical on the index card and the per-post page.
+        feed_block = block
+        src_html = render_post_sources(article)
+        if src_html:
+            if "</article>" not in block:
+                fail(f"article {slug}: feed block has no closing article tag")
+            feed_block = block.replace("</article>",
+                                       src_html + "\n      </article>", 1)
+        check_source_cites(feed_block, article)
+        page = page.replace(block, feed_block.replace(plain_h3, linked_h3, 1), 1)
 
         subset = {f"{slug}|{slot}": a
                   for (item, slot), a in wigmore_by_slot.items() if item == slug}
@@ -1256,7 +1364,7 @@ def build_blog_permalinks(page, articles, stamp, wigmore_by_slot, template):
             fail(f"article {slug}: wigmore data contains a script breaker")
         wig_script = (f'  <script>window.__WIGMORE__ = {wig_data};</script>\n'
                       f'  <script>\n{tooltip_iife}\n  </script>')
-        post = per_post_html(article, next_article, block, desc, css, font_links,
+        post = per_post_html(article, next_article, feed_block, desc, css, font_links,
                              stamp, wig_script)
         dest = HERE / "blog" / slug / "index.html"
         dest.parent.mkdir(parents=True, exist_ok=True)

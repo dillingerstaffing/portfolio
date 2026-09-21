@@ -451,7 +451,8 @@
       "One instruction: ret. The wipe is gone. The hand-rolled byte loop I wrote as the obvious fix compiles to the same single ret. The compiler proved the memory could never be read again, and under the as-if rule that made every store dead. You can see the wipe in the source. It is not in the binary.",
       "The as-if rule is the contract behind the deletion. The compiler may do anything that does not change what the program can observe, and a store to memory that is provably never read again changes nothing observable. So it deletes the stores, the call and the loop alike. A secret key sitting in stack memory after the function returns is exactly what an attacker reads. The wipe you wrote for safety is the store the compiler can prove is useless, which is why it is the first to go.",
       "Two spellings survived my objects. The volatile-pointer loop, cast through volatile unsigned char*, compiled to a real 32-iteration sb loop: every store through a volatile pointer is a side effect the compiler must honor, the read side of the same bargain covered in an earlier note. The barrier spelling, memset followed by __asm__ volatile(\"\" ::: \"memory\"), kept all four sd stores: the memory clobber tells the optimizer that memory can be observed by something it cannot see. glibc ships exactly this bargain as explicit_bzero, memset plus a compiler barrier, with the promise that the call will not be deleted even when the buffer is dead afterward. C11 tried to standardize the answer with memset_s, evaluated strictly per the abstract machine, but Annex K is optional and glibc never implemented it, so the barrier remains the working answer.",
-      "This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never working against you. It applied the as-if rule, and the rule said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret takes not just a function call but a barrier that stops the optimizer from deleting the stores."
+      "This is not a theoretical hazard. Yang, Johannesmeyer, Olesen, Lerner, and Levchenko examined eleven open-source security projects in a 2017 USENIX Security paper and found four with flawed memory scrubbing, plus four more that owned a scrubber and used it inconsistently. Eight of eleven, wrong in two different ways. The compiler was never working against you. It applied the as-if rule, and the rule said those stores could go. One sentence to keep: memset is a request the compiler is allowed to deny, so wiping a secret takes not just a function call but a barrier that stops the optimizer from deleting the stores.",
+      "A later section adds the second failure: the kernel may page the secret to swap before the wipe runs, so the fix locks the pages with mlock before the secret arrives, checks the return value, and wipes while the pages are still locked."
     ],
     "codeLink": null,
     "evidence": {
@@ -481,6 +482,50 @@
       }
     },
     "offer": "Related work: C audit from $350, fixed price.",
+    "sources": [
+      {
+        "title": "OpenSSL documentation: the secure heap and OPENSSL_cleanse",
+        "publisher": "OpenSSL Project",
+        "url": "https://docs.openssl.org/3.1/man3/OPENSSL_secure_malloc/",
+        "note": "OPENSSL_cleanse is documented as memory overwritten so it is 'not optimised out by compiler optimisations such as dead store elimination (as memset(3) may be)'. That is the compiler half. For long-lived secrets OpenSSL offers a secure heap, and the docs warn that its guarantees 'depend on the operating system', advising reviewers to check the code against their own threat model."
+      },
+      {
+        "title": "explicit_bzero(3), OpenBSD manual pages",
+        "publisher": "OpenBSD",
+        "url": "https://man.openbsd.org/OpenBSD-5.5/bzero.3",
+        "note": "The manual states the wipe half as the reason the function exists: explicit_bzero 'will not be removed by a compiler's dead store optimization pass, making it useful for clearing sensitive memory such as a password'. The swap control lives one man page over, in mlock(2)."
+      },
+      {
+        "title": "Memory management, libsodium documentation",
+        "publisher": "libsodium",
+        "url": "https://github.com/jedisct1/libsodium-doc/blob/HEAD/helpers/memory_management.md",
+        "note": "The one source that names swap directly: sodium_mlock 'locks at least len bytes of memory starting at addr. This can help avoid swapping sensitive data to disk.' Locking can fail because operating systems limit locked memory, so sodium_mlock returns -1 on failure; sodium_munlock zeroes the memory before making the pages swappable again; the guarded allocator locks by default and may use MAP_NOCORE or MADV_DONTDUMP. The docs recommend disabling swap on machines handling sensitive data, with encrypted swap as second choice, and disabling core dumps."
+      },
+      {
+        "title": "Cryptography Engineering: Design Principles and Practical Applications",
+        "publisher": "Wiley, 2010. Ferguson, Schneier, Kohno",
+        "url": "",
+        "note": "Chapter 21, 'Storing Secrets', section 21.10, 'Wiping Secrets': as soon as a secret is no longer needed, its storage location should be wiped to avoid any further compromise, because magnetic media are very hard to wipe and a security system is only as strong as its weakest link. A page the kernel copied to swap is a storage location you can no longer wipe: the weak link this chapter warns about."
+      },
+      {
+        "title": "SEI CERT C Coding Standard, MSC06-C",
+        "publisher": "Carnegie Mellon SEI",
+        "url": "https://cmu-sei.github.io/secure-coding-standards/sei-cert-c-coding-standard/recommendations/miscellaneous-msc/msc06-c/",
+        "note": "The curriculum's canonical instance: a memset meant to clear a password can be removed by compiler optimization when the buffer is never read afterward, so the optimized release assembly must be inspected to confirm the clearing survived. Risk assessment: 'If the compiler optimizes out memory-clearing code, an attacker can gain access to sensitive data.'"
+      },
+      {
+        "title": "Practical C cryptography review work",
+        "publisher": "Practice, not a document",
+        "url": "",
+        "note": "Not a document and not citable as one. It is the working practice the other five feed: a reviewer checks the pair, in this order. The pages are locked before the secret arrives, and the wipe is spelled so the optimizer cannot delete it. Lock without a wipe leaves the live copy; a wipe without a lock leaves the swapped copy."
+      },
+      {
+        "title": "Dead Store Elimination (Still) Considered Harmful",
+        "publisher": "USENIX Security 2017. Yang, Johannesmeyer, Olesen, Lerner, Levchenko",
+        "url": "https://www.usenix.org/system/files/conference/usenixsecurity17/sec17-yang.pdf",
+        "note": "Examined eleven open-source security projects: four used flawed scrubbing techniques that may fail to scrub sensitive data, and four more owned a scrubbing function but used it inconsistently. The paper the post's compiler half is measured against."
+      }
+    ],
     "image": "blog/the-most-honest-lie-in-c/the-most-honest-lie-in-c.jpg",
     "image_alt": "A chalkboard wiped clean",
     "image_caption": "You wrote the wipe. The binary never did.",
