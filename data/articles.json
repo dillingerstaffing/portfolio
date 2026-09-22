@@ -1,5 +1,65 @@
 [
   {
+    "title": "The Extension You Cannot Disassemble",
+    "slug": "the-extension-you-cannot-disassemble",
+    "date": "2026-09-22",
+    "description": "Ztso strengthens RISC-V's memory model so loads are acquires and stores are releases, and the compiler deletes the fences that only restated the promise. Firsthand with xPack GCC 15.2.0: the release and acquire fences gone, the seq_cst fence kept, _ztso1p0 the only trace in the object file.",
+    "paragraphs": [
+      "I compiled the same four C11 atomics twice, xPack GCC 15.2.0 at -O2, once for rv64gc and once for rv64gc_ztso. The only difference between the two runs was the Ztso flag. For a release store the base target emits fence rw,w and then sw. The Ztso target emits just sw. For an acquire load the base target emits lw and then fence r,rw. The Ztso target emits just lw. Two fences, deleted by a compiler flag.",
+      "The spec explains the deletion. Ztso strengthens the base memory model, RVWMO, into RVTSO: every load acts as an acquire, every store as a release, and AMOs as both, so a fence that only restated that ordering is redundant. Under RVWMO the fences were load-bearing: without them the hardware could let a store or a load slide past a neighboring access. Under Ztso the ordering is a guarantee of the model, so the compiler stops emitting the instruction. A sequentially consistent atomic still keeps one fence rw,rw, because only a full barrier orders a store before a later load, and Ztso does not add that. The compiler knows exactly which fences the promise covers.",
+      "You cannot find Ztso in the disassembly. The extension adds no instructions, so there is nothing to disassemble. The only trace is the object file's architecture string, where the Ztso build records _ztso1p0 in Tag_RISCV_arch: the binary's declaration that it requires the stronger model. An extension that exists as a promise shows up only where promises are recorded, in the metadata.",
+      "Ztso is the extension you cannot disassemble: no new instructions, no fences, just an ordering promise and a flag in the object file."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/161-ztso-fence-delete",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Ztso directly changes the architectural memory-order contract the post demonstrates: the spec strengthens RVWMO so loads act as acquire and stores as release, which is exactly what makes the compiler's fence deletion legal, and the _ztso1p0 architecture tag is an ISA-level declaration."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The post constrains observable ordering but never reasons about a particular pipeline, store buffer, cache, or other microarchitectural mechanism; the deleted fences are a compiler decision against the architectural contract, not a hardware structure."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No bootloader, machine-mode firmware, or privilege-mode handoff takes part: the demonstration is a freestanding compile of C11 atomics to object files, and nothing in the post executes in or depends on firmware."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The proof uses freestanding C atomics compiled to object files, never a running kernel: no syscall, trap, page table, or kernel path appears in the experiment or the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The post derives no lock-free algorithm and proves no algorithmic property; the four atomics are a compiler-input fixture for observing fence lowering, not a concurrent algorithm under analysis."
+      }
+    },
+    "evidence": {
+      "label": "dillingerstaffing/systems-lab lab/161-ztso-fence-delete",
+      "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/161-ztso-fence-delete"
+    },
+    "image": "blog/the-extension-you-cannot-disassemble/the-extension-you-cannot-disassemble.jpg",
+    "image_alt": "A section of the Berlin Wall days after it opened in November 1989, people walking past where the barrier stood",
+    "image_caption": "November 1989: the barrier opens and the line keeps moving in order. Ztso deletes the fence instructions; the ordering promise remains.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Fall_of_the_Berlin_Wall_1989,_people_walking.jpg",
+    "image_license": "CC BY-SA 2.0",
+    "image_attribution": "Raphael Thiemard",
+    "social_image": "blog/the-extension-you-cannot-disassemble/the-extension-you-cannot-disassemble-social.jpg",
+    "sources": [
+      {
+        "title": "The RISC-V Ztso Extension, version 1.0",
+        "publisher": "RISC-V International",
+        "note": "Defines RVTSO as a delta from RVWMO: loads act as acquire-RCpc, stores as release-RCpc, AMOs as acquire-RCsc plus release-RCsc; non-I/O fences lacking both PW and SR become redundant; the extension adds no instructions; binaries that assume Ztso must identify that requirement.",
+        "url": "https://docs.riscv.org/reference/isa/extensions/ztso/_attachments/riscv-ztso.pdf"
+      },
+      {
+        "title": "lab/161-ztso-fence-delete: Ztso fence deletion through the compiler",
+        "publisher": "Chris Dillinger, systems-lab",
+        "note": "The firsthand experiment behind this post: xPack RISC-V GCC 15.2.0 at -O2 for rv64gc versus rv64gc_ztso, the deleted release and acquire fences, the retained sequential-consistency fence, the _ztso1p0 architecture tag, and the 36-check verification run.",
+        "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/161-ztso-fence-delete"
+      }
+    ]
+  },
+  {
     "title": "The Promise That Names a Byte Range",
     "slug": "the-promise-that-names-a-byte-range",
     "date": "2026-09-21",

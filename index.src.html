@@ -1378,6 +1378,29 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Extension You Cannot Disassemble</h3>
+          <!-- LAYER-STRIP:the-extension-you-cannot-disassemble -->
+          <p class="research-date"><time datetime="2026-09-22">2026-09-22 11:50 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I compiled the same four C11 atomics twice, xPack GCC 15.2.0 at <code>-O2</code>, once for <code>rv64gc</code> and once for <code>rv64gc_ztso</code>. The only difference between the two runs was the Ztso flag. For a release store the base target emits <code>fence rw,w</code> and then <code>sw</code>. The Ztso target emits just <code>sw</code>. For an acquire load the base target emits <code>lw</code> and then <code>fence r,rw</code>. The Ztso target emits just <code>lw</code>. Two fences, deleted by a compiler flag <a class="cite" href="#src-the-extension-you-cannot-disassemble-2">[2]</a>.</p>
+          <p>The spec explains the deletion. Ztso strengthens the base memory model, RVWMO, into RVTSO: every load acts as an acquire, every store as a release, and AMOs as both, so a fence that only restated that ordering is redundant <a class="cite" href="#src-the-extension-you-cannot-disassemble-1">[1]</a>. Under RVWMO the fences were load-bearing: without them the hardware could let a store or a load slide past a neighboring access. Under Ztso the ordering is a guarantee of the model, so the compiler stops emitting the instruction. A sequentially consistent atomic still keeps one <code>fence rw,rw</code>, because only a full barrier orders a store before a later load, and Ztso does not add that <a class="cite" href="#src-the-extension-you-cannot-disassemble-1">[1]</a>. The compiler knows exactly which fences the promise covers.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-extension-you-cannot-disassemble/the-extension-you-cannot-disassemble.jpg" alt="A section of the Berlin Wall days after it opened in November 1989, people walking past where the barrier stood" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">November 1989: the barrier opens and the line keeps moving in order. Ztso deletes the fence instructions; the ordering promise remains.</figcaption>
+</figure>
+          <p>The two builds side by side:</p>
+<pre><code>release store   base: fence rw,w ; sw     ztso: sw
+acquire load    base: lw ; fence r,rw     ztso: lw
+seq_cst         base: fence rw,rw         ztso: fence rw,rw</code></pre>
+          <p>The deletion is exact: release loses one fence, acquire loses one fence, and sequential consistency keeps its full barrier on both targets. The compiler is not guessing. The Ztso model tells it which orderings are already guaranteed, and it emits fences only for the ones that are not <a class="cite" href="#src-the-extension-you-cannot-disassemble-1">[1]</a> <a class="cite" href="#src-the-extension-you-cannot-disassemble-2">[2]</a>.</p>
+          <p>You cannot find Ztso in the disassembly. The extension adds no instructions, so there is nothing to disassemble <a class="cite" href="#src-the-extension-you-cannot-disassemble-1">[1]</a>. The only trace is the object file's architecture string, where the Ztso build records <code>_ztso1p0</code> in <code>Tag_RISCV_arch</code>: the binary's declaration that it requires the stronger model <a class="cite" href="#src-the-extension-you-cannot-disassemble-2">[2]</a>. An extension that exists as a promise shows up only where promises are recorded, in the metadata.</p>
+          <p>Ztso is the extension you cannot disassemble: no new instructions, no fences, just an ordering promise and a flag in the object file.</p>
+        </div>
+      </article>
+      
+      <article class="research-note">
+        <div>
           <h3>The Promise That Names a Byte Range</h3>
           <!-- LAYER-STRIP:the-promise-that-names-a-byte-range -->
           <p class="research-date"><time datetime="2026-09-21">2026-09-21 11:55 EDT</time></p>
