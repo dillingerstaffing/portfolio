@@ -11422,5 +11422,61 @@
     "checks": 4125,
     "failures": 0,
     "stressItems": 0
+  },
+  {
+    "id": "src-mie-write-readback",
+    "title": "Which enable bits the hart actually provides",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal M-mode RISC-V program writes all ones to the mie interrupt-enable register and records exactly which bits read back. Each of the standard bit positions 0 through 11 is then probed with a single-bit write, and the union of the sticky bits matches the low twelve bits of the all-ones readback. The boot value is restored exactly, and the run completes with the global interrupt enable clear and no traps.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-write-readback",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-write-readback/PROOF.md"
+    },
+    "checks": 10,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "10 checks against the write/readback roundtrip (the all-ones readback stable across two writes, the low 12 bits equal the per-bit sticky union, the zero write reads back zero, the boot value restored exactly), 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "The all-ones write reads back 0xfffffffffffffeee; of bits 0 through 11, bits 1, 2, 3, 5, 6, 7, 9, 10, 11 stick and bits 0, 4, 8 read back clear; 0 traps across the run"
+      ],
+      [
+        "CHECKSUM",
+        "0xf75a313eb8844187, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / mie-write-readback.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mie-write-readback.elf\n\nmie all-ones readback: 0xfffffffffffffeee; sticky bits 0..11: 0xeee; boot restored\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA specifies mie as the machine interrupt-enable register with WARL semantics, and the card's all-ones readback of 0xfffffffffffffeee is a direct measurement of which enable bits this implementation's mie provides under that contract."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card records register values only, never timing or behavior, so it says nothing about how the implementation enables interrupts, how many cycles a write costs, or what the pipeline does with a set bit."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware chooses at boot which interrupts the hart will ever field by programming mie, and the card's legalization map is exactly the input that choice needs on this implementation."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "Every probe runs in M-mode with no kernel loaded, so the measured readbacks describe the hart's CSR, not any scheduling, memory-management, or driver path a kernel would build on it."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a CSR's write/readback behavior on one implementation, not a portable computation, so there is no equivalent C program whose output could be compared against it."
+      }
+    }
   }
 ]

@@ -83067,6 +83067,276 @@
           "note": "The argument in the penultimate plus the layer rule yields the verdict in (1)."
         }
       ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mie-write-readback",
+      "slot": "ISA",
+      "probandum": "The privileged ISA specifies mie as the machine interrupt-enable register with WARL semantics, and the card's all-ones readback of 0xfffffffffffffeee is a direct measurement of which enable bits this implementation's mie provides under that contract.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The privileged ISA specifies mie as the machine interrupt-enable register with WARL semantics, and the card's all-ones readback of 0xfffffffffffffeee is a direct measurement of which enable bits this implementation's mie provides under that contract."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "10 checks against the mie write/readback roundtrip, 0 mismatches; the all-ones write reads back 0xfffffffffffffeee; per-bit probes of bits 0 through 11 show bits 1, 2, 3, 5, 6, 7, 9, 10, 11 stick and bits 0, 4, 8 read back clear, with the sticky union 0xeee equal to the low 12 bits of the all-ones readback",
+          "source": {
+            "cite": "src/mie-write-readback/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-write-readback/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: the mie CSR, the machine interrupt-enable bits, and the WARL legalization rule are defined there",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "lab",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mie-write-readback",
+      "slot": "MICROARCH",
+      "probandum": "The card records register values only, never timing or behavior, so it says nothing about how the implementation enables interrupts, how many cycles a write costs, or what the pipeline does with a set bit.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The card records register values only, never timing or behavior, so it says nothing about how the implementation enables interrupts, how many cycles a write costs, or what the pipeline does with a set bit."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The run records register values only: no cycle counts, no timing histograms, and no behavioral measurement of what a set enable bit does in the implementation",
+          "source": {
+            "cite": "src/mie-write-readback/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-write-readback/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: mie is specified as an architected CSR, while timing, pipelines, and implementation behavior are explicitly outside the ISA contract",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "lab",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mie-write-readback",
+      "slot": "FIRMWARE",
+      "probandum": "M-mode firmware chooses at boot which interrupts the hart will ever field by programming mie, and the card's legalization map is exactly the input that choice needs on this implementation.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "M-mode firmware chooses at boot which interrupts the hart will ever field by programming mie, and the card's legalization map is exactly the input that choice needs on this implementation."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Boot mie reads 0x0 and the program writes all-ones to discover the provided enable bits, then restores 0x0 exactly; M-mode firmware programs mie at boot to decide which interrupts the hart will ever take",
+          "source": {
+            "cite": "src/mie-write-readback/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-write-readback/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: mie is a machine-level CSR written by M-mode software, which is firmware in the boot-time role",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "lab",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mie-write-readback",
+      "slot": "KERNEL",
+      "probandum": "Every probe runs in M-mode with no kernel loaded, so the measured readbacks describe the hart's CSR, not any scheduling, memory-management, or driver path a kernel would build on it.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "Every probe runs in M-mode with no kernel loaded, so the measured readbacks describe the hart's CSR, not any scheduling, memory-management, or driver path a kernel would build on it."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Every probe executes in M-mode with no kernel loaded: the measured readbacks are the hart's CSR values, and no scheduling, virtual-memory, or driver behavior is exercised anywhere in the run",
+          "source": {
+            "cite": "src/mie-write-readback/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-write-readback/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: mie is a machine-level CSR, and the kernel runs at lower privilege than the M-mode probes",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "lab",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mie-write-readback",
+      "slot": "ALGORITHM",
+      "probandum": "The card verifies a CSR's write/readback behavior on one implementation, not a portable computation, so there is no equivalent C program whose output could be compared against it.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The card verifies a CSR's write/readback behavior on one implementation, not a portable computation, so there is no equivalent C program whose output could be compared against it."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The verified claim is a CSR's write/readback legalization on one implementation; there is no portable computation to compare, so the card carries no differential test against a C equivalent",
+          "source": {
+            "cite": "src/mie-write-readback/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-write-readback/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: mie is defined as an implementation-provided WARL register, not as a computational result",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "lab",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
