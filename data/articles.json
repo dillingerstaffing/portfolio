@@ -1,5 +1,71 @@
 [
   {
+    "title": "The Bit That Lets the Supervisor Read User Memory",
+    "slug": "the-bit-that-lets-the-supervisor-read-user-memory",
+    "date": "2026-09-23",
+    "description": "SUM, bit 18 of sstatus, decides whether supervisor loads and stores may touch U=1 user pages. On QEMU 8.2.2: SUM=0 faults once (scause 0xd), SUM=1 returns the canary with no new trap, and a fetch from the same page still faults (scause 12). The bit rewrites the data rule, never the fetch rule.",
+    "paragraphs": [
+      "I put a canary word on a U=1 user page at virtual address 0x40000000, dropped a bare-metal RISC-V machine into S-mode with SUM, bit 18 of sstatus, clear, and ran one ld from that page. Exactly one trap: scause 0xd, a load page fault, with stval 0x40000000 naming the faulting address. The destination register had been poisoned to zero before the load and stayed zero, so the load never completed.",
+      "Then I set bit 18 with csrs sstatus and ran the identical load again. The canary came back, 0xc0decafe5ca1ab1e, with no new trap. The full bench is 31 checks, 0 mismatches, on QEMU 8.2.2: the SUM=0 phase faulted exactly once, and the SUM=1 phase read the page cleanly.",
+      "The boundary is fetch. With SUM still set, I jumped into the same user page, and the machine took one instruction page fault: scause 12, with sepc and stval both 0x40000000. The privileged manual states it as an absolute: S-mode can never execute instructions from user pages, regardless of the state of SUM. The bit rewrites the data rule for loads and stores, and never the fetch rule.",
+      "This is the kernel's everyday question: how does the supervisor touch user memory without becoming it? xv6 answers by never asking. Its copyin walks the user page table with walkaddr, resolves the user virtual address to a physical address, and memmoves from the physical address in the kernel's own mapping, so the kernel never performs a supervisor-mode load from a user virtual address at all. SUM exists for kernels that do ask: the manual pairs the bit with the absolute fetch ban as the two mechanisms that keep supervisor data access controlled and supervisor execution of user pages impossible at all times. The bit is a data door, never an execution door."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-sum",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "SUM is bit 18 of sstatus, defined by the privileged architecture, and the article verifies the exact fault rule the manual states for U=1 pages."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No microarchitectural claim is made: the behavior was measured on QEMU's functional Sv39 page-walk model, not on silicon."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The M-mode boot code is a test harness that sets up tables and delegates the fault; the article's mechanism is the S-mode SUM gate, not firmware behavior."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The article's final paragraph is the kernel's real alternative: xv6 copyin walks the user page table with walkaddr and memmoves from the resolved physical address, never setting SUM."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "No algorithm is presented; the post measures a single architectural permission bit through fault and load probes."
+      }
+    },
+    "evidence": {
+      "label": "test log: 31 checks, 0 mismatches on QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+    },
+    "image": "blog/the-bit-that-lets-the-supervisor-read-user-memory/the-bit-that-lets-the-supervisor-read-user-memory.jpg",
+    "image_alt": "A brass key inserted in a door lock, the rest of the door softly out of focus",
+    "image_caption": "One bit, one door: SUM opens supervisor data access to user pages, and nothing else.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:A_key_is_inserted_in_a_door_lock.jpg",
+    "image_license": "CC BY 2.0",
+    "image_attribution": "Shixart1985",
+    "social_image": "blog/the-bit-that-lets-the-supervisor-read-user-memory/the-bit-that-lets-the-supervisor-read-user-memory-social.jpg",
+    "sources": [
+      {
+        "title": "The RISC-V Instruction Set Manual, Volume II: Privileged Architecture",
+        "publisher": "RISC-V International",
+        "note": "Defines sstatus.SUM (bit 18): when SUM=0, S-mode accesses to U=1 pages fault; when SUM=1 they are permitted; and states that S-mode can never execute instructions from user pages, regardless of the state of SUM.",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-privileged.pdf"
+      },
+      {
+        "title": "src/sstatus-sum: sstatus.SUM gate on U-page loads",
+        "publisher": "Chris Dillinger, riscv-baremetal-demo",
+        "note": "The firsthand experiment behind this post: SUM=0 faults exactly once (scause 0xd, stval 0x40000000, load never completes), SUM=1 returns the canary 0xc0decafe5ca1ab1e with no new trap; 31 checks, 0 mismatches on QEMU 8.2.2.",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sstatus-sum"
+      },
+      {
+        "title": "xv6-riscv kernel/vm.c: copyin",
+        "publisher": "MIT PDOS",
+        "note": "xv6's copyin walks the user page table with walkaddr, resolves the user virtual address to a physical address, and memmoves from the physical address, so the kernel never performs a supervisor-mode load from a user virtual address.",
+        "url": "https://github.com/mit-pdps/xv6-riscv/blob/riscv/kernel/vm.c"
+      }
+    ]
+  },
+  {
     "title": "The Extension You Cannot Disassemble",
     "slug": "the-extension-you-cannot-disassemble",
     "date": "2026-09-22",

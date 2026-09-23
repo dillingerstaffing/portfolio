@@ -83937,6 +83937,276 @@
                 "strength": "strong"
             }
         ]
+    },
+    {
+      "item": "the-bit-that-lets-the-supervisor-read-user-memory",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "SUM is bit 18 of sstatus, defined by the privileged architecture, and the article verifies the exact fault rule the manual states for U=1 pages.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "SUM is bit 18 of sstatus, defined by the privileged architecture, and the article verifies the exact fault rule the manual states for U=1 pages."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "RISC-V Privileged Architecture, sstatus.SUM definition",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-privileged.pdf"
+          },
+          "text": "The manual defines SUM as bit 18 of sstatus and states the exact rule: with SUM=0, S-mode accesses to U=1 pages fault; with SUM=1 they are permitted. The bench measured exactly that: one scause 0xd trap with SUM=0, then a clean canary readback with SUM=1."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The claims concern an architectural control bit and its specified fault rule, verified by direct measurement."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A directly verified contract is decisive about the layer whose machinery implements it."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Control bits defined by the privileged architecture belong to the ISA layer."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [2],
+          "via": [4],
+          "to": [3],
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does.",
+          "strength": "strong"
+        },
+        {
+          "from": [3],
+          "via": [5],
+          "to": [1],
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-lets-the-supervisor-read-user-memory",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No microarchitectural claim is made: the behavior was measured on QEMU's functional Sv39 page-walk model, not on silicon.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "No microarchitectural claim is made: the behavior was measured on QEMU's functional Sv39 page-walk model, not on silicon."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "src/sstatus-sum PROOF.md, limits of verification",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+          },
+          "text": "The proof record states the measurement is against QEMU 8.2.2's functional Sv39 page-walk model, not real silicon, and names no pipeline, cache, store buffer, or other implementation structure."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The claims never reason about an implementation's internal mechanism."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "Implementation-internal mechanisms the evidence never names belong outside the microarchitecture layer."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "An emulator-based functional observation does not support a microarchitectural verdict."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [2],
+          "via": [4],
+          "to": [3],
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does.",
+          "strength": "strong"
+        },
+        {
+          "from": [3],
+          "via": [5],
+          "to": [1],
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-lets-the-supervisor-read-user-memory",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "The M-mode boot code is a test harness that sets up tables and delegates the fault; the article's mechanism is the S-mode SUM gate, not firmware behavior.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The M-mode boot code is a test harness that sets up tables and delegates the fault; the article's mechanism is the S-mode SUM gate, not firmware behavior."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "src/sstatus-sum PROOF.md, what was built",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sstatus-sum/PROOF.md"
+          },
+          "text": "The M-mode code builds the Sv39 tables by hand, opens a PMP NAPOT entry, delegates the load page fault, and drops to S-mode; every measured check then runs in S-mode against the SUM gate."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The M-mode code is scaffolding that stages the S-mode measurement, not a claim about firmware behavior."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "Test-harness code that exists only to stage a measurement belongs outside the firmware layer."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A layer verdict follows the article's mechanism, not its scaffolding."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [2],
+          "via": [4],
+          "to": [3],
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does.",
+          "strength": "strong"
+        },
+        {
+          "from": [3],
+          "via": [5],
+          "to": [1],
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-lets-the-supervisor-read-user-memory",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "The article's final paragraph is the kernel's real alternative: xv6 copyin walks the user page table with walkaddr and memmoves from the resolved physical address, never setting SUM.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The article's final paragraph is the kernel's real alternative: xv6 copyin walks the user page table with walkaddr and memmoves from the resolved physical address, never setting SUM."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "xv6-riscv kernel/vm.c, copyin",
+            "tier": "reference",
+            "url": "https://github.com/mit-pdps/xv6-riscv/blob/riscv/kernel/vm.c"
+          },
+          "text": "xv6's copyin walks the user pagetable with walkaddr and memmoves from the resolved physical address, so the kernel never performs a supervisor-mode load from a user virtual address."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The article's closing paragraph presents the kernel's working alternative to setting SUM."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A post whose substance includes how a real kernel handles the mechanism engages the kernel layer."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Layer verdicts follow what the post's own text establishes, never who might care."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [2],
+          "via": [4],
+          "to": [3],
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does.",
+          "strength": "strong"
+        },
+        {
+          "from": [3],
+          "via": [5],
+          "to": [1],
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-lets-the-supervisor-read-user-memory",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "No algorithm is presented; the post measures a single architectural permission bit through fault and load probes.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "No algorithm is presented; the post measures a single architectural permission bit through fault and load probes."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "The Bit That Lets the Supervisor Read User Memory, as published",
+            "tier": "reference",
+            "url": "https://dillingerstaffing.github.io/portfolio/blog/the-bit-that-lets-the-supervisor-read-user-memory/"
+          },
+          "text": "The post's prose describes hardware probes, a faulting load, a permitted load, and a faulting fetch, and states no algorithm, data structure, or computational procedure."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Nothing in the post is an algorithm; every claim is about a hardware permission bit."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A post that measures hardware behavior without presenting a procedure belongs outside the algorithm layer."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "Layer verdicts follow what the post's own text establishes, never who might care."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [2],
+          "via": [4],
+          "to": [3],
+          "note": "The evidence establishes per the generalization that the claim lives where the penultimate says it does.",
+          "strength": "strong"
+        },
+        {
+          "from": [3],
+          "via": [5],
+          "to": [1],
+          "note": "The argument in the penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
