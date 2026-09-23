@@ -83667,6 +83667,276 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+        "kind": "card",
+        "item": "src-mideleg-seip-clear",
+        "slot": "ISA",
+        "probandum": "The privileged ISA defines mideleg bit 9 as the delegation switch for supervisor external interrupts, and the card measures the same pended mip.SEIP arriving with scause 0x8000000000000009 when the bit is set and with mcause 0x8000000000000009 when it is clear, so the bit selects the trap destination.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "The privileged ISA defines mideleg bit 9 as the delegation switch for supervisor external interrupts, and the card measures the same pended mip.SEIP arriving with scause 0x8000000000000009 when the bit is set and with mcause 0x8000000000000009 when it is clear, so the bit selects the trap destination."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "50 checks, 0 mismatches: phase A traps in S-mode with scause 0x8000000000000009 and sepc 0x80000434 as expected; phase B with mideleg bit 9 clear traps in M-mode with mcause 0x8000000000000009 and mepc 0x800006fe as expected, S-mode trap count unchanged; phase C with the bit re-set traps in S-mode again with scause 0x8000000000000009 and sepc 0x80000c52 as expected, M-mode trap count unchanged; the quiet window shows no stray traps; mideleg and mstatus restore to the boot values bit-for-bit",
+                "source": {
+                    "cite": "src/mideleg-seip-clear/PROOF.md",
+                    "tier": "lab",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-seip-clear/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The pinned RISC-V ISA manual, privileged architecture volume: the mideleg CSR, the interrupt delegation mechanism, and the SEIP cause code are defined there",
+                "source": {
+                    "cite": "riscv-isa-manual (pinned release)",
+                    "tier": "lab",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "note": "The evidence establishes the probandum via the generalization.",
+                "strength": "strong"
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-mideleg-seip-clear",
+        "slot": "MICROARCH",
+        "probandum": "The run records trap destinations and cause codes only, never timing, so it says nothing about the pipeline, the interrupt controller, or how many cycles delivery takes on any implementation.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "The run records trap destinations and cause codes only, never timing, so it says nothing about the pipeline, the interrupt controller, or how many cycles delivery takes on any implementation."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The run log records trap destinations, cause codes, resume addresses, and trap counts: no cycle counts, no timing histograms, and no measurement of what the implementation does with a delegated interrupt",
+                "source": {
+                    "cite": "src/mideleg-seip-clear/PROOF.md",
+                    "tier": "lab",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-seip-clear/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The pinned RISC-V ISA manual, privileged architecture volume: mideleg is an architected CSR, while timing, pipelines, and implementation behavior are explicitly outside the ISA contract",
+                "source": {
+                    "cite": "riscv-isa-manual (pinned release)",
+                    "tier": "lab",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "note": "The evidence establishes the probandum via the generalization.",
+                "strength": "strong"
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-mideleg-seip-clear",
+        "slot": "FIRMWARE",
+        "probandum": "mideleg is programmed by M-mode software, and the card is exactly that firmware operation: moving one interrupt's trap destination between privilege levels while the pending bit stays set.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "mideleg is programmed by M-mode software, and the card is exactly that firmware operation: moving one interrupt's trap destination between privilege levels while the pending bit stays set."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "M-mode writes mideleg bit 9 to move the pended SEIP between S-mode and M-mode delivery across three phases: the program performing the flip runs entirely in M-mode, and the boot mideleg value 0x1444 is restored exactly at the end",
+                "source": {
+                    "cite": "src/mideleg-seip-clear/PROOF.md",
+                    "tier": "lab",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-seip-clear/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The pinned RISC-V ISA manual, privileged architecture volume: mideleg is a machine-level CSR written by M-mode software, which is firmware in the boot-time role",
+                "source": {
+                    "cite": "riscv-isa-manual (pinned release)",
+                    "tier": "lab",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "note": "The evidence establishes the probandum via the generalization.",
+                "strength": "strong"
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-mideleg-seip-clear",
+        "slot": "KERNEL",
+        "probandum": "A supervisor kernel that fields external interrupts depends on SEIP arriving in S-mode, and the card proves the delegation bit is the switch that delivers the interrupt there or withholds it.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "A supervisor kernel that fields external interrupts depends on SEIP arriving in S-mode, and the card proves the delegation bit is the switch that delivers the interrupt there or withholds it."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "Phase A and phase C deliver the pended SEIP to the S-mode handler with scause 0x8000000000000009, the arrival an S-mode kernel's external-interrupt path depends on; phase B withholds it from S-mode entirely with the S-mode trap count unchanged, and no operating system is loaded anywhere in the run",
+                "source": {
+                    "cite": "src/mideleg-seip-clear/PROOF.md",
+                    "tier": "lab",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-seip-clear/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The pinned RISC-V ISA manual, privileged architecture volume: delegated interrupts arrive at the lower privilege level, where a supervisor kernel fields them",
+                "source": {
+                    "cite": "riscv-isa-manual (pinned release)",
+                    "tier": "lab",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "note": "The evidence establishes the probandum via the generalization.",
+                "strength": "strong"
+            }
+        ]
+    },
+    {
+        "kind": "card",
+        "item": "src-mideleg-seip-clear",
+        "slot": "ALGORITHM",
+        "probandum": "The verified claim is stated in RISC-V terms (mideleg bit 9, SEIP, cause 0x8000000000000009) with no ISA-independent restatement, so there is no portable computation whose output could be compared.",
+        "keyList": [
+            {
+                "n": 1,
+                "kind": "probandum",
+                "text": "The verified claim is stated in RISC-V terms (mideleg bit 9, SEIP, cause 0x8000000000000009) with no ISA-independent restatement, so there is no portable computation whose output could be compared."
+            },
+            {
+                "n": 2,
+                "kind": "evidence",
+                "text": "The verified claim names mideleg bit 9, mip.SEIP, and the cause code 0x8000000000000009 on both trap paths; the run carries no differential test against a portable C equivalent, because the claim is not an ISA-independent computation",
+                "source": {
+                    "cite": "src/mideleg-seip-clear/PROOF.md",
+                    "tier": "lab",
+                    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-seip-clear/PROOF.md"
+                }
+            },
+            {
+                "n": 3,
+                "kind": "evidence",
+                "text": "The pinned RISC-V ISA manual, privileged architecture volume: interrupt delegation is a privileged-architecture mechanism, not a computational result",
+                "source": {
+                    "cite": "riscv-isa-manual (pinned release)",
+                    "tier": "lab",
+                    "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+                }
+            },
+            {
+                "n": 4,
+                "kind": "generalization",
+                "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+            }
+        ],
+        "inferences": [
+            {
+                "from": [
+                    2,
+                    3
+                ],
+                "via": [
+                    4
+                ],
+                "to": [
+                    1
+                ],
+                "note": "The evidence establishes the probandum via the generalization.",
+                "strength": "strong"
+            }
+        ]
     }
   ]
 }

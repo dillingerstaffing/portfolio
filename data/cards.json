@@ -11478,5 +11478,61 @@
         "because": "The card verifies a CSR's write/readback behavior on one implementation, not a portable computation, so there is no equivalent C program whose output could be compared against it."
       }
     }
+  },
+  {
+    "id": "src-mideleg-seip-clear",
+    "title": "mideleg bit 9 cleared re-routes a pended SEIP to M-mode",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal module pends mip.SEIP from M-mode and flips mideleg bit 9 between phases, recording which privilege level each trap arrives at. With the bit set the interrupt traps in S-mode with scause 0x8000000000000009; with the bit clear the same pending state traps in M-mode with mcause 0x8000000000000009; re-setting the bit routes it back to S-mode. A quiet window confirms no stray delivery and the boot mideleg and mstatus are restored exactly.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mideleg-seip-clear",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mideleg-seip-clear/PROOF.md"
+    },
+    "checks": 50,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "50 checks against the per-phase trap records in the run log: each phase's cause code, expected resume address, and per-mode trap counts, plus the quiet window and the bit-for-bit CSR restore, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Phase A: S-mode trap, scause 0x8000000000000009, sepc 0x80000434; phase B (bit 9 clear): M-mode trap, mcause 0x8000000000000009, mepc 0x800006fe, S-mode trap count unchanged; phase C (bit 9 re-set): S-mode trap, scause 0x8000000000000009, sepc 0x80000c52, M-mode trap count unchanged; quiet window clean"
+      ],
+      [
+        "CHECKSUM",
+        "0xbd94fd8e55fa89f0, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / mideleg-seip-clear.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mideleg-seip-clear.elf\n\nphaseA-sei: s_traps=1 scause=0x8000000000000009 sepc=0x80000434\nphaseB-trap: m_traps=1 mcause=0x8000000000000009 mepc=0x800006fe\nphaseC-sei: s_traps=2 scause=0x8000000000000009 sepc=0x80000c52\nRESULT: PASS (checks=50)",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines mideleg bit 9 as the delegation switch for supervisor external interrupts, and the card measures the same pended mip.SEIP arriving with scause 0x8000000000000009 when the bit is set and with mcause 0x8000000000000009 when it is clear, so the bit selects the trap destination."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The run records trap destinations and cause codes only, never timing, so it says nothing about the pipeline, the interrupt controller, or how many cycles delivery takes on any implementation."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "mideleg is programmed by M-mode software, and the card is exactly that firmware operation: moving one interrupt's trap destination between privilege levels while the pending bit stays set."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "A supervisor kernel that fields external interrupts depends on SEIP arriving in S-mode, and the card proves the delegation bit is the switch that delivers the interrupt there or withholds it."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The verified claim is stated in RISC-V terms (mideleg bit 9, SEIP, cause 0x8000000000000009) with no ISA-independent restatement, so there is no portable computation whose output could be compared."
+      }
+    }
   }
 ]
