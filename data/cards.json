@@ -11535,4 +11535,61 @@
       }
     }
   }
+,
+{
+  "id": "src-mtvec-mode-war",
+  "title": "mtvec write/readback: reserved MODE encodings dropped, Direct and Vectored stick",
+  "kicker": "RISC-V ISA",
+  "summary": "A bare-metal M-mode module writes probe values to the mtvec CSR and reads each back. An all-ones write with a reserved MODE encoding is ignored and the register keeps its previous value; writing MODE=0 and MODE=1 reads back exactly; the boot value restores bit-for-bit with the trap count at zero.",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "repoLabel": "riscv-baremetal-demo",
+  "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-mode-war",
+  "showRepoLink": true,
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtvec-mode-war/PROOF.md"
+  },
+  "checks": 10,
+  "failures": 0,
+  "stressItems": 0,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "10 checks against the per-phase mtvec readbacks: the boot baseline, an all-ones write with a reserved MODE encoding ignored with the previous value preserved, an all-ones BASE write sticking every bit, MODE=1 and MODE=0 writes reading back exactly, the boot mtvec and mstatus restored bit-for-bit, and zero traps, 0 mismatches"
+    ],
+    [
+      "BENCHMARK",
+      "boot mtvec 0x0, mstatus 0xa00000000; all-ones write read back 0x800001c8 (previous value preserved); all-ones BASE write read back 0xfffffffffffffffc; vectored written 0x800001c9 read back 0x800001c9; direct written 0x800001c8 read back 0x800001c8; restored to boot 0x0"
+    ],
+    [
+      "CHECKSUM",
+      "0x6e1dc83f46d9431, identical across 3 runs"
+    ]
+  ],
+  "terminalLabel": "Verified RISC-V demo output",
+  "terminalName": "qemu / riscv64 / mtvec-mode-war.elf",
+  "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mtvec-mode-war.elf\n\nboot: mtvec=0x0 mstatus=0xa00000000\nphase1 ones: mtvec=0x800001c8\nphase1 ones-base: mtvec=0xfffffffffffffffc\nphase2 vectored: written=0x800001c9 readback=0x800001c9\nphase2 direct: written=0x800001c8 readback=0x800001c8\nrestored: mtvec=0x0 mstatus=0xa00000000\nRESULT: PASS (checks=10)",
+  "layers": {
+    "ISA": {
+      "applies": true,
+      "because": "The privileged ISA defines mtvec as a WARL register whose two-bit MODE field reserves encodings 2 and 3, and the card measures an all-ones write with a reserved encoding being ignored while MODE=0 and MODE=1 writes read back exactly, so the field legalizes as the contract requires."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The run records only CSR readbacks, never timing or implementation internals, so it says nothing about pipelines, caches, or how trap dispatch is built on any implementation."
+    },
+    "FIRMWARE": {
+      "applies": true,
+      "because": "Setting mtvec is the M-mode firmware step that installs the trap vector at boot, and the card verifies exactly which MODE values that firmware step may install."
+    },
+    "KERNEL": {
+      "applies": false,
+      "because": "mtvec is an M-mode-only register that supervisor software can neither read nor write, so the legalization question never arises for a kernel running in S-mode."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "The verified claim is stated in RISC-V terms (the mtvec MODE field, WARL legalization) with no ISA-independent restatement, so there is no portable computation whose output could be compared."
+    }
+  }
+}
 ]
