@@ -1,5 +1,70 @@
 [
   {
+    "title": "The Half of the Interrupt That Waits Its Turn",
+    "slug": "the-half-of-the-interrupt-that-waits-its-turn",
+    "date": "2026-09-24",
+    "description": "A hardirq handler runs with interrupts off and no process to its name, so it does the minimum and defers the rest. That rest is the bottom half: ten softirq types in priority order, tasklets on test-and-set bits, and the 2ms and 10-restart governors that demote a softirq to a thread under load.",
+    "paragraphs": [
+      "A packet arrives on the wire. The NIC raises its interrupt line, and the hardirq handler starts running. It runs with interrupts off and no process to its name. It cannot sleep, it cannot wait on anything, and every other interrupt in the machine is lining up behind it. So it does the minimum: acknowledge the device, capture the data, mark the work as pending. Then it leaves. The rest of the work does not run in the handler. It runs in the bottom half.",
+      "Linux keeps ten softirq types in a fixed priority order: HI, TIMER, NET_TX, NET_RX, BLOCK, IRQ_POLL, TASKLET, SCHED, HRTIMER, and RCU last, with a comment in the source that RCU should always stay last. When the hardirq handler exits and no interrupt context is nested, the kernel walks the pending bitmask in priority order, lowest bit first. The handler loop carries two governors: two milliseconds (MAX_SOFTIRQ_TIME) and ten restarts (MAX_SOFTIRQ_RESTART). The comment says these limits were found by experimentation, balancing latency against fairness. When either budget is spent, the kernel wakes ksoftirqd, a per-CPU thread, which finishes the leftover work as ordinary scheduled work. A softirq therefore has two personalities: under light load it runs eagerly, almost as fast as the hardirq that raised it; under heavy load it demotes itself to a thread instead of starving the machine.",
+      "Tasklets are the friendlier face of the same machinery, built on the TASKLET and HI softirqs. Their whole contract is test-and-set. tasklet_schedule sets the SCHED bit, so scheduling a tasklet twice collapses into a single run. tasklet_trylock sets the RUN bit, so the same tasklet can never execute on two CPUs at once; if it is already running, the action function puts it back on the list and re-raises the softirq, so the work is honored later instead of being lost. The per-CPU tasklet list is stolen under disabled interrupts, then each tasklet runs with interrupts enabled: a tasklet can be preempted by a hardirq, but never by a second copy of itself. One flag for scheduled, one for running, and re-queue as the honest answer to contention.",
+      "There used to be a simpler version of all this. The old bottom halves numbered 32, ran globally synchronized, and only one was allowed to run anywhere in the system at a time. That was the bottleneck, and during 2.5 the BH interface was thrown away; every user moved to softirqs, tasklets, or the workqueue. The sibling that survives alongside them is the workqueue, which exists for the one property softirqs and tasklets still lack: the ability to sleep. So the three mechanisms are not three ways to do the same thing. They are a ladder: the hardirq does the minimum, the softirq and the tasklet take the urgent remainder that still cannot sleep, and the workqueue takes the part that needs to sleep. Each rung exists because the rung above it is missing exactly one property."
+    ],
+    "codeLink": null,
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The mechanism is Linux kernel design, not instruction-set law: the softirq type list, the 2ms and 10-restart governors, and the tasklet SCHED/RUN bit contract are quoted from the v6.5 kernel source, not from an architecture manual."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The article's mechanism is kernel scheduling policy: how Linux decides where deferred work runs. It measures and cites nothing about processor implementation."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The whole mechanism is kernel code: softirqs run on hardirq exit, tasklets run on the TASKLET softirq, and ksoftirqd is a kernel thread. Nothing below the kernel boundary takes part."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The article reads the deferred-work machinery straight from the kernel: the ten softirq types in kernel/softirq.c priority order, the 2ms and 10-restart governors, the tasklet SCHED/RUN bit contract in include/linux/interrupt.h, and the ksoftirqd handoff. This is the kernel's own interrupt plumbing."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "No algorithm is presented: the post describes a scheduling policy and a bit-level contract, not a procedure with an invariant to prove."
+      }
+    },
+    "evidence": {
+      "label": "lab/162-bottomhalf-deferred: 24 line-pinned fact checks, 0 mismatches",
+      "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/162-bottomhalf-deferred"
+    },
+    "image": "blog/the-half-of-the-interrupt-that-waits-its-turn/the-half-of-the-interrupt-that-waits-its-turn.jpg",
+    "image_alt": "Operators at a Bell System telephone switchboard in December 1943, patching overseas calls by hand",
+    "image_caption": "December 1943: the operator answers the instant the lamp lights and patches the circuit; the conversation happens on the wire she connected. The hardirq handler answers the interrupt and hands the work to the bottom half, which carries it home.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Photograph_of_Women_Working_at_a_Bell_System_Telephone_Switchboard_(3660047829).jpg",
+    "image_license": "No known copyright restrictions",
+    "image_attribution": "U.S. National Archives (86-WWT-28-3)",
+    "social_image": "blog/the-half-of-the-interrupt-that-waits-its-turn/the-half-of-the-interrupt-that-waits-its-turn-social.jpg",
+    "sources": [
+      {
+        "title": "torvalds/linux v6.5 kernel/softirq.c",
+        "publisher": "Linux kernel",
+        "note": "Ten softirq types in priority order with RCU last (L550-561); the 2ms and 10-restart governors found by experimentation, balancing latency against fairness (L461-475); the ksoftirqd handoff when the budgets are spent (L566-578).",
+        "url": "https://github.com/torvalds/linux/blob/v6.5/kernel/softirq.c"
+      },
+      {
+        "title": "torvalds/linux v6.5 include/linux/interrupt.h",
+        "publisher": "Linux kernel",
+        "note": "The tasklet contract: tasklet_schedule sets TASKLET_STATE_SCHED so a double schedule collapses into one run (L705-709); tasklet_trylock sets TASKLET_STATE_RUN so one tasklet never runs on two CPUs at once (L687-690).",
+        "url": "https://github.com/torvalds/linux/blob/v6.5/include/linux/interrupt.h"
+      },
+      {
+        "title": "Linux Kernel Development, 3rd edition, Chapter 8",
+        "publisher": "Robert Love, Addison-Wesley",
+        "note": "The old bottom halves: 32 of them, globally synchronized, only one running anywhere in the system at a time; the BH interface removed during 2.5, with every user converted to softirqs, tasklets, or workqueues."
+      }
+    ]
+  },
+  {
     "title": "The Bit That Lets the Supervisor Read User Memory",
     "slug": "the-bit-that-lets-the-supervisor-read-user-memory",
     "date": "2026-09-23",

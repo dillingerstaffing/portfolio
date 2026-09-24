@@ -1378,6 +1378,29 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Half of the Interrupt That Waits Its Turn</h3>
+          <!-- LAYER-STRIP:the-half-of-the-interrupt-that-waits-its-turn -->
+          <p class="research-date"><time datetime="2026-09-24">2026-09-24 11:32 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A packet arrives on the wire. The NIC raises its interrupt line, and the hardirq handler starts running. It runs with interrupts off and no process to its name. It cannot sleep, it cannot wait on anything, and every other interrupt in the machine is lining up behind it. So it does the minimum: acknowledge the device, capture the data, mark the work as pending <a class="cite" href="#src-the-half-of-the-interrupt-that-waits-its-turn-3">[3]</a>. Then it leaves. The rest of the work does not run in the handler. It runs in the bottom half.</p>
+          <p>Linux keeps ten softirq types in a fixed priority order: <code>HI</code>, <code>TIMER</code>, <code>NET_TX</code>, <code>NET_RX</code>, <code>BLOCK</code>, <code>IRQ_POLL</code>, <code>TASKLET</code>, <code>SCHED</code>, <code>HRTIMER</code>, and <code>RCU</code> last, with a comment in the source that RCU should always stay last <a class="cite" href="#src-the-half-of-the-interrupt-that-waits-its-turn-1">[1]</a>. When the hardirq handler exits and no interrupt context is nested, the kernel walks the pending bitmask in priority order, lowest bit first. The handler loop carries two governors: two milliseconds (<code>MAX_SOFTIRQ_TIME</code>) and ten restarts (<code>MAX_SOFTIRQ_RESTART</code>), and the comment says these limits were found by experimentation, balancing latency against fairness <a class="cite" href="#src-the-half-of-the-interrupt-that-waits-its-turn-1">[1]</a>. When either budget is spent, the kernel wakes <code>ksoftirqd</code>, a per-CPU thread, which finishes the leftover work as ordinary scheduled work. A softirq therefore has two personalities: under light load it runs eagerly, almost as fast as the hardirq that raised it; under heavy load it demotes itself to a thread instead of starving the machine.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-half-of-the-interrupt-that-waits-its-turn/the-half-of-the-interrupt-that-waits-its-turn.jpg" alt="Operators at a Bell System telephone switchboard in December 1943, patching overseas calls by hand" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">December 1943: the operator answers the instant the lamp lights and patches the circuit; the conversation happens on the wire she connected. The hardirq handler answers the interrupt; the bottom half carries the rest.<br><span style="opacity:.7">Photo: U.S. National Archives, no known copyright restrictions, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>Tasklets are the friendlier face of the same machinery, built on the <code>TASKLET</code> and <code>HI</code> softirqs <a class="cite" href="#src-the-half-of-the-interrupt-that-waits-its-turn-2">[2]</a>. Their whole contract is test-and-set. <code>tasklet_schedule</code> sets the <code>SCHED</code> bit, so scheduling a tasklet twice collapses into a single run. <code>tasklet_trylock</code> sets the <code>RUN</code> bit, so the same tasklet can never execute on two CPUs at once; if it is already running, the action function puts it back on the list and re-raises the softirq, so the work is honored later instead of being lost <a class="cite" href="#src-the-half-of-the-interrupt-that-waits-its-turn-2">[2]</a>. The per-CPU tasklet list is stolen under disabled interrupts, then each tasklet runs with interrupts enabled: a tasklet can be preempted by a hardirq, but never by a second copy of itself. One flag for scheduled, one for running, and re-queue as the honest answer to contention.</p>
+          <p>The whole contract, in three lines:</p>
+<pre><code>static inline void tasklet_schedule(struct tasklet_struct *t)
+{
+	if (!test_and_set_bit(TASKLET_STATE_SCHED, &amp;t-&gt;state))
+		__tasklet_schedule(t);
+}</code></pre>
+          <p>There used to be a simpler version of all this. The old bottom halves numbered 32, ran globally synchronized, and only one was allowed to run anywhere in the system at a time <a class="cite" href="#src-the-half-of-the-interrupt-that-waits-its-turn-3">[3]</a>. That was the bottleneck, and during 2.5 the BH interface was thrown away; every user moved to softirqs, tasklets, or the workqueue. The sibling that survives alongside them is the workqueue, which exists for the one property softirqs and tasklets still lack: the ability to sleep. So the three mechanisms are not three ways to do the same thing. They are a ladder: the hardirq does the minimum, the softirq and the tasklet take the urgent remainder that still cannot sleep, and the workqueue takes the part that needs to sleep. Each rung exists because the rung above it is missing exactly one property.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Bit That Lets the Supervisor Read User Memory</h3>
           <!-- LAYER-STRIP:the-bit-that-lets-the-supervisor-read-user-memory -->
           <p class="research-date"><time datetime="2026-09-23">2026-09-23 11:34 EDT</time></p>
