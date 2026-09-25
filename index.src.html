@@ -1378,6 +1378,28 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Two Bits That Deliver the Block or Drop It</h3>
+          <!-- LAYER-STRIP:the-two-bits-that-deliver-or-drop -->
+          <p class="research-date"><time datetime="2026-09-25">2026-09-25 11:35 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A cache block holds the only fresh copy of a piece of memory. The processor changed the data, and the copy sitting in main memory is stale. Now a less privileged program runs <code>cbo.inval</code>, the cache-block management instruction that says throw this block away. If the block is clean, nothing is lost. If it is dirty, throwing it away destroys work that main memory never saw. The program holding the instruction cannot be trusted to make that call.</p>
+          <p>So the decision is not the program's. It lives in two bits of <code>menvcfg</code>, bits 5 and 4, named CBIE, and they belong to machine mode, the highest privilege in the machine <a class="cite" href="#src-the-two-bits-that-deliver-or-drop-1">[1]</a>. The four encodings are a ladder. <code>00</code> means the instruction traps: it is simply not allowed. <code>01</code> means flush: write the block back to memory first, then discard it. <code>10</code> is reserved, and the manual says software must not rely on it. <code>11</code> means invalidate: discard the block without writing anything back.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-two-bits-that-deliver-or-drop/the-two-bits-that-deliver-or-drop.jpg" alt="A U.S. Mail carrier carrying parcels through the snow from a parcel post truck, winter 1949" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Winter, circa 1949: every parcel on that truck is either delivered to its door or it is not leaving. The CBIE bits make the same call for a cache block: 01 writes it back to memory first, 11 drops it, and 00 never lets the instruction run.<br><span style="opacity:.7">Photo: Smithsonian Institution, CC BY-SA 4.0, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>The permission follows privilege down the ladder. Anything below machine mode answers to <code>menvcfg</code>. A user program needs supervisor mode to agree as well, through <code>senvcfg</code>; a guest under a hypervisor needs <code>henvcfg</code> too <a class="cite" href="#src-the-two-bits-that-deliver-or-drop-1">[1]</a>. The spec states the reason plainly: until a modified block has updated memory, an invalidate can expose stale data, so the higher privilege must clean or flush the block first, or keep the lower privilege on <code>00</code> or <code>01</code>.</p>
+          <p>A bare-metal WARL probe confirmed the field is real. In M-mode I wrote each CBIE value with every other <code>menvcfg</code> bit held at its boot value: 1, 2, 3, then 0 each read back exactly as written. An all-ones write legalized the field identically on both tries, the boot value restored exactly, and the trap handler recorded nothing. Nine checks, zero mismatches, on QEMU 8.2.2 <a class="cite" href="#src-the-two-bits-that-deliver-or-drop-2">[2]</a>.</p>
+          <p>The contract, in three lines:</p>
+<pre><code>csr_write(menvcfg, boot | (cbie &lt;&lt; 4));
+unsigned long rb = csr_read(menvcfg);
+check(((rb &gt;&gt; 4) &amp; 0x3) == cbie, "CBIE readback");</code></pre>
+          <p>The reserved encoding is the part implementations get to disagree about. On this hart <code>2'b10</code> reads back exactly as written, which is why the manual says software must not rely on it. CVA6's CSR file accepted the reserved value until a September fix taught it to hold the previous value instead <a class="cite" href="#src-the-two-bits-that-deliver-or-drop-3">[3]</a>.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Half of the Interrupt That Waits Its Turn</h3>
           <!-- LAYER-STRIP:the-half-of-the-interrupt-that-waits-its-turn -->
           <p class="research-date"><time datetime="2026-09-24">2026-09-24 11:32 EDT</time></p>

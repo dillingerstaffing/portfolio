@@ -1,5 +1,72 @@
 [
   {
+    "title": "The Two Bits That Deliver the Block or Drop It",
+    "slug": "the-two-bits-that-deliver-or-drop",
+    "date": "2026-09-25",
+    "description": "Two bits of menvcfg, bits 5 and 4, decide what happens when lower-privilege software invalidates a cache block: the instruction traps, flushes the block back to memory, or discards it silently. The policy lives with the highest privilege, because the wrong choice exposes stale memory.",
+    "paragraphs": [
+      "A cache block holds the only fresh copy of a piece of memory. The processor changed the data, and the copy sitting in main memory is stale. Now a less privileged program runs cbo.inval, the cache-block management instruction that says throw this block away. If the block is clean, nothing is lost. If it is dirty, throwing it away destroys work that main memory never saw. The program holding the instruction cannot be trusted to make that call.",
+      "So the decision is not the program's. It lives in two bits of menvcfg, bits 5 and 4, named CBIE, and they belong to machine mode, the highest privilege in the machine. The four encodings are a ladder. 00 means the instruction traps: it is simply not allowed. 01 means flush: write the block back to memory first, then discard it. 10 is reserved, and the manual says software must not rely on it. 11 means invalidate: discard the block without writing anything back.",
+      "The permission follows privilege down the ladder. Anything below machine mode answers to menvcfg. A user program needs supervisor mode to agree as well, through senvcfg; a guest under a hypervisor needs henvcfg too. The spec states the reason plainly: until a modified block has updated memory, an invalidate can expose stale data, so the higher privilege must clean or flush the block first, or keep the lower privilege on 00 or 01.",
+      "A bare-metal WARL probe confirmed the field is real. In M-mode I wrote each CBIE value with every other menvcfg bit held at its boot value: 1, 2, 3, then 0 each read back exactly as written. An all-ones write legalized the field identically on both tries, the boot value restored exactly, and the trap handler recorded nothing. Nine checks, zero mismatches, on QEMU 8.2.2.",
+      "The reserved encoding is the part implementations get to disagree about. On this hart 2'b10 reads back exactly as written, which is why the manual says software must not rely on it. CVA6's CSR file accepted the reserved value until a September fix taught it to hold the previous value instead."
+    ],
+    "codeLink": null,
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "CBIE is bits 5 and 4 of menvcfg, senvcfg, and henvcfg, defined by the RISC-V cache-block management base spec: the article quotes the 00 trap, 01 flush, 10 reserved, and 11 invalidate encodings and verifies the field with a WARL write and readback probe."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The probe ran on QEMU's functional model of the virt board, not on silicon: the article states nothing about any processor's implementation of the cache or the field."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The M-mode program is a test harness that writes and reads back a CSR: the mechanism the article presents is the ISA-defined permission field, not firmware behavior."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The mechanism is an ISA privilege contract between machine, supervisor, and user mode, plus the hypervisor extension: no kernel code or kernel data structure takes part."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "No algorithm is presented: the article walks a permission field with four encodings and a write and readback contract, not a procedure with an invariant to prove."
+      }
+    },
+    "evidence": {
+      "label": "src/menvcfg-cbie-write: 9 checks, 0 mismatches on QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-cbie-write"
+    },
+    "image": "blog/the-two-bits-that-deliver-or-drop/the-two-bits-that-deliver-or-drop.jpg",
+    "image_alt": "A U.S. Mail carrier carrying parcels through the snow from a parcel post truck, winter 1949",
+    "image_caption": "Winter, circa 1949: every parcel on that truck is either delivered to its door or it is not leaving. The CBIE bits make the same call for a cache block: 01 writes it back to memory first, 11 drops it, and 00 never lets the instruction run.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Parcel_Post_Truck_and_Carrier_(3113303884).jpg",
+    "image_license": "CC BY-SA 4.0",
+    "image_attribution": "Smithsonian Institution, via Wikimedia Commons",
+    "social_image": "blog/the-two-bits-that-deliver-or-drop/the-two-bits-that-deliver-or-drop-social.jpg",
+    "sources": [
+      {
+        "title": "riscvarchive/riscv-CMOs cmobase/csr_state.adoc",
+        "publisher": "RISC-V International",
+        "note": "CBIE is bits 5:4 of the xenvcfg CSRs, encodings 00 trap, 01 flush, 10 reserved, 11 invalidate; the privilege-mode decision table for CBO.INVAL; the stale-data security rationale for keeping lower privilege on 00 or 01.",
+        "url": "https://github.com/riscvarchive/riscv-CMOs/blob/master/cmobase/csr_state.adoc"
+      },
+      {
+        "title": "riscv-baremetal-demo src/menvcfg-cbie-write",
+        "publisher": "Chris Dillinger",
+        "note": "Bare-metal WARL write and readback probe of menvcfg.CBIE: boot value printed, CBIE written 1, 2, 3, 0 with exact readbacks, all-ones legalized identically twice, boot value restored, zero traps: 9 checks, 0 mismatches on QEMU 8.2.2.",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-cbie-write"
+      },
+      {
+        "title": "openhwfoundation/cva6 PR 3513",
+        "publisher": "OpenHW Group",
+        "note": "fix(csr): reject reserved CBIE encoding 2'b10 in menvcfg/senvcfg/henvcfg, merged 2026-09-04: the write logic stored the reserved encoding unchanged, so a 2'b10 write read back unmodified.",
+        "url": "https://github.com/openhwfoundation/cva6/pull/3513"
+      }
+    ]
+  },
+  {
     "title": "The Half of the Interrupt That Waits Its Turn",
     "slug": "the-half-of-the-interrupt-that-waits-its-turn",
     "date": "2026-09-24",
