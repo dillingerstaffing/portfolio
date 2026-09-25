@@ -84795,5 +84795,276 @@
         }
       ]
     }
+,
+  {
+    "kind": "card",
+    "item": "src-menvcfg-cbie-write",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines menvcfg.CBIE as a WARL field at bits 5:4, and the card measures values 1, 2, 3, and 0 each reading back exactly as written with no other bit disturbed, plus an all-ones write legalizing with the field intact, so the field legalizes as the contract requires.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA defines menvcfg.CBIE as a WARL field at bits 5:4, and the card measures values 1, 2, 3, and 0 each reading back exactly as written with no other bit disturbed, plus an all-ones write legalizing with the field intact, so the field legalizes as the contract requires."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "9 checks, 0 mismatches: boot menvcfg reads 0x2000000000000000 with CBIE=0; CBIE values 1, 2, 3, and 0 each read back exactly as written with all other bits held at boot values; the all-ones write legalizes to 0xa0000000000000f1 with the CBIE field intact and boot-set bits surviving, stable across two writes; the boot value restores bit-for-bit; the trap count is 0",
+        "source": {
+          "cite": "src/menvcfg-cbie-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-cbie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V ISA manual, privileged architecture volume: menvcfg, the WARL legalization rule, and the CBIE field are defined there",
+        "source": {
+          "cite": "riscv-isa-manual (pinned release)",
+          "tier": "lab",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-menvcfg-cbie-write",
+    "slot": "MICROARCH",
+    "probandum": "The run records only CSR readbacks, never timing or implementation internals, so it says nothing about pipelines, caches, or how cache-block invalidation is built on any implementation.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The run records only CSR readbacks, never timing or implementation internals, so it says nothing about pipelines, caches, or how cache-block invalidation is built on any implementation."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log shows every check is a CSR readback or the trap count; no cycle counts, no timing probes, and no implementation-specific measurements appear anywhere in the three byte-identical runs",
+        "source": {
+          "cite": "src/menvcfg-cbie-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-cbie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V ISA manual, privileged architecture volume: menvcfg, the WARL legalization rule, and the CBIE field are defined there",
+        "source": {
+          "cite": "riscv-isa-manual (pinned release)",
+          "tier": "lab",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-menvcfg-cbie-write",
+    "slot": "FIRMWARE",
+    "probandum": "menvcfg is owned by M-mode firmware, which performs exactly these writes when configuring the machine environment, and the card verifies the write/readback contract that firmware step relies on.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "menvcfg is owned by M-mode firmware, which performs exactly these writes when configuring the machine environment, and the card verifies the write/readback contract that firmware step relies on."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log runs entirely in M-mode, the only privilege where menvcfg is writable; the experiment performs exactly the configuration writes M-mode firmware makes at boot: field probes, the WARL legalization probe, and the exact restore",
+        "source": {
+          "cite": "src/menvcfg-cbie-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-cbie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V ISA manual, privileged architecture volume: menvcfg, the WARL legalization rule, and the CBIE field are defined there",
+        "source": {
+          "cite": "riscv-isa-manual (pinned release)",
+          "tier": "lab",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-menvcfg-cbie-write",
+    "slot": "KERNEL",
+    "probandum": "menvcfg is an M-mode-only register that supervisor software can neither read nor write, so the legalization question never arises for a kernel running in S-mode.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "menvcfg is an M-mode-only register that supervisor software can neither read nor write, so the legalization question never arises for a kernel running in S-mode."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log runs entirely in M-mode with no delegation; no S-mode code executes and no kernel subsystem is involved, and menvcfg is not accessible to supervisor software on this implementation",
+        "source": {
+          "cite": "src/menvcfg-cbie-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-cbie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V ISA manual, privileged architecture volume: menvcfg, the WARL legalization rule, and the CBIE field are defined there",
+        "source": {
+          "cite": "riscv-isa-manual (pinned release)",
+          "tier": "lab",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-menvcfg-cbie-write",
+    "slot": "ALGORITHM",
+    "probandum": "The verified claim is a machine configuration contract stated in RISC-V terms (the menvcfg CBIE field, WARL legalization) with no ISA-independent restatement, so there is no portable computation whose output could be compared.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is a machine configuration contract stated in RISC-V terms (the menvcfg CBIE field, WARL legalization) with no ISA-independent restatement, so there is no portable computation whose output could be compared."
+      },
+      {
+        "n": 2,
+        "kind": "evidence",
+        "text": "The proof log states every claim in RISC-V terms: menvcfg, the CBIE field, WARL legalization; no ISA-independent computation is defined, so there is nothing portable to compare",
+        "source": {
+          "cite": "src/menvcfg-cbie-write/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-cbie-write/PROOF.md"
+        }
+      },
+      {
+        "n": 3,
+        "kind": "evidence",
+        "text": "The pinned RISC-V ISA manual, privileged architecture volume: menvcfg, the WARL legalization rule, and the CBIE field are defined there",
+        "source": {
+          "cite": "riscv-isa-manual (pinned release)",
+          "tier": "lab",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        }
+      },
+      {
+        "n": 4,
+        "kind": "generalization",
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a negative claim backed by the absence of the measured behavior in the same run is as probative as a positive one."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  }
   ]
 }

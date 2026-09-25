@@ -11592,4 +11592,61 @@
     }
   }
 }
+,
+  {
+    "id": "src-menvcfg-cbie-write",
+    "title": "menvcfg CBIE write/readback: values 0-3 read back exactly, WARL legalization published",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal M-mode module writes each legal CBIE value into the menvcfg CSR and reads it back. Every value survives exactly as written with no other bit disturbed; an all-ones write publishes the legalized readback, and the boot value restores bit-for-bit with zero traps.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/menvcfg-cbie-write",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/menvcfg-cbie-write/PROOF.md"
+    },
+    "checks": 9,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "9 checks of the CBIE write/readback contract: values 1, 2, 3, and 0 each read back exactly as written with all other bits held at boot values, the all-ones WARL legalization keeps the CBIE field set with boot-set bits intact and stable across two writes, the boot value restores exactly, and zero traps, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "boot menvcfg 0x2000000000000000 (CBIE=0); writes 0x2000000000000010, 0x2000000000000020, 0x2000000000000030, 0x2000000000000000 each read back exactly; all-ones writes legalize to 0xa0000000000000f1; restored to boot 0x2000000000000000"
+      ],
+      [
+        "CHECKSUM",
+        "0x695a0fc4812f73e3, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / menvcfg-cbie-write.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel menvcfg-cbie-write.elf\n\ncbie=1: write=0x2000000000000010 readback=0x2000000000000010\ncbie=3: write=0x2000000000000030 readback=0x2000000000000030\nwarl: legalized readback=0xa0000000000000f1\nchecks: 9  mismatches: 0\nRESULT: PASS",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines menvcfg.CBIE as a WARL field at bits 5:4, and the card measures values 1, 2, 3, and 0 each reading back exactly as written with no other bit disturbed, plus an all-ones write legalizing with the field intact, so the field legalizes as the contract requires."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The run records only CSR readbacks, never timing or implementation internals, so it says nothing about pipelines, caches, or how cache-block invalidation is built on any implementation."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "menvcfg is owned by M-mode firmware, which performs exactly these writes when configuring the machine environment, and the card verifies the write/readback contract that firmware step relies on."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "menvcfg is an M-mode-only register that supervisor software can neither read nor write, so the legalization question never arises for a kernel running in S-mode."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The verified claim is a machine configuration contract stated in RISC-V terms (the menvcfg CBIE field, WARL legalization) with no ISA-independent restatement, so there is no portable computation whose output could be compared."
+      }
+    }
+  }
 ]
