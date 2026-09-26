@@ -1378,6 +1378,24 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Thirty-Five Registers of a Rescue Plan</h3>
+          <!-- LAYER-STRIP:the-thirty-five-registers-of-a-rescue-plan -->
+          <p class="research-date"><time datetime="2026-09-26">2026-09-26 11:25 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A user process is running. A timer interrupt fires, or the program calls a syscall. The hardware does almost nothing for it: it records the cause, stashes the faulting address, and jumps to a vector. Every register the process was holding is still sitting in the physical registers, and the first real instruction of the trap handler is about to overwrite them. Before the kernel can do a single thing, it needs somewhere to put the process down.</p>
+          <p>xv6's answer is <code>struct trapframe</code> in <code>kernel/proc.h</code>. Its first five fields are not registers at all: <code>kernel_satp</code>, <code>kernel_sp</code>, <code>kernel_trap</code>, <code>epc</code>, <code>kernel_hartid</code>. They are the return ticket. Only then comes the process itself, all thirty-one integer registers in ABI order, <code>ra</code> at byte 40 through <code>t6</code> at byte 280 <a class="cite" href="#src-the-thirty-five-registers-of-a-rescue-plan-1">[1]</a>. Every process maps its trapframe at the same virtual address, <code>TRAPFRAME</code>, so the catch code can write <code>li a0, TRAPFRAME</code> and mean it for any process.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-thirty-five-registers-of-a-rescue-plan/the-thirty-five-registers-of-a-rescue-plan.jpg" alt="Two trapeze artists mid-flight: the catcher holds the flyer upside down under a star-painted circus tent" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Double trapeze act, Continental Circus Berlin, Aviemore, 2009: the catcher takes the flyer mid-flight and sets her back down. The trapframe is where xv6 catches a running process mid-stride, thirty-five registers holding everything it was, so sret can set it back down exactly where it was.<br><span style="opacity:.7">Photo: Aaron Sneddon, CC BY, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>The catch is <code>uservec</code> in <code>kernel/trampoline.S</code>, and its first instruction is the whole philosophy: <code>csrw sscratch, a0</code>. On trap entry you have exactly zero free registers, so <code>a0</code> is parked in <code>sscratch</code>, a swap that needs no scratch space, and only then does the code reach for the trapframe. Thirty-one stores. Then the kernel stack pointer into <code>sp</code>, the hartid into <code>tp</code>, the address of <code>usertrap</code> into <code>t0</code>, the kernel page table into <code>t1</code>. The <code>satp</code> switch is fenced by <code>sfence.vma</code> on both sides, because a TLB entry cached under one page table is a lie under the other <a class="cite" href="#src-the-thirty-five-registers-of-a-rescue-plan-2">[2]</a>. Then <code>jalr t0</code>, into <code>usertrap</code>.</p>
+          <p><code>usertrap</code> does the C work. <code>sepc</code> is stashed into the trapframe's <code>epc</code> first, and on the syscall path <code>epc</code> is bumped by four before interrupts are enabled, because the <code>ecall</code> is finished and the return must point past it, and an interrupt would move <code>sepc</code> out from under the bump <a class="cite" href="#src-the-thirty-five-registers-of-a-rescue-plan-1">[1]</a>. <code>prepare_return()</code> rebuilds the trip back: <code>stvec</code> points to <code>uservec</code> again, the four kernel ticket fields are refreshed, SPP is cleared so <code>sret</code> drops to user mode, SPIE is set, <code>sepc</code> is reloaded. <code>userret</code> flushes the instruction cache, switches back to the user page table under the same fence pair, reloads all thirty-one registers, and <code>sret</code>.</p>
+          <p>The trapframe earns its thirty-five registers by being honest about the constraint. On trap entry the hardware hands you nothing but <code>a0</code>'s old value and one constant address. The ticket, the save area, the fences: every part of the rescue plan is built out of that.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Two Bits That Deliver the Block or Drop It</h3>
           <!-- LAYER-STRIP:the-two-bits-that-deliver-or-drop -->
           <p class="research-date"><time datetime="2026-09-25">2026-09-25 11:35 EDT</time></p>

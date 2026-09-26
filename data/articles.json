@@ -1,5 +1,66 @@
 [
   {
+    "title": "The Thirty-Five Registers of a Rescue Plan",
+    "slug": "the-thirty-five-registers-of-a-rescue-plan",
+    "date": "2026-09-26",
+    "description": "xv6's struct trapframe holds a five-field return ticket plus all thirty-one integer registers; uservec's first move is csrw sscratch, a0, because on trap entry you have zero free registers. The hardware hands you a0's old value and one constant address; everything else is built from that.",
+    "paragraphs": [
+      "A user process is running. A timer interrupt fires, or the program calls a syscall. The hardware does almost nothing for it: it records the cause, stashes the faulting address, and jumps to a vector. Every register the process was holding is still sitting in the physical registers, and the first real instruction of the trap handler is about to overwrite them. Before the kernel can do a single thing, it needs somewhere to put the process down.",
+      "xv6's answer is struct trapframe in kernel/proc.h. Its first five fields are not registers at all: kernel_satp, kernel_sp, kernel_trap, epc, kernel_hartid. They are the return ticket. Only then comes the process itself, all thirty-one integer registers in ABI order, ra at byte 40 through t6 at byte 280. Every process maps its trapframe at the same virtual address, TRAPFRAME, so the catch code can write li a0, TRAPFRAME and mean it for any process.",
+      "The catch is uservec in kernel/trampoline.S, and its first instruction is the whole philosophy: csrw sscratch, a0. On trap entry you have exactly zero free registers, so a0 is parked in sscratch, a swap that needs no scratch space, and only then does the code reach for the trapframe. Thirty-one stores. Then the kernel stack pointer into sp, the hartid into tp, the address of usertrap into t0, the kernel page table into t1. The satp switch is fenced by sfence.vma on both sides, because a TLB entry cached under one page table is a lie under the other. Then jalr t0, into usertrap.",
+      "usertrap does the C work. sepc is stashed into the trapframe's epc first, and on the syscall path epc is bumped by four before interrupts are enabled, because the ecall is finished and the return must point past it, and an interrupt would move sepc out from under the bump. prepare_return() rebuilds the trip back: stvec points to uservec again, the four kernel ticket fields are refreshed, SPP is cleared so sret drops to user mode, SPIE is set, sepc is reloaded. userret flushes the instruction cache, switches back to the user page table under the same fence pair, reloads all thirty-one registers, and sret.",
+      "The trapframe earns its thirty-five registers by being honest about the constraint. On trap entry the hardware hands you nothing but a0's old value and one constant address. The ticket, the save area, the fences: every part of the rescue plan is built out of that."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/trampoline.S",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The rescue plan runs on privileged ISA primitives: sscratch parks a0 when no register is free, sfence.vma fences both satp switches, and sret returns through sepc with SPP and SPIE. The article quotes uservec's csrw sscratch, a0 and the fence pairs from kernel/trampoline.S and names the privileged spec as the contract behind each."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "Nothing in the article measures or reasons about any processor's internals: the trapframe layout, the sscratch swap, and the fence pairs are supervisor-mode code identical on any hart running xv6, so the mechanism is judged at the ISA and kernel layers."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Machine mode sets up the stage with stvec and the page tables, but the article never goes there: the catch, the save, and the return are supervisor-mode trap machinery built from the return ticket and thirty-one register slots, none of it firmware behavior."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The entire mechanism is xv6 kernel code: struct trapframe in kernel/proc.h, uservec and userret in kernel/trampoline.S, usertrap and prepare_return in kernel/trap.c, all read firsthand from the xv6-getscount checkout. The return ticket exists so the kernel can suspend a process and set it back down."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "No algorithm is presented: the article walks a data structure and two assembly routines with fixed offsets and a fixed instruction order, not a procedure with an invariant to prove."
+      }
+    },
+    "evidence": {
+      "label": "xv6-getscount kernel: trapframe, uservec, userret read firsthand from the local checkout",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/tree/main/kernel"
+    },
+    "image": "blog/the-thirty-five-registers-of-a-rescue-plan/the-thirty-five-registers-of-a-rescue-plan.jpg",
+    "image_alt": "Two trapeze artists mid-flight: the catcher holds the flyer upside down under a star-painted circus tent",
+    "image_caption": "Double trapeze act, Continental Circus Berlin, Aviemore, 2009: the catcher takes the flyer mid-flight and sets her back down. The trapframe is where xv6 catches a running process mid-stride, thirty-five registers holding everything it was, so sret can set it back down exactly where it was.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Continental_Circus_Double_Trapeze_act.jpg",
+    "image_license": "CC BY",
+    "image_attribution": "Aaron Sneddon, via Wikimedia Commons",
+    "social_image": "blog/the-thirty-five-registers-of-a-rescue-plan/the-thirty-five-registers-of-a-rescue-plan-social.jpg",
+    "sources": [
+      {
+        "title": "dillingerstaffing/xv6-getscount kernel",
+        "publisher": "Chris Dillinger",
+        "note": "struct trapframe layout (kernel/proc.h), uservec and userret (kernel/trampoline.S), usertrap and prepare_return (kernel/trap.c): the five-field return ticket, the thirty-one register slots in ABI order, the sscratch swap, the sfence.vma pairs around both satp switches, the epc bump before intr_on. Read firsthand.",
+        "url": "https://github.com/dillingerstaffing/xv6-getscount/tree/main/kernel"
+      },
+      {
+        "title": "RISC-V ISA Manual, privileged architecture",
+        "publisher": "RISC-V International",
+        "note": "sscratch as the supervisor scratch register for the trap-entry sequence, sfence.vma ordering requirements around satp writes, sret privilege transition and interrupt behavior keyed off sstatus SPP and SPIE, sepc as the saved trap program counter.",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+      }
+    ]
+  },
+  {
     "title": "The Two Bits That Deliver the Block or Drop It",
     "slug": "the-two-bits-that-deliver-or-drop",
     "date": "2026-09-25",
