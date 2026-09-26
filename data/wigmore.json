@@ -85370,6 +85370,243 @@
         "strength": "strong"
       }
     ]
+  },
+  {
+    "item": "src-pmp-na4-low-edge",
+    "kind": "card",
+    "slot": "ISA",
+    "probandum": "The privileged ISA defines NA4 matching: a NA4 entry matches exactly the 4-byte naturally aligned word at (pmpaddr shifted left by 2), and a matching locked entry with no permissions raises a load access fault on M-mode loads. The card proves the low edge: the load one byte below the word matches no entry and completes, the load at the word's first byte traps.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The privileged ISA defines NA4 matching: a NA4 entry matches exactly the 4-byte naturally aligned word at (pmpaddr shifted left by 2), and a matching locked entry with no permissions raises a load access fault on M-mode loads. The card proves the low edge: the load one byte below the word matches no entry and completes, the load at the word's first byte traps."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/pmp-na4-low-edge/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-na4-low-edge/PROOF.md"
+        },
+        "text": "21 checks against the NA4 exact-word invariant, 0 mismatches; the load one byte below the word (0x800023ff) completes with 0 new traps and returns the expected byte 0x12; the load at the word's first byte (0x80002400) traps with mcause 0x5, mepc at the faulting lbu (0x80000614), mtval at the faulting address (0x80002400)"
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "riscv-isa-manual (pinned release)",
+          "tier": "lab",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The pinned RISC-V ISA manual, privileged architecture volume: NA4 PMP address matching, the 4-byte word at (pmpaddr shifted left by 2), and access-fault trap codes are defined there"
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "src-pmp-na4-low-edge",
+    "kind": "card",
+    "slot": "MICROARCH",
+    "probandum": "The card compares trap records only, never timing. Whether the PMP checker tests the address against the word with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card compares trap records only, never timing. Whether the PMP checker tests the address against the word with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/pmp-na4-low-edge/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-na4-low-edge/PROOF.md"
+        },
+        "text": "The program records trap records (mcause, mepc, mtval) and byte readbacks only; no cycle counts or implementation internals are measured"
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "src-pmp-na4-low-edge",
+    "kind": "card",
+    "slot": "FIRMWARE",
+    "probandum": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map, and it locks entries it never wants changed. The card proves the boundary semantics of a locked entry the program itself programmed, the exact policy real firmware enforces.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map, and it locks entries it never wants changed. The card proves the boundary semantics of a locked entry the program itself programmed, the exact policy real firmware enforces."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/pmp-na4-low-edge/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-na4-low-edge/PROOF.md"
+        },
+        "text": "The program itself wrote pmpaddr0=0x20000900 and pmpcfg0=0x90 (entry 0: L=1, A=NA4, no permissions) over the canary word at 0x80002400, read them back exactly, and the restore writes afterward left pmpaddr0 and pmpcfg0 bit-for-bit"
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "riscv-isa-manual (pinned release)",
+          "tier": "lab",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The pinned RISC-V ISA manual, privileged architecture volume: PMP programming and the lock bit are defined there"
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "src-pmp-na4-low-edge",
+    "kind": "card",
+    "slot": "KERNEL",
+    "probandum": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/pmp-na4-low-edge/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-na4-low-edge/PROOF.md"
+        },
+        "text": "The program runs in M-mode from reset with no supervisor software present; every verdict comes from the hart's PMP unit and trap hardware"
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "src-pmp-na4-low-edge",
+    "kind": "card",
+    "slot": "ALGORITHM",
+    "probandum": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "src/pmp-na4-low-edge/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-na4-low-edge/PROOF.md"
+        },
+        "text": "The proof exercises PMP CSRs and trap records only; no portable C equivalent is implemented or compared"
+      },
+      {
+        "kind": "generalization",
+        "n": 3,
+        "text": "A negative layer claim stands when the verification surface contains no observation that could support the positive claim, and the because names what the verification actually checked."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          3
+        ],
+        "to": [
+          1
+        ],
+        "note": "The evidence establishes the probandum via the generalization.",
+        "strength": "strong"
+      }
+    ]
   }
   ]
 }

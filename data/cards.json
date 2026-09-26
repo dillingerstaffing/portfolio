@@ -11648,5 +11648,61 @@
         "because": "The verified claim is a machine configuration contract stated in RISC-V terms (the menvcfg CBIE field, WARL legalization) with no ISA-independent restatement, so there is no portable computation whose output could be compared."
       }
     }
+  },
+  {
+    "id": "src-pmp-na4-low-edge",
+    "title": "The low edge the entry never crosses",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal M-mode RISC-V program proves a locked NA4 PMP entry matches exactly its 4-byte word: a load one byte below the word matches no entry and completes with no trap, while a load at the word's first byte raises a load access fault with the faulting address recorded. With the entry locked, the probes are plain M-mode loads, so the clean completion below the word is the M-mode default-allow rule itself.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-na4-low-edge",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/pmp-na4-low-edge/PROOF.md"
+    },
+    "checks": 21,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "21 checks against the NA4 exact-word invariant (the load one byte below the word completes, the load at the word's first byte traps), 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "The load at the word's first byte traps with mcause 0x5 and the faulting address in mtval; the load one byte below it returns the expected byte with no new trap"
+      ],
+      [
+        "CHECKSUM",
+        "0xc31c8a92d948b7ba, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / pmp-na4-low-edge.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel pmp-na4-low-edge.elf\n\nbelow word: clean, byte 0x12\nat word: trap mcause=0x5\nRESULT: PASS",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The card verifies a hardware address-match function, not a portable computation. There is no equivalent C whose portability could be argued."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the PMP: it programs pmpaddr and pmpcfg at boot to carve the physical memory map, and it locks entries it never wants changed. The card proves the boundary semantics of a locked entry the program itself programmed, the exact policy real firmware enforces."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines NA4 matching: a NA4 entry matches exactly the 4-byte naturally aligned word at (pmpaddr shifted left by 2), and a matching locked entry with no permissions raises a load access fault on M-mode loads. The card proves the low edge: the load one byte below the word matches no entry and completes, the load at the word's first byte traps."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The probes run in M-mode with no kernel present. The match verdicts and the trap records come from the hart's PMP unit, not from any supervisor software."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The card compares trap records only, never timing. Whether the PMP checker tests the address against the word with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
+      }
+    }
   }
 ]
