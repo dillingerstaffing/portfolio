@@ -1386,6 +1386,31 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Two-Phase Birth of Every Process</h3>
+          <!-- LAYER-STRIP:the-two-phase-birth-of-every-process -->
+          <p class="research-date"><time datetime="2026-09-27">2026-09-27 11:25 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Every process on xv6 is born the same way. <code>init</code> forks, the child calls <code>exec</code> with a path, and 176 lines of <code>kernel/exec.c</code> take over. The first thing exec does is not touch the running process at all. It opens the executable under <code>begin_op</code>, finds the inode with <code>namei</code>, and reads the ELF header, checking the magic <code>0x464C457F</code>, the little-endian spelling of the four bytes 0x7F, E, L, F <a class="cite" href="#src-the-two-phase-birth-of-every-process-1">[1]</a>.</p>
+          <p>Then it builds a brand-new page table, private and uncommitted, and walks the program headers. Only <code>ELF_PROG_LOAD</code> segments get loaded, and each one must pass four sanity checks: <code>memsz</code> is not smaller than <code>filesz</code>, because the zero-filled remainder is what bss becomes; <code>vaddr</code> plus <code>memsz</code> must not wrap around; and <code>vaddr</code> must be page-aligned. Permissions come from <code>flags2perm</code>, which reads only two ELF bits, bit 0 for execute and bit 1 for write, because <code>uvmalloc</code> always adds <code>PTE_R</code> and <code>PTE_U</code> on its own, so a page can never be born kernel-only or unreadable by accident <a class="cite" href="#src-the-two-phase-birth-of-every-process-1">[1]</a>.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-two-phase-birth-of-every-process/the-two-phase-birth-of-every-process.jpg" alt="A chick hatching out of a cracked egg, half-emerged, wet feathers and beak visible through the broken shell" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">A chick mid-hatch at The Big E, 2007: the new world is built whole inside the shell before it breaks out. exec works the same way, the entire address space is complete in a private page table before three assignments and two register fields commit it.<br><span style="opacity:.7">Photo: grendelkhan, CC BY-SA 2.0, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p><code>loadseg</code> fills each page with <code>readi</code> from the inode, but before a single byte is copied it looks the page up with <code>walkaddr</code> and panics with <code>loadseg: address should exist</code> if the mapping is missing. The mapping exists first, the bytes second <a class="cite" href="#src-the-two-phase-birth-of-every-process-1">[1]</a>. The stack gets its own rite: the size is rounded up, one extra page is allocated beyond the user stack pages and cleared by <code>uvmclear</code> into an inaccessible guard page, and the argument strings are copied down from the top of the stack with 16-byte alignment, because the RISC-V calling convention requires it <a class="cite" href="#src-the-two-phase-birth-of-every-process-2">[2]</a>.</p>
+          <p>Only when the new world is complete comes the commit. The source comment names the phase: <code>Commit to the user image.</code> Three assignments swap the page tables, the trapframe's <code>epc</code> is set to <code>elf.entry</code> and its <code>sp</code> to the new stack top, the old table is freed, and <code>argc</code> returns as the syscall value, landing in <code>a0</code> with <code>argv</code> in <code>a1</code>, so <code>main(argc, argv)</code> is not a convention anyone agreed on, it is just what falls out of two registers <a class="cite" href="#src-the-two-phase-birth-of-every-process-1">[1]</a>.</p>
+          <p>The commit, in six lines:</p>
+<pre><code>// Commit to the user image.
+oldpagetable = p-&gt;pagetable;
+p-&gt;pagetable = pagetable;
+p-&gt;sz = sz;
+p-&gt;trapframe-&gt;epc = elf.entry;
+p-&gt;trapframe-&gt;sp = sp;</code></pre>
+          <p>The running process is never touched while its replacement is built. The file could be corrupt, the disk could fail, memory could run dry, and the old process would still be standing there, mid-instruction, untouched. The new world is complete before it is committed, or it never exists at all.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Thirty-Five Registers of a Rescue Plan</h3>
           <!-- LAYER-STRIP:the-thirty-five-registers-of-a-rescue-plan -->
           <p class="research-date"><time datetime="2026-09-26">2026-09-26 11:25 EDT</time></p>
