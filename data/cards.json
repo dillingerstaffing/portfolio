@@ -11704,5 +11704,61 @@
         "because": "The card compares trap records only, never timing. Whether the PMP checker tests the address against the word with a comparator or a decoder, the match or no-match verdict is identical, so the implementation leaves the claim untouched."
       }
     }
+  },
+  {
+    "id": "src-sfence-vma-remap",
+    "title": "The remap the hart never saw",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal M-mode RISC-V program proves a page-table remap is invisible to the hart until sfence.vma orders it. After the leaf PTE is rewritten to a new page with no fence, the load still returns the old page's canary; once sfence.vma executes, the same load returns the new page's canary. The rewritten PTE is verified in memory in both cases, so the fence is the only ordering event.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sfence-vma-remap",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+    },
+    "checks": 39,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "39 checks against the fence-ordering invariant: the load after a fenceless remap returns the stale canary, the load after sfence.vma returns the fresh canary, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "The readback after the fenceless remap is the old page's canary and the readback after sfence.vma is the new page's canary, with the rewritten PTE verified in memory between them"
+      ],
+      [
+        "CHECKSUM",
+        "0x421dacf7967027dc, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / sfence-vma-remap.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel sfence-vma-remap.elf\n\nphase A: canary A, fresh walk\nphase B: canary A, stale (no fence)\nphase C: canary B, after sfence.vma\nRESULT: PASS",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The verified claim is a hardware ordering contract (a fence orders cached translations), not a portable computation; no equivalent C procedure exists whose portability could be argued."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the page tables and the fence: the module builds the Sv39 tables by hand in M-mode, rewrites the leaf PTE itself, and issues sfence.vma itself, which is the exact sequence real firmware runs when remapping memory."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines the fence contract: a PTE write may stay invisible to the hart until an sfence.vma orders the cached translations, and the card measures the fenceless remap returning the stale canary while the same load after sfence.vma returns the fresh canary, so the observed behavior matches the contract."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The run loads no operating system and the trap path never enters supervisor software: the S-mode phases are bare loads issued by the M-mode test harness, and the only trap handler that runs is the M-mode entry."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The run records only load readbacks and trap records, never timing or implementation internals, so it says nothing about the translation cache structure of any implementation; the stale and fresh readbacks are the ISA fence contract, observable on any conforming hart."
+      }
+    }
   }
 ]

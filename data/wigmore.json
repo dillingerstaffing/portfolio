@@ -85912,6 +85912,232 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-remap",
+      "slot": "ISA",
+      "probandum": "The privileged ISA defines the fence contract: a PTE write may stay invisible to the hart until an sfence.vma orders the cached translations, and the card measures the fenceless remap returning the stale canary while the same load after sfence.vma returns the fresh canary, so the observed behavior matches the contract.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The privileged ISA defines the fence contract: a PTE write may stay invisible to the hart until an sfence.vma orders the cached translations, and the card measures the fenceless remap returning the stale canary while the same load after sfence.vma returns the fresh canary, so the observed behavior matches the contract."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "39 checks, 0 mismatches: phase A reads 0xaaaaaaaaaaaaaaaa through the fresh walk; the leaf is rewritten to the second page with no fence (PTE readback 0x20000cc7, verified in memory); phase B reads 0xaaaaaaaaaaaaaaaa, the stale canary; after sfence.vma, phase C reads 0xbbbbbbbbbbbbbbbb, the fresh canary; m_traps is 3 (the three phase-return ecalls, mcause 0x9, mepc at each ecall site) and s_traps is 0",
+          "source": {
+            "cite": "src/sfence-vma-remap/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: the sfence.vma ordering rule for PTE writes is defined there",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "lab",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a contrast between the fenced and unfenced case isolates the fence as the ordering event."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-remap",
+      "slot": "MICROARCH",
+      "probandum": "The run records only load readbacks and trap records, never timing or implementation internals, so it says nothing about the translation cache structure of any implementation; the stale and fresh readbacks are the ISA fence contract, observable on any conforming hart.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The run records only load readbacks and trap records, never timing or implementation internals, so it says nothing about the translation cache structure of any implementation; the stale and fresh readbacks are the ISA fence contract, observable on any conforming hart."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The proof log records load readback values, PTE readbacks, and trap records only; no cycle counts, no timing windows, no implementation parameter is varied between the stale and fresh observations",
+          "source": {
+            "cite": "src/sfence-vma-remap/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A measurement that records no timing and varies no implementation parameter cannot speak to implementation structure; a claim that holds for any conforming implementation is an ISA claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-remap",
+      "slot": "FIRMWARE",
+      "probandum": "M-mode firmware owns the page tables and the fence: the module builds the Sv39 tables by hand in M-mode, rewrites the leaf PTE itself, and issues sfence.vma itself, which is the exact sequence real firmware runs when remapping memory.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "M-mode firmware owns the page tables and the fence: the module builds the Sv39 tables by hand in M-mode, rewrites the leaf PTE itself, and issues sfence.vma itself, which is the exact sequence real firmware runs when remapping memory."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The M-mode setup builds root, level-1, and level-0 tables by hand, installs the M-mode trap handler, and enables Sv39; mid_to_B rewrites the leaf PTE to the second page; mid_to_C executes sfence.vma before the final phase",
+          "source": {
+            "cite": "src/sfence-vma-remap/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A property exercised by the privileged layer that owns the resource belongs to that layer."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-remap",
+      "slot": "KERNEL",
+      "probandum": "The run loads no operating system and the trap path never enters supervisor software: the S-mode phases are bare loads issued by the M-mode test harness, and the only trap handler that runs is the M-mode entry.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The run loads no operating system and the trap path never enters supervisor software: the S-mode phases are bare loads issued by the M-mode test harness, and the only trap handler that runs is the M-mode entry."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The S-mode payloads are a single load plus an ecall return; s_traps stays 0 across all three phases and the quiet window; the only trap handler that ever runs is the M-mode entry in svr_trap.S",
+          "source": {
+            "cite": "src/sfence-vma-remap/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A run with no kernel loaded and no supervisor software in the trap path cannot verify a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-remap",
+      "slot": "ALGORITHM",
+      "probandum": "The verified claim is a hardware ordering contract (a fence orders cached translations), not a portable computation; no equivalent C procedure exists whose portability could be argued.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The verified claim is a hardware ordering contract (a fence orders cached translations), not a portable computation; no equivalent C procedure exists whose portability could be argued."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The invariant under test is stated in RISC-V terms: PTE writes, the sfence.vma ordering rule, and hart-visible readbacks; the proof log contains no portable procedure, only the sequence the hart executes",
+          "source": {
+            "cite": "src/sfence-vma-remap/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "generalization",
+          "text": "A claim stated in terms of hart-visible ordering has no portable C equivalent."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            3
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
