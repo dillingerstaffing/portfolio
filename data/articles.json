@@ -1,5 +1,79 @@
 [
   {
+    "title": "The Bouncer Who Ranks Every Knock",
+    "slug": "the-bouncer-who-ranks-every-knock",
+    "date": "2026-09-28",
+    "description": "The CLIC turns the trap handler from a doorman who checks every knock by hand into one with a guest list, a ranking, and a velvet rope: up to 256 interrupt levels per privilege mode, per-interrupt hardware vectoring, and a tail-chaining register that skips the return entirely.",
+    "paragraphs": [
+      "On stock RISC-V, every interrupt knocks the same way. The hart jumps to one trap handler, the handler reads mcause to learn who knocked, and nothing about the knock is ranked by the hardware. If one handler is running when a more urgent interrupt arrives, the urgent one waits for the handler to return, unless the handler re-enables interrupts and re-sorts the queue by hand.",
+      "The CLIC, the Core-Local Interrupt Controller, puts a bouncer on the door of every hart. It takes up to 4096 interrupt inputs per hart, and each input gets four small 8-bit registers: a pending bit, an enable bit, attribute bits that pick the privilege mode, the trigger type, and the hardware-vectoring choice, and control bits for the level and priority. The first 16 inputs are the classic interrupts, the ones in the low bits of the old pending and enable registers; the other 4080 are local lines the core wires up however it likes.",
+      "Then comes the ranking. Every interrupt gets a level, up to 256 of them per privilege mode, and a higher level now preempts a lower one inside the same mode, in hardware, no handler cooperation needed. And each privilege mode gets a threshold register, a velvet rope: only interrupts ranked above the threshold are taken at all. Raise it to the top and you have a do-not-disturb sign. NuttX uses exactly this in its RISC-V interrupt save path: on a CLIC chip it swaps the threshold register to its maximum instead of clearing the global enable in mstatus, masking every level at once.",
+      "Then selective hardware vectoring. Each interrupt has one bit that decides whether it jumps straight to its own slot in the trap vector table or falls through to the shared handler. The choice is per interrupt, not per chip. To run in CLIC mode, software writes 11 to xtvec's mode field with the shared base 64-byte aligned; an interrupt with its vectoring bit set lands at TBASE plus 8 times its id on a 64-bit hart, where the entry holds the handler's address with the low bit cleared.",
+      "The last register is mnxti, the tail-chainer. At the end of a handler, software reads it: if a higher-level interrupt is already pending, the read returns that handler's address and re-arms the enables, so the next handler starts with no return-and-retrap through the context save. For edge-triggered interrupts the same read clears the pending bit as a side effect. Back-to-back interrupts, no round trip.",
+      "One honest boundary: the CLIC is the embedded answer. Application-class cores use the Advanced Interrupt Architecture instead, with its APLIC, its message-signaled interrupts, and virtualization support. Different battlefields: the CLIC exists for cores where the claim-and-complete round trip and the software priority sort are themselves the latency you cannot afford."
+    ],
+    "codeLink": null,
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The mechanism is RISC-V privileged architecture: per-input pending, enable, attribute, and level/priority registers defined by the CLIC specification, up to 256 interrupt levels per privilege mode with hardware same-mode preemption, a threshold register per privilege mode, CLIC mode entered through xtvec.mode=11 with a 64-byte-aligned NBASE, and selective hardware vectoring at TBASE plus XLEN/8 times the interrupt id. The article names the registers and the exact dispatch formulas."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No processor internals are measured or reasoned about: the ranking, the threshold, and the vector table are a register contract any CLIC implementation honors, so no pipeline, cache, or timing behavior is examined. The mechanism is judged at the ISA layer."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "Machine mode never appears: the CLIC registers are programmed by the operating system or bare-metal code directly, the threshold save and restore live in the interrupt path, and no supervisor binary interface call or boot firmware is in the picture."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The subject is the controller's architecture, not kernel internals: the one operating-system appearance is NuttX's threshold swap, used as a real-world illustration of a register the specification defines, and no kernel code is examined, measured, or modified."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "No algorithm is presented: the article walks a register layout and a dispatch rule with one fixed address formula per interrupt, not a procedure with an invariant to prove."
+      }
+    },
+    "evidence": {
+      "label": "riscv-baremetal-demo: the bare-metal repo behind the RISC-V series; the CLIC register claims were read firsthand from the spec",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo"
+    },
+    "image": "blog/the-bouncer-who-ranks-every-knock/the-bouncer-who-ranks-every-knock.jpg",
+    "image_alt": "Two young bouncers standing at a bar entrance at night, one close to the camera, unsmiling",
+    "image_caption": "Two young bouncers at a bar entrance at night: they decide who gets in and in what order. The CLIC does the same for interrupts, ranking every knock by level and letting higher ranks preempt lower ones in hardware.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Modern_Bouncers.jpg",
+    "image_license": "CC BY-SA 4.0",
+    "image_attribution": "Xxinvictus34535, via Wikimedia Commons",
+    "social_image": "blog/the-bouncer-who-ranks-every-knock/the-bouncer-who-ranks-every-knock-social.jpg",
+    "sources": [
+      {
+        "title": "RISC-V Core-Local Interrupt Controller (CLIC), v0.10 draft",
+        "publisher": "RISC-V International",
+        "note": "The four 8-bit registers per input: clicintip pending, clicintie enable, clicintattr with the mode, trigger, and hardware-vectoring bits, and clicintctl with level and priority. Up to 4096 inputs per hart with the first 16 reserved for the classic interrupts. Up to 256 levels per privilege mode with same-mode hardware preemption, one threshold register per privilege mode, CLIC mode entered with xtvec.mode equal to 11 and a 64-byte-aligned NBASE, selective hardware vectoring at TBASE plus XLEN over 8 times the interrupt id, and the mnxti tail-chaining register with its edge-triggered pending-clear side effect.",
+        "url": "https://github.com/riscv/riscv-fast-interrupt/releases/download/v0.10/clic.pdf"
+      },
+      {
+        "title": "RISC-V ISA Manual, privileged architecture",
+        "publisher": "RISC-V International",
+        "note": "Classic trap delivery: the handler reads mcause to classify the trap, and interrupt enables are cleared on entry, so nested handling inside one privilege mode is the handler's own work.",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+      },
+      {
+        "title": "NuttX RISC-V interrupt management documentation",
+        "publisher": "NuttX project",
+        "note": "The RISC-V interrupt management notes show up_irq_save on CLIC targets saving the threshold and swapping the threshold CSR to its maximum instead of clearing the global enable in mstatus, masking every level at once.",
+        "url": "https://github.com/xiaoxiang781216/nuttx/blob/HEAD/Documentation/platforms/risc-v/common/index.rst"
+      },
+      {
+        "title": "RISC-V Advanced Interrupt Architecture, v1.0-RC1",
+        "publisher": "RISC-V International",
+        "note": "The Advanced Interrupt Architecture, with its APLIC and message-signaled interrupts plus virtualization support, is the application-class counterpart to the CLIC's embedded profile.",
+        "url": "https://github.com/riscv/riscv-aia/releases/download/1.0-RC1/riscv-interrupts-1.0-RC1.pdf"
+      }
+    ]
+  },
+  {
     "title": "The Two-Phase Birth of Every Process",
     "slug": "the-two-phase-birth-of-every-process",
     "date": "2026-09-27",

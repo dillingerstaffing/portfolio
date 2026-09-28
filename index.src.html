@@ -1388,6 +1388,32 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bouncer Who Ranks Every Knock</h3>
+          <!-- LAYER-STRIP:the-bouncer-who-ranks-every-knock -->
+          <p class="research-date"><time datetime="2026-09-28">2026-09-28 11:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>On stock RISC-V, every interrupt knocks the same way. The hart jumps to one trap handler, the handler reads <code>mcause</code> to learn who knocked, and nothing about the knock is ranked by the hardware. If one handler is running when a more urgent interrupt arrives, the urgent one waits for the handler to return, unless the handler re-enables interrupts and re-sorts the queue by hand <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-2">[2]</a>.</p>
+          <p>The CLIC, the Core-Local Interrupt Controller, puts a bouncer on the door of every hart. It takes up to 4096 interrupt inputs per hart, and each input gets four small 8-bit registers: a pending bit, an enable bit, attribute bits that pick the privilege mode, the trigger type, and the hardware-vectoring choice, and control bits for the level and priority <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-1">[1]</a>. The first 16 inputs are the classic interrupts, the ones in the low bits of the old pending and enable registers; the other 4080 are local lines the core wires up however it likes <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-1">[1]</a>.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bouncer-who-ranks-every-knock/the-bouncer-who-ranks-every-knock.jpg" alt="Two young bouncers standing at a bar entrance at night, one close to the camera, unsmiling" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Two young bouncers at a bar entrance at night: they decide who gets in and in what order. The CLIC does the same for interrupts, ranking every knock by level and letting higher ranks preempt lower ones in hardware.<br><span style="opacity:.7">Photo: Xxinvictus34535, CC BY-SA 4.0, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>Then comes the ranking. Every interrupt gets a level, up to 256 of them per privilege mode, and a higher level now preempts a lower one inside the same mode, in hardware, no handler cooperation needed <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-1">[1]</a>. And each privilege mode gets a threshold register, a velvet rope: only interrupts ranked above the threshold are taken at all. Raise it to the top and you have a do-not-disturb sign. NuttX uses exactly this in its RISC-V interrupt save path: on a CLIC chip it swaps the threshold register to its maximum instead of clearing the global enable in <code>mstatus</code>, masking every level at once <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-3">[3]</a>.</p>
+          <p>Then selective hardware vectoring. Each interrupt has one bit that decides whether it jumps straight to its own slot in the trap vector table or falls through to the shared handler. The choice is per interrupt, not per chip. To run in CLIC mode, software writes 11 to <code>xtvec</code>'s mode field with the shared base 64-byte aligned; an interrupt with its vectoring bit set lands at <code>TBASE</code> plus 8 times its id on a 64-bit hart, where the entry holds the handler's address with the low bit cleared <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-1">[1]</a>.</p>
+          <p>The address rule, in four lines:</p>
+<pre><code>/* shv = 1: this interrupt gets its own slot in the table */
+trap_pc = TBASE + 8 * interrupt_id;  /* 8 is XLEN/8 on RV64 */
+
+/* shv = 0: this one joins the shared handler at the base */
+trap_pc = NBASE;                     /* xtvec.mode = 11, base 64-byte aligned */</code></pre>
+          <p>The last register is <code>mnxti</code>, the tail-chainer. At the end of a handler, software reads it: if a higher-level interrupt is already pending, the read returns that handler's address and re-arms the enables, so the next handler starts with no return-and-retrap through the context save. For edge-triggered interrupts the same read clears the pending bit as a side effect. Back-to-back interrupts, no round trip <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-1">[1]</a>.</p>
+          <p>One honest boundary: the CLIC is the embedded answer. Application-class cores use the Advanced Interrupt Architecture instead, with its APLIC, its message-signaled interrupts, and virtualization support <a class="cite" href="#src-the-bouncer-who-ranks-every-knock-4">[4]</a>. Different battlefields: the CLIC exists for cores where the claim-and-complete round trip and the software priority sort are themselves the latency you cannot afford.</p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Two-Phase Birth of Every Process</h3>
           <!-- LAYER-STRIP:the-two-phase-birth-of-every-process -->
           <p class="research-date"><time datetime="2026-09-27">2026-09-27 11:25 EDT</time></p>
