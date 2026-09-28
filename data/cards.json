@@ -11760,5 +11760,61 @@
         "because": "The run records only load readbacks and trap records, never timing or implementation internals, so it says nothing about the translation cache structure of any implementation; the stale and fresh readbacks are the ISA fence contract, observable on any conforming hart."
       }
     }
+  },
+  {
+    "id": "src-sfence-vma-rs1-scoped",
+    "title": "The fence that would not scope",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal M-mode RISC-V program checks whether sfence.vma with rs1 set invalidates only the named address. Two virtual addresses are remapped to new pages, then only the first is fenced through the rs1 operand, and both words are read back. On QEMU 8.2.2 the unfenced address also reads the fresh page, so the scoped fence invalidates both translations; a no-fence control still reads stale, which isolates the fence as the invalidating event.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sfence-vma-rs1-scoped",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs1-scoped/PROOF.md"
+    },
+    "checks": 60,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "60 checks against the fence-scope question: phase A caches both translations, the rs1 operand names only VA1, phase B reads the fresh canary at both addresses, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Phase B reads 0xbbbbbbbbbbbbbbbb at the fenced address and 0xdddddddddddddddd at the unfenced address, where the unfenced read was expected to stay stale; the no-fence sibling module reads stale, so the fence is the event that invalidated both translations"
+      ],
+      [
+        "CHECKSUM",
+        "0x69d07a40571b29d3, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / sfence-vma-rs1-scoped.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel sfence-vma-rs1-scoped.elf\n\nphase A: canary A, canary C (both translations cached)\nphase B: canary B at VA1, canary D at VA2 (fence did not scope)\nphase C: canary B, canary D\nRESULT: PASS (checks=60)",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The verified claim is a hardware invalidation-scope property (whether a fence operand limits cached-translation invalidation), not a portable computation; no equivalent C procedure exists whose portability could be argued."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the page tables and the fence: the module builds the Sv39 tables by hand in M-mode, rewrites both leaf PTEs itself, and issues the rs1-scoped sfence.vma itself, which is the exact sequence real firmware runs when remapping memory."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sfence.vma's rs1 operand as limiting the invalidation to the named address, and the card executes the real instruction with rs1 set and measures whether the hart honors that limit, so the verified claim depends directly on the machine's fence contract."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The run loads no operating system and the trap path never enters supervisor software: the S-mode phases are bare loads issued by the M-mode test harness, and the only trap handler that runs is the M-mode entry."
+      },
+      "MICROARCH": {
+        "applies": true,
+        "because": "The measured outcome is implementation behavior, not the contract: QEMU 8.2.2 drops the unfenced address's cached translation too, so the card characterizes this implementation's translation-cache handling, which a scoping hart would contradict."
+      }
+    }
   }
 ]
