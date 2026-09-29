@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260928-183200" />
+  <meta name="build-version" content="v20260929-064709" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Bell and the Switch &middot; Blog &middot; Chris Dillinger</title>
@@ -1625,7 +1625,12 @@ check(trap_count == 1, "trap_count != 1 after phase-B enable");</code></pre>
           btn.classList.toggle('is-flipped', next === 'classic');
         }
         if (!reduced && document.startViewTransition) {
-          document.startViewTransition(() => apply(next));
+          // Guard both transition promises: a second toggle that skips an
+          // in-flight transition rejects ready/finished with AbortError, and
+          // an unhandled rejection is console noise for the visitor.
+          const vt = document.startViewTransition(() => apply(next));
+          vt.ready.catch(() => {});
+          vt.finished.catch(() => {});
         } else {
           apply(next);
         }

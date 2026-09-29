@@ -951,7 +951,12 @@ THEME_ENGINE_JS = """  <script>
           btn.classList.toggle('is-flipped', next === 'classic');
         }
         if (!reduced && document.startViewTransition) {
-          document.startViewTransition(() => apply(next));
+          // Guard both transition promises: a second toggle that skips an
+          // in-flight transition rejects ready/finished with AbortError, and
+          // an unhandled rejection is console noise for the visitor.
+          const vt = document.startViewTransition(() => apply(next));
+          vt.ready.catch(() => {});
+          vt.finished.catch(() => {});
         } else {
           apply(next);
         }
