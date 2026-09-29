@@ -87289,5 +87289,311 @@
         }
       ]
     }
+,
+    {
+      "item": "the-nap-measured-in-ticks",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The mechanism never leaves supervisor-mode C: lock ordering around sleep_prepare, a shared counter, and an unsigned elapsed comparison. No CSR, trap entry, or privilege-level reasoning appears in the path.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The mechanism never leaves supervisor-mode C: lock ordering around sleep_prepare, a shared counter, and an unsigned elapsed comparison. No CSR, trap entry, or privilege-level reasoning appears in the path."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "kernel/sysproc.c, dillingerstaffing/xv6-getscount",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c"
+          },
+          "text": "sys_pause is written entirely in supervisor-mode C: argint, acquire and release of tickslock, sleep_prepare, sleep, and an unsigned comparison of ticks against ticks0. No CSR is named, no trap vector is programmed, and no privilege transition is reasoned about."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The code under examination stays above the ISA boundary; its vocabulary is locks, channels, and counters."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim argued only with lock ordering and shared-counter discipline in supervisor-mode C is not an ISA claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-nap-measured-in-ticks",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No pipeline, cache, or predictor behavior is reasoned about: the lost-wakeup argument is pure lock ordering in C, and the wrap safety comes from unsigned arithmetic, not from any hardware timing property.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "No pipeline, cache, or predictor behavior is reasoned about: the lost-wakeup argument is pure lock ordering in C, and the wrap safety comes from unsigned arithmetic, not from any hardware timing property."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "kernel/sysproc.c, dillingerstaffing/xv6-getscount",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c"
+          },
+          "text": "The lost-wakeup argument turns on the order of sleep_prepare before release of tickslock, and the wrap safety turns on unsigned 32-bit subtraction; neither step measures or reasons about pipeline, cache, or predictor behavior."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The guarantees come from statement ordering and integer arithmetic, not from hardware structure or timing."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A guarantee derived from code ordering and arithmetic, with no hardware structure in the argument, is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-nap-measured-in-ticks",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "The clock interrupt and the sleeping process meet in the kernel's own sleep and wakeup protocol; no machine-mode service, boot step, or firmware handoff participates.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The clock interrupt and the sleeping process meet in the kernel's own sleep and wakeup protocol; no machine-mode service, boot step, or firmware handoff participates."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "kernel/sysproc.c, dillingerstaffing/xv6-getscount",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c"
+          },
+          "text": "Both sides of the protocol live in the kernel: clockintr in kernel/trap.c bumps ticks and wakes sleepers under tickslock, and sys_pause sleeps on the ticks channel; no machine-mode call, boot step, or firmware handoff appears in either path."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The full protocol runs between the kernel clock interrupt and its sleeping processes."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A protocol whose every participant runs in the kernel, with no machine-mode or boot involvement, is not a firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-nap-measured-in-ticks",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "The entire mechanism is a kernel sleep protocol: a system call that registers on the ticks channel with sleep_prepare, releases tickslock, and sleeps, while the clock interrupt bumps the counter and wakes sleepers under the same lock.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The entire mechanism is a kernel sleep protocol: a system call that registers on the ticks channel with sleep_prepare, releases tickslock, and sleeps, while the clock interrupt bumps the counter and wakes sleepers under the same lock."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "kernel/sysproc.c, dillingerstaffing/xv6-getscount",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c"
+          },
+          "text": "sys_pause registers the sleeping process on the ticks channel with sleep_prepare, releases tickslock, and calls sleep; clockintr acquires the same tickslock, increments ticks, and wakes the ticks channel; sys_uptime reads ticks under tickslock."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "Sleeping, waking, and reading the clock are all coordinated through one kernel lock and one channel."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A mechanism whose moving parts are a system call, a kernel sleep channel, and a shared lock is a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-nap-measured-in-ticks",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The insight is an ordering discipline, not a procedure with steps to analyze: register-before-release is a two-line protocol rule, and the elapsed-time comparison is one unsigned subtraction whose wrap behavior follows from the arithmetic alone.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The insight is an ordering discipline, not a procedure with steps to analyze: register-before-release is a two-line protocol rule, and the elapsed-time comparison is one unsigned subtraction whose wrap behavior follows from the arithmetic alone."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "source": {
+            "cite": "kernel/sysproc.c, dillingerstaffing/xv6-getscount",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c"
+          },
+          "text": "The article presents no procedure with steps to analyze: the core is a two-line ordering rule, register on the channel before releasing the lock, plus one unsigned subtraction whose wrap behavior follows from the arithmetic."
+        },
+        {
+          "n": 3,
+          "kind": "penultimate",
+          "text": "The insight is a discipline about ordering, not a computation whose structure needs analysis."
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "An ordering rule plus one arithmetic expression, with no procedure to step through, is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    }
   ]
 }

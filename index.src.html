@@ -1418,6 +1418,31 @@
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Nap Measured in Ticks</h3>
+          <!-- LAYER-STRIP:the-nap-measured-in-ticks -->
+          <p class="research-date"><time datetime="2026-09-29">2026-09-29 11:24 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The <code>pause(n)</code> system call in my xv6-getscount tree asks the kernel to sleep for <code>n</code> clock ticks, then return 0 <a class="cite" href="#src-the-nap-measured-in-ticks-1">[1]</a>. A negative request is clamped to zero, so the worst case is an instant return. The call keeps no time of its own; it trusts the global <code>ticks</code> counter that the clock interrupt maintains, and waits until that counter has advanced by <code>n</code>.</p>
+          <p>The danger is the gap between deciding to sleep and actually sleeping. A tick that fires in that gap wakes nobody, and the sleeper then waits for a wakeup that already happened. The code closes the gap with ordering. First <code>sleep_prepare(&amp;ticks)</code> records this process on the <code>ticks</code> channel; then <code>release(&amp;tickslock)</code> lets go of the clock; only then does <code>sleep()</code> block. Registration comes before release, so no tick can fall into the gap. And <code>ticks</code> is shared between the clock interrupt and every sleeping process, so every touch of it happens under <code>tickslock</code>: the lock is what makes one counter safe to read from two contexts at once.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-nap-measured-in-ticks/the-nap-measured-in-ticks.jpg" alt="A silver twin-bell alarm clock with Roman numerals on its face" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">An alarm clock registers the wake time before anything else happens. sys_pause registers its channel before it releases the lock. The ordering is the whole trick.<br><span style="opacity:.7">Photo: Ales Krivec, CC0, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>The ordering, in six lines:</p>
+<pre><code>while (ticks - ticks0 &lt; n) {
+  sleep_prepare(&amp;ticks);  /* register first */
+  release(&amp;tickslock);     /* then let go */
+  sleep();                 /* now safe to wait */
+  acquire(&amp;tickslock);     /* re-arm and re-test */
+}</code></pre>
+          <p>The wait is a loop, not a single sleep. Every wakeup re-reads <code>ticks</code> and re-tests <code>ticks - ticks0 &lt; n</code>, because wakeups are shared: a tick can wake this process when another sleeper is the one whose time is up, and only the comparison decides whether the nap is over. The <code>killed()</code> check inside the loop is the escape hatch; a process told to die while napping returns -1 instead of sleeping on. And the subtraction is unsigned 32-bit arithmetic, so it stays exact when <code>ticks</code> wraps past its maximum: the wrap cancels out of the difference, as long as the requested nap is shorter than one full wrap.</p>
+          <p>The read side of the same protocol is <code>sys_uptime</code>: it takes <code>tickslock</code>, copies <code>ticks</code> into a local, releases, and returns the copy <a class="cite" href="#src-the-nap-measured-in-ticks-1">[1]</a>. No sleeping, no loop, just the discipline that every reader of the shared counter holds the lock. One lock guards the counter, and every reader and writer uses it. That is the entire protocol.</p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Bouncer Who Ranks Every Knock</h3>
           <!-- LAYER-STRIP:the-bouncer-who-ranks-every-knock -->
           <p class="research-date"><time datetime="2026-09-28">2026-09-28 11:12 EDT</time></p>

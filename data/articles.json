@@ -1,5 +1,59 @@
 [
   {
+    "title": "The Nap Measured in Ticks",
+    "slug": "the-nap-measured-in-ticks",
+    "date": "2026-09-29",
+    "description": "xv6's sys_pause naps for n clock ticks with a sleep loop that registers its wakeup channel before releasing tickslock, so no tick can slip through the gap. The loop re-tests the count, honors the kill flag, and uses unsigned subtraction that stays exact across counter wrap.",
+    "paragraphs": [
+      "The pause(n) system call in my xv6-getscount tree asks the kernel to sleep for n clock ticks, then return 0. A negative request is clamped to zero, so the worst case is an instant return. The call keeps no time of its own; it trusts the global ticks counter that the clock interrupt maintains, and waits until that counter has advanced by n.",
+      "The danger is the gap between deciding to sleep and actually sleeping. A tick that fires in that gap wakes nobody, and the sleeper then waits for a wakeup that already happened. The code closes the gap with ordering. First sleep_prepare(&ticks) records this process on the ticks channel; then release(&tickslock) lets go of the clock; only then does sleep() block. Registration comes before release, so no tick can fall into the gap. And ticks is shared between the clock interrupt and every sleeping process, so every touch of it happens under tickslock: the lock is what makes one counter safe to read from two contexts at once.",
+      "The wait is a loop, not a single sleep. Every wakeup re-reads ticks and re-tests ticks - ticks0 < n, because wakeups are shared: a tick can wake this process when another sleeper is the one whose time is up, and only the comparison decides whether the nap is over. The killed() check inside the loop is the escape hatch; a process told to die while napping returns -1 instead of sleeping on. And the subtraction is unsigned 32-bit arithmetic, so it stays exact when ticks wraps past its maximum: the wrap cancels out of the difference, as long as the requested nap is shorter than one full wrap.",
+      "The read side of the same protocol is sys_uptime: it takes tickslock, copies ticks into a local, releases, and returns the copy. No sleeping, no loop, just the discipline that every reader of the shared counter holds the lock. One lock guards the counter, and every reader and writer uses it. That is the entire protocol."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The mechanism never leaves supervisor-mode C: lock ordering around sleep_prepare, a shared counter, and an unsigned elapsed comparison. No CSR, trap entry, or privilege-level reasoning appears in the path."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No pipeline, cache, or predictor behavior is reasoned about: the lost-wakeup argument is pure lock ordering in C, and the wrap safety comes from unsigned arithmetic, not from any hardware timing property."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The clock interrupt and the sleeping process meet in the kernel's own sleep and wakeup protocol; no machine-mode service, boot step, or firmware handoff participates."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The entire mechanism is a kernel sleep protocol: a system call that registers on the ticks channel with sleep_prepare, releases tickslock, and sleeps, while the clock interrupt bumps the counter and wakes sleepers under the same lock."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The insight is an ordering discipline, not a procedure with steps to analyze: register-before-release is a two-line protocol rule, and the elapsed-time comparison is one unsigned subtraction whose wrap behavior follows from the arithmetic alone."
+      }
+    },
+    "evidence": {
+      "label": "xv6-getscount kernel/sysproc.c: sys_pause and sys_uptime, read firsthand from the local checkout",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c"
+    },
+    "image": "blog/the-nap-measured-in-ticks/the-nap-measured-in-ticks.jpg",
+    "image_alt": "A silver twin-bell alarm clock with Roman numerals on its face",
+    "image_caption": "An alarm clock registers the wake time before anything else happens. sys_pause registers its channel before it releases the lock. The ordering is the whole trick.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Roman_numerals_on_alarm_clock_(Unsplash).jpg",
+    "image_license": "CC0 1.0 Universal Public Domain Dedication",
+    "image_attribution": "Ales Krivec, via Wikimedia Commons",
+    "social_image": "blog/the-nap-measured-in-ticks/the-nap-measured-in-ticks-social.jpg",
+    "sources": [
+      {
+        "title": "kernel/sysproc.c, dillingerstaffing/xv6-getscount",
+        "publisher": "Chris Dillinger",
+        "note": "sys_pause and sys_uptime, and the sleep_prepare, release, sleep ordering in the wait loop, read firsthand from the local checkout of the tree. The clock side, clockintr in kernel/trap.c, bumps ticks and calls wakeup under the same tickslock.",
+        "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/sysproc.c"
+      }
+    ]
+  },
+  {
     "title": "The Bouncer Who Ranks Every Knock",
     "slug": "the-bouncer-who-ranks-every-knock",
     "date": "2026-09-28",
