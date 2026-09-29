@@ -87018,6 +87018,276 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-rs2-scoped",
+      "slot": "ISA",
+      "probandum": "The privileged ISA defines sfence.vma's rs2 operand as limiting the invalidation to the named ASID, and the card executes the real instruction with rs2 set to ASID 1 and measures whether the hart honors that limit, so the verified claim depends directly on the machine's fence contract.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The privileged ISA defines sfence.vma's rs2 operand as limiting the invalidation to the named ASID, and the card executes the real instruction with rs2 set to ASID 1 and measures whether the hart honors that limit, so the verified claim depends directly on the machine's fence contract."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "82 checks, 0 mismatches: phase A reads 0xaaaaaaaaaaaaaaaa under ASID 1 (satp 0x800010000008000f, MODE 8, ASID 1), caching the translation; phase B reads 0xbbbbbbbbbbbbbbbb under ASID 2 (satp 0x800020000008000c), caching the second; both leaves are rewritten with no fence (leaf PTE readbacks 0x200014c7 and 0x200010c7, verified in memory); phase C reads stale 0xbbbbbbbbbbbbbbbb under ASID 2, proving the rewrite alone invalidates nothing; sfence.vma executes with rs1=x0 and rs2=1 (disassembly: li a4,1 then sfence.vma zero,a4); phase D reads 0xdddddddddddddddd under the unfenced ASID 2; phase E reads 0xcccccccccccccccc under ASID 1; m_traps is 5 (the five phase-return ecalls, mcause 0x9, mepc at each ecall site) and s_traps is 0",
+          "source": {
+            "cite": "src/sfence-vma-rs2-scoped/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs2-scoped/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: the sfence.vma rs2 operand is defined as scoping the invalidation to the named ASID",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A test with 0 mismatches against a ground-truth invariant establishes the claimed property, and a contrast between the fenced ASID and the unfenced ASID isolates whether the operand scoped the invalidation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-rs2-scoped",
+      "slot": "MICROARCH",
+      "probandum": "The measured outcome is implementation behavior, not the contract: QEMU 8.2.2 drops the unfenced ASID's cached translation too, so the card characterizes this implementation's translation-cache handling, which an ASID-scoping hart would contradict.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The measured outcome is implementation behavior, not the contract: QEMU 8.2.2 drops the unfenced ASID's cached translation too, so the card characterizes this implementation's translation-cache handling, which an ASID-scoping hart would contradict."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "On QEMU 8.2.2 the rs2-scoped fence over-invalidates: phase D reads the fresh canary 0xdddddddddddddddd under ASID 2 even though rs2 named only ASID 1, while phase C under the same ASID with no fence read stale 0xbbbbbbbbbbbbbbbb; the three runs are byte-identical (md5 6ba5c7c9054332344d5c09802ba12723), so the outcome is the implementation's deterministic response, not host noise",
+          "source": {
+            "cite": "src/sfence-vma-rs2-scoped/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs2-scoped/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The sibling module src/sfence-vma-rs1-scoped on the same QEMU 8.2.2 measured the identical over-invalidation for the rs1 operand (both addresses read fresh after fencing only VA1), and its no-fence control reads stale, corroborating that any sfence.vma acts as a full local flush on this implementation",
+          "source": {
+            "cite": "src/sfence-vma-rs1-scoped/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs1-scoped/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "When an implementation's measured behavior contradicts the ISA contract, the measurement characterizes the implementation, which is a microarchitectural claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-rs2-scoped",
+      "slot": "FIRMWARE",
+      "probandum": "M-mode firmware owns the page tables and the fence: the module builds two Sv39 root tables by hand in M-mode, rewrites both leaf entries itself, and issues the rs2-scoped sfence.vma itself, which is the exact sequence real firmware runs when switching address spaces.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "M-mode firmware owns the page tables and the fence: the module builds two Sv39 root tables by hand in M-mode, rewrites both leaf entries itself, and issues the rs2-scoped sfence.vma itself, which is the exact sequence real firmware runs when switching address spaces."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module runs its setup entirely in M-mode: it builds root1 and root2 with hand-written PTEs (initial leaf PTEs 0x20001cc7 and 0x200018c7 read back from the tables), programs PMP entry 0 as a NAPOT allow (pmpcfg0 0x1f), installs each satp with an explicit full sfence.vma, rewrites both leaves in memory (PTE readbacks 0x200014c7 and 0x200010c7), and issues the rs2-scoped fence; boot satp and PMP are restored at the end",
+          "source": {
+            "cite": "src/sfence-vma-rs2-scoped/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs2-scoped/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual, privileged architecture volume: sfence.vma is the privileged fence that orders the hart's own address-translation caches, issued by the software that owns the page tables",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "Page-table construction, leaf rewriting, and fence issuance are the machine-mode firmware's responsibilities; a module that performs exactly that sequence in M-mode exercises the firmware layer."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-rs2-scoped",
+      "slot": "KERNEL",
+      "probandum": "The run loads no operating system and the trap path never enters supervisor software: the five phases are bare S-mode loads issued by the M-mode test harness through ecall round-trips, and the installed S-mode trap entry parks without handling, so no kernel subsystem is exercised.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The run loads no operating system and the trap path never enters supervisor software: the five phases are bare S-mode loads issued by the M-mode test harness through ecall round-trips, and the installed S-mode trap entry parks without handling, so no kernel subsystem is exercised."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "No operating system is loaded: the five phases are bare S-mode loads that ecall back to M-mode (mcause 0x9 on each phase return, mepc at the ecall site), s_traps stays 0, the installed S-mode trap entry parks without handling, and all table and fence management runs in the M-mode harness",
+          "source": {
+            "cite": "src/sfence-vma-rs2-scoped/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs2-scoped/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The module's boot record shows medeleg 0x0, so no trap class is delegated to supervisor mode; the only handler that ever runs is the M-mode entry",
+          "source": {
+            "cite": "src/sfence-vma-rs2-scoped/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs2-scoped/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A kernel-layer claim requires a kernel subsystem to be implemented or depended upon; a harness that never enters supervisor software cannot exercise one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-sfence-vma-rs2-scoped",
+      "slot": "ALGORITHM",
+      "probandum": "The verified claim is a hardware invalidation-scope property (whether a fence operand limits cached-translation invalidation to one ASID), not a portable computation; no equivalent C procedure exists whose portability could be argued.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The verified claim is a hardware invalidation-scope property (whether a fence operand limits cached-translation invalidation to one ASID), not a portable computation; no equivalent C procedure exists whose portability could be argued."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "Every check in the proof log is about cached-translation visibility (stale 0xbbbbbbbbbbbbbbbb versus fresh 0xdddddddddddddddd under ASID 2) and trap counts; nothing in the module computes a value that a C program could reproduce on another ISA",
+          "source": {
+            "cite": "src/sfence-vma-rs2-scoped/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs2-scoped/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The pinned RISC-V ISA manual defines sfence.vma as ordering the hart's address-translation caches, a hardware structure with no C-language equivalent",
+          "source": {
+            "cite": "riscv-isa-manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "generalization",
+          "text": "A claim lights ALGORITHM only when the verified property is a pure computation portable across ISAs; a hardware ordering property has no portable equivalent."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The evidence establishes the probandum via the generalization.",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }

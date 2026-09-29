@@ -11816,5 +11816,61 @@
         "because": "The measured outcome is implementation behavior, not the contract: QEMU 8.2.2 drops the unfenced address's cached translation too, so the card characterizes this implementation's translation-cache handling, which a scoping hart would contradict."
       }
     }
+  },
+  {
+    "id": "src-sfence-vma-rs2-scoped",
+    "title": "The fence that ignored its ASID",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal M-mode RISC-V program checks whether sfence.vma with rs2 set to an ASID invalidates only that ASID's cached translations. Two address spaces map one virtual address to different canary pages, both translations are cached, both leaf entries are rewritten with no fence, then only ASID 1 is fenced through the rs2 operand and the address is read back under each ASID. On QEMU 8.2.2 the unfenced ASID also reads the fresh page, so the ASID-scoped fence invalidates both address spaces' translations; the no-fence phase under the same ASID still reads stale, which isolates the fence as the invalidating event.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sfence-vma-rs2-scoped",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs2-scoped/PROOF.md"
+    },
+    "checks": 82,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "82 checks over five phases against the ASID-scope question: both translations cached (canary A under ASID 1, canary B under ASID 2), the leaf rewrite with no fence leaves the ASID 2 read stale, the fence names only ASID 1 through rs2 with rs1=x0, the unfenced ASID 2 then reads the fresh canary and ASID 1 reads its fresh canary, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "Phase D reads 0xdddddddddddddddd under the unfenced ASID 2 where the ASID-scoped contract predicts the stale 0xbbbbbbbbbbbbbbbb; phase C under the same ASID reads stale, so the fence is the event that invalidated both translations"
+      ],
+      [
+        "CHECKSUM",
+        "0x30523dc5b14164bb, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / sfence-vma-rs2-scoped.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel sfence-vma-rs2-scoped.elf\n\nphase A: canary A under ASID 1 (translation cached)\nphase B: canary B under ASID 2 (translation cached)\nphase C: stale canary B under ASID 2 (leaf rewrite, no fence)\nphase D: fresh canary D under ASID 2 (after sfence.vma rs1=x0, rs2=1)\nphase E: fresh canary C under ASID 1\nRESULT: PASS (checks=82)",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The verified claim is a hardware invalidation-scope property (whether a fence operand limits cached-translation invalidation to one ASID), not a portable computation; no equivalent C procedure exists whose portability could be argued."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "M-mode firmware owns the page tables and the fence: the module builds two Sv39 root tables by hand in M-mode, rewrites both leaf entries itself, and issues the rs2-scoped sfence.vma itself, which is the exact sequence real firmware runs when switching address spaces."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines sfence.vma's rs2 operand as limiting the invalidation to the named ASID, and the card executes the real instruction with rs2 set to ASID 1 and measures whether the hart honors that limit, so the verified claim depends directly on the machine's fence contract."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The run loads no operating system and the trap path never enters supervisor software: the five phases are bare S-mode loads issued by the M-mode test harness through ecall round-trips, and the installed S-mode trap entry parks without handling, so no kernel subsystem is exercised."
+      },
+      "MICROARCH": {
+        "applies": true,
+        "because": "The measured outcome is implementation behavior, not the contract: QEMU 8.2.2 drops the unfenced ASID's cached translation too, so the card characterizes this implementation's translation-cache handling, which an ASID-scoping hart would contradict."
+      }
+    }
   }
 ]
