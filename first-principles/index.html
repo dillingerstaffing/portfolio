@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="build-version" content="v20260930-053000" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#ece6d5" />
+  <title>First Principles &middot; Chris Dillinger</title>
+  <meta name="description" content="The computing stack from switches to tensor cores. Six levels, each assembled only from the level below. Nothing appears twice, nothing is skipped." />
+  <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/first-principles/" />
+  <link rel="icon" href="data:," />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Chris Dillinger" />
+  <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/first-principles/" />
+  <meta property="og:title" content="First Principles · Chris Dillinger" />
+  <meta property="og:description" content="The computing stack from switches to tensor cores. Six levels, each assembled only from the level below." />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="First Principles · Chris Dillinger" />
+  <meta name="twitter:description" content="The computing stack from switches to tensor cores. Six levels, each assembled only from the level below." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet" />
+  <script>
+    // Theme: notebook is the default; a stored visitor choice wins.
+    // Same contract as the blog pages, so the permalink carries the theme.
+    try {
+      let t = localStorage.getItem('emi-site-theme');
+      if (t !== 'classic' && t !== 'notebook' && localStorage.getItem('portfolio-theme') === 'gb') t = 'classic';
+      document.documentElement.dataset.theme = t === 'classic' ? 'classic' : 'notebook';
+    } catch (_) {
+      document.documentElement.dataset.theme = 'notebook';
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #f0f2eb;
+      --muted: #a8afa5;
+      --dim: #828a83;
+      --bg: #0c0f0d;
+      --panel: #121713;
+      --panel-2: #171c17;
+      --line: #2a322b;
+      --acid: #b8f34b;
+      --acid-soft: #d9ff8d;
+      --paper: #e7eadf;
+      --black: #080a08;
+      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      --display: "Newsreader", Georgia, serif;
+      --pad: clamp(20px, 4.4vw, 72px);
+      --max: 920px;
+    }
+    [data-theme="notebook"] {
+      --ink: #241f17;
+      --muted: #5e5648;
+      --dim: #655c4d;
+      --bg: #ece6d5;
+      --panel: #e3dac2;
+      --panel-2: #d9cfae;
+      --line: #c9bfa4;
+      --acid: #8c3f22;
+      --acid-soft: #a5542f;
+      --paper: #f4efe0;
+      --black: #241f17;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { background: #0c0f0d; scroll-behavior: smooth; }
+    html[data-theme="notebook"] { background: #ece6d5; }
+    body {
+      margin: 0;
+      min-width: 0;
+      overflow-x: hidden;
+      overflow-x: clip;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: var(--display);
+      -webkit-text-size-adjust: 100%;
+    }
+    body, header.topline, nav a, .theme-toggle {
+      transition: background-color .45s ease, color .45s ease, border-color .45s ease;
+    }
+    .skip-link {
+      position: absolute; left: 12px; top: -48px; z-index: 50;
+      background: var(--ink); color: var(--bg); font: 12px/1 var(--mono);
+      padding: 10px 14px; text-decoration: none; border-radius: 2px;
+    }
+    .skip-link:focus { top: 12px; }
+
+    /* Header chrome, same contract as the blog pages. */
+    header.frame.topline {
+      --header-height: 68px;
+      position: sticky; top: 0; z-index: 30;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; min-height: var(--header-height);
+      padding: 0 var(--pad);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .identity { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+    .identity .signal {
+      width: 8px; height: 8px; border-radius: 999px; background: var(--acid);
+      align-self: center; flex: none;
+    }
+    .identity strong { font: 600 15px/1 var(--mono); letter-spacing: .02em; }
+    .identity span { font: 12px/1.4 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    nav { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 30px); }
+    nav a { color: var(--muted); text-decoration: none; font: 12px/1 var(--mono); }
+    nav a:hover, nav a:focus-visible, nav a.is-active { color: var(--acid); }
+    nav a.is-active { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+    .theme-toggle {
+      width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 2px;
+      background: transparent; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; padding: 0;
+    }
+    .theme-toggle:hover { border-color: var(--acid); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+    .theme-toggle-mark { display: flex; width: 12px; height: 12px; }
+    .theme-toggle-mark i { display: block; width: 6px; height: 12px; }
+    .theme-toggle-mark i:first-child { background: #ece6d5; }
+    .theme-toggle-mark i:last-child { background: #241f17; border-left: 1px solid #ece6d5; }
+
+    main { display: block; }
+    .fp-wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad) 96px; }
+
+    .fp-kicker {
+      font: 600 11px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase;
+      color: var(--acid); margin: 56px 0 18px;
+    }
+    h1.fp-title {
+      font: 600 clamp(34px, 6vw, 58px)/1.05 var(--display);
+      letter-spacing: -0.01em; margin: 0 0 18px; max-width: 16ch;
+    }
+    .fp-lede { font-size: clamp(17px, 2.4vw, 21px); line-height: 1.55; color: var(--muted); max-width: 62ch; margin: 0 0 8px; }
+    .fp-lede strong { color: var(--ink); font-weight: 600; }
+
+    .fp-rule { border: 0; border-top: 1px solid var(--line); margin: 44px 0; }
+
+    figure.fp-fig { margin: 28px 0; }
+    figure.fp-fig .fig-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); }
+    figure.fp-fig svg { display: block; width: 100%; height: auto; }
+    figure.fp-fig svg.constrained { min-width: 620px; }
+    figcaption {
+      margin-top: 10px; font: 12px/1.6 var(--mono); color: var(--muted); max-width: 72ch;
+    }
+    figcaption code { font-family: inherit; color: var(--ink); }
+
+    /* Stack diagram interaction. */
+    .stack-node { cursor: pointer; }
+    .stack-node rect.body { fill: var(--panel); stroke: var(--line); transition: stroke .2s, fill .2s; }
+    .stack-node text { font-family: var(--mono); fill: var(--ink); }
+    .stack-node .sub { fill: var(--muted); }
+    .stack-node .idx { fill: var(--acid); font-weight: 600; }
+    .stack-edge line { stroke: var(--line); transition: stroke .2s; }
+    .stack-edge .ahead { fill: var(--line); transition: fill .2s; }
+    .stack-edge text { font-family: var(--mono); fill: var(--dim); }
+    .stack-node.lit rect.body { stroke: var(--acid); fill: var(--panel-2); }
+    .stack-edge.lit line { stroke: var(--acid); }
+    .stack-edge.lit .ahead { fill: var(--acid); }
+    .stack-edge.lit text { fill: var(--acid); }
+    .stack-node a { text-decoration: none; }
+    .stack-node:focus-visible rect.body { stroke: var(--acid); stroke-width: 2; }
+
+    section.fp-level { padding: 12px 0 8px; scroll-margin-top: 92px; }
+    .fp-level-head { display: flex; align-items: baseline; gap: 14px; margin: 0 0 6px; flex-wrap: wrap; }
+    .fp-level-head .lvl {
+      font: 600 12px/1 var(--mono); letter-spacing: .18em; color: var(--acid);
+      border: 1px solid var(--acid); border-radius: 2px; padding: 6px 8px; white-space: nowrap;
+    }
+    .fp-level-head h2 { font: 600 clamp(24px, 4vw, 34px)/1.15 var(--display); margin: 0; letter-spacing: -0.01em; }
+    .fp-invariant {
+      font-size: clamp(16px, 2.2vw, 19px); line-height: 1.5; color: var(--ink);
+      border-left: 2px solid var(--acid); padding-left: 16px; margin: 14px 0 4px; max-width: 64ch;
+    }
+    .fp-spec { display: grid; grid-template-columns: 1fr; border: 1px solid var(--line); border-radius: 3px; margin: 22px 0; overflow: hidden; }
+    .fp-spec-row { display: grid; grid-template-columns: 150px 1fr; }
+    .fp-spec-row + .fp-spec-row { border-top: 1px solid var(--line); }
+    .fp-spec-row dt {
+      font: 600 10.5px/1.6 var(--mono); letter-spacing: .14em; color: var(--muted);
+      padding: 12px 14px; background: var(--panel); margin: 0;
+    }
+    .fp-spec-row dd { font: 13.5px/1.65 var(--mono); color: var(--ink); padding: 12px 14px; margin: 0; }
+    .fp-facts { margin: 0 0 6px; padding: 0; list-style: none; }
+    .fp-facts li {
+      position: relative; padding: 9px 0 9px 22px;
+      font-size: 15.5px; line-height: 1.6; color: var(--muted); border-top: 1px solid var(--line);
+    }
+    .fp-facts li::before { content: ""; position: absolute; left: 4px; top: 17px; width: 6px; height: 6px; background: var(--acid); }
+    .fp-facts li code, .fp-spec-row dd code, figcaption code, .fp-lede code {
+      font-family: var(--mono); font-size: .86em; color: var(--ink);
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px;
+    }
+    .fp-evidence { margin: 20px 0 0; }
+    .fp-evidence .ev-label { font: 600 10.5px/1 var(--mono); letter-spacing: .18em; color: var(--muted); margin-bottom: 10px; }
+    .fp-evidence ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .fp-evidence a {
+      font: 13px/1.5 var(--mono); color: var(--ink); text-decoration: none;
+      border-bottom: 1px solid var(--line); padding-bottom: 8px; display: flex; justify-content: space-between; gap: 12px;
+    }
+    .fp-evidence a:hover { color: var(--acid); border-color: var(--acid); }
+    .fp-evidence a .ext { color: var(--dim); flex: none; }
+    .fp-evidence a:hover .ext { color: var(--acid); }
+    .fp-next {
+      font: 13px/1.6 var(--mono); color: var(--muted);
+      border: 1px dashed var(--line); border-radius: 3px; padding: 12px 14px;
+    }
+    .fp-next strong { color: var(--acid); font-weight: 600; letter-spacing: .12em; font-size: 11px; display: block; margin-bottom: 4px; }
+
+    .fp-bound { border: 1px solid var(--line); border-radius: 3px; padding: 18px; margin: 12px 0; background: var(--panel); }
+    .fp-bound h3 { font: 600 11px/1 var(--mono); letter-spacing: .18em; color: var(--muted); margin: 0 0 8px; }
+    .fp-bound p { font-size: 15px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 68ch; }
+
+    footer.fp-foot { margin-top: 64px; border-top: 1px solid var(--line); padding-top: 20px; }
+    footer.fp-foot p { font: 12px/1.7 var(--mono); color: var(--dim); margin: 0; max-width: 72ch; }
+    footer.fp-foot a { color: var(--muted); }
+
+    .diag marker.mwire path { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+    .diag marker.mflow path { fill: none; stroke: var(--acid); stroke-width: 1.6; }
+    .diag .t { fill: var(--ink); }
+    .diag .m { fill: var(--muted); }
+    .diag .d { fill: var(--dim); }
+    .diag .a { fill: var(--acid); }
+    .diag .box { fill: var(--panel); stroke: var(--line); }
+    .diag .wire { stroke: var(--muted); fill: none; }
+    .diag .flow { stroke: var(--acid); fill: none; }
+    .diag .lbl { font-size: 11px; }
+    .diag .sml { font-size: 9.5px; }
+
+    @media (max-width: 620px) {
+      .identity span { display: none; }
+      nav { gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+      nav a { font-size: 10px; }
+      .fp-spec-row { grid-template-columns: 1fr; }
+      .fp-spec-row dt { padding-bottom: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="frame topline">
+    <div class="identity">
+      <span class="signal" aria-hidden="true"></span>
+      <strong>Chris</strong>
+      <span>Low-level systems developer</span>
+    </div>
+    <nav aria-label="Primary navigation">
+      <a href="/portfolio/#top">Home</a>
+      <a href="/portfolio/#blog">Blog</a>
+      <a href="/portfolio/feed/">Feed</a>
+      <a href="/portfolio/first-principles/" class="is-active" aria-current="page">First principles</a>
+      <a href="/portfolio/#services">Services</a>
+      <a href="/portfolio/#contact">Contact</a>
+      <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+        <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
+      </button>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <div class="fp-wrap">
+      <p class="fp-kicker">First principles</p>
+      <h1 class="fp-title">From switches to tensor cores.</h1>
+      <p class="fp-lede">
+        Six levels. Each one is <strong>assembled only from the level below</strong>: gates become
+        adders, adders become a processor, processors become an operating system, and so on up to
+        the accelerators that run modern AI. Nothing appears twice, nothing is skipped.
+        Links under each level are real work; unfinished levels are marked next, not faked.
+      </p>
+
+      <hr class="fp-rule" />
+
+      <figure class="fp-fig" aria-label="The six levels of the stack">
+        <div class="fig-scroll">
+        <svg id="stack" viewBox="0 0 720 800" role="img" aria-label="Stack diagram: six levels, each assembled from the level below">
+          <g class="stack-edge" data-edge="2">
+            <line x1="360" y1="686" x2="360" y2="656" />
+            <polygon class="ahead" points="360,646 354,656 366,656" />
+            <text x="376" y="672" font-size="10">assembles</text>
+          </g>
+          <g class="stack-edge" data-edge="3">
+            <line x1="360" y1="570" x2="360" y2="540" />
+            <polygon class="ahead" points="360,530 354,540 366,540" />
+            <text x="376" y="556" font-size="10">assembles</text>
+          </g>
+          <g class="stack-edge" data-edge="4">
+            <line x1="360" y1="454" x2="360" y2="424" />
+            <polygon class="ahead" points="360,414 354,424 366,424" />
+            <text x="376" y="440" font-size="10">assembles</text>
+          </g>
+          <g class="stack-edge" data-edge="5">
+            <line x1="360" y1="338" x2="360" y2="308" />
+            <polygon class="ahead" points="360,298 354,308 366,308" />
+            <text x="376" y="324" font-size="10">assembles</text>
+          </g>
+          <g class="stack-edge" data-edge="6">
+            <line x1="360" y1="222" x2="360" y2="192" />
+            <polygon class="ahead" points="360,182 354,192 366,192" />
+            <text x="376" y="208" font-size="10">assembles</text>
+          </g>
+          <g class="stack-node" data-level="6" tabindex="0" role="link" aria-label="L6, specialized accelerators. Jump to section.">
+            <a href="#l6"><rect class="body" x="170" y="118" width="380" height="64" rx="2"/>
+            <text class="idx" x="192" y="144" font-size="12">L6</text>
+            <text x="228" y="144" font-size="13">SPECIALIZED ACCELERATORS</text>
+            <text class="sub" x="228" y="164" font-size="10.5">CUDA · tensor cores · systolic arrays</text></a>
+          </g>
+          <g class="stack-node" data-level="5" tabindex="0" role="link" aria-label="L5, data-parallel machines. Jump to section.">
+            <a href="#l5"><rect class="body" x="170" y="234" width="380" height="64" rx="2"/>
+            <text class="idx" x="192" y="260" font-size="12">L5</text>
+            <text x="228" y="260" font-size="13">DATA-PARALLEL MACHINES</text>
+            <text class="sub" x="228" y="280" font-size="10.5">SIMD · vector · warps · SIMT</text></a>
+          </g>
+          <g class="stack-node" data-level="4" tabindex="0" role="link" aria-label="L4, the operating system. Jump to section.">
+            <a href="#l4"><rect class="body" x="170" y="350" width="380" height="64" rx="2"/>
+            <text class="idx" x="192" y="376" font-size="12">L4</text>
+            <text x="228" y="376" font-size="13">THE OPERATING SYSTEM</text>
+            <text class="sub" x="228" y="396" font-size="10.5">traps · scheduler · virtual memory</text></a>
+          </g>
+          <g class="stack-node" data-level="3" tabindex="0" role="link" aria-label="L3, the stored-program processor. Jump to section.">
+            <a href="#l3"><rect class="body" x="170" y="466" width="380" height="64" rx="2"/>
+            <text class="idx" x="192" y="492" font-size="12">L3</text>
+            <text x="228" y="492" font-size="13">THE STORED-PROGRAM PROCESSOR</text>
+            <text class="sub" x="228" y="512" font-size="10.5">ISA · datapath · caches</text></a>
+          </g>
+          <g class="stack-node" data-level="2" tabindex="0" role="link" aria-label="L2, numbers and arithmetic. Jump to section.">
+            <a href="#l2"><rect class="body" x="170" y="582" width="380" height="64" rx="2"/>
+            <text class="idx" x="192" y="608" font-size="12">L2</text>
+            <text x="228" y="608" font-size="13">NUMBERS AND ARITHMETIC</text>
+            <text class="sub" x="228" y="628" font-size="10.5">two's complement · ALU · flags</text></a>
+          </g>
+          <g class="stack-node" data-level="1" tabindex="0" role="link" aria-label="L1, switching logic. Jump to section.">
+            <a href="#l1"><rect class="body" x="170" y="698" width="380" height="64" rx="2"/>
+            <text class="idx" x="192" y="724" font-size="12">L1</text>
+            <text x="228" y="724" font-size="13">SWITCHING LOGIC</text>
+            <text class="sub" x="228" y="744" font-size="10.5">gates · adders · registers</text></a>
+          </g>
+        </svg>
+        </div>
+        <figcaption>Hover a level to light everything it stands on. Click to jump to its section. Each arrow reads upward: the lower level assembles the upper.</figcaption>
+      </figure>
+
+      <hr class="fp-rule" />
+
+      <!-- L1 -->
+      <section class="fp-level" id="l1" aria-label="L1, switching logic">
+        <div class="fp-level-head"><span class="lvl">L1</span><h2>Switching logic</h2></div>
+        <p class="fp-invariant">A network of switches computes any Boolean function; with feedback and a clock, it remembers.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg class="diag constrained" viewBox="0 0 720 150" role="img" aria-label="Assembly chain: transistor to NAND to NOT AND OR to full adder to 8-bit ripple adder to D flip-flop to register">
+            <g font-size="11">
+              <rect class="box" x="8" y="45" width="86" height="44" rx="2"/><text class="t lbl" x="51" y="70" text-anchor="middle">transistor</text>
+              <line class="wire" x1="94" y1="67" x2="112" y2="67" marker-end="url(#arr2)"/>
+              <rect class="box" x="112" y="45" width="86" height="44" rx="2"/><text class="t lbl" x="155" y="70" text-anchor="middle">NAND</text>
+              <line class="wire" x1="198" y1="67" x2="216" y2="67" marker-end="url(#arr2)"/>
+              <rect class="box" x="216" y="45" width="86" height="44" rx="2"/><text class="t lbl" x="259" y="63" text-anchor="middle">NOT</text><text class="t lbl" x="259" y="78" text-anchor="middle">AND · OR</text>
+              <line class="wire" x1="302" y1="67" x2="320" y2="67" marker-end="url(#arr2)"/>
+              <rect class="box" x="320" y="45" width="86" height="44" rx="2"/><text class="t lbl" x="363" y="63" text-anchor="middle">full</text><text class="t lbl" x="363" y="78" text-anchor="middle">adder</text>
+              <line class="wire" x1="406" y1="67" x2="424" y2="67" marker-end="url(#arr2)"/>
+              <rect class="box" x="424" y="45" width="86" height="44" rx="2"/><text class="t lbl" x="467" y="63" text-anchor="middle">8-bit</text><text class="t lbl" x="467" y="78" text-anchor="middle">ripple adder</text>
+              <line class="wire" x1="510" y1="67" x2="528" y2="67" marker-end="url(#arr2)"/>
+              <rect class="box" x="528" y="45" width="86" height="44" rx="2"/><text class="t lbl" x="571" y="63" text-anchor="middle">D</text><text class="t lbl" x="571" y="78" text-anchor="middle">flip-flop</text>
+              <line class="wire" x1="614" y1="67" x2="632" y2="67" marker-end="url(#arr2)"/>
+              <rect class="box" x="632" y="45" width="80" height="44" rx="2"/><text class="t lbl" x="672" y="70" text-anchor="middle">register</text>
+            </g>
+            <text class="d sml" x="8" y="120">combinational: output is a pure function of the inputs</text>
+            <text class="d sml" x="528" y="120">sequential: feedback + clock gives state</text>
+            <defs><marker class="mwire" id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>Each block is built only from the block to its left. NAND is functionally complete, so the whole chain reduces to one gate type plus a clock.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>Device physics: the transistor as a voltage-controlled switch (boundary, below).</dd></div>
+          <div class="fp-spec-row"><dt>ENABLES</dt><dd>L2: arithmetic needs adders, muxes, and registers; all of them live here.</dd></div>
+        </dl>
+        <ul class="fp-facts">
+          <li>NAND (equivalently NOR) is functionally complete: NOT, AND, OR, and therefore every Boolean function, reduce to networks of NAND gates.</li>
+          <li>Full adder: <code>S = A xor B xor Cin</code>, <code>Cout = (A·B) + (Cin·(A xor B))</code>. Chaining n of them gives an n-bit ripple-carry adder with delay linear in n.</li>
+          <li>A D flip-flop latches one bit on the clock edge; n of them form an n-bit register. Setup and hold times bound how fast the clock may run.</li>
+        </ul>
+        <div class="fp-evidence">
+          <div class="fp-next"><strong>NEXT</strong>8-bit ALU from gates in a logic simulator, verified exhaustively over all 65,536 input pairs.</div>
+        </div>
+      </section>
+
+      <hr class="fp-rule" />
+      <!-- L2 -->
+      <section class="fp-level" id="l2" aria-label="L2, numbers and arithmetic">
+        <div class="fp-level-head"><span class="lvl">L2</span><h2>Numbers and arithmetic</h2></div>
+        <p class="fp-invariant">Bits mean numbers by convention; two's complement turns subtraction into addition, and a handful of operations plus three flags cover all integer arithmetic.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg class="diag" viewBox="0 0 720 250" role="img" aria-label="Three-bit two's complement circle and an 8-bit ALU block with zero, carry, and overflow flags">
+            <g>
+              <circle cx="150" cy="125" r="92" fill="none" stroke="#2a322b"/>
+              <g font-size="10.5" text-anchor="middle">
+                <text class="t" x="150" y="36">000 · 0</text>
+                <text class="t" x="215" y="63">001 · 1</text>
+                <text class="t" x="242" y="128">010 · 2</text>
+                <text class="t" x="215" y="193">011 · 3</text>
+                <text class="t" x="150" y="220">100 · -4</text>
+                <text class="t" x="85" y="193">101 · -3</text>
+                <text class="t" x="58" y="128">110 · -2</text>
+                <text class="t" x="85" y="63">111 · -1</text>
+              </g>
+              <path d="M 150 40 A 85 85 0 0 1 208 70" d="M 0 1 L 9 5 L 0 9" marker-end="url(#arr3)"/>
+              <text class="a" font-size="10" x="228" y="52">+1</text>
+              <path d="M 196 178 A 85 85 0 0 1 162 205" d="M 0 1 L 9 5 L 0 9"/>
+              <text class="a" font-size="10" x="196" y="212">+1 wraps 3 to -4</text>
+              <text class="d" font-size="10" x="150" y="128" text-anchor="middle">3-bit</text>
+              <text class="d" font-size="10" x="150" y="142" text-anchor="middle">two's complement</text>
+            </g>
+            <g>
+              <rect class="box" x="380" y="55" width="220" height="140" rx="2"/>
+              <text class="t lbl" x="490" y="80" text-anchor="middle">ALU</text>
+              <text class="m sml" x="392" y="110">A[7:0]</text><line class="wire" x1="440" y1="106" x2="380" y2="106"/>
+              <text class="m sml" x="392" y="140">B[7:0]</text><line class="wire" x1="440" y1="136" x2="380" y2="136"/>
+              <text class="m sml" x="392" y="170">op[2:0]</text><line class="wire" x1="440" y1="166" x2="380" y2="166"/>
+              <text class="m sml" x="560" y="110">Y[7:0]</text><line class="wire" x1="600" y1="106" x2="648" y2="106"/>
+              <text class="a sml" x="560" y="140">Z C V</text><line class="flow" x1="600" y1="136" x2="648" y2="136"/>
+              <text class="d sml" x="380" y="222">op: ADD SUB AND OR shifts · Z: result zero · C: unsigned carry · V: signed overflow</text>
+            </g>
+            <defs><marker class="mflow" id="arr3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>Left: counting past 3 wraps to -4; the representation makes the wrap the correct answer. Right: one block, three control bits, every integer operation the processor needs.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>L1 gates, adders, muxes, and registers.</dd></div>
+          <div class="fp-spec-row"><dt>ENABLES</dt><dd>L3: the datapath computes on encoded numbers instead of raw bits.</dd></div>
+        </dl>
+        <ul class="fp-facts">
+          <li>Two's complement: <code>-x = ~x + 1</code>. One representation of zero, and a single adder performs both addition and subtraction.</li>
+          <li>Flags: Z is the NOR of all result bits; C is the carry out of the most significant bit (unsigned overflow); V is carry-into-sign-bit xor carry-out (signed overflow).</li>
+          <li>Right shift comes in two forms: logical (<code>srl</code>) zero-fills, arithmetic (<code>sra</code>) sign-extends. The distinction is the representation, not the shifter.</li>
+          <li>IEEE 754 binary32: 1 sign bit, 8 exponent bits with bias 127, 23 mantissa bits. Finite precision is a contract, not a bug.</li>
+        </ul>
+        <div class="fp-evidence">
+          <div class="fp-next"><strong>NEXT</strong>Arrives with the L1 build: the ALU implements two's complement subtraction and raises Z, C, V for real.</div>
+        </div>
+      </section>
+
+      <hr class="fp-rule" />
+
+      <!-- L3 -->
+      <section class="fp-level" id="l3" aria-label="L3, the stored-program processor">
+        <div class="fp-level-head"><span class="lvl">L3</span><h2>The stored-program processor</h2></div>
+        <p class="fp-invariant">One fixed machine runs any program: instructions live in memory and steer a datapath through fetch, decode, execute.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg class="diag constrained" viewBox="0 0 720 270" role="img" aria-label="Single-cycle datapath schematic: program counter to instruction memory to register file to ALU to data memory and writeback, with a control unit">
+            <g font-size="11">
+              <rect class="box" x="16" y="110" width="76" height="44" rx="2"/><text class="t lbl" x="54" y="136" text-anchor="middle">PC</text>
+              <line class="wire" x1="92" y1="132" x2="118" y2="132" marker-end="url(#arr4)"/>
+              <rect class="box" x="118" y="110" width="96" height="44" rx="2"/><text class="t lbl" x="166" y="129" text-anchor="middle">instr</text><text class="t lbl" x="166" y="144" text-anchor="middle">memory</text>
+              <line class="wire" x1="214" y1="132" x2="240" y2="132" marker-end="url(#arr4)"/>
+              <rect class="box" x="240" y="110" width="96" height="44" rx="2"/><text class="t lbl" x="288" y="129" text-anchor="middle">register</text><text class="t lbl" x="288" y="144" text-anchor="middle">file</text>
+              <line class="wire" x1="336" y1="132" x2="362" y2="132" marker-end="url(#arr4)"/>
+              <rect class="box" x="362" y="110" width="76" height="44" rx="2"/><text class="t lbl" x="400" y="136" text-anchor="middle">ALU</text>
+              <line class="wire" x1="438" y1="132" x2="464" y2="132" marker-end="url(#arr4)"/>
+              <rect class="box" x="464" y="110" width="96" height="44" rx="2"/><text class="t lbl" x="512" y="129" text-anchor="middle">data</text><text class="t lbl" x="512" y="144" text-anchor="middle">memory</text>
+              <path class="wire" d="M 560 154 L 560 200 L 288 200 L 288 154" marker-end="url(#arr4)"/>
+              <text class="d sml" x="420" y="196">writeback</text>
+              <rect class="box" x="240" y="24" width="320" height="40" rx="2"/><text class="t lbl" x="400" y="48" text-anchor="middle">control: opcode to mux selects and enables</text>
+              <line class="wire" x1="300" y1="64" x2="300" y2="110" stroke-dasharray="4 3" marker-end="url(#arr4)"/>
+              <line class="wire" x1="400" y1="64" x2="400" y2="110" stroke-dasharray="4 3" marker-end="url(#arr4)"/>
+              <line class="wire" x1="500" y1="64" x2="500" y2="110" stroke-dasharray="4 3" marker-end="url(#arr4)"/>
+              <path class="wire" d="M 54 110 L 54 76 L 140 76 L 140 110" marker-end="url(#arr4)"/>
+              <text class="d sml" x="60" y="70">PC + 4</text>
+            </g>
+            <text class="d sml" x="16" y="246">fetch: PC indexes instruction memory · decode: control reads the opcode · execute: registers feed the ALU, memory optionally</text>
+            <defs><marker class="mwire" id="arr4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>Single-cycle schematic. Real cores pipeline these stages and pay for it in hazards; the contract the software sees is unchanged.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>L2 ALUs and L1 registers and memories, wired into a datapath under a control unit.</dd></div>
+          <div class="fp-spec-row"><dt>ENABLES</dt><dd>L4: traps, timers, and the memory-management unit are the hardware interface the OS is written against.</dd></div>
+        </dl>
+        <ul class="fp-facts">
+          <li>The ISA is the contract. RISC-V names 32 integer registers; <code>x0</code> is hardwired to zero, so it can be a source but never a destination.</li>
+          <li>Pipelining overlaps fetch, decode, and execute across instructions. The cost is hazards: data (read-after-write), control (branches), structural (one memory, two accesses).</li>
+          <li>The memory hierarchy works because programs exhibit locality: registers, then caches, then main memory, each larger and slower. The TLB caches page-table translations; <code>satp</code> points at the root table.</li>
+        </ul>
+        <div class="fp-evidence">
+          <div class="ev-label">EVIDENCE</div>
+          <ul>
+            <li><a href="https://github.com/dillingerstaffing/riscv-baremetal-demo" target="_blank" rel="noopener"><span>Bare-metal RISC-V: trap gates, CSR contracts, QEMU-verified</span><span class="ext" aria-hidden="true">↗</span></a></li>
+            <li><a href="https://dillingerstaffing.github.io/proving-ground/" target="_blank" rel="noopener"><span>Proving Ground, Bench 08: RISC-V playground</span><span class="ext" aria-hidden="true">↗</span></a></li>
+            <li><a href="/portfolio/blog/the-register-that-is-always-zero/"><span>The Register That Is Always Zero</span><span class="ext" aria-hidden="true">→</span></a></li>
+            <li><a href="/portfolio/blog/the-bell-and-the-switch/"><span>The Bell and the Switch</span><span class="ext" aria-hidden="true">→</span></a></li>
+            <li><a href="/portfolio/blog/the-bit-that-reroutes-a-trap/"><span>The Bit That Reroutes a Trap</span><span class="ext" aria-hidden="true">→</span></a></li>
+          </ul>
+          <div class="fp-next" style="margin-top:12px"><strong>IN PROGRESS</strong>ESP32-S3 signing-oracle firmware: fingerprint-gated Ed25519 on a real microcontroller.</div>
+        </div>
+      </section>
+
+      <hr class="fp-rule" />
+      <!-- L4 -->
+      <section class="fp-level" id="l4" aria-label="L4, the operating system">
+        <div class="fp-level-head"><span class="lvl">L4</span><h2>The operating system</h2></div>
+        <p class="fp-invariant">One machine, many programs: traps cross privilege levels, the scheduler shares time, the memory manager shares space.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg class="diag" viewBox="0 0 720 210" role="img" aria-label="Trap timeline across privilege modes: ecall from user mode, register save, handler in supervisor mode, restore, return">
+            <g font-size="11">
+              <text class="m lbl" x="16" y="52">U-mode</text>
+              <text class="m lbl" x="16" y="128">S-mode</text>
+              <line class="wire" x1="90" y1="48" x2="700" y2="48"/>
+              <line class="wire" x1="90" y1="124" x2="700" y2="124"/>
+              <line class="flow" x1="150" y1="48" x2="150" y2="124" marker-end="url(#arr5)"/>
+              <text class="t sml" x="150" y="40" text-anchor="middle">ecall</text>
+              <rect class="box" x="230" y="100" width="150" height="48" rx="2"/>
+              <text class="t sml" x="305" y="120" text-anchor="middle">save x1-x31, sepc = pc</text>
+              <text class="t sml" x="305" y="136" text-anchor="middle">stvec = handler</text>
+              <rect class="box" x="410" y="100" width="110" height="48" rx="2"/>
+              <text class="t sml" x="465" y="128" text-anchor="middle">handler runs</text>
+              <rect class="box" x="550" y="100" width="90" height="48" rx="2"/>
+              <text class="t sml" x="595" y="128" text-anchor="middle">restore</text>
+              <line class="flow" x1="640" y1="124" x2="640" y2="48" marker-end="url(#arr5)"/>
+              <text class="t sml" x="640" y="40" text-anchor="middle">sret</text>
+              <text class="d sml" x="150" y="70" text-anchor="middle">trap taken</text>
+              <text class="d sml" x="640" y="70" text-anchor="middle">resume</text>
+            </g>
+            <text class="d sml" x="16" y="188">the trap frame is the entire register file, frozen mid-instruction and resumed without loss</text>
+            <defs><marker class="mflow" id="arr5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>A system call is a controlled fall down the privilege ladder and a climb back up. The hardware saves nothing by itself; the entry code saves everything.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>L3 mechanisms: trap delivery, privilege modes, timers, and the MMU.</dd></div>
+          <div class="fp-spec-row"><dt>ENABLES</dt><dd>L5: processes and threads are the units the parallel machine is programmed through.</dd></div>
+        </dl>
+        <ul class="fp-facts">
+          <li>Privilege is a ladder: machine mode, supervisor mode, user mode. <code>ecall</code> traps upward; <code>sret</code>/<code>mret</code> return downward. Nothing in user mode can touch the ladder itself.</li>
+          <li>A context switch saves the register file and the program counter, swaps the page-table root, and restores the next process. The trap frame is the process, serialized.</li>
+          <li>Virtual memory gives each process its own address space: per-process page tables, enforced by hardware on every access, isolate programs that share one machine.</li>
+        </ul>
+        <div class="fp-evidence">
+          <div class="ev-label">EVIDENCE</div>
+          <ul>
+            <li><a href="https://github.com/dillingerstaffing/xv6-getscount" target="_blank" rel="noopener"><span>xv6: system-call tracing through the trap path</span><span class="ext" aria-hidden="true">↗</span></a></li>
+            <li><a href="/portfolio/blog/who-writes-the-a-and-d-bits/"><span>The Bit That Decides Who Writes the A and D Bits</span><span class="ext" aria-hidden="true">→</span></a></li>
+            <li><a href="/portfolio/blog/the-bit-that-survives-the-context-switch/"><span>The Bit That Survives the Context Switch</span><span class="ext" aria-hidden="true">→</span></a></li>
+          </ul>
+        </div>
+      </section>
+
+      <hr class="fp-rule" />
+
+      <!-- L5 -->
+      <section class="fp-level" id="l5" aria-label="L5, data-parallel machines">
+        <div class="fp-level-head"><span class="lvl">L5</span><h2>Data-parallel machines</h2></div>
+        <p class="fp-invariant">One instruction stream drives many datapaths; throughput scales with lane count on regular data.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg class="diag" viewBox="0 0 720 220" role="img" aria-label="Warp diagram: one instruction broadcast to thirty-two lanes, each with its own data">
+            <g font-size="11">
+              <rect class="box" x="16" y="80" width="120" height="48" rx="2"/>
+              <text class="t lbl" x="76" y="100" text-anchor="middle">one</text>
+              <text class="t lbl" x="76" y="116" text-anchor="middle">instruction</text>
+              <g id="lanes"></g>
+              <text class="d sml" x="16" y="200">32 threads, one program counter: SIMT. When lanes disagree on a branch, the paths serialize.</text>
+            </g>
+          </svg>
+          </div>
+          <figcaption>Vector units and GPU warps are the same idea at different widths: replicate the datapath, share the control.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>L3 datapaths, replicated under one control unit; L4 threads as the programming unit.</dd></div>
+          <div class="fp-spec-row"><dt>ENABLES</dt><dd>L6: a parallel fabric is the raw material the accelerator specializes.</dd></div>
+        </dl>
+        <ul class="fp-facts">
+          <li>SIMD applies one operation to many elements. RISC-V's V extension is vector-length agnostic: the same code runs on 128-bit and 512-bit implementations.</li>
+          <li>SIMT (GPU): threads group into warps of 32 that execute in lockstep. Divergent branches serialize the taken and not-taken paths, costing the parallelism you came for.</li>
+          <li>Memory is the real bottleneck: coalesced global accesses and programmer-managed per-block shared memory exist because bandwidth, not arithmetic, usually limits.</li>
+        </ul>
+        <div class="fp-evidence">
+          <div class="fp-next"><strong>NEXT</strong>Vector extension on RISC-V: one kernel, measured against scalar, on real hardware.</div>
+        </div>
+      </section>
+
+      <hr class="fp-rule" />
+
+      <!-- L6 -->
+      <section class="fp-level" id="l6" aria-label="L6, specialized accelerators">
+        <div class="fp-level-head"><span class="lvl">L6</span><h2>Specialized accelerators</h2></div>
+        <p class="fp-invariant">Fix the workload to dense matrix math and the machine can be rewired around dataflow instead of control.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg class="diag" viewBox="0 0 720 380" role="img" aria-label="Four by four systolic array: A flows left to right, B flows top to bottom, each cell accumulates a multiply-add">
+            <g font-size="11">
+              <g id="syscells"></g>
+              <text class="d sml" x="16" y="362">C = A x B: each cell holds one multiply-accumulate; data pulses through instead of being fetched. Weight-stationary flow shown.</text>
+            </g>
+          </svg>
+          </div>
+          <figcaption>The general-purpose control of L3 is gone. What remains is arithmetic with the memory movement designed out.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>L5 parallel fabric, with control logic traded away for multiply-accumulate density.</dd></div>
+          <div class="fp-spec-row"><dt>ENABLES</dt><dd>Modern AI training and inference (boundary, above).</dd></div>
+        </dl>
+        <ul class="fp-facts">
+          <li>CUDA is the programming model for the L5 machine: kernels launch as grids of thread blocks; the hardware schedules the warps.</li>
+          <li>Tensor cores collapse a small matrix-multiply-accumulate (for example 4x4 FP16 into FP32) into one instruction: the operation AI actually performs, in silicon.</li>
+          <li>Systolic arrays keep weights stationary in the cells and pulse activations through: reuse without refetching, which is where the energy goes.</li>
+          <li>Roofline: attainable performance is the minimum of peak compute and bandwidth times arithmetic intensity. Every accelerator argument is this curve.</li>
+        </ul>
+        <div class="fp-evidence">
+          <div class="fp-next"><strong>NEXT</strong>A measured matmul: naive, tiled, then tensor-core, with the roofline drawn from real numbers.</div>
+        </div>
+      </section>
+
+      <hr class="fp-rule" />
+
+      <div class="fp-bound">
+        <h3>BELOW L1</h3>
+        <p>Semiconductor device physics: doping, threshold voltage, why a transistor switches. Out of scope; L1 starts at the switch.</p>
+      </div>
+      <div class="fp-bound">
+        <h3>ABOVE L6</h3>
+        <p>Distributed training, interconnects, datacenter scale. Out of scope; L6 ends at the single accelerator.</p>
+      </div>
+
+      <footer class="fp-foot">
+        <p>Maintained as the index of the climb. New work links in under its level as it ships; levels marked next stay marked until the work exists. <a href="/portfolio/#contact">Contact</a>.</p>
+      </footer>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      // Theme engine, same contract as the blog pages.
+      const KEY = 'emi-site-theme';
+      const root = document.documentElement;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const COLORS = { notebook: '#ece6d5', classic: '#b8f34b' };
+      const btn = document.querySelector('.theme-toggle');
+      const current = () => (root.dataset.theme === 'classic' ? 'classic' : 'notebook');
+      const otherName = (t) => (t === 'classic' ? 'notebook folio' : 'green-black terminal');
+      function apply(t) {
+        root.dataset.theme = t;
+        if (meta) meta.setAttribute('content', COLORS[t]);
+        if (btn) btn.setAttribute('aria-label', 'Switch to ' + otherName(t) + ' theme');
+      }
+      function toggle() {
+        const next = current() === 'classic' ? 'notebook' : 'classic';
+        try { localStorage.setItem(KEY, next); } catch (_) {}
+        apply(next);
+        if (btn) btn.classList.toggle('is-flipped', next === 'classic');
+      }
+      if (btn) {
+        btn.classList.toggle('is-flipped', current() === 'classic');
+        btn.setAttribute('aria-label', 'Switch to ' + otherName(current()) + ' theme');
+        btn.addEventListener('click', toggle);
+      }
+      apply(current());
+    })();
+  </script>
+  <script>
+    (() => {
+      // Stack diagram: hovering a level lights its full dependency closure,
+      // everything the level stands on. Generated lane and cell grids keep
+      // the markup small; both degrade gracefully without script.
+      const svg = document.getElementById('stack');
+      if (svg) {
+        const nodes = [...svg.querySelectorAll('.stack-node')];
+        const edges = [...svg.querySelectorAll('.stack-edge')];
+        const light = (n) => {
+          nodes.forEach((el) => el.classList.toggle('lit', +el.dataset.level <= n));
+          edges.forEach((el) => el.classList.toggle('lit', +el.dataset.edge <= n));
+        };
+        nodes.forEach((el) => {
+          const n = +el.dataset.level;
+          el.addEventListener('mouseenter', () => light(n));
+          el.addEventListener('focus', () => light(n));
+          el.addEventListener('mouseleave', () => light(0));
+          el.addEventListener('blur', () => light(0));
+          el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              const a = el.querySelector('a');
+              if (a) { e.preventDefault(); a.click(); }
+            }
+          });
+        });
+      }
+      // L5 warp lanes: 32 cells, two rows of 16.
+      const lanes = document.getElementById('lanes');
+      if (lanes) {
+        const NS = 'http://www.w3.org/2000/svg';
+        for (let i = 0; i < 32; i++) {
+          const r = document.createElementNS(NS, 'rect');
+          const cx = 170 + (i % 16) * 32, cy = 64 + Math.floor(i / 16) * 40;
+          r.setAttribute('x', cx); r.setAttribute('y', cy);
+          r.setAttribute('width', 28); r.setAttribute('height', 32); r.setAttribute('rx', 2);
+          r.setAttribute('class', 'box');
+          lanes.appendChild(r);
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', cx + 14); t.setAttribute('y', cy + 20);
+          t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'd');
+          t.setAttribute('font-size', '9'); t.textContent = 'd' + i;
+          lanes.appendChild(t);
+        }
+        for (let i = 0; i < 8; i++) {
+          const line = document.createElementNS(NS, 'line');
+          line.setAttribute('x1', 136); line.setAttribute('y1', 104);
+          line.setAttribute('x2', 170); line.setAttribute('y2', 80 + i * 10);
+          line.setAttribute('class', 'wire');
+          lanes.appendChild(line);
+        }
+      }
+      // L6 systolic array: 4x4 MAC cells, A from the left, B from the top.
+      const cells = document.getElementById('syscells');
+      if (cells) {
+        const NS = 'http://www.w3.org/2000/svg';
+        const x0 = 200, y0 = 40, s = 64, gap = 10;
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            const x = x0 + c * (s + gap), y = y0 + r * (s + gap);
+            const rect = document.createElementNS(NS, 'rect');
+            rect.setAttribute('x', x); rect.setAttribute('y', y);
+            rect.setAttribute('width', s); rect.setAttribute('height', s); rect.setAttribute('rx', 2);
+            rect.setAttribute('class', 'box');
+            cells.appendChild(rect);
+            const t = document.createElementNS(NS, 'text');
+            t.setAttribute('x', x + s / 2); t.setAttribute('y', y + s / 2 - 4);
+            t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'a');
+            t.setAttribute('font-size', '10'); t.textContent = 'c += a·b';
+            cells.appendChild(t);
+            const u = document.createElementNS(NS, 'text');
+            u.setAttribute('x', x + s / 2); u.setAttribute('y', y + s / 2 + 14);
+            u.setAttribute('text-anchor', 'middle'); u.setAttribute('class', 'd');
+            u.setAttribute('font-size', '9'); u.textContent = 'cell ' + r + ',' + c;
+            cells.appendChild(u);
+          }
+          const al = document.createElementNS(NS, 'text');
+          al.setAttribute('x', x0 - 34); al.setAttribute('y', y0 + r * (s + gap) + s / 2 + 4);
+          al.setAttribute('class', 't'); al.setAttribute('font-size', '10');
+          al.textContent = 'a r' + r;
+          cells.appendChild(al);
+        }
+        for (let c = 0; c < 4; c++) {
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', x0 + c * (s + gap) + s / 2); t.setAttribute('y', y0 - 12);
+          t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 't');
+          t.setAttribute('font-size', '10'); t.textContent = 'b c' + c;
+          cells.appendChild(t);
+        }
+        const fa = document.createElementNS(NS, 'text');
+        fa.setAttribute('x', x0 - 34); fa.setAttribute('y', y0 - 12);
+        fa.setAttribute('class', 'a'); fa.setAttribute('font-size', '10'); fa.textContent = 'A →';
+        cells.appendChild(fa);
+        const fb = document.createElementNS(NS, 'text');
+        fb.setAttribute('x', x0 + 4 * (s + gap) + 6); fb.setAttribute('y', y0 - 12);
+        fb.setAttribute('class', 'a'); fb.setAttribute('font-size', '10'); fb.textContent = '↓ B';
+        cells.appendChild(fb);
+      }
+    })();
+  </script>
+</body>
+</html>
