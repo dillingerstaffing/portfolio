@@ -1,5 +1,71 @@
 [
   {
+    "title": "The One Call That Closes a Whole Range",
+    "slug": "the-one-call-that-closes-a-whole-range",
+    "date": "2026-09-30",
+    "description": "Linux's close_range(2) closes a whole span of file descriptors in one motion. On the workbench it shut fds 4 through 6 while neighbors 3 and 7 survived, set close-on-exec on a range without closing it, and detached the descriptor table first so one thread's closes stayed its own.",
+    "paragraphs": [
+      "Every shell, daemon, and container runtime does the same cleanup before exec: close every file descriptor the child must not inherit, except 0, 1, and 2. The old way walks /proc/self/fd and closes each number in a loop, one close per descriptor. The loop has a race: a thread can open a new descriptor between the listing and the close, and the new descriptor escapes.",
+      "close_range(2) closes a whole span in one call: close_range(4, 6, 0) closes every descriptor from 4 through 6. On the workbench, five descriptors sat open: two plain files, a pipe pair, and one more file. The call closed the range and left neighbors 3 and 7 untouched, one motion instead of a listing and a loop.",
+      "Then the two flags that change the call's meaning. CLOSE_RANGE_CLOEXEC closes nothing; it marks every descriptor in the range close-on-exec, so they close at exec time instead. CLOSE_RANGE_UNSHARE first detaches the caller's descriptor table from every thread that shares it, conceptually unshare(CLONE_FILES) followed by close_range; the kernel does it by copying the table before applying the closes. In the workbench test the unsharing thread's close left the main thread's copy open; the same close without the flag closed it for everyone.",
+      "The contract has sharp edges. Errors on individual descriptors are ignored, so one dead descriptor in the middle does not abort the range. Bad flags, or first greater than last, return EINVAL. The pre-exec idiom is close_range(3, ~0U, CLOSE_RANGE_UNSHARE): everything past stderr, privately, in one motion. The call arrived from FreeBSD, landed in Linux 5.9 with glibc 2.34, and the CLOEXEC flag joined in 5.11."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/closerange-demo/blob/main/closerange.c",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "The piece reasons about a syscall contract: flags, range bounds, shared descriptor tables, and error rules. It names no instruction, no encoding, and no register or trap convention, so nothing in the argument hangs on what the hardware does with an opcode."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No pipeline, cache, or timing observation enters the argument. The race under discussion is threads opening descriptors between a /proc listing and a close loop; the fix is one kernel pass over a range, which is a software contract, not a hardware property."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No machine-mode service, boot step, or firmware handoff takes part. The call goes from the process into the kernel's descriptor-table code and back; firmware never appears in the mechanism."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The entire mechanism lives in the kernel's descriptor table: close_range walks the caller's table in one pass, applies CLOEXEC marks without closing, copies the table first under UNSHARE, ignores per-descriptor errors, and returns EINVAL on bad flags or first greater than last. The workbench tests proved each behavior against a live kernel."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The insight is a contract with three behaviors, not a procedure to analyze. The article states what one call does to a range and what two flags do to its meaning; it derives no steps, states no invariant, and measures no complexity."
+      }
+    },
+    "evidence": {
+      "label": "closerange-demo closerange.c and run.txt: the firsthand workbench compiled and run for this article, gcc -O2 -Wall -Wextra -Werror, all three tests PASS",
+      "url": "https://github.com/dillingerstaffing/closerange-demo"
+    },
+    "image": "blog/the-one-call-that-closes-a-whole-range/the-one-call-that-closes-a-whole-range.jpg",
+    "image_alt": "A matrix of small toggle switches on an electrical test panel, viewed at an angle",
+    "image_caption": "A matrix of toggle switches on an electrical test panel. close_range flips a whole row in one motion: no listing, no loop, one call.",
+    "image_source": "https://www.publicdomainpictures.net/en/view-image.php?image=12601&picture=switch-panel-front-2",
+    "image_license": "CC0 1.0 Universal Public Domain Dedication",
+    "image_attribution": "Martin Birkin, via Public Domain Pictures",
+    "social_image": "blog/the-one-call-that-closes-a-whole-range/the-one-call-that-closes-a-whole-range-social.jpg",
+    "sources": [
+      {
+        "title": "close_range(2)",
+        "publisher": "man-pages project",
+        "note": "The contract this run: flag semantics, per-descriptor errors ignored, EINVAL on bad flags or first greater than last, and the close_range(3, ~0U, CLOSE_RANGE_UNSHARE) pre-exec idiom.",
+        "url": "https://www.man7.org/linux/man-pages/man2/close_range.2.html"
+      },
+      {
+        "title": "fs/file.c: sys_close_range",
+        "publisher": "torvalds/linux",
+        "note": "The kernel implementation the UNSHARE table-copy behavior was cross-checked against.",
+        "url": "https://github.com/torvalds/linux/blob/master/fs/file.c"
+      },
+      {
+        "title": "run.txt",
+        "publisher": "dillingerstaffing/closerange-demo",
+        "note": "Three runs of the firsthand workbench, all PASS: the range close, the CLOEXEC marking, and the UNSHARE table detach.",
+        "url": "https://github.com/dillingerstaffing/closerange-demo/blob/main/run.txt"
+      }
+    ]
+  },
+  {
     "title": "The Nap Measured in Ticks",
     "slug": "the-nap-measured-in-ticks",
     "date": "2026-09-29",

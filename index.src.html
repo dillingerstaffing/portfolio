@@ -1703,6 +1703,29 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The One Call That Closes a Whole Range</h3>
+          <!-- LAYER-STRIP:the-one-call-that-closes-a-whole-range -->
+          <p class="research-date"><time datetime="2026-09-30">2026-09-30 11:12 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Every shell, daemon, and container runtime does the same cleanup before <code>exec</code>: close every file descriptor the child must not inherit, except 0, 1, and 2. The old way walks <code>/proc/self/fd</code> and closes each number in a loop, one <code>close</code> per descriptor <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-1">[1]</a>. The loop has a race: a thread can open a new descriptor between the listing and the close, and the new descriptor escapes.</p>
+          <p><code>close_range(2)</code> closes a whole span in one call: <code>close_range(4, 6, 0)</code> closes every descriptor from 4 through 6 <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-1">[1]</a>. On the workbench, five descriptors sat open: two plain files, a pipe pair, and one more file. The call closed the range and left neighbors 3 and 7 untouched, one motion instead of a listing and a loop <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-3">[3]</a>.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-one-call-that-closes-a-whole-range/the-one-call-that-closes-a-whole-range.jpg" alt="A matrix of small toggle switches on an electrical test panel, viewed at an angle" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">A matrix of toggle switches on an electrical test panel. close_range flips a whole row in one motion: no listing, no loop, one call.<br><span style="opacity:.7">Photo: Martin Birkin, CC0, via Public Domain Pictures</span></figcaption>
+</figure>
+          <p>Then the two flags that change the call's meaning. <code>CLOSE_RANGE_CLOEXEC</code> closes nothing; it marks every descriptor in the range close-on-exec, so they close at exec time instead <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-1">[1]</a>. <code>CLOSE_RANGE_UNSHARE</code> first detaches the caller's descriptor table from every thread that shares it, conceptually <code>unshare(CLONE_FILES)</code> followed by <code>close_range</code> <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-1">[1]</a>; the kernel does it by copying the table before applying the closes <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-2">[2]</a>. In the workbench test the unsharing thread's close left the main thread's copy open; the same close without the flag closed it for everyone <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-3">[3]</a>.</p>
+          <p>The three forms, in three lines:</p>
+<pre><code>close_range(4, 6, 0);                     /* the range, one motion */
+close_range(4, 6, CLOSE_RANGE_CLOEXEC);   /* mark the range, close nothing */
+close_range(3, ~0U, CLOSE_RANGE_UNSHARE); /* private table first, then 3..MAX */
+</code></pre>
+          <p>The contract has sharp edges. Errors on individual descriptors are ignored, so one dead descriptor in the middle does not abort the range <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-1">[1]</a>. Bad flags, or first greater than last, return <code>EINVAL</code> <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-1">[1]</a>. The pre-exec idiom is <code>close_range(3, ~0U, CLOSE_RANGE_UNSHARE)</code>: everything past stderr, privately, in one motion. The call arrived from FreeBSD, landed in Linux 5.9 with glibc 2.34, and the CLOEXEC flag joined in 5.11 <a class="cite" href="#src-the-one-call-that-closes-a-whole-range-1">[1]</a>.</p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Nap Measured in Ticks</h3>
           <!-- LAYER-STRIP:the-nap-measured-in-ticks -->
           <p class="research-date"><time datetime="2026-09-29">2026-09-29 11:24 EDT</time></p>
