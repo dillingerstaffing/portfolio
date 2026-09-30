@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260929-152507" />
+  <meta name="build-version" content="v20260930-091723" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Division That Always Answers &middot; Blog &middot; Chris Dillinger</title>
@@ -470,6 +470,18 @@
       font: 10px/1.5 var(--mono); text-transform: uppercase; letter-spacing: .1em;
       color: var(--dim); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
     .why-marker[aria-expanded="true"] { color: var(--acid); }
+    /* Invisible 44px tap target on touch devices (engagement loop): the marker
+       renders 21x15 with zero padding and zero border, so the ::after sizes
+       against the 21x15 padding box; -15px/-14px vertical and -11px/-12px
+       horizontal yield a true 44x44 zone. Scoped to coarse and no-hover
+       pointers so the desktop hover-intent panel system (350ms mouseover
+       open) stays exactly as before. Zero visual change, zero JS. */
+    @media (pointer: coarse), (hover: none) {
+      .why-marker { position: relative; }
+      .why-marker::after {
+        content: ""; position: absolute; top: -15px; right: -12px; bottom: -14px; left: -11px;
+      }
+    }
     /* Argument panels: anchored to the marker, never cursor-following, never
        reflowing text (Factorio/FFXIV lesson). Flat blueprint treatment. */
     .wig-tip { position: fixed; z-index: 90; width: min(340px, calc(100vw - 32px));
@@ -636,6 +648,39 @@
       border: 1px solid var(--line);
       border-radius: 2px;
       cursor: pointer;
+      position: relative; /* anchor for the invisible 44px tap target below */
+    }
+    /* Invisible tap target: the 26px mark is a deliberate design size, but the
+       touch target must be at least 44px. ::after expands the hit area by 9px
+       on each side (26 + 18 = 44) with zero visual change. Nearest neighbor is
+       the Contact nav link, 14px away at 390px, so the expansion never
+       overlaps another control. */
+    .theme-toggle::after {
+      content: "";
+      position: absolute;
+      inset: -9px;
+    }
+    /* Invisible tap targets for the primary nav links. The 17-20px text
+       links are the persistent funnel (Services, Contact) but far below
+       the 44px touch target, so the ::after expands each link's hit area
+       to 44px tall with zero visual change (anchors get position:relative
+       as the positioning anchor; layout is untouched). Horizontal
+       expansion is 7px per side: the tightest measured inter-link gap is
+       14px (390px viewport), so expanded zones touch but never overlap.
+       Contact's right side is capped at 4px to stay clear of the theme
+       toggle's own 9px expansion across the same 14px gap. At 320px and
+       below the toggle wraps onto its own row directly under Contact, so
+       Contact's downward expansion is capped there to never reach the
+       toggle's expanded zone. */
+    header nav a { position: relative; }
+    header nav a::after {
+      content: "";
+      position: absolute;
+      top: -13px; bottom: -13px; left: -7px; right: -7px;
+    }
+    header nav a:last-of-type::after { right: -4px; }
+    @media (max-width: 340px) {
+      header nav a:last-of-type::after { bottom: -4px; }
     }
     .theme-toggle:hover { border-color: var(--acid); }
     .theme-toggle:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
