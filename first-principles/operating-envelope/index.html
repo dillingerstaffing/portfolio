@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="build-version" content="v20260930-070000" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#ece6d5" />
+  <title>The Operating Envelope &middot; Chris Dillinger</title>
+  <meta name="description" content="Performance, power, and thermal: the three constraints every level of the computing stack lives inside." />
+  <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/first-principles/operating-envelope/" />
+  <link rel="icon" href="data:," />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Chris Dillinger" />
+  <meta property="og:url" content="https://dillingerstaffing.github.io/portfolio/first-principles/operating-envelope/" />
+  <meta property="og:title" content="First Principles · Chris Dillinger" />
+  <meta property="og:description" content="Performance, power, and thermal: the three constraints every level of the computing stack lives inside." />
+  <meta property="og:image" content="https://dillingerstaffing.github.io/portfolio/og-image.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="First Principles · Chris Dillinger" />
+  <meta name="twitter:description" content="Performance, power, and thermal: the three constraints every level of the computing stack lives inside." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet" />
+  <script>
+    // Theme: notebook is the default; a stored visitor choice wins.
+    // Same contract as the blog pages, so the permalink carries the theme.
+    try {
+      let t = localStorage.getItem('emi-site-theme');
+      if (t !== 'classic' && t !== 'notebook' && localStorage.getItem('portfolio-theme') === 'gb') t = 'classic';
+      document.documentElement.dataset.theme = t === 'classic' ? 'classic' : 'notebook';
+    } catch (_) {
+      document.documentElement.dataset.theme = 'notebook';
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #f0f2eb;
+      --muted: #a8afa5;
+      --dim: #828a83;
+      --bg: #0c0f0d;
+      --panel: #121713;
+      --panel-2: #171c17;
+      --line: #2a322b;
+      --acid: #b8f34b;
+      --acid-soft: #d9ff8d;
+      --paper: #e7eadf;
+      --black: #080a08;
+      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+      --display: "Newsreader", Georgia, serif;
+      --pad: clamp(20px, 4.4vw, 72px);
+      --max: 920px;
+    }
+    [data-theme="notebook"] {
+      --ink: #241f17;
+      --muted: #5e5648;
+      --dim: #655c4d;
+      --bg: #ece6d5;
+      --panel: #e3dac2;
+      --panel-2: #d9cfae;
+      --line: #c9bfa4;
+      --acid: #8c3f22;
+      --acid-soft: #a5542f;
+      --paper: #f4efe0;
+      --black: #241f17;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { background: #0c0f0d; scroll-behavior: smooth; }
+    html[data-theme="notebook"] { background: #ece6d5; }
+    body {
+      margin: 0;
+      min-width: 0;
+      overflow-x: hidden;
+      overflow-x: clip;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: var(--display);
+      -webkit-text-size-adjust: 100%;
+    }
+    body, header.topline, nav a, .theme-toggle {
+      transition: background-color .45s ease, color .45s ease, border-color .45s ease;
+    }
+    .skip-link {
+      position: absolute; left: 12px; top: -48px; z-index: 50;
+      background: var(--ink); color: var(--bg); font: 12px/1 var(--mono);
+      padding: 10px 14px; text-decoration: none; border-radius: 2px;
+    }
+    .skip-link:focus { top: 12px; }
+
+    /* Header chrome, same contract as the blog pages. */
+    header.frame.topline {
+      --header-height: 68px;
+      position: sticky; top: 0; z-index: 30;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; min-height: var(--header-height);
+      padding: 0 var(--pad);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--line);
+    }
+    .identity { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+    .identity .signal {
+      width: 8px; height: 8px; border-radius: 999px; background: var(--acid);
+      align-self: center; flex: none;
+    }
+    .identity strong { font: 600 15px/1 var(--mono); letter-spacing: .02em; }
+    .identity span { font: 12px/1.4 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    nav { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 30px); }
+    nav a { color: var(--muted); text-decoration: none; font: 12px/1 var(--mono); }
+    nav a:hover, nav a:focus-visible, nav a.is-active { color: var(--acid); }
+    nav a.is-active { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+    .theme-toggle {
+      width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 2px;
+      background: transparent; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; padding: 0;
+    }
+    .theme-toggle:hover { border-color: var(--acid); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+    .theme-toggle-mark { display: flex; width: 12px; height: 12px; }
+    .theme-toggle-mark i { display: block; width: 6px; height: 12px; }
+    .theme-toggle-mark i:first-child { background: #ece6d5; }
+    .theme-toggle-mark i:last-child { background: #241f17; border-left: 1px solid #ece6d5; }
+
+    main { display: block; }
+    .fp-wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--pad) 96px; }
+
+    .fp-kicker {
+      font: 600 11px/1 var(--mono); letter-spacing: .22em; text-transform: uppercase;
+      color: var(--acid); margin: 56px 0 18px;
+    }
+    h1.fp-title {
+      font: 600 clamp(34px, 6vw, 58px)/1.05 var(--display);
+      letter-spacing: -0.01em; margin: 0 0 18px; max-width: 16ch;
+    }
+    .fp-lede { font-size: clamp(17px, 2.4vw, 21px); line-height: 1.55; color: var(--muted); max-width: 62ch; margin: 0 0 8px; }
+    .fp-lede strong { color: var(--ink); font-weight: 600; }
+
+    .fp-rule { border: 0; border-top: 1px solid var(--line); margin: 44px 0; }
+
+    figure.fp-fig { margin: 28px 0; }
+    figure.fp-fig .fig-scroll { overflow-x: clip; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); }
+    figure.fp-fig svg { display: block; width: 100%; height: auto; }
+    figcaption {
+      margin-top: 10px; font: 12px/1.6 var(--mono); color: var(--muted); max-width: 72ch;
+    }
+    figcaption code { font-family: inherit; color: var(--ink); }
+
+    /* Stack diagram interaction. */
+    .stack-node { cursor: pointer; }
+    .stack-node rect.body { fill: var(--panel); stroke: var(--line); transition: stroke .2s, fill .2s; }
+    .stack-node text { font-family: var(--mono); fill: var(--ink); }
+    .stack-node .sub { fill: var(--muted); }
+    .stack-node .idx { fill: var(--acid); font-weight: 600; }
+    .stack-edge line { stroke: var(--line); transition: stroke .2s; }
+    .stack-edge .ahead { fill: var(--line); transition: fill .2s; }
+    .stack-edge text { font-family: var(--mono); fill: var(--dim); }
+    .stack-node.lit rect.body { stroke: var(--acid); fill: var(--panel-2); }
+    .stack-edge.lit line { stroke: var(--acid); }
+    .stack-edge.lit .ahead { fill: var(--acid); }
+    .stack-edge.lit text { fill: var(--acid); }
+    .stack-node a { text-decoration: none; }
+    .stack-node:focus-visible rect.body { stroke: var(--acid); stroke-width: 2; }
+
+    section.fp-level { padding: 12px 0 8px; scroll-margin-top: 92px; }
+    .fp-level-head { display: flex; align-items: baseline; gap: 14px; margin: 0 0 6px; flex-wrap: wrap; }
+    .fp-level-head .lvl {
+      font: 600 12px/1 var(--mono); letter-spacing: .18em; color: var(--acid);
+      border: 1px solid var(--acid); border-radius: 2px; padding: 6px 8px; white-space: nowrap;
+    }
+    .fp-level-head h2 { font: 600 clamp(24px, 4vw, 34px)/1.15 var(--display); margin: 0; letter-spacing: -0.01em; }
+    .fp-invariant {
+      font-size: clamp(16px, 2.2vw, 19px); line-height: 1.5; color: var(--ink);
+      border-left: 2px solid var(--acid); padding-left: 16px; margin: 14px 0 4px; max-width: 64ch;
+    }
+    .fp-spec { display: grid; grid-template-columns: 1fr; border: 1px solid var(--line); border-radius: 3px; margin: 22px 0; overflow: hidden; }
+    .fp-spec-row { display: grid; grid-template-columns: 150px 1fr; }
+    .fp-spec-row + .fp-spec-row { border-top: 1px solid var(--line); }
+    .fp-spec-row dt {
+      font: 600 10.5px/1.6 var(--mono); letter-spacing: .14em; color: var(--muted);
+      padding: 12px 14px; background: var(--panel); margin: 0;
+    }
+    .fp-spec-row dd { font: 13.5px/1.65 var(--mono); color: var(--ink); padding: 12px 14px; margin: 0; }
+    .fp-facts { margin: 0 0 6px; padding: 0; list-style: none; }
+    .fp-facts li {
+      position: relative; padding: 9px 0 9px 22px;
+      font-size: 15.5px; line-height: 1.6; color: var(--muted); border-top: 1px solid var(--line);
+    }
+    .fp-facts li::before { content: ""; position: absolute; left: 4px; top: 17px; width: 6px; height: 6px; background: var(--acid); }
+    .fp-facts li code, .fp-spec-row dd code, figcaption code, .fp-lede code {
+      font-family: var(--mono); font-size: .86em; color: var(--ink);
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px;
+    }
+    .fp-evidence { margin: 20px 0 0; }
+    .fp-evidence .ev-label { font: 600 10.5px/1 var(--mono); letter-spacing: .18em; color: var(--muted); margin-bottom: 10px; }
+    .fp-evidence ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .fp-evidence a {
+      font: 13px/1.5 var(--mono); color: var(--ink); text-decoration: none;
+      border-bottom: 1px solid var(--line); padding-bottom: 8px; display: flex; justify-content: space-between; gap: 12px;
+    }
+    .fp-evidence a:hover { color: var(--acid); border-color: var(--acid); }
+    .fp-evidence a .ext { color: var(--dim); flex: none; }
+    .fp-evidence a:hover .ext { color: var(--acid); }
+    .fp-next {
+      font: 13px/1.6 var(--mono); color: var(--muted);
+      border: 1px dashed var(--line); border-radius: 3px; padding: 12px 14px;
+    }
+    .fp-next strong { color: var(--acid); font-weight: 600; letter-spacing: .12em; font-size: 11px; display: block; margin-bottom: 4px; }
+    .fp-future { font: 11px/1.6 var(--mono); color: var(--dim); margin-top: 10px; }
+    .fp-future strong { display: block; font-size: 10px; letter-spacing: .08em; font-weight: 600; color: var(--dim); margin-bottom: 2px; }
+
+    .fp-bound { border: 1px solid var(--line); border-radius: 3px; padding: 18px; margin: 12px 0; background: var(--panel); }
+    .fp-bound h3 { font: 600 11px/1 var(--mono); letter-spacing: .18em; color: var(--muted); margin: 0 0 8px; }
+    .fp-bound p { font-size: 15px; line-height: 1.6; color: var(--muted); margin: 0; max-width: 68ch; }
+
+    footer.fp-foot { margin-top: 64px; border-top: 1px solid var(--line); padding-top: 20px; }
+    footer.fp-foot p { font: 12px/1.7 var(--mono); color: var(--dim); margin: 0; max-width: 72ch; }
+    footer.fp-foot a { color: var(--muted); }
+
+    .diag marker.mwire path { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+    .diag marker.mflow path { fill: none; stroke: var(--acid); stroke-width: 1.6; }
+    .diag .t { fill: var(--ink); }
+    .diag .m { fill: var(--muted); }
+    .diag .d { fill: var(--dim); }
+    .diag .a { fill: var(--acid); }
+    .diag .box { fill: var(--panel); stroke: var(--line); }
+    .diag .wire { stroke: var(--muted); fill: none; }
+    .diag .flow { stroke: var(--acid); fill: none; }
+    .diag .lbl { font-size: 11px; }
+    .diag .sml { font-size: 9.5px; }
+
+    @media (max-width: 620px) {
+      .identity span { display: none; }
+      nav { gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+      nav a { font-size: 10px; }
+      .fp-spec-row { grid-template-columns: 1fr; }
+      .fp-spec-row dt { padding-bottom: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="frame topline">
+    <div class="identity">
+      <span class="signal" aria-hidden="true"></span>
+      <strong>Chris</strong>
+      <span>Low-level systems developer</span>
+    </div>
+    <nav aria-label="Primary navigation">
+      <a href="/portfolio/#top">Home</a>
+      <a href="/portfolio/#blog">Blog</a>
+      <a href="/portfolio/feed/">Feed</a>
+      <a href="/portfolio/first-principles/" class="is-active">First principles</a>
+      <a href="/portfolio/#services">Services</a>
+      <a href="/portfolio/#contact">Contact</a>
+      <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+        <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
+      </button>
+    </nav>
+  </header>
+
+  <main id="main-content">
+    <div class="fp-wrap">
+      <p class="fp-kicker">First principles &middot; companion</p>
+      <h1 class="fp-title">The Operating Envelope.</h1>
+      <p class="fp-lede">
+        Performance, power, and thermal: the three constraints <strong>every level of the stack lives inside</strong>.
+        The main page shows what each level is assembled from. This page is the other cut:
+        what the assembly must survive, who pays when it doesn't, and why the stack looks the way it does.
+      </p>
+
+      <hr class="fp-rule" />
+
+      <!-- E1 -->
+      <section class="fp-level" id="e1" aria-label="E1, the triad">
+        <div class="fp-level-head"><span class="lvl">E1</span><h2>The triad</h2></div>
+        <p class="fp-invariant">Performance costs power, power becomes heat, heat caps performance. Three constraints, one loop, no level escapes it.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg width="720" height="260" class="diag" viewBox="0 0 720 260" role="img" aria-label="Triangle of performance, power, and thermal with coupling arrows: work costs watts, watts become heat, heat caps clocks">
+            <g font-size="11">
+              <rect class="box" x="285" y="30" width="150" height="48" rx="2"/><text class="t lbl" x="360" y="52" text-anchor="middle">PERFORMANCE</text><text class="m sml" x="360" y="68" text-anchor="middle">throughput &middot; latency</text>
+              <rect class="box" x="105" y="180" width="150" height="48" rx="2"/><text class="t lbl" x="180" y="202" text-anchor="middle">POWER</text><text class="m sml" x="180" y="218" text-anchor="middle">watts in &middot; dollars out</text>
+              <rect class="box" x="465" y="180" width="150" height="48" rx="2"/><text class="t lbl" x="540" y="202" text-anchor="middle">THERMAL</text><text class="m sml" x="540" y="218" text-anchor="middle">heat out &middot; degrees C</text>
+              <line class="wire" x1="300" y1="78" x2="245" y2="180" marker-end="url(#arr6)"/>
+              <line class="wire" x1="255" y1="204" x2="465" y2="204" marker-end="url(#arr6)"/>
+              <line class="wire" x1="540" y1="180" x2="420" y2="78" marker-end="url(#arr6)"/>
+              <text class="d lbl" x="236" y="134" text-anchor="end">work costs watts</text>
+              <text class="d lbl" x="360" y="248" text-anchor="middle">watts become heat</text>
+              <text class="d lbl" x="492" y="134" text-anchor="start">heat caps clocks</text>
+              <text class="d lbl" x="360" y="150" text-anchor="middle">the operating envelope</text>
+            </g>
+            <defs><marker class="mwire" id="arr6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>The loop every stakeholder lives in: doing more work draws more watts, watts leave as heat, and heat sets the ceiling on work.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>PERFORMANCE</dt><dd>Throughput and latency, measured in ops/sec and seconds. The ML engineer pays in time to train: a run that should take a week takes a month, salaries burn, the idea goes stale. The user pays in latency. The business pays in throughput per dollar of fleet.</dd></div>
+          <div class="fp-spec-row"><dt>POWER</dt><dd>Watts in, dollars out. The data-center operator pays the electricity bill, the largest operating cost of the building; one percent of efficiency is millions. The OEM pays in PSU and rack-feed sizing: a hard watts-per-box budget. The mobile user pays in battery.</dd></div>
+          <div class="fp-spec-row"><dt>THERMAL</dt><dd>Heat out, degrees on the die. The chip designer pays in power density: it decides how much silicon may switch at once. The OEM pays in heatsinks, fans, skin temperature, noise. The operator pays in cooling, which is poured in concrete once and can never be retrofitted.</dd></div>
+        </dl>
+        <p class="fp-invariant" style="border-color: var(--line)">Why these three and only these: each has its own unit, its own failure, and its own payer. Together they cover every way a machine can disappoint its stakeholders.</p>
+      </section>
+
+      <hr class="fp-rule" />
+
+      <!-- E2 -->
+      <section class="fp-level" id="e2" aria-label="E2, the wall">
+        <div class="fp-level-head"><span class="lvl">E2</span><h2>The wall</h2></div>
+        <p class="fp-invariant">L5 and L6 are not fashion. They are what the envelope forced: when clocks could no longer rise, the only road to more performance was more parallelism per watt, then less general hardware per watt.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg width="720" height="300" class="diag" viewBox="0 0 720 300" role="img" aria-label="Left: clock frequency rises then flattens around 2005 when Dennard scaling ends. Right: a die grid with most cells dark, dark silicon.">
+            <g font-size="11">
+              <text class="t lbl" x="40" y="28" text-anchor="start">clocks stop rising</text>
+              <line class="wire" x1="40" y1="240" x2="330" y2="240"/>
+              <line class="wire" x1="40" y1="240" x2="40" y2="60"/>
+              <path class="flow" stroke-width="2" d="M 60 228 C 100 205, 125 125, 143 112 L 310 112"/>
+              <line x1="143" y1="60" x2="143" y2="240" stroke="var(--dim)" stroke-dasharray="4 4"/>
+              <text class="d sml" x="143" y="52" text-anchor="middle">2005</text>
+              <text class="d sml" x="232" y="100" text-anchor="middle">Dennard scaling ends</text>
+              <text class="m sml" x="46" y="72" text-anchor="start">frequency</text>
+              <text class="m sml" x="60" y="256" text-anchor="start">1995</text>
+              <text class="m sml" x="310" y="256" text-anchor="end">2025</text>
+              <text class="t lbl" x="400" y="28" text-anchor="start">silicon goes dark</text>
+              <g><rect x="400" y="60" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="427" y="60" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="454" y="60" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="481" y="60" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="508" y="60" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="535" y="60" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="562" y="60" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="589" y="60" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="400" y="87" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="427" y="87" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="454" y="87" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="481" y="87" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="508" y="87" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="535" y="87" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="562" y="87" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="589" y="87" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="400" y="114" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="427" y="114" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="454" y="114" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="481" y="114" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="508" y="114" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="535" y="114" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="562" y="114" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="589" y="114" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="400" y="141" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="427" y="141" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="454" y="141" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="481" y="141" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="508" y="141" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="535" y="141" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="562" y="141" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="589" y="141" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="400" y="168" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="427" y="168" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="454" y="168" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="481" y="168" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="508" y="168" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="535" y="168" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="562" y="168" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="589" y="168" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="400" y="195" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="427" y="195" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="454" y="195" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="481" y="195" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="508" y="195" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="535" y="195" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="562" y="195" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="589" y="195" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="400" y="222" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="427" y="222" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="454" y="222" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="481" y="222" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="508" y="222" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="535" y="222" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="562" y="222" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="589" y="222" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="400" y="249" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="427" y="249" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="454" y="249" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="481" y="249" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="508" y="249" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="535" y="249" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/><rect x="562" y="249" width="22" height="22" rx="2" fill="none" stroke="var(--line)"/><rect x="589" y="249" width="22" height="22" rx="2" fill="var(--ink)" fill-opacity="0.7"/></g>
+              <text class="d sml" x="505" y="292" text-anchor="middle">the dark cells can never all switch at once</text>
+            </g>
+            <defs><marker class="mwire" id="arr7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>Left: frequency climbs, then flattens when power density stops scaling with transistors. Right: a modern die. Thermal limits, not logic, decide how much of it may switch.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>DENNARD SCALING</dt><dd>Smaller transistors once meant faster and cooler at once. Around 2005 that broke: shrinking kept adding transistors, but power density stopped falling. Raising the clock further would have melted the die, so the clock stopped rising.</dd></div>
+          <div class="fp-spec-row"><dt>THE RESPONSE</dt><dd>First multicore (L5): more work per watt through parallelism instead of frequency. Then specialization (L6): delete the general-purpose control and spend the power budget on arithmetic alone. Each step is the stack re-assembling itself inside a tighter envelope.</dd></div>
+          <div class="fp-spec-row"><dt>DARK SILICON</dt><dd>At modern densities the whole die cannot switch at once. Some fraction must stay dark, always. This is a thermal verdict on a logic design: you own transistors you are never allowed to turn on.</dd></div>
+        </dl>
+      </section>
+
+      <hr class="fp-rule" />
+
+      <!-- E3 -->
+      <section class="fp-level" id="e3" aria-label="E3, what wrong looks like">
+        <div class="fp-level-head"><span class="lvl">E3</span><h2>What wrong looks like</h2></div>
+        <p class="fp-invariant">Every envelope violation has a signature you can observe. Learn the signatures and you can read a sick machine like a chart.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg width="720" height="320" class="diag" viewBox="0 0 720 320" role="img" aria-label="Temperature rises to a thermal limit while throughput sawtooths: the throttling signature">
+            <g font-size="11">
+              <text class="t lbl" x="40" y="24" text-anchor="start">the throttling signature</text>
+              <line x1="40" y1="64" x2="680" y2="64" stroke="var(--dim)" stroke-dasharray="4 4"/>
+              <text class="d sml" x="676" y="58" text-anchor="end">thermal limit</text>
+              <path class="wire" stroke-width="2" d="M 40 132 C 120 128, 200 100, 300 64 L 680 64"/>
+              <text class="m sml" x="46" y="152" text-anchor="start">temperature</text>
+              <line x1="300" y1="56" x2="300" y2="300" stroke="var(--dim)" stroke-dasharray="4 4"/>
+              <path class="flow" stroke-width="2" d="M 40 200 L 300 200 L 318 246 L 354 200 L 390 246 L 426 200 L 462 246 L 498 200 L 534 246 L 570 200 L 606 246 L 642 200 L 678 246"/>
+              <text class="m sml" x="46" y="190" text-anchor="start">throughput</text>
+              <text class="d sml" x="300" y="314" text-anchor="middle">throttle point</text>
+            </g>
+            <defs><marker class="mwire" id="arr8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>Observed on a sick machine: temperature rides the limit while throughput sawtooths. The chip protects itself by getting slower.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>TOO HOT</dt><dd>The signature is the sawtooth: temperature rides the limit while throughput oscillates as the chip protects itself by slowing down. Sustained heat ends in emergency shutdown, an outage. Chronic heat shows up months later as shortened life and RMAs. In batteries it shows up as fire.</dd></div>
+          <div class="fp-spec-row"><dt>TOO MUCH POWER</dt><dd>The signature is the cliff: draw exceeds delivery and the breaker or the PSU overcurrent trips, instant outage. The slow version is stranded capacity: the rack power cap means racks that can never be filled, capex that never earns.</dd></div>
+          <div class="fp-spec-row"><dt>TOO SLOW</dt><dd>The signature is the queue that never drains: latency SLAs breached, users gone, contract penalties. In training, the run outlives its budget and dies with nothing to show: money burned, no model.</dd></div>
+        </dl>
+      </section>
+
+      <hr class="fp-rule" />
+
+      <!-- E4 -->
+      <section class="fp-level" id="e4" aria-label="E4, the demand">
+        <div class="fp-level-head"><span class="lvl">E4</span><h2>The demand</h2></div>
+        <p class="fp-invariant">The economics point at ever-larger models, so the envelope is always under assault. This is why accelerators exist and why the pressure never lets up.</p>
+        <figure class="fp-fig">
+          <div class="fig-scroll">
+          <svg width="720" height="240" class="diag" viewBox="0 0 720 240" role="img" aria-label="Log-log plot: loss falls as a straight power-law line in training compute, with diminishing returns per dollar">
+            <g font-size="11">
+              <text class="t lbl" x="40" y="24" text-anchor="start">the demand curve</text>
+              <line class="wire" x1="40" y1="200" x2="680" y2="200"/>
+              <line class="wire" x1="40" y1="200" x2="40" y2="40"/>
+              <line class="flow" stroke-width="2" x1="70" y1="55" x2="650" y2="185"/>
+              <text class="m sml" x="680" y="218" text-anchor="end">training compute (log)</text>
+              <text class="m sml" x="46" y="52" text-anchor="start">loss (log)</text>
+              <text class="d lbl" x="400" y="100" text-anchor="middle">power law: straight on log-log</text>
+              <text class="d lbl" x="380" y="165" text-anchor="middle">diminishing returns per dollar</text>
+            </g>
+            <defs><marker class="mwire" id="arr9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
+          </svg>
+          </div>
+          <figcaption>Kaplan et al., 2020: loss falls as a power law in compute. Returns diminish per dollar, yet the compute-optimal point keeps moving right. The paper is the demand curve; the envelope is the supply curve.</figcaption>
+        </figure>
+        <dl class="fp-spec">
+          <div class="fp-spec-row"><dt>SCALING LAWS</dt><dd>Loss falls as a power law in parameters, data, and compute, over seven orders of magnitude. The compute-optimal move is counterintuitive: train very large models on modest data and stop before convergence. Big models beat big data.</dd></div>
+          <div class="fp-spec-row"><dt>MORE IS DIFFERENT</dt><dd>Smooth loss curves hide discontinuous capability jumps. Demand arrives as a step function the envelope was never sized for: the fleet that was adequate on Tuesday is inadequate on Wednesday.</dd></div>
+          <div class="fp-spec-row"><dt>WHY IT MATTERS HERE</dt><dd>Every point on that curve is bought in watts and cooled in concrete. L6 exists where the demand curve meets the supply curve: the industry builds accelerators because the economics keep ordering larger models and the envelope dictates what may actually run.</dd></div>
+        </dl>
+      </section>
+
+      <footer class="fp-foot">
+        <p>Companion to <a href="/portfolio/first-principles/">First Principles</a>: six levels, each assembled only from the level below. <a href="/portfolio/#contact">Contact</a>.</p>
+      </footer>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      // Theme engine, same contract as the blog pages.
+      const KEY = 'emi-site-theme';
+      const root = document.documentElement;
+      const meta = document.querySelector('meta[name="theme-color"]');
+      const COLORS = { notebook: '#ece6d5', classic: '#b8f34b' };
+      const btn = document.querySelector('.theme-toggle');
+      const current = () => (root.dataset.theme === 'classic' ? 'classic' : 'notebook');
+      const otherName = (t) => (t === 'classic' ? 'notebook folio' : 'green-black terminal');
+      function apply(t) {
+        root.dataset.theme = t;
+        if (meta) meta.setAttribute('content', COLORS[t]);
+        if (btn) btn.setAttribute('aria-label', 'Switch to ' + otherName(t) + ' theme');
+      }
+      function toggle() {
+        const next = current() === 'classic' ? 'notebook' : 'classic';
+        try { localStorage.setItem(KEY, next); } catch (_) {}
+        apply(next);
+        if (btn) btn.classList.toggle('is-flipped', next === 'classic');
+      }
+      if (btn) {
+        btn.classList.toggle('is-flipped', current() === 'classic');
+        btn.setAttribute('aria-label', 'Switch to ' + otherName(current()) + ' theme');
+        btn.addEventListener('click', toggle);
+      }
+      apply(current());
+    })();
+  </script>
+  <script>
+    (() => {
+      // Foreground build-version check: the page reloads once when a newer
+      // build is published, so phones pick up fixes within seconds of coming
+      // back to the page. Same contract as the portfolio homepage.
+      const currentVersion = document.querySelector('meta[name="build-version"]')?.content;
+      let checking = false;
+      let reloadRequested = false;
+      async function checkBuild() {
+        if (document.visibilityState !== 'visible' || checking || reloadRequested || !currentVersion) return;
+        checking = true;
+        try {
+          const response = await fetch('?vcheck=' + Date.now(), { cache: 'no-store' });
+          if (!response.ok) return;
+          const html = await response.text();
+          const fetchedDocument = new DOMParser().parseFromString(html, 'text/html');
+          const fetchedVersion = fetchedDocument.querySelector('meta[name="build-version"]')?.content;
+          if (fetchedVersion && fetchedVersion !== currentVersion) {
+            reloadRequested = true;
+            window.location.reload();
+          }
+        } catch (_) {
+        } finally {
+          checking = false;
+        }
+      }
+      document.addEventListener('visibilitychange', checkBuild);
+      setTimeout(checkBuild, 2500);
+    })();
+  </script>
+</body>
+</html>
