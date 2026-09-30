@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260930-111911" />
+  <meta name="build-version" content="v20260930-115800" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The ID Card Inside Your CPU &middot; Blog &middot; Chris Dillinger</title>
@@ -206,6 +206,35 @@ header nav a:last-of-type::after { right: -4px; }
 .theme-toggle-mark i:last-child { background: #241f17; border-left: 1px solid #ece6d5; }
 .theme-toggle.is-flipped .theme-toggle-mark { transform: rotate(180deg); }
 
+/* ---- Copy-link button: the same quiet folio mark as the theme toggle ---- */
+.copy-link {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative; /* anchor for the invisible 44px tap target below */
+  color: var(--muted);
+}
+/* Same 44px invisible tap target as the theme toggle. */
+.copy-link::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+}
+.copy-link:hover { border-color: var(--acid); color: var(--acid); }
+.copy-link:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+.copy-link svg { display: block; }
+.copy-link .icon-check { display: none; }
+.copy-link.is-copied { border-color: var(--acid); color: var(--acid); }
+.copy-link.is-copied .icon-link { display: none; }
+.copy-link.is-copied .icon-check { display: block; }
+
 /* ---- First-principles dropdown: the Operating Envelope lives with its parent ---- */
 .nav-group { position: relative; display: inline-flex; align-items: center; }
 /* Invisible bridge so the pointer can travel the 8px gap from the group to
@@ -295,6 +324,13 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
     position: absolute;
     top: calc(18px + env(safe-area-inset-top));
     right: var(--pad);
+  }
+  /* The copy-link button sits on the identity row with the theme toggle,
+     one gap to its left, out of the nav flow. */
+  .copy-link {
+    position: absolute;
+    top: calc(18px + env(safe-area-inset-top));
+    right: calc(var(--pad) + 36px);
   }
   /* On small screens the nav wraps, so a group-anchored menu could land
      near the viewport edge and overflow horizontally (even while hidden,
@@ -1413,6 +1449,10 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
         <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
           <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
         </button>
+        <button class="copy-link" type="button" aria-label="Copy page link" title="Copy page link">
+          <svg class="icon-link" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5 7l2-2"/><path d="M6.8 3.2l.9-.9a2.1 2.1 0 013 3l-.9.9"/><path d="M5.2 8.8l-.9.9a2.1 2.1 0 01-3-3l.9-.9"/></svg>
+          <svg class="icon-check" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5l2.5 2.5 4.5-5.5"/></svg>
+        </button>
       </nav>
     </header>
     <script>
@@ -1465,6 +1505,42 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
         mark('a[data-nav="first-principles"]', true);
       } else if (path.indexOf('/portfolio/feed/') === 0) {
         mark('a[data-nav="feed"]', true);
+      }
+      /* Copy-link button: one click copies the page URL. Clipboard API with a
+         textarea fallback for older contexts; the icon flips to a check briefly
+         as the only feedback, matching the header's quiet register. */
+      var copyBtn = header.querySelector('.copy-link');
+      var fallbackCopy = function (text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+      };
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function () {
+          var url = location.href;
+          var done = function () {
+            copyBtn.classList.add('is-copied');
+            copyBtn.setAttribute('aria-label', 'Link copied');
+            setTimeout(function () {
+              copyBtn.classList.remove('is-copied');
+              copyBtn.setAttribute('aria-label', 'Copy page link');
+            }, 1600);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(done, function () {
+              fallbackCopy(url);
+              done();
+            });
+          } else {
+            fallbackCopy(url);
+            done();
+          }
+        });
       }
     })();
     </script>
