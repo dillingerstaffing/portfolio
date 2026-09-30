@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>First Principles &middot; Chris Dillinger</title>
-  <meta name="description" content="The computing stack from switches to tensor cores. Six levels, each assembled only from the level below. Nothing appears twice, nothing is skipped." />
+  <meta name="description" content="The computing stack from switches to tensor cores. Six levels, each assembled only from the level below." />
   <link rel="canonical" href="https://dillingerstaffing.github.io/portfolio/first-principles/" />
   <link rel="icon" href="data:," />
   <meta property="og:type" content="website" />
@@ -268,7 +268,7 @@
       <p class="fp-lede">
         Six levels. Each one is <strong>assembled only from the level below</strong>: gates become
         adders, adders become a processor, processors become an operating system, and so on up to
-        the accelerators that run modern AI. Nothing appears twice, nothing is skipped.
+        the accelerators that run modern AI.
         Links under each level are real work; unfinished levels are marked next, not faked.
       </p>
 
@@ -384,7 +384,7 @@
           <li>A D flip-flop latches one bit on the clock edge; n of them form an n-bit register. Setup and hold times bound how fast the clock may run.</li>
         </ul>
         <div class="fp-evidence">
-          <div class="fp-next"><strong>NEXT</strong>8-bit ALU from gates in a logic simulator, verified exhaustively over all 65,536 input pairs.</div>
+          <div class="fp-next"><strong>NEXT</strong>8-bit ALU from gates in a logic simulator, verified exhaustively: all 65,536 input pairs per operation.</div>
         </div>
       </section>
 
@@ -436,9 +436,9 @@
         </dl>
         <ul class="fp-facts">
           <li>Two's complement: <code>-x = ~x + 1</code>. One representation of zero, and a single adder performs both addition and subtraction.</li>
-          <li>Flags: Z is the NOR of all result bits; C is the carry out of the most significant bit (unsigned overflow); V is carry-into-sign-bit xor carry-out (signed overflow).</li>
+          <li>Flags: Z is the NOR of all result bits; C is the carry out of the most significant bit (unsigned overflow); V is carry-into-sign-bit xor carry-out (signed overflow). RISC-V exposes no condition-code register; software compares with <code>slt</code>/<code>sltu</code> and branches.</li>
           <li>Right shift comes in two forms: logical (<code>srl</code>) zero-fills, arithmetic (<code>sra</code>) sign-extends. The distinction is the representation, not the shifter.</li>
-          <li>IEEE 754 binary32: 1 sign bit, 8 exponent bits with bias 127, 23 mantissa bits. Finite precision is a contract, not a bug.</li>
+          <li>IEEE 754 binary32: 1 sign bit, 8 exponent bits with bias 127, 23 stored fraction bits (24 bits of significand precision on normals). Finite precision is a contract, not a bug.</li>
         </ul>
         <div class="fp-evidence">
           <div class="fp-next"><strong>NEXT</strong>Arrives with the L1 build: the ALU implements two's complement subtraction and raises Z, C, V for real.</div>
@@ -528,11 +528,11 @@
               <text class="d sml" x="150" y="70" text-anchor="middle">trap taken</text>
               <text class="d sml" x="640" y="70" text-anchor="middle">resume</text>
             </g>
-            <text class="d sml" x="16" y="188">the trap frame is the entire register file, frozen mid-instruction and resumed without loss</text>
+            <text class="d sml" x="16" y="188">the trap frame: the general-purpose registers, saved by the entry code and restored before sret</text>
             <defs><marker class="mflow" id="arr5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 9 5 L 0 9"/></marker></defs>
           </svg>
           </div>
-          <figcaption>A system call is a controlled fall down the privilege ladder and a climb back up. The hardware saves nothing by itself; the entry code saves everything.</figcaption>
+          <figcaption>A system call is a controlled fall down the privilege ladder and a climb back up. The hardware records the trap (sepc, scause, privilege level, handler PC); the entry code saves the general-purpose registers.</figcaption>
         </figure>
         <dl class="fp-spec">
           <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>L3 mechanisms: trap delivery, privilege modes, timers, and the MMU.</dd></div>
@@ -540,7 +540,7 @@
         </dl>
         <ul class="fp-facts">
           <li>Privilege is a ladder: machine mode, supervisor mode, user mode. <code>ecall</code> traps upward; <code>sret</code>/<code>mret</code> return downward. Nothing in user mode can touch the ladder itself.</li>
-          <li>A context switch saves the register file and the program counter, swaps the page-table root, and restores the next process. The trap frame is the process, serialized.</li>
+          <li>A context switch saves one thread's registers and resumes the next; switching between processes additionally swaps the page-table root. The trap frame holds a thread's saved state.</li>
           <li>Virtual memory gives each process its own address space: per-process page tables, enforced by hardware on every access, isolate programs that share one machine.</li>
         </ul>
         <div class="fp-evidence">
@@ -567,7 +567,7 @@
               <text class="t lbl" x="76" y="100" text-anchor="middle">one</text>
               <text class="t lbl" x="76" y="116" text-anchor="middle">instruction</text>
               <g id="lanes"></g>
-              <text class="d sml" x="16" y="200">32 threads, one program counter: SIMT. When lanes disagree on a branch, the paths serialize.</text>
+              <text class="d sml" x="16" y="200">32 threads, one program counter: SIMT (32 is NVIDIA's warp width). When lanes disagree on a branch, the paths serialize.</text>
             </g>
           </svg>
           </div>
@@ -579,7 +579,7 @@
         </dl>
         <ul class="fp-facts">
           <li>SIMD applies one operation to many elements. RISC-V's V extension is vector-length agnostic: the same code runs on 128-bit and 512-bit implementations.</li>
-          <li>SIMT (GPU): threads group into warps of 32 that execute in lockstep. Divergent branches serialize the taken and not-taken paths, costing the parallelism you came for.</li>
+          <li>SIMT (GPU): on NVIDIA GPUs, threads group into warps of 32 that execute in lockstep. Divergent branches serialize the taken and not-taken paths, costing the parallelism you came for.</li>
           <li>Memory is the real bottleneck: coalesced global accesses and programmer-managed per-block shared memory exist because bandwidth, not arithmetic, usually limits.</li>
         </ul>
         <div class="fp-evidence">
@@ -602,7 +602,7 @@
             </g>
           </svg>
           </div>
-          <figcaption>The general-purpose control of L3 is gone. What remains is arithmetic with the memory movement designed out.</figcaption>
+          <figcaption>The general-purpose control of L3 is traded away. What remains is arithmetic with the memory movement designed out.</figcaption>
         </figure>
         <dl class="fp-spec">
           <div class="fp-spec-row"><dt>ASSEMBLED FROM</dt><dd>L5 parallel fabric, with control logic traded away for multiply-accumulate density.</dd></div>
