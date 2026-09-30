@@ -1,0 +1,80 @@
+<header class="frame topline">
+  <div class="identity">
+    <span class="signal" aria-hidden="true"></span>
+    <strong>Chris</strong>
+    <span>Low-level systems developer</span>
+  </div>
+  <nav aria-label="Primary navigation">
+    <a data-nav="home" href="{{PREFIX}}#top">Home</a>
+    <a data-nav="blog" href="{{PREFIX}}#blog">Blog</a>
+    <a data-nav="feed" href="/portfolio/feed/">Feed</a>
+    <div class="nav-group" data-navgroup="first-principles">
+      <a data-nav="first-principles" href="/portfolio/first-principles/">First principles</a>
+      <button class="nav-caret" type="button" aria-expanded="false" aria-label="More First principles pages">
+        <svg width="10" height="6" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="nav-menu" role="menu" aria-label="First principles pages">
+        <a data-nav="fp-index" role="menuitem" href="/portfolio/first-principles/">The six levels</a>
+        <a data-nav="operating-envelope" role="menuitem" href="/portfolio/first-principles/operating-envelope/">The Operating Envelope</a>
+      </div>
+    </div>
+    <a data-nav="services" href="{{PREFIX}}#services">Services</a>
+    <a data-nav="contact" href="{{PREFIX}}#contact">Contact</a>
+    <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
+      <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
+    </button>
+  </nav>
+</header>
+<script>
+/* Stamped site-header behavior. Scoped to header.topline; runs once per page.
+   Dropdown: CSS :hover/:focus-within opens the menu on pointer devices; the
+   caret toggles it explicitly for touch and keyboard. Active section: marks
+   the current page's nav link from location.pathname (the homepage scrollspy
+   owns is-active there instead, this is a no-op on "/portfolio/"). */
+(function () {
+  var header = document.querySelector('header.topline');
+  if (!header || header.dataset.navInit) return;
+  header.dataset.navInit = '1';
+
+  var group = header.querySelector('.nav-group');
+  var caret = group ? group.querySelector('.nav-caret') : null;
+  var closeMenu = function () {
+    if (!group) return;
+    group.classList.remove('open');
+    if (caret) caret.setAttribute('aria-expanded', 'false');
+  };
+  if (group && caret) {
+    caret.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (group.classList.contains('open')) {
+        closeMenu();
+      } else {
+        group.classList.add('open');
+        caret.setAttribute('aria-expanded', 'true');
+      }
+    });
+    document.addEventListener('click', function (e) {
+      if (!group.contains(e.target)) closeMenu();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeMenu();
+    });
+  }
+
+  var path = location.pathname.replace(/\/index\.html$/, '/');
+  var mark = function (sel, current) {
+    var el = header.querySelector(sel);
+    if (!el) return;
+    el.classList.add('is-active');
+    if (current) el.setAttribute('aria-current', 'page');
+  };
+  if (path.indexOf('/portfolio/first-principles/operating-envelope/') === 0) {
+    mark('a[data-nav="first-principles"]', false);
+    mark('a[data-nav="operating-envelope"]', true);
+  } else if (path.indexOf('/portfolio/first-principles/') === 0) {
+    mark('a[data-nav="first-principles"]', true);
+  } else if (path.indexOf('/portfolio/feed/') === 0) {
+    mark('a[data-nav="feed"]', true);
+  }
+})();
+</script>

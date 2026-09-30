@@ -768,6 +768,48 @@ def mobile_width_gate(articles):
 SITE_URL = "https://dillingerstaffing.github.io/portfolio"
 SITE_PATH = "/portfolio"
 
+
+def site_header(prefix):
+    """Render the canonical site header partial (_partials/site-header.html).
+
+    The homepage, feed, per-post pages, and First Principles pages all carry
+    this identical header; only the fragment-link prefix differs ("" on the
+    homepage, "/portfolio" everywhere else). The partial's inline script
+    marks the active section from location.pathname and drives the
+    First-principles dropdown that makes the Operating Envelope discoverable.
+    """
+    partial = HERE / "_partials" / "site-header.html"
+    return partial.read_text(encoding="utf-8").replace("{{PREFIX}}", prefix)
+
+
+def verify_emitted_headers():
+    """Build-time drift check: every emitted primary header must match the
+    canonical partial structurally. Fails the build on any drift."""
+    checked = 0
+    targets = [(HERE / "index.html", ""), (HERE / "feed" / "index.html", SITE_PATH)]
+    targets += [(p, SITE_PATH) for p in sorted((HERE / "blog").glob("*/index.html"))]
+    for page, prefix in targets:
+        if not page.exists():
+            continue
+        text = page.read_text(encoding="utf-8")
+        if 'http-equiv="refresh"' in text:
+            continue  # redirect stub, not a real page
+        canonical = re.sub(r"\s+", " ", site_header(prefix)).strip()
+        # The partial is the header element plus its behavior <script>,
+        # which sits directly after </header>.
+        m = re.search(
+            r'(<header class="frame topline">.*?</header>\s*<script>.*?</script>)',
+            text, re.S)
+        if not m or "navInit" not in m.group(1):
+            fail(f"{page.relative_to(HERE)}: no site header found")
+        emitted = re.sub(r"\s+", " ", m.group(0)).strip()
+        if emitted != canonical:
+            fail(f"{page.relative_to(HERE)}: site header drifted from the canonical partial")
+        checked += 1
+    if checked == 0:
+        fail("verify_emitted_headers: no pages checked")
+    print(f"site header verified identical on {checked} emitted pages")
+
 # Dwell-gated read for blog permalink pages: a quick open-and-back records
 # nothing; 15s of visible dwell records one read in the shared profile.
 # Plain string (not an f-string) so the JS braces stay literal.
@@ -1110,6 +1152,9 @@ def per_post_html(article, next_article, block, desc, css, font_links, stamp, wi
 .post-backbar a.backlink:hover { text-decoration: underline; }
 .post-copylink { font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 3px; padding: 6px 12px; cursor: pointer; white-space: nowrap; }
 .post-copylink:hover { color: var(--ink); border-color: var(--ink); }
+@media (max-width: 380px) {
+  .post-backbar { flex-wrap: wrap; row-gap: 8px; padding: 10px 20px; }
+}
 """
     # Per-article offer line (data/articles.json "offer"): a post-specific
     # buyer call-out rendered in the .post-offer block. Falls back to the
@@ -1155,6 +1200,13 @@ def per_post_html(article, next_article, block, desc, css, font_links, stamp, wi
       <p class="copy-status" role="status" aria-live="polite"></p>
     </div>
   </dialog>"""
+    # Canonical site header, indented to sit inside .post-sticky. The
+    # .post-sticky wrapper (with its backbar) keeps sticking as one unit;
+    # the header's own sticky is neutralized by the existing post CSS.
+    post_header = "\n".join(
+        ("    " + line) if line.strip() else line
+        for line in site_header(SITE_PATH).split("\n")
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -1189,23 +1241,7 @@ def per_post_html(article, next_article, block, desc, css, font_links, stamp, wi
 </head>
 <body>
   <div class="post-sticky">
-    <header class="frame topline">
-      <div class="identity">
-        <span class="signal" aria-hidden="true"></span>
-        <strong>Chris</strong>
-        <span>Low-level systems developer</span>
-      </div>
-      <nav aria-label="Primary navigation">
-        <a href="{SITE_PATH}/#top">Home</a>
-        <a href="{SITE_PATH}/#blog">Blog</a>
-        <a href="{SITE_PATH}/feed/">Feed</a>
-        <a href="{SITE_PATH}/#services">Services</a>
-        <a href="{SITE_PATH}/#contact">Contact</a>
-        <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">
-          <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>
-        </button>
-      </nav>
-    </header>
+{post_header}
     <div class="post-backbar">
       <a class="backlink" href="{SITE_PATH}/#blog">&larr; Back to all posts</a>
       <button class="post-copylink" type="button" data-url="{url}">Copy permalink</button>
@@ -1506,25 +1542,9 @@ def build_feed_page(feed, stamp, template):
     if not font_links:
         fail("no google fonts links found for the feed page")
 
-    nav = (
-        '  <header class="frame topline">\n'
-        '    <div class="identity">\n'
-        '      <span class="signal" aria-hidden="true"></span>\n'
-        '      <strong>Chris</strong>\n'
-        '      <span>Low-level systems developer</span>\n'
-        '    </div>\n'
-        '    <nav aria-label="Primary navigation">\n'
-        f'      <a href="{SITE_PATH}/">Home</a>\n'
-        f'      <a href="{SITE_PATH}/#blog">Blog</a>\n'
-        f'      <a href="{SITE_PATH}/feed/" class="is-active" aria-current="page">Feed</a>\n'
-        f'      <a href="{SITE_PATH}/#services">Services</a>\n'
-        f'      <a href="{SITE_PATH}/#contact">Contact</a>\n'
-        '      <button class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">\n'
-        '        <span class="theme-toggle-mark" aria-hidden="true"><i></i><i></i></span>\n'
-        '      </button>\n'
-        '    </nav>\n'
-        '  </header>\n'
-    )
+    # Canonical site header; the partial's inline script marks Feed active
+    # from location.pathname, so no hardcoded is-active is needed here.
+    nav = site_header(SITE_PATH)
 
     rows = []
     for it in feed:
@@ -2028,6 +2048,8 @@ def build(systems_lab, baremetal, xv6):
     print(f"wrote {OUT} ({len(page)} bytes)")
 
     mobile_width_gate(articles)
+
+    verify_emitted_headers()
 
 
 def main(argv=None):

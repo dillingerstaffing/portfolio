@@ -10,6 +10,9 @@ fi
 
 cd "$(dirname "$0")"
 
+echo "==> stamping canonical site header into hand-maintained pages"
+python3 stamp-header.py
+
 echo "==> building index.html from data/*.json"
 python3 build.py
 
@@ -44,7 +47,7 @@ print("no unresolved placeholders")
 EOF
 
 echo "==> committing and pushing"
-git add data/cards.json data/articles.json data/chips.json data/isa-decisions.json data/wigmore.json data/feed.json index.src.html index.html cards-data.js build.py build-portfolio.sh mobile-gate.js BUILD.md drift-gate.py sitemap.xml og-image.png robots.txt llms.txt sw.js blog feed
+git add data/cards.json data/articles.json data/chips.json data/isa-decisions.json data/wigmore.json data/feed.json index.src.html index.html cards-data.js build.py build-portfolio.sh stamp-header.py _partials/site-header.html _partials/site-header.css first-principles/index.html first-principles/operating-envelope/index.html mobile-gate.js BUILD.md drift-gate.py sitemap.xml og-image.png robots.txt llms.txt sw.js blog feed
 git commit -m "$1"
 git push
 

@@ -1,0 +1,171 @@
+/* ---- Stamped site header: single source of truth. Do not hand-edit stamped
+   copies; edit _partials/site-header.css and run stamp-header.py. ---- */
+.frame { max-width: var(--max); margin: 0 auto; padding-inline: var(--pad); }
+.topline {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+}
+header.frame.topline {
+  position: sticky;
+  top: 0;
+  inset-block-start: 0;
+  z-index: 50;
+  width: 100%;
+  background: var(--bg);
+  isolation: isolate;
+  padding-top: env(safe-area-inset-top);
+}
+.identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.signal { width: 8px; height: 8px; background: var(--acid); box-shadow: 0 0 0 4px rgba(184,243,75,.1); }
+.identity strong { font-size: 13px; letter-spacing: .02em; }
+.identity span { color: var(--dim); font-size: 12px; }
+nav { display: flex; align-items: center; gap: clamp(16px, 3vw, 36px); }
+nav a { color: var(--muted); text-decoration: none; font-size: 12px; }
+nav a:hover, nav a:focus-visible, nav a.is-active { color: var(--acid); }
+nav a.is-active { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+
+/* ---- The theme toggle: a quiet folio mark, not a nav link ---- */
+.theme-toggle {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative; /* anchor for the invisible 44px tap target below */
+}
+/* Invisible tap target: the 26px mark is a deliberate design size, but the
+   touch target must be at least 44px. ::after expands the hit area by 9px
+   on each side (26 + 18 = 44) with zero visual change. */
+.theme-toggle::after {
+  content: "";
+  position: absolute;
+  inset: -9px;
+}
+/* Invisible tap targets for the primary nav links. The 12px text links sit
+   far below the 44px touch target, so the ::after expands each link's hit
+   area to 44px tall with zero visual change (anchors get position:relative
+   as the positioning anchor; layout is untouched). */
+header nav a { position: relative; }
+header nav a::after {
+  content: "";
+  position: absolute;
+  top: -13px; bottom: -13px; left: -7px; right: -7px;
+}
+header nav a:last-of-type::after { right: -4px; }
+@media (max-width: 340px) {
+  header nav a:last-of-type::after { bottom: -4px; }
+}
+.theme-toggle:hover { border-color: var(--acid); }
+.theme-toggle:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+.theme-toggle-mark { display: flex; width: 12px; height: 12px; transition: transform .5s cubic-bezier(.3, .7, .2, 1); }
+.theme-toggle-mark i { display: block; width: 6px; height: 12px; }
+.theme-toggle-mark i:first-child { background: #ece6d5; }
+.theme-toggle-mark i:last-child { background: #241f17; border-left: 1px solid #ece6d5; }
+.theme-toggle.is-flipped .theme-toggle-mark { transform: rotate(180deg); }
+
+/* ---- First-principles dropdown: the Operating Envelope lives with its parent ---- */
+.nav-group { position: relative; display: inline-flex; align-items: center; }
+/* Invisible bridge so the pointer can travel the 8px gap from the group to
+   the menu without :hover dropping. */
+.nav-group::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 8px;
+}
+.nav-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 2px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  position: relative; /* anchor for the tap target below */
+}
+/* Tap target: 44px tall, widened right toward the inter-link gap. The left
+   edge stops dead at the caret so it never shadows the parent link's own
+   expanded zone (the parent link's ::after is capped at the caret below). */
+.nav-caret::after {
+  content: "";
+  position: absolute;
+  top: -10px; bottom: -10px; left: 0; right: -7px;
+}
+.nav-caret:hover, .nav-caret:focus-visible { color: var(--acid); }
+.nav-caret:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+.nav-caret svg { display: block; transition: transform .18s ease; }
+.nav-group.open .nav-caret svg { transform: rotate(180deg); }
+/* Keep the parent link's expanded tap zone clear of the caret. */
+header nav a[data-nav="first-principles"]::after { right: -2px; }
+.nav-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 70;
+  min-width: 230px;
+  margin: 0;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity .16s ease, transform .16s ease, visibility .16s;
+}
+.nav-group:hover .nav-menu,
+.nav-group:focus-within .nav-menu,
+.nav-group.open .nav-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+.nav-menu a {
+  display: block;
+  padding: 9px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 2px;
+}
+.nav-menu a:hover, .nav-menu a:focus-visible { color: var(--acid); }
+
+@media (max-width: 620px) {
+  .topline { align-items: flex-start; }
+  header.frame.topline { padding-top: calc(18px + env(safe-area-inset-top)); padding-bottom: 18px; }
+  .identity span { display: none; }
+  nav { gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+  nav a { font-size: 10px; }
+  /* On small screens the nav wraps, so a group-anchored menu could land
+     near the viewport edge and overflow horizontally (even while hidden,
+     since visibility:hidden boxes still contribute to scroll overflow).
+     Instead the menu becomes a full-width panel under the header bar,
+     positioned against the sticky header itself. */
+  .nav-group { position: static; }
+  .nav-group::after { display: none; }
+  .nav-menu {
+    top: 100%;
+    left: var(--pad);
+    right: var(--pad);
+    min-width: 0;
+  }
+  .nav-menu a { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-menu, .nav-caret svg { transition: none; }
+}
