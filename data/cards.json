@@ -11872,5 +11872,61 @@
         "because": "The measured outcome is implementation behavior, not the contract: QEMU 8.2.2 drops the unfenced ASID's cached translation too, so the card characterizes this implementation's translation-cache handling, which an ASID-scoping hart would contradict."
       }
     }
+  },
+  {
+    "id": "src-mhartid-readonly",
+    "title": "The hart ID that refuses writes",
+    "kicker": "RISC-V ISA",
+    "summary": "A bare-metal M-mode RISC-V program tests whether the mhartid CSR can be written. It reads the hart ID, attempts two writes (all-ones, then zero), and reads back after each. On QEMU 8.2.2 both writes raise illegal-instruction traps and the ID reads back unchanged, so the register is read-only as the machine contract requires.",
+    "verificationEnvironment": "QEMU 8.2.2",
+    "repoLabel": "riscv-baremetal-demo",
+    "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mhartid-readonly",
+    "showRepoLink": true,
+    "evidence": {
+      "label": "proof log",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+    },
+    "checks": 7,
+    "failures": 0,
+    "stressItems": 0,
+    "specRows": [
+      [
+        "CORRECTNESS",
+        "7 checks over the read-only invariant: the boot read, the readback after an all-ones write, the readback after a zero write, both illegal-instruction trap records (mcause, mepc, mtval), and the full state restore; the ID reads 0x0 in all three reads and both writes trap with mcause 0x2, 0 mismatches"
+      ],
+      [
+        "BENCHMARK",
+        "boot mhartid 0x0; write 0xffffffffffffffff reads back 0x0 with trap mcause=0x2 mepc=0x80000316; write 0x0 reads back 0x0 with trap mcause=0x2 mepc=0x80000352; both trap words mtval=0xf1479073; trap count 2"
+      ],
+      [
+        "CHECKSUM",
+        "0x29c5e4e7cf447a7d, identical across 3 runs"
+      ]
+    ],
+    "terminalLabel": "Verified RISC-V demo output",
+    "terminalName": "qemu / riscv64 / mhartid-readonly.elf",
+    "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mhartid-readonly.elf\n\nboot: mhartid=0x0\nwrite: value=0xffffffffffffffff readback=0x0\nwrite: value=0x0 readback=0x0\ntraps: count=2\ntrap[0]: mcause=0x2 mepc=0x80000316 mtval=0xf1479073\ntrap[1]: mcause=0x2 mepc=0x80000352 mtval=0xf1479073\nsummary: checks=7 mismatches=0\nRESULT: PASS",
+    "layers": {
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The verified claim is a CSR permission contract stated in RISC-V terms (mhartid is read-only, writes trap as illegal instructions) with no ISA-independent restatement. A portable C program has no counterpart for an illegal-instruction trap on a CSR write, so there is no portable computation whose output could be compared across ISAs."
+      },
+      "FIRMWARE": {
+        "applies": true,
+        "because": "mhartid is the register M-mode firmware reads to identify the current hart, and the card installs a direct-mode M-mode trap handler that records each illegal-instruction trap's mcause, mepc, and mtval and resumes past the faulting instruction, which is the trap-dispatch path real firmware owns. The verified read-only contract is the one firmware relies on when it pins work to a hart."
+      },
+      "ISA": {
+        "applies": true,
+        "because": "The privileged ISA defines mhartid as a read-only CSR holding the hart's integer ID, and requires writes to read-only CSRs to raise illegal instructions. The card executes real csrw attempts against the register on QEMU 8.2.2 and measures the hart honoring both rules: the boot read is 0x0, both writes trap with mcause 0x2, and all three readbacks are 0x0, so the verified claim depends directly on the machine's CSR contract."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The run never leaves M-mode and involves no supervisor software: no S-mode trap entry, no satp, no supervisor call. The verified claim is a machine-register permission property (write attempts trap as illegal instructions, the ID reads back unchanged), and the proof answers it entirely from M-mode, so a kernel subsystem plays no role in what was verified."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "The run records only CSR readbacks and trap records, never timing or implementation internals, so the outcome is settled by the machine contract (mhartid is read-only, writes to read-only CSRs trap) rather than by how any implementation builds its trap path; nothing measured distinguishes one hart implementation from another."
+      }
+    }
   }
 ]

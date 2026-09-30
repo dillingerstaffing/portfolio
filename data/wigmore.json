@@ -87594,6 +87594,402 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mhartid-readonly",
+      "slot": "ISA",
+      "probandum": "The privileged ISA defines mhartid as a read-only CSR holding the hart's integer ID, and requires writes to read-only CSRs to raise illegal instructions. The card executes real csrw attempts against the register on QEMU 8.2.2 and measures the hart honoring both rules: the boot read is 0x0, both writes trap with mcause 0x2, and all three readbacks are 0x0, so the verified claim depends directly on the machine's CSR contract.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The privileged ISA defines mhartid as a read-only CSR holding the hart's integer ID, and requires writes to read-only CSRs to raise illegal instructions. The card executes real csrw attempts against the register on QEMU 8.2.2 and measures the hart honoring both rules: the boot read is 0x0, both writes trap with mcause 0x2, and all three readbacks are 0x0, so the verified claim depends directly on the machine's CSR contract."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The program reads mhartid at boot and gets 0x0, attempts csrw all-ones and reads back 0x0, attempts csrw zero and reads back 0x0: the readback triple never changes.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "Both write attempts trap with mcause=0x2 (illegal instruction): trap[0] mepc=0x80000316 mtval=0xf1479073, trap[1] mepc=0x80000352 mtval=0xf1479073, the response the machine contract prescribes for a write to a read-only CSR.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "evidence",
+          "text": "The privileged specification defines mhartid as a read-only register holding the hart's integer ID, and requires that writes to read-only CSRs raise an illegal instruction exception.",
+          "source": {
+            "cite": "RISC-V ISA manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 5,
+          "kind": "penultimate",
+          "text": "The measured behavior (unchanged readbacks, illegal-instruction traps on both writes) is exactly what the machine contract prescribes, so the verdict tests the contract itself."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "A claim that tests whether a CSR obeys its machine-defined access permissions depends on the machine contract, because the permissions are part of that contract."
+        },
+        {
+          "n": 7,
+          "kind": "generalization",
+          "text": "The ISA decision test needs instruction or register correspondence in the verified claim; a claim stated over CSR access permissions has it, since the permissions come from the machine contract."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3,
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            5
+          ],
+          "note": "The readbacks, the trap records, and the specification's permission rule together show the hart obeying the contract; the warrant is that permission claims are contract claims.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            5
+          ],
+          "via": [
+            7
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate places the verdict on the machine contract, and the decision test lights the ISA slot exactly when the claim carries register correspondence.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mhartid-readonly",
+      "slot": "MICROARCH",
+      "probandum": "The run records only CSR readbacks and trap records, never timing or implementation internals, so the outcome is settled by the machine contract (mhartid is read-only, writes to read-only CSRs trap) rather than by how any implementation builds its trap path; nothing measured distinguishes one hart implementation from another.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The run records only CSR readbacks and trap records, never timing or implementation internals, so the outcome is settled by the machine contract (mhartid is read-only, writes to read-only CSRs trap) rather than by how any implementation builds its trap path; nothing measured distinguishes one hart implementation from another."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The measured values are the readback triple 0x0/0x0/0x0 and the two trap records (mcause 0x2, mepc 0x80000316 and 0x80000352, mtval 0xf1479073); no cycle counts, no pipeline observations, and no cache observations were taken.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The privileged specification requires the trap-on-write response for a read-only CSR on every implementation, so the observed outcome is the contract, not an implementation choice.",
+          "source": {
+            "cite": "RISC-V ISA manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "Every measured value is explained by the machine contract alone, with no implementation-specific timing or structure probed."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "When every measured value is explained by the machine contract alone, the verdict characterizes the contract, not the implementation."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The MICROARCH decision test needs a measurement of implementation behavior; a verdict fully explained by the contract has none."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The measured values and the contract's universality together show the verdict is contract-level, not implementation-level.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test dims the slot: no implementation behavior was measured.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mhartid-readonly",
+      "slot": "FIRMWARE",
+      "probandum": "mhartid is the register M-mode firmware reads to identify the current hart, and the card installs a direct-mode M-mode trap handler that records each illegal-instruction trap's mcause, mepc, and mtval and resumes past the faulting instruction, which is the trap-dispatch path real firmware owns. The verified read-only contract is the one firmware relies on when it pins work to a hart.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "mhartid is the register M-mode firmware reads to identify the current hart, and the card installs a direct-mode M-mode trap handler that records each illegal-instruction trap's mcause, mepc, and mtval and resumes past the faulting instruction, which is the trap-dispatch path real firmware owns. The verified read-only contract is the one firmware relies on when it pins work to a hart."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module installs a direct-mode mtvec handler in M-mode that records mcause, mepc, and mtval for each trap, advances mepc past the faulting instruction with length-aware decoding (2 or 4 bytes), and resumes with mret.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "mhartid holds the integer ID of the hardware thread running the code, the identifier firmware reads to distinguish harts at boot.",
+          "source": {
+            "cite": "RISC-V ISA manual (pinned release)",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The card installs and exercises the M-mode trap-dispatch path that real firmware owns, against the register firmware uses to identify harts."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "When a proof installs and exercises the M-mode trap-dispatch path that real firmware owns, the verified claim depends on firmware behavior."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The FIRMWARE decision test needs boot-time machine-mode configuration or handling in the verified claim; an installed M-mode trap handler is exactly that."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The installed handler and mhartid's role as the hart identifier together place the card on firmware's own dispatch path.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test lights the slot: M-mode trap handling is in the claim.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mhartid-readonly",
+      "slot": "KERNEL",
+      "probandum": "The run never leaves M-mode and involves no supervisor software: no S-mode trap entry, no satp, no supervisor call. The verified claim is a machine-register permission property (write attempts trap as illegal instructions, the ID reads back unchanged), and the proof answers it entirely from M-mode, so a kernel subsystem plays no role in what was verified.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The run never leaves M-mode and involves no supervisor software: no S-mode trap entry, no satp, no supervisor call. The verified claim is a machine-register permission property (write attempts trap as illegal instructions, the ID reads back unchanged), and the proof answers it entirely from M-mode, so a kernel subsystem plays no role in what was verified."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The module runs in M-mode on a single hart; the only traps taken are the two illegal-instruction traps from the csrw attempts, both handled by the module's own M-mode handler.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The proof's 7 checks cover the boot read, both readbacks, both trap records, and the state restore; every check executes in M-mode with no supervisor entry.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "No supervisor software runs and no kernel service is called, so the verdict is a machine-mode property."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "A claim answered entirely from M-mode with no supervisor entry cannot depend on a kernel subsystem, because no kernel code runs."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The KERNEL decision test needs a kernel subsystem in the verified claim; a proof with no supervisor entry has none."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The M-mode-only execution and the M-mode-only checks together rule out any kernel involvement.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test dims the slot: the claim has no kernel subsystem.",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "kind": "card",
+      "item": "src-mhartid-readonly",
+      "slot": "ALGORITHM",
+      "probandum": "The verified claim is a CSR permission contract stated in RISC-V terms (mhartid is read-only, writes trap as illegal instructions) with no ISA-independent restatement. A portable C program has no counterpart for an illegal-instruction trap on a CSR write, so there is no portable computation whose output could be compared across ISAs.",
+      "keyList": [
+        {
+          "n": 1,
+          "kind": "probandum",
+          "text": "The verified claim is a CSR permission contract stated in RISC-V terms (mhartid is read-only, writes trap as illegal instructions) with no ISA-independent restatement. A portable C program has no counterpart for an illegal-instruction trap on a CSR write, so there is no portable computation whose output could be compared across ISAs."
+        },
+        {
+          "n": 2,
+          "kind": "evidence",
+          "text": "The invariant is that a write to mhartid must trap and the readback must not change: a property of the machine's register permissions, not of a computed value.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 3,
+          "kind": "evidence",
+          "text": "The card executes real csrw instructions against the real register and records the hart's trap response; no portable C procedure performs the same operation.",
+          "source": {
+            "cite": "src/mhartid-readonly/PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-readonly/PROOF.md"
+          }
+        },
+        {
+          "n": 4,
+          "kind": "penultimate",
+          "text": "The claim has no ISA-independent restatement and no portable counterpart whose output could be compared."
+        },
+        {
+          "n": 5,
+          "kind": "generalization",
+          "text": "When a proof verifies a machine permission contract with no ISA-independent restatement, there is no portable computation whose output could be compared."
+        },
+        {
+          "n": 6,
+          "kind": "generalization",
+          "text": "The ALGORITHM decision test needs a pure computational mechanism in the verified claim; a permission contract is not one."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The permission nature of the claim and the absence of a portable counterpart together rule out a portable computation.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            6
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test dims the slot: the claim is a permission contract, not a computation.",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
