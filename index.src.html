@@ -1721,6 +1721,30 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Four Fields Inside One Address</h3>
+          <!-- LAYER-STRIP:the-four-fields-inside-one-address -->
+          <p class="research-date"><time datetime="2026-10-01">2026-10-01 11:24 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A virtual address looks like one number. Under Sv39, the 39-bit virtual-address format in the RISC-V privileged architecture, it is four fields sharing one value: bits 38 to 30 are VPN[2], bits 29 to 21 are VPN[1], bits 20 to 12 are VPN[0], and bits 11 to 0 are the offset inside the page <a class="cite" href="#src-the-four-fields-inside-one-address-1">[1]</a>. Each VPN is an index into one page table, and a page walk reads them in order: VPN[2] picks an entry in the root table, that entry names the next table, VPN[1] picks an entry there, VPN[0] picks the leaf entry that holds the physical page number, and the offset picks the byte inside that page.</p>
+          <p>The 9-bit width is the page size wearing a disguise. A page table is one 4 KiB page and each entry is eight bytes, so one table holds 4096 / 8 = 512 entries, and 512 is 2 to the 9th <a class="cite" href="#src-the-four-fields-inside-one-address-1">[1]</a>. Nine bits name exactly one entry in one table, with no code left over and no entry unreachable. Take the address 0x40403ABC: VPN[2] is 1, VPN[1] is 2, VPN[0] is 3, and the offset is 0xABC. Three small numbers pick three entries in three tables, and the fourth field rides through untouched to land on one byte inside the page.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-four-fields-inside-one-address/the-four-fields-inside-one-address.jpg" alt="A wooden library card catalog with one drawer open, a hand holding an index card above the rows of cards inside" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">A card catalog is an index you can touch: the label on the drawer front picks the drawer, and the card's place inside picks the entry. An Sv39 address picks one page table per field the same way, then one byte inside the page.<br><span style="opacity:.7">Photo: Shyamal L., CC BY 4.0, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>The extraction, in four lines:</p>
+<pre><code>f.page_offset = (uint16_t)(va &amp; 0xFFFULL);
+f.vpn0 = (uint16_t)((va &gt;&gt; 12) &amp; 0x1FFULL);
+f.vpn1 = (uint16_t)((va &gt;&gt; 21) &amp; 0x1FFULL);
+f.vpn2 = (uint16_t)((va &gt;&gt; 30) &amp; 0x1FFULL);
+</code></pre>
+          <p>The extraction is four masks: <code>page_offset</code> is <code>va &amp; 0xFFF</code>, VPN[0] is <code>(va &gt;&gt; 12) &amp; 0x1FF</code>, VPN[1] is the same shift at 21, and VPN[2] at 30 <a class="cite" href="#src-the-four-fields-inside-one-address-3">[3]</a>. The four masks, 0xFFF, 0x1FF &lt;&lt; 12, 0x1FF &lt;&lt; 21, and 0x1FF &lt;&lt; 30, touch no bit twice and skip no bit from 38 down to 0, so the split loses nothing: shift the fields back to their positions, OR them together, and the original address comes back. <code>recombine(extract(va)) == va</code> is not a hope; it is what disjoint and complete means.</p>
+          <p>One contract hides inside that simplicity. A canonical 64-bit Sv39 address sign-extends bit 38 through bits 63 to 39 <a class="cite" href="#src-the-four-fields-inside-one-address-1">[1]</a>, while a raw 39-bit field leaves those high bits clear. The extractor reads only bits 38 to 0, so both forms give identical fields, and recombine returns the raw 39-bit field rather than inventing an extension it was never given <a class="cite" href="#src-the-four-fields-inside-one-address-3">[3]</a>. Feed it either form; the answer is the same four fields.</p>
+          <p>The lab proves the split against an oracle that shares no code with it. The oracle builds each field one bit at a time, never shifting a whole field, and the test demands field equality plus <code>recombine(extract(va)) == va</code> on every case: 117 directed edges around powers of two, a canonical-address row with the sign extension applied, an exhaustive sweep of every 24-bit value, and 10,000,000 fixed-seed splitmix64 values masked to 39 bits <a class="cite" href="#src-the-four-fields-inside-one-address-2">[2]</a>. That is 26,777,374 checks with 0 mismatches, and the same FNV-1a checksum, 262f6db6f6303175, at -O0, at -O2, and under the address and undefined-behavior sanitizers <a class="cite" href="#src-the-four-fields-inside-one-address-2">[2]</a>. The bench reads 3.460 ns per value at -O2, with the caveat printed in the proof: the number covers the array load and the running XOR accumulate, not the function body alone <a class="cite" href="#src-the-four-fields-inside-one-address-2">[2]</a>.</p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The One Call That Closes a Whole Range</h3>
           <!-- LAYER-STRIP:the-one-call-that-closes-a-whole-range -->
           <p class="research-date"><time datetime="2026-09-30">2026-09-30 11:12 EDT</time></p>

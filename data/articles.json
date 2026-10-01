@@ -1,5 +1,72 @@
 [
   {
+    "title": "The Four Fields Inside One Address",
+    "slug": "the-four-fields-inside-one-address",
+    "date": "2026-10-01",
+    "description": "An Sv39 virtual address looks like one number, but it carries four fields: three 9-bit page numbers stacked over a 12-bit offset. Each width falls out of the page size, the four masks never overlap, and putting the fields back restores the address exactly.",
+    "paragraphs": [
+      "A virtual address looks like one number. Under Sv39, the 39-bit virtual-address format in the RISC-V privileged architecture, it is four fields sharing one value: bits 38 to 30 are VPN[2], bits 29 to 21 are VPN[1], bits 20 to 12 are VPN[0], and bits 11 to 0 are the offset inside the page. Each VPN is an index into one page table, and a page walk reads them in order: VPN[2] picks an entry in the root table, that entry names the next table, VPN[1] picks an entry there, VPN[0] picks the leaf entry that holds the physical page number, and the offset picks the byte inside that page.",
+      "The 9-bit width is the page size wearing a disguise. A page table is one 4 KiB page and each entry is eight bytes, so one table holds 4096 / 8 = 512 entries, and 512 is 2 to the 9th. Nine bits name exactly one entry in one table, with no code left over and no entry unreachable. Take the address 0x40403ABC: VPN[2] is 1, VPN[1] is 2, VPN[0] is 3, and the offset is 0xABC. Three small numbers pick three entries in three tables, and the fourth field rides through untouched to land on one byte inside the page.",
+      "The extraction is four masks: page_offset is va & 0xFFF, VPN[0] is (va >> 12) & 0x1FF, VPN[1] is the same shift at 21, and VPN[2] at 30. The four masks, 0xFFF, 0x1FF << 12, 0x1FF << 21, and 0x1FF << 30, touch no bit twice and skip no bit from 38 down to 0, so the split loses nothing: shift the fields back to their positions, OR them together, and the original address comes back. recombine(extract(va)) == va is not a hope; it is what disjoint and complete means.",
+      "One contract hides inside that simplicity. A canonical 64-bit Sv39 address sign-extends bit 38 through bits 63 to 39, while a raw 39-bit field leaves those high bits clear. The extractor reads only bits 38 to 0, so both forms give identical fields, and recombine returns the raw 39-bit field rather than inventing an extension it was never given. Feed it either form; the answer is the same four fields.",
+      "The lab proves the split against an oracle that shares no code with it. The oracle builds each field one bit at a time, never shifting a whole field, and the test demands field equality plus recombine(extract(va)) == va on every case: 117 directed edges around powers of two, a canonical-address row with the sign extension applied, an exhaustive sweep of every 24-bit value, and 10,000,000 fixed-seed splitmix64 values masked to 39 bits. That is 26,777,374 checks with 0 mismatches, and the same FNV-1a checksum, 262f6db6f6303175, at -O0, at -O2, and under the address and undefined-behavior sanitizers. The bench reads 3.460 ns per value at -O2, with the caveat printed in the proof: the number covers the array load and the running XOR accumulate, not the function body alone."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/132-sv39-vpn-extract",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "Sv39 is the privileged architecture's own address format: the manual fixes bits 38:30, 29:21, and 20:12 as the three VPN fields over a 12-bit offset, and the canonical-form rule sign-extends bit 38 into the high bits. The article's central claim is that layout and its extraction, read straight off the specification."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements translation: no TLB, cache, or pipeline behavior is asserted or measured. The single timing figure is a host-side loop measurement whose own proof note limits what it covers, so it cannot carry a microarchitecture verdict."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No boot code, machine-mode service, or privilege handoff takes part: the fields are read from a value already in hand, and every step of the argument is the format contract itself, before any firmware or privilege transition enters the picture."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The argument stops before the walk: it never enters a page-table walk, a fault path, or any kernel's use of these fields. Kernels consume the four fields, but the claim proven here is the partition itself, which holds before any kernel code runs."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The extraction is a small procedure with a stated invariant: four disjoint masks cover bits 38:0 with no overlap and no gaps, so recombine(extract(va)) restores the input exactly. A per-bit oracle that builds each field without shifting a whole field proves the split on 26,777,374 cases with 0 mismatches."
+      }
+    },
+    "evidence": {
+      "label": "systems-lab lab/132-sv39-vpn-extract PROOF.md: per-bit oracle, 26,777,374 checks, 0 mismatches, one checksum across -O0, -O2, and sanitizer builds",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+    },
+    "image": "blog/the-four-fields-inside-one-address/the-four-fields-inside-one-address.jpg",
+    "image_alt": "A wooden library card catalog with one drawer open, a hand holding an index card above the rows of cards inside",
+    "image_caption": "A card catalog is an index you can touch: the label on the drawer front picks the drawer, and the card's place inside picks the entry. An Sv39 address picks one page table per field the same way, then one byte inside the page.",
+    "image_source": "https://commons.wikimedia.org/wiki/File:Card_index_library.jpg",
+    "image_license": "CC BY 4.0",
+    "image_attribution": "Shyamal L., via Wikimedia Commons",
+    "social_image": "blog/the-four-fields-inside-one-address/the-four-fields-inside-one-address-social.jpg",
+    "sources": [
+      {
+        "title": "The RISC-V Instruction Set Manual, Volume II: Privileged Architecture (Sv39 paging)",
+        "publisher": "RISC-V International",
+        "note": "The Sv39 layout the fields are read from (Figure 4.19): VPN[2], VPN[1], VPN[0] over a 12-bit offset, and the rule that bit 38 sign-extends into bits 63:39 in a canonical address.",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-privileged.pdf"
+      },
+      {
+        "title": "PROOF.md, lab/132-sv39-vpn-extract",
+        "publisher": "dillingerstaffing/systems-lab",
+        "note": "The verification record: the per-bit oracle, the directed edges, the canonical row, the exhaustive 24-bit sweep, the fixed-seed values, the checksum held across three builds, and the bench caveat.",
+        "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/132-sv39-vpn-extract/PROOF.md"
+      },
+      {
+        "title": "lab/132-sv39-vpn-extract: vpn_extract.h and vpn_extract.c",
+        "publisher": "Chris Dillinger, systems-lab",
+        "note": "The code under discussion: the four masks, the stated contract that extraction reads only bits 38:0, and the recombine that returns the raw 39-bit field.",
+        "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/132-sv39-vpn-extract"
+      }
+    ]
+  },
+  {
     "title": "The One Call That Closes a Whole Range",
     "slug": "the-one-call-that-closes-a-whole-range",
     "date": "2026-09-30",
