@@ -88997,6 +88997,391 @@
           "strength": "strong"
         }
       ]
-    }
+    },
+  {
+    "kind": "card",
+    "item": "src-mhartid-u-mode-read",
+    "slot": "ISA",
+    "probandum": "The privileged ISA reserves the mhartid CSR for M-mode, so a U-mode read must raise an illegal instruction instead of returning the hart ID. The card executes that read on QEMU 8.2.2 and measures the contract directly: the M-mode baseline reads 0x0, the U-mode read traps once with scause 0x2 and sepc at the read site, and the destination register is never written, so the verified claim depends on the machine CSR privilege contract.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The privileged ISA reserves the mhartid CSR for M-mode, so a U-mode read must raise an illegal instruction instead of returning the hart ID. The card executes that read on QEMU 8.2.2 and measures the contract directly: the M-mode baseline reads 0x0, the U-mode read traps once with scause 0x2 and sepc at the read site, and the destination register is never written, so the verified claim depends on the machine CSR privilege contract."
+      },
+      {
+        "text": "In M-mode the program reads mhartid twice and gets 0x0 both times, then drops to U-mode and reads the same register: the U-mode read traps once, the destination register keeps its sentinel value, and the ID is never delivered.",
+        "source": {
+          "cite": "src/mhartid-u-mode-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-u-mode-read/PROOF.md"
+        },
+        "n": 2,
+        "kind": "evidence"
+      },
+      {
+        "text": "The trap record shows scause 0x2 (illegal instruction) with sepc 0x8000033c at the labeled read site and stval 0xf1402973, the faulting csrr mhartid instruction word, while a control read of sstatus in the same U-mode context also traps with scause 0x2 and stval 0x10002973, the faulting csrr sstatus word, which charges the gate to the privilege level rather than the register.",
+        "source": {
+          "cite": "src/mhartid-u-mode-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-u-mode-read/PROOF.md"
+        },
+        "n": 3,
+        "kind": "evidence"
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The measured behavior (an illegal-instruction trap at each read site, no value delivered either time, the destination register untouched) is exactly the response the CSR privilege contract prescribes, so the verdict tests the contract itself."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim that tests whether a CSR enforces its privilege assignment depends on the machine contract, because the privilege assignment is part of that contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ISA decision test lights the ISA slot when the verified claim carries instruction or register correspondence; a claim stated over CSR privilege has that correspondence."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "note": "The baseline reads, the trap record, the control read, and the privilege-level charging together show the hart enforcing the contract; the warrant is that privilege claims are contract claims.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate places the verdict on the machine contract, and the decision test lights the ISA slot exactly when the claim carries register correspondence.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-mhartid-u-mode-read",
+    "slot": "MICROARCH",
+    "probandum": "The run records only CSR values and trap records (cause, fault address, saved program counter), never cycle counts, pipeline behavior, or cache behavior. The outcome follows from the CSR privilege rule on any implementation, so nothing measured distinguishes one hart implementation from another.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The run records only CSR values and trap records (cause, fault address, saved program counter), never cycle counts, pipeline behavior, or cache behavior. The outcome follows from the CSR privilege rule on any implementation, so nothing measured distinguishes one hart implementation from another."
+      },
+      {
+        "text": "The measured values are the M-mode readbacks 0x0 and 0x0, the two trap records (scause 0x2, sepc 0x8000033c, stval 0xf1402973 for the mhartid read; scause 0x2, sepc 0x800004b0, stval 0x10002973 for the sstatus control), the sentinel destinations, and the M-mode trap count 0; no cycle counts, pipeline observations, or cache observations were taken.",
+        "source": {
+          "cite": "src/mhartid-u-mode-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-u-mode-read/PROOF.md"
+        },
+        "n": 2,
+        "kind": "evidence"
+      },
+      {
+        "text": "The privileged specification prescribes the illegal-instruction response for a lower-privilege read of an M-mode CSR on every implementation, so the observed outcome is the contract, not an implementation choice.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "n": 3,
+        "kind": "evidence"
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Every measured value is explained by the CSR privilege rule alone, with no implementation-specific timing or structure probed."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "When every measured value is explained by the machine contract alone, the verdict characterizes the contract, not the implementation."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The MICROARCH decision test needs a measurement of implementation behavior; a verdict fully explained by the contract has none."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "note": "The measured values and the contract universality together show the verdict is contract-level, not implementation-level.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test dims the slot: no implementation behavior was measured.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-mhartid-u-mode-read",
+    "slot": "FIRMWARE",
+    "probandum": "The run depends on M-mode boot configuration that firmware owns: medeleg bit 2 routes the illegal-instruction trap to S-mode, one PMP entry opens memory to the U-mode payload, and mhartid is the register firmware itself reads to learn which hart it runs on. Without that machine-mode setup the U-mode measurement could not be taken or recorded.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The run depends on M-mode boot configuration that firmware owns: medeleg bit 2 routes the illegal-instruction trap to S-mode, one PMP entry opens memory to the U-mode payload, and mhartid is the register firmware itself reads to learn which hart it runs on. Without that machine-mode setup the U-mode measurement could not be taken or recorded."
+      },
+      {
+        "text": "The setup record shows medeleg readback 0x4 (illegal-instruction delegation to S-mode set) and the whole-address-space PMP entry installed before the drop to U-mode; both traps of the run are delivered to S-mode and the M-mode trap count stays 0.",
+        "source": {
+          "cite": "src/mhartid-u-mode-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-u-mode-read/PROOF.md"
+        },
+        "n": 2,
+        "kind": "evidence"
+      },
+      {
+        "text": "mhartid is the register M-mode software reads to identify the current hart, and trap delegation plus PMP configuration are machine-mode registers that only M-mode can program.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "n": 3,
+        "kind": "evidence"
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The measurement exists only because M-mode firmware-style configuration (delegation, memory protection, the privilege drop itself) was programmed first, and the register under test is the one that configuration layer reads at boot."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A proof that cannot be taken without boot-time machine-mode configuration depends on the firmware layer that owns that configuration."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The FIRMWARE decision test lights the slot when the card depends on boot-time machine-mode config such as trap delegation or PMP; this run programs both before measuring."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "note": "The delegation and PMP readbacks plus the machine-mode ownership of those registers show the setup is firmware work the measurement stands on.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate names the dependence, and the decision test lights FIRMWARE for exactly this kind of boot-time machine-mode configuration.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-mhartid-u-mode-read",
+    "slot": "KERNEL",
+    "probandum": "No kernel runs in the proof: the U-mode code is a bare test payload with no scheduler, no page tables, and no system calls. The verified property is the hardware gate a kernel runs under, and it holds or fails before any kernel subsystem could act.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "No kernel runs in the proof: the U-mode code is a bare test payload with no scheduler, no page tables, and no system calls. The verified property is the hardware gate a kernel runs under, and it holds or fails before any kernel subsystem could act."
+      },
+      {
+        "text": "The run's U-mode payload is a single test routine in the proof program: it executes two CSR reads, the S-mode handler records each trap and resumes, and M-mode writes the test-device finisher; no scheduler runs, no page tables are installed (satp is never written), and no system call interface is exercised.",
+        "source": {
+          "cite": "src/mhartid-u-mode-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-u-mode-read/PROOF.md"
+        },
+        "n": 2,
+        "kind": "evidence"
+      },
+      {
+        "text": "The privileged specification places the mhartid privilege rule in the hardware contract below supervisor software; a supervisor kernel receives this trap behavior, it does not create it.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "n": 3,
+        "kind": "evidence"
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "Nothing the proof verifies is implemented, configured, or mediated by supervisor kernel code; the gate operates before kernel software could participate."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "Running test code at a lower privilege is not the same as depending on a kernel subsystem; the KERNEL slot lights only when a kernel subsystem participates in the verified claim."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The KERNEL decision test needs a kernel subsystem implemented or involved in the verification; a bare payload exercising a hardware gate has none."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "note": "The payload inventory and the contract placement together show the verified property sits beneath kernel software rather than inside it.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test dims the slot: no kernel subsystem takes part in what was verified.",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "kind": "card",
+    "item": "src-mhartid-u-mode-read",
+    "slot": "ALGORITHM",
+    "probandum": "The verified claim is a privilege rule for one named CSR, stated only in RISC-V terms. There is no computation whose result could be restated independently of the ISA and compared, so no portable algorithm is under test.",
+    "keyList": [
+      {
+        "n": 1,
+        "kind": "probandum",
+        "text": "The verified claim is a privilege rule for one named CSR, stated only in RISC-V terms. There is no computation whose result could be restated independently of the ISA and compared, so no portable algorithm is under test."
+      },
+      {
+        "text": "The proof's outputs are trap counts, cause codes, two fault addresses, and register readbacks from two named CSRs; there is no computed result that a program on another ISA could reproduce for comparison.",
+        "source": {
+          "cite": "src/mhartid-u-mode-read/PROOF.md",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-u-mode-read/PROOF.md"
+        },
+        "n": 2,
+        "kind": "evidence"
+      },
+      {
+        "text": "The privileged specification defines the behavior entirely as a property of the named mhartid CSR and its privilege assignment, with no ISA-independent formulation.",
+        "source": {
+          "cite": "RISC-V ISA manual (pinned release)",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "n": 3,
+        "kind": "evidence"
+      },
+      {
+        "n": 4,
+        "kind": "penultimate",
+        "text": "The claim cannot be restated without naming the RISC-V CSR and its privilege rule, so there is no portable mechanism to carry to another architecture."
+      },
+      {
+        "n": 5,
+        "kind": "generalization",
+        "text": "A claim with no ISA-independent restatement has no algorithmic content to verify separately from the machine contract."
+      },
+      {
+        "n": 6,
+        "kind": "generalization",
+        "text": "The ALGORITHM decision test lights the slot only when the core verified claim is a pure computational mechanism portable across ISAs; a CSR privilege rule is not one."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "note": "The output inventory and the specification framing together show the claim lives only in RISC-V terms.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test dims the slot: no portable computation is under test.",
+        "strength": "strong"
+      }
+    ]
+  }
   ]
 }

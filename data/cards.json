@@ -11984,5 +11984,61 @@
         "because": "The run records only CSR values and trap records (cause, fault address, saved program counter), never cycle counts, pipeline behavior, or cache behavior. The outcome follows from the CSR privilege rule on any implementation, so nothing measured distinguishes one hart implementation from another."
       }
     }
+  },
+  {
+  "id": "src-mhartid-u-mode-read",
+  "title": "The hart ID that U-mode cannot read",
+  "kicker": "RISC-V ISA",
+  "summary": "A bare-metal RISC-V program drops from M-mode to U-mode and reads the hart ID register from U-mode. The register is reserved for M-mode, so the read raises an illegal-instruction trap and the ID is never delivered. A control read of a supervisor register in the same mode also traps, which charges the gate to the privilege level rather than the register.",
+  "verificationEnvironment": "QEMU 8.2.2",
+  "repoLabel": "riscv-baremetal-demo",
+  "repoUrl": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mhartid-u-mode-read",
+  "showRepoLink": true,
+  "evidence": {
+    "label": "proof log",
+    "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mhartid-u-mode-read/PROOF.md"
+  },
+  "checks": 14,
+  "failures": 0,
+  "stressItems": 0,
+  "specRows": [
+    [
+      "CORRECTNESS",
+      "14 checks against the privilege-gate expectations: two M-mode baseline reads, the delegation readback, the U-mode trap record (trap count, cause, fault and resume addresses, untouched destination), the supervisor-register control read, and the M-mode trap count, 0 mismatches"
+    ],
+    [
+      "BENCHMARK",
+      "boot mhartid 0x0 on both reads; medeleg readback 0x4; U-mode read traps with scause=0x2, sepc=0x8000033c, stval=0xf1402973, destination sentinel intact; control sstatus read also traps with scause=0x2, stval=0x10002973, sentinel intact"
+    ],
+    [
+      "CHECKSUM",
+      "0x4504320e66bc7b23, identical across 3 runs"
+    ]
+  ],
+  "terminalLabel": "Verified RISC-V demo output",
+  "terminalName": "qemu / riscv64 / mhartid-u-mode-read.elf",
+  "terminalOutput": "<span class=\"prompt\">$</span> qemu-system-riscv64 -machine virt -nographic -bios none -kernel mhartid-u-mode-read.elf\n\nboot: mhartid=0x0 second=0x0\nmedeleg readback=0x4\nphase A: csrr mhartid in U-mode: scause=0x2 stval=0xf1402973 sepc=0x8000033c traps=1, destination sentinel intact\nphase B: csrr sstatus in U-mode: scause=0x2 stval=0x10002973 sepc=0x800004b0 traps=2, destination sentinel intact\nsummary: checks=14 mismatches=0\nRESULT: PASS",
+  "layers": {
+    "ALGORITHM": {
+      "applies": false,
+      "because": "The verified claim is a privilege rule for one named CSR, stated only in RISC-V terms. There is no computation whose result could be restated independently of the ISA and compared, so no portable algorithm is under test."
+    },
+    "FIRMWARE": {
+      "applies": true,
+      "because": "The run depends on M-mode boot configuration that firmware owns: medeleg bit 2 routes the illegal-instruction trap to S-mode, one PMP entry opens memory to the U-mode payload, and mhartid is the register firmware itself reads to learn which hart it runs on. Without that machine-mode setup the U-mode measurement could not be taken or recorded."
+    },
+    "ISA": {
+      "applies": true,
+      "because": "The privileged ISA reserves the mhartid CSR for M-mode, so a U-mode read must raise an illegal instruction instead of returning the hart ID. The card executes that read on QEMU 8.2.2 and measures the contract directly: the M-mode baseline reads 0x0, the U-mode read traps once with scause 0x2 and sepc at the read site, and the destination register is never written, so the verified claim depends on the machine CSR privilege contract."
+    },
+    "KERNEL": {
+      "applies": false,
+      "because": "No kernel runs in the proof: the U-mode code is a bare test payload with no scheduler, no page tables, and no system calls. The verified property is the hardware gate a kernel runs under, and it holds or fails before any kernel subsystem could act."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "The run records only CSR values and trap records (cause, fault address, saved program counter), never cycle counts, pipeline behavior, or cache behavior. The outcome follows from the CSR privilege rule on any implementation, so nothing measured distinguishes one hart implementation from another."
+    }
   }
+}
 ]
