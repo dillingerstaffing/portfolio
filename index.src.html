@@ -1721,6 +1721,32 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Child That Refuses to Be a Session Leader</h3>
+          <!-- LAYER-STRIP:the-child-that-refuses-to-be-a-session-leader -->
+          <p class="research-date"><time datetime="2026-10-02">2026-10-02 11:27 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The ritual runs in three moves: fork, setsid, fork again. I ran all three in a small C program, and the numbers tell the story plainly. The parent was pid 13480. The child was 13481, still sitting in the parent's session, and that first fork was load-bearing: setsid refuses to run in a process group leader, so the child had to exist before it could leave the old session. A one-line test confirmed the refusal for real: a process that made itself a group leader watched setsid fail with EPERM. <a class="cite" href="#src-the-child-that-refuses-to-be-a-session-leader-2">[2]</a></p>
+          <p>After setsid, the child's session id was 13481, equal to its own pid. Session leadership looks exactly like that: a process whose id and session agree, holding a new session with no controlling terminal. Then the second fork, and the middle child, the session leader, exited at once. The grandchild woke up as pid 13482, reparented under pid 1, still sitting in session 13481. The parent reaped the middle child with waitpid, so no zombie remained anywhere in the chain. <a class="cite" href="#src-the-child-that-refuses-to-be-a-session-leader-2">[2]</a></p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-child-that-refuses-to-be-a-session-leader/the-child-that-refuses-to-be-a-session-leader.jpg" alt="A weathered blue ONE WAY street sign with a large white arrow, mounted on a pole above green foliage" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">A one-way sign on Old Upper Thomson Road. The second fork is a move the process cannot unmake: once the session leader exits, the grandchild can never quietly acquire a controlling terminal.<br><span style="opacity:.7">Photo: BenTanXiaoMing, CC BY-SA 4.0, via Wikimedia Commons</span></figcaption>
+</figure>
+          <p>The whole ritual fits in six lines:</p>
+<pre><code>if (fork() == 0) {
+    setsid();           /* new session; this child is its leader */
+    if (fork() == 0) {  /* grandchild can never claim a terminal by accident */
+        /* daemon body */
+    }
+    _exit(0);           /* leader exits, orphaning the grandchild to init */
+}
+</code></pre>
+          <p>The second fork is the one that looks redundant, and it is the point. A session leader with no controlling terminal can still acquire one later, simply by opening a free terminal device. The grandchild is not a session leader, and without that office it cannot acquire a controlling terminal, even by accident. So the second fork is not about the terminal the daemon left. It is about the terminal the daemon might one day be handed. By stepping out of eligibility for the office, the daemon makes the accident structurally impossible. <a class="cite" href="#src-the-child-that-refuses-to-be-a-session-leader-1">[1]</a></p>
+          <p>Under a supervisor like systemd the ritual is mostly obsolete, because the supervisor does the detaching for you. But the mechanism is still the clearest demonstration of what sessions and controlling terminals are: a small piece of Unix state machine you can watch move. The takeaway I keep: the first fork buys eligibility, the setsid call buys the new session, and the second fork buys ineligibility. The daemon's freedom is not that it ran away from the terminal. It is that it made itself unable to come back. <a class="cite" href="#src-the-child-that-refuses-to-be-a-session-leader-1">[1]</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Four Fields Inside One Address</h3>
           <!-- LAYER-STRIP:the-four-fields-inside-one-address -->
           <p class="research-date"><time datetime="2026-10-01">2026-10-01 11:24 EDT</time></p>

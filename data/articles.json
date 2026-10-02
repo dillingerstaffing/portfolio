@@ -1,4 +1,65 @@
 [
+{
+  "title": "The Child That Refuses to Be a Session Leader",
+  "slug": "the-child-that-refuses-to-be-a-session-leader",
+  "date": "2026-10-02",
+  "description": "The daemon ritual is fork, setsid, fork again. The first fork earns the child a new session, setsid makes it the session leader, and the second fork leaves the grandchild unable to ever hold that office, the one office that can quietly claim a terminal. Ineligibility is the freedom.",
+  "paragraphs": [
+    "The ritual runs in three moves: fork, setsid, fork again. I ran all three in a small C program, and the numbers tell the story plainly. The parent was pid 13480. The child was 13481, still sitting in the parent's session, and that first fork was load-bearing: setsid refuses to run in a process group leader, so the child had to exist before it could leave the old session. A one-line test confirmed the refusal for real: a process that made itself a group leader watched setsid fail with EPERM.",
+    "After setsid, the child's session id was 13481, equal to its own pid. Session leadership looks exactly like that: a process whose id and session agree, holding a new session with no controlling terminal. Then the second fork, and the middle child, the session leader, exited at once. The grandchild woke up as pid 13482, reparented under pid 1, still sitting in session 13481. The parent reaped the middle child with waitpid, so no zombie remained anywhere in the chain.",
+    "The whole ritual fits in six lines:",
+    "The second fork is the one that looks redundant, and it is the point. A session leader with no controlling terminal can still acquire one later, simply by opening a free terminal device. The grandchild is not a session leader, and without that office it cannot acquire a controlling terminal, even by accident. So the second fork is not about the terminal the daemon left. It is about the terminal the daemon might one day be handed. By stepping out of eligibility for the office, the daemon makes the accident structurally impossible.",
+    "Under a supervisor like systemd the ritual is mostly obsolete, because the supervisor does the detaching for you. But the mechanism is still the clearest demonstration of what sessions and controlling terminals are: a small piece of Unix state machine you can watch move. The takeaway I keep: the first fork buys eligibility, the setsid call buys the new session, and the second fork buys ineligibility. The daemon's freedom is not that it ran away from the terminal. It is that it made itself unable to come back."
+  ],
+  "codeLink": "https://github.com/dillingerstaffing/forkfork-demo/blob/main/dfork.c",
+  "layers": {
+    "ISA": {
+      "applies": false,
+      "because": "No instruction-set claim is made. fork, setsid, and waitpid are kernel interfaces, and the argument never depends on which CPU the machine speaks. Every paragraph holds with the CPU swapped."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured anywhere in the argument."
+    },
+    "FIRMWARE": {
+      "applies": false,
+      "because": "No boot code, machine-mode service, or privilege handoff takes part. Every step is an ordinary unprivileged process operation on a running system."
+    },
+    "KERNEL": {
+      "applies": true,
+      "because": "The whole argument is kernel-enforced process semantics. setsid refuses a process group leader, and the refusal was verified live with errno EPERM. Session leadership is the pid and the session id agreeing. Only a session leader can acquire a controlling terminal, and the kernel reparents the orphaned grandchild to pid 1. The firsthand run reads each of these facts off live process state."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "The claim is a protocol about process state, not a computation. Nothing is proved against an independent oracle, and no portable mechanism is under test."
+    }
+  },
+  "evidence": {
+    "label": "forkfork-demo: firsthand run of the double-fork ritual (pids, sids, reparenting to pid 1, setsid EPERM check)",
+    "url": "https://github.com/dillingerstaffing/forkfork-demo"
+  },
+  "image": "blog/the-child-that-refuses-to-be-a-session-leader/the-child-that-refuses-to-be-a-session-leader.jpg",
+  "image_alt": "A weathered blue ONE WAY street sign with a large white arrow, mounted on a pole above green foliage",
+  "image_caption": "A one-way sign on Old Upper Thomson Road. The second fork is a move the process cannot unmake: once the session leader exits, the grandchild can never quietly acquire a controlling terminal.",
+  "image_source": "https://commons.wikimedia.org/wiki/File:One_Way_Sign,_Old_Upper_Thomson_Road.jpg",
+  "image_license": "CC BY-SA 4.0",
+  "image_attribution": "BenTanXiaoMing, via Wikimedia Commons",
+  "social_image": "blog/the-child-that-refuses-to-be-a-session-leader/the-child-that-refuses-to-be-a-session-leader-social.jpg",
+  "sources": [
+    {
+      "title": "Daemon (computing)",
+      "publisher": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Daemon_(computing)",
+      "note": "The rationale for the second fork: a session leader with no controlling terminal can acquire one by accident when it opens a free tty, so the daemon forks and exits again to stop being a session leader; plus the note that a supervisor like systemd does the detaching instead."
+    },
+    {
+      "title": "forkfork-demo: the double-fork run log",
+      "publisher": "Chris Dillinger",
+      "url": "https://github.com/dillingerstaffing/forkfork-demo",
+      "note": "The firsthand run of the full ritual in dfork.c (pids 13480, 13481, 13482, the sid agreement after setsid, reparenting to pid 1, waitpid reaping with no zombie) and the setsid_eperm.c check that setsid fails with EPERM in a process group leader."
+    }
+  ]
+},
   {
     "title": "The Four Fields Inside One Address",
     "slug": "the-four-fields-inside-one-address",
