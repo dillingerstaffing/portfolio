@@ -1721,6 +1721,33 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Read the Compiler Is Not Allowed to Skip</h3>
+          <!-- LAYER-STRIP:the-read-the-compiler-is-not-allowed-to-skip -->
+          <p class="research-date"><time datetime="2026-10-03">2026-10-03 11:18 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The transmit path of my UART driver waits on one register: the line-status register at 0x10000005 on the QEMU virt board, bit 5, which the transmitter sets when its holding register is empty and ready for the next byte. The wait loop is the obvious three-liner: read the byte, test the bit, spin until it arrives. <a class="cite" href="#src-the-read-the-compiler-is-not-allowed-to-skip-1">[1]</a></p>
+          <p>Drop the word volatile from the pointer type, compile at -O2, and the loop stops touching the hardware. I compiled both variants with the riscv64-unknown-elf 13.2.0 toolchain and read the difference straight off the two listings. Without volatile, GCC emits a single lbu before the loop and then a jump to itself: if bit 5 was clear on entry, the cached copy can never change, because nothing in the loop writes to that address, so the compiler is entitled to treat the memory as unchanged. The wait becomes permanent. With volatile, the lbu moves inside the loop, one fresh read per iteration, until the transmitter sets the bit. <a class="cite" href="#src-the-read-the-compiler-is-not-allowed-to-skip-1">[1]</a></p>
+          <p>The two listings, reduced to the loop itself:</p>
+<pre><code># plain pointer, -O2: one read, then a jump to self
+    lbu a5,5(a4)
+.L3: j .L3
+# volatile pointer: a fresh read every iteration
+.L6: lbu a5,0(a4)
+    andi a5,a5,32
+    beq a5,zero,.L6
+</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-read-the-compiler-is-not-allowed-to-skip/the-read-the-compiler-is-not-allowed-to-skip.jpg" alt="Blueprint-style diagram comparing the two compiled loops: the plain pointer reads the UART register once and spins on the cached byte, while the volatile pointer re-reads the register every iteration" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Two loops, one word apart. The plain pointer's loop reads the register once and spins on the cached byte; the volatile loop re-reads 0x10000005 every iteration until bit 5 arrives.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>volatile is a contract with the compiler, not the hardware. Every access through a volatile lvalue is an observable side effect the compiler must evaluate strictly, in order, which is exactly why volatile objects model memory-mapped I/O ports. <a class="cite" href="#src-the-read-the-compiler-is-not-allowed-to-skip-2">[2]</a> The rule at the bench: every memory-mapped register is volatile, or the optimized build turns a wait loop into a hang. The nasty part is where the bug hides. At -O0 the compiler hoists nothing, so the plain loop happens to work, and the failure appears only in the -O2 build you actually ship. One word in the type, at the declaration. That is all volatile buys you, and it is everything.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c" target="_blank" rel="noopener">riscv-baremetal-demo/src/uart.c</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Child That Refuses to Be a Session Leader</h3>
           <!-- LAYER-STRIP:the-child-that-refuses-to-be-a-session-leader -->
           <p class="research-date"><time datetime="2026-10-02">2026-10-02 11:27 EDT</time></p>

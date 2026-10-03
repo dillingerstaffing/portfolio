@@ -1,6 +1,322 @@
 {
   "version": 1,
   "analyses": [
+  {
+    "item": "the-read-the-compiler-is-not-allowed-to-skip",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "No instruction-set claim is made. volatile is a contract with the C abstract machine: every access through a volatile lvalue is an observable side effect the compiler cannot optimize out. The lbu listings illustrate the mechanism on RISC-V, but the verdict follows from the type qualifier, and every paragraph holds with the CPU swapped.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No instruction-set claim is made. volatile is a contract with the C abstract machine: every access through a volatile lvalue is an observable side effect the compiler cannot optimize out. The lbu listings illustrate the mechanism on RISC-V, but the verdict follows from the type qualifier, and every paragraph holds with the CPU swapped."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "uart.c poll loop, riscv-baremetal-demo",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+        },
+        "text": "The two listings name only lbu, andi, beq, j, and ret: the hoist versus no-hoist difference is visible before any ISA-specific reasoning, and the contract that governs it is stated for C generally, not for RISC-V."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "volatile type qualifier",
+          "tier": "reference",
+          "url": "https://en.cppreference.com/w/c/language/volatile"
+        },
+        "text": "The volatile contract is documented as a property of the C type system: every access through a volatile lvalue is an observable side effect, and volatile objects model memory-mapped I/O ports."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The mechanism is identical on any CPU the compiler targets."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "The ISA decision test lights the slot only when the verified claim is stated in one architecture's terms; a C abstract-machine contract is architecture-neutral."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "note": "The evidence plus the decision test settles the slot the penultimate states.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-read-the-compiler-is-not-allowed-to-skip",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured anywhere in the argument; the hoist is a compiler decision read off the listings, before any hardware runs.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured anywhere in the argument; the hoist is a compiler decision read off the listings, before any hardware runs."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "uart.c poll loop, riscv-baremetal-demo",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+        },
+        "text": "Neither listing is executed or timed: the evidence is the placement of the lbu relative to the loop label, read off the compiler output."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Nothing in the proof depends on how the hardware executes the loads."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "The MICROARCH decision test lights the slot only when a claim depends on how a core implements the machine."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the decision test settles the slot the penultimate states.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-read-the-compiler-is-not-allowed-to-skip",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "No boot code, machine-mode service, or privilege handoff takes part. The experiment is two freestanding functions compiled for a bare-metal target, and the argument never enters firmware.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No boot code, machine-mode service, or privilege handoff takes part. The experiment is two freestanding functions compiled for a bare-metal target, and the argument never enters firmware."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "uart.c poll loop, riscv-baremetal-demo",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+        },
+        "text": "The experiment is two freestanding functions compiled for a bare-metal target: no boot code, no machine-mode service, and no privilege handoff appears in the chain."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The argument never leaves the compiler's view of the code."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "The FIRMWARE decision test lights the slot only when boot code, a machine-mode service, or a privilege handoff carries the claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the decision test settles the slot the penultimate states.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-read-the-compiler-is-not-allowed-to-skip",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "No kernel is involved at any step. The driver is polled bare-metal code, and the comparison is made by reading compiler listings, never by running under an operating system.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No kernel is involved at any step. The driver is polled bare-metal code, and the comparison is made by reading compiler listings, never by running under an operating system."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "uart.c poll loop, riscv-baremetal-demo",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+        },
+        "text": "The driver polls bare metal; the comparison is made by reading compiler listings, not by running under an operating system."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "No kernel behavior is asserted or depended on anywhere in the argument."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "The KERNEL decision test lights the slot only when the verified claim is stated as kernel-enforced behavior."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the decision test settles the slot the penultimate states.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-read-the-compiler-is-not-allowed-to-skip",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "The claim is a compiler contract about observable side effects, not a computation. Nothing is proved against an independent oracle, and no portable mechanism is under test.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The claim is a compiler contract about observable side effects, not a computation. Nothing is proved against an independent oracle, and no portable mechanism is under test."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "uart.c poll loop, riscv-baremetal-demo",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+        },
+        "text": "The listings are the evidence, not an oracle: there is no computed result another program could reproduce for comparison."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "A compiler contract about observable side effects has no portable computation to verify separately from the compiler."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "The ALGORITHM decision test lights the slot only when the core verified claim is a pure computational mechanism provable independently of any one implementation."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the decision test settles the slot the penultimate states.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the decision test yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
     {
       "item": "the-child-that-refuses-to-be-a-session-leader",
       "kind": "article",
