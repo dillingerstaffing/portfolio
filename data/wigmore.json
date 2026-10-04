@@ -90025,6 +90025,322 @@
         "strength": "strong"
       }
     ]
+  },
+  {
+    "item": "the-twelve-bits-that-borrow-from-the-twenty",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "The claim is about the RISC-V instruction encoding itself: lui carries a 20-bit immediate into bits 31:12 and addi carries a 12-bit signed immediate into bits 11:0, and that signedness forces the assembler's rounding. The listings show the exact two encodings the split produces, read straight off objdump.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The claim is about the RISC-V instruction encoding itself: lui carries a 20-bit immediate into bits 31:12 and addi carries a 12-bit signed immediate into bits 11:0, and that signedness forces the assembler's rounding. The listings show the exact two encodings the split produces, read straight off objdump."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/163-lui-addi-rounding listings, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/163-lui-addi-rounding"
+        },
+        "text": "The firsthand objdump listings show the split the assembler chose: 0x12345EEF as lui 0x12346 plus addiw -273, 0x800 as lui 0x1 plus addiw -2048, 0x12345678 as the unrounded pair, and the illegal-operands rejection of the naive hand-written pair."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "RISC-V unprivileged ISA, I-type and U-type encodings",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The manual fixes the I-type immediate as a signed 12-bit field (-2048..2047) and the U-type immediate as 20 bits placed in bits 31:12; those two field widths are what make the rounding unavoidable."
+      },
+      {
+        "kind": "penultimate",
+        "n": 4,
+        "text": "The rounding is forced by the two immediate encodings the ISA manual fixes; the listings show the assembler obeying them."
+      },
+      {
+        "kind": "generalization",
+        "n": 5,
+        "text": "A claim about which encodings an instruction pair must use, verified against the manual that defines those encodings, is an ISA claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          4
+        ],
+        "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          4
+        ],
+        "via": [
+          5
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-twelve-bits-that-borrow-from-the-twenty",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured anywhere in the argument; the rounding is an assembler decision read off the listings, before any hardware runs.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured anywhere in the argument; the rounding is an assembler decision read off the listings, before any hardware runs."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/163-lui-addi-rounding listings, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/163-lui-addi-rounding"
+        },
+        "text": "The listings are static objdump output: the rounding is visible in the emitted bytes with no program ever executed, so no pipeline, cache, or timing behavior could have entered the claim."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The argument is complete before any hardware runs."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A claim settled by reading assembler output, with no execution or measurement, cannot depend on microarchitecture."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: nothing was executed or measured.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-twelve-bits-that-borrow-from-the-twenty",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "No boot code, machine-mode service, or privilege handoff takes part. The experiment is freestanding assembly with no runtime, and the argument never enters firmware.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No boot code, machine-mode service, or privilege handoff takes part. The experiment is freestanding assembly with no runtime, and the argument never enters firmware."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/163-lui-addi-rounding listings, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/163-lui-addi-rounding"
+        },
+        "text": "li.s is a bare function assembled with no startup files, no supervisor calls, and no privilege-mode transitions; the listing is produced by the assembler alone."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Nothing in the experiment or the argument touches firmware."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "An assembler-output claim with no boot code, no machine-mode service, and no privilege handoff is not a firmware claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: firmware appears nowhere.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-twelve-bits-that-borrow-from-the-twenty",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "No kernel is involved at any step. The listings come from assembling a bare function with no operating system, and no system interface appears in the argument.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No kernel is involved at any step. The listings come from assembling a bare function with no operating system, and no system interface appears in the argument."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/163-lui-addi-rounding listings, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/163-lui-addi-rounding"
+        },
+        "text": "The experiment never assembles or runs under an operating system: it is five li pseudo-instructions in a freestanding object file, and the naive-pair rejection is an assembler error, not a runtime event."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "No operating system, system call, or kernel interface appears anywhere in the evidence."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A claim about assembler output with no operating system in the loop is not a kernel claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: no kernel takes part.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-twelve-bits-that-borrow-from-the-twenty",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "The claim is a fixed assembler convention, not a computation. Nothing is proved against an independent oracle; the recombination arithmetic only checks the listings against themselves.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The claim is a fixed assembler convention, not a computation. Nothing is proved against an independent oracle; the recombination arithmetic only checks the listings against themselves."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/163-lui-addi-rounding listings, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/163-lui-addi-rounding"
+        },
+        "text": "The recombination check (0x12346000 - 273 = 0x12345EEF) re-derives the constant from the assembler's own output; there is no independent implementation or oracle that the convention is tested against."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The verification is self-consistency of one assembler's output, not a proof of a procedure against an oracle."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A fixed convention checked for self-consistency, with no independent oracle, is not an algorithm claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: no portable computation is under test.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
   }
   ]
 }
