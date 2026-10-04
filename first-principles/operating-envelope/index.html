@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260930-131051" />
+  <meta name="build-version" content="v20261004-oe01" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>The Operating Envelope &middot; Chris Dillinger</title>
@@ -565,12 +565,19 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
         what the assembly must survive, who pays when it doesn't, and why the stack looks the way it does.
       </p>
 
+      <div class="fp-bound" role="note" aria-label="Goal and what I learned">
+        <h3>THE GOAL</h3>
+        <p>Learn to read any machine's limits the way an electrician reads a panel: know what each constraint costs, who pays it, and what the failure looks like before it happens.</p>
+        <h3>WHAT I LEARNED</h3>
+        <p>Three things this page taught me. First, every limit has a payer: power has a bill and a hard budget, heat has a die and a heatsink, speed has a user and a contract. Second, the stack's shape is the envelope's answer: clocks stopped rising around 2005, so the industry bought performance with parallelism per watt, then with less general hardware per watt. Multicore and accelerators are thermal verdicts, not fashion. Third, failures are signatures you can read: temperature rides the limit while throughput sawtooths, breakers trip when draw outruns delivery, and queues that never drain mean the promised throughput was never real.</p>
+      </div>
+
       <hr class="fp-rule" />
 
       <!-- E1 -->
       <section class="fp-level" id="e1" aria-label="E1, the triad">
         <div class="fp-level-head"><span class="lvl">E1</span><h2>The triad</h2></div>
-        <p class="fp-invariant">Performance costs power, power becomes heat, heat caps performance. Three constraints, one loop, no level escapes it.</p>
+        <p class="fp-invariant">Performance costs power, power becomes heat, and heat sets the ceiling on performance. The same loop runs at every level of the stack, from one transistor to the whole datacenter.</p>
         <figure class="fp-fig">
           <div class="fig-scroll">
           <svg width="720" height="260" class="diag" viewBox="0 0 720 260" role="img" aria-label="Triangle of performance, power, and thermal with coupling arrows: work costs watts, watts become heat, heat caps clocks">
@@ -662,7 +669,7 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
         </figure>
         <dl class="fp-spec">
           <div class="fp-spec-row"><dt>TOO HOT</dt><dd>What it looks like: the laptop burns your lap, the phone gets too hot to hold, the fans scream. The chip slows itself down to survive, which is the sawtooth in the figure above: temperature rides the limit while throughput oscillates. The operator pays first: sustained heat ends in emergency shutdown, an outage on their watch. The OEM pays months later: chronic heat shortens the chip's life and comes back as warranty returns. In a battery, sustained heat can set off thermal runaway, where the battery heats itself until it catches fire.</dd></div>
-          <div class="fp-spec-row"><dt>TOO MUCH POWER</dt><dd>What it looks like: the breaker trips and the rack goes dark. That is the cliff: draw exceeds delivery and the protection trips. The operator pays in the instant outage. The slow version bills the business: the rack's power cap means racks that can only ever be half filled, money spent on capacity that never earns.</dd></div>
+          <div class="fp-spec-row"><dt>TOO MUCH POWER</dt><dd>What it looks like depends on which limit you hit, because power fails in more than one way. A battery low on charge sags in voltage and everything shuts down. A supply rated for too little current, a phone charger rated 1 amp feeding a load that wants 3, lets the load try to draw more than the supply can give, and the protection trips: that is the cliff. A rack whose feed cannot cover its machines never gets to use their full capacity, so the operator pays for racks that can only ever be half filled, money spent on capacity that never earns. Which failure you get depends on the power architecture, how supply, regulation, and distribution are built. Ten computers where the feed can carry seven fail differently than one massive computer the feed cannot carry at all.</dd></div>
           <div class="fp-spec-row"><dt>TOO SLOW</dt><dd>What it looks like: the spinner that never stops, the queue that never drains. The business pays in broken promises: the site guaranteed a response time and misses it, users leave, contracts penalize. In training, the ML team pays: the run outlives its budget and dies with nothing to show.</dd></div>
         </dl>
       </section>
