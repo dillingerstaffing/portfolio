@@ -90341,6 +90341,333 @@
         "strength": "strong"
       }
     ]
+  },
+  {
+    "item": "the-shift-that-is-not-a-division",
+    "kind": "article",
+    "slot": "ISA",
+    "probandum": "The claim is about the srai instruction's semantics: an arithmetic right shift replicates the sign bit, which makes it floor division for negative values, while C's / truncates toward zero. The listings show the single srai for the shift against the compiler's four-instruction bias sequence for division, read straight off objdump.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The claim is about the srai instruction's semantics: an arithmetic right shift replicates the sign bit, which makes it floor division for negative values, while C's / truncates toward zero. The listings show the single srai for the shift against the compiler's four-instruction bias sequence for division, read straight off objdump."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/164-srai-division listings, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division"
+        },
+        "text": "The firsthand objdump listings: shr3 is one srai a0, a0, 3; div8 is sraiw a5, a0, 31, srliw a5, a5, 29, addw a0, a5, a0, sraiw a0, a0, 3. The thirteen-input QEMU run shows a right shift of -7 by 3 giving -1 against -7 / 8 giving 0."
+      },
+      {
+        "kind": "evidence",
+        "n": 3,
+        "source": {
+          "cite": "RISC-V unprivileged ISA, SRAI semantics",
+          "tier": "spec",
+          "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+        },
+        "text": "The manual defines the arithmetic shift as replicating the sign bit into the vacated high bits; that replication is exactly what makes the shift round toward negative infinity for negative values."
+      },
+      {
+        "kind": "evidence",
+        "n": 4,
+        "source": {
+          "cite": "cppreference, C arithmetic operators",
+          "tier": "reference",
+          "url": "https://en.cppreference.com/w/c/language/operator_arithmetic"
+        },
+        "text": "Integer division yields the algebraic quotient truncated toward zero since C99, the rounding rule the compiler's bias sequence restores before the shift."
+      },
+      {
+        "kind": "penultimate",
+        "n": 5,
+        "text": "The single-shift and four-instruction listings are the two rounding rules made visible: srai's sign replication against C's truncation, with the bias bridging them."
+      },
+      {
+        "kind": "generalization",
+        "n": 6,
+        "text": "A claim about which rounding an instruction performs and how the compiler compensates, verified against the manual and the language rule, is an ISA claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2,
+          3,
+          4
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          5
+        ],
+        "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          5
+        ],
+        "via": [
+          6
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-shift-that-is-not-a-division",
+    "kind": "article",
+    "slot": "MICROARCH",
+    "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the rounding argument is complete from the instruction semantics and the listings.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the rounding argument is complete from the instruction semantics and the listings."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/164-srai-division listings and run, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division"
+        },
+        "text": "The listings are static objdump output and the QEMU run only checks integer results; no pipeline, cache, or timing quantity appears anywhere in the argument."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "The argument is complete before any hardware behavior beyond functional execution is considered."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A claim settled by instruction semantics and static listings, with execution used only as a functional check, cannot depend on microarchitecture."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: nothing was measured.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-shift-that-is-not-a-division",
+    "kind": "article",
+    "slot": "FIRMWARE",
+    "probandum": "No boot code, machine-mode service, or privilege handoff takes part. The experiment is a freestanding bare-metal binary with no runtime beyond a UART print, and the argument never enters firmware.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No boot code, machine-mode service, or privilege handoff takes part. The experiment is a freestanding bare-metal binary with no runtime beyond a UART print, and the argument never enters firmware."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/164-srai-division run setup, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division"
+        },
+        "text": "The test binary is linked at 0x80000000, entered at _start, and prints over the virt UART with no supervisor, no SBI calls, and no boot services."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "Nothing in the experiment touches firmware."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A bare-metal experiment with no privilege handoff cannot implicate the firmware layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: no firmware takes part.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-shift-that-is-not-a-division",
+    "kind": "article",
+    "slot": "KERNEL",
+    "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/164-srai-division run setup, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division"
+        },
+        "text": "The binary runs under qemu-system-riscv64 with -bios none and no guest OS; main calls only the two compiled functions and a UART print loop."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "No system interface appears anywhere in the experiment."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "An experiment with no operating system cannot implicate the kernel layer."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: no kernel is present.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
+  },
+  {
+    "item": "the-shift-that-is-not-a-division",
+    "kind": "article",
+    "slot": "ALGORITHM",
+    "probandum": "The claim is one fixed instruction semantic against one fixed language rule, not a computation proved against an independent oracle. The bias trick is shown working on thirteen inputs, but nothing here establishes a general algorithm.",
+    "keyList": [
+      {
+        "kind": "probandum",
+        "n": 1,
+        "text": "The claim is one fixed instruction semantic against one fixed language rule, not a computation proved against an independent oracle. The bias trick is shown working on thirteen inputs, but nothing here establishes a general algorithm."
+      },
+      {
+        "kind": "evidence",
+        "n": 2,
+        "source": {
+          "cite": "lab/164-srai-division run, systems-lab",
+          "tier": "lab",
+          "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division"
+        },
+        "text": "Thirteen inputs are checked against the two rounding rules, but the check is a demonstration on fixed inputs, not a proof of a general procedure."
+      },
+      {
+        "kind": "penultimate",
+        "n": 3,
+        "text": "What is shown is instruction behavior on examples, not an algorithm with a correctness argument."
+      },
+      {
+        "kind": "generalization",
+        "n": 4,
+        "text": "A fixed semantic checked on examples, without a general correctness argument, is not an algorithm claim."
+      }
+    ],
+    "inferences": [
+      {
+        "from": [
+          2
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          3
+        ],
+        "note": "The evidence plus the layer rule dims the slot: no algorithm is proved.",
+        "strength": "strong"
+      },
+      {
+        "from": [
+          3
+        ],
+        "via": [
+          4
+        ],
+        "to": [
+          1
+        ],
+        "note": "The penultimate plus the layer rule yields the verdict in (1).",
+        "strength": "strong"
+      }
+    ]
   }
   ]
 }

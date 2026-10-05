@@ -1721,6 +1721,31 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Shift That Is Not a Division</h3>
+          <!-- LAYER-STRIP:the-shift-that-is-not-a-division -->
+          <p class="research-date"><time datetime="2026-10-05">2026-10-05 11:50 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>I compiled two three-line functions this morning, gcc 13.2.0 at -O2 for rv64g. int shr3(int x){ return x &gt;&gt; 3; } came back as one instruction: srai a0, a0, 3, then ret. int div8(int x){ return x / 8; } came back as four: sraiw a5, a0, 31; srliw a5, a5, 29; addw a0, a5, a0; sraiw a0, a0, 3; then ret. Same operation on paper, one instruction against four. <a class="cite" href="#src-the-shift-that-is-not-a-division-1">[1]</a></p>
+          <p>The difference is the rounding. An arithmetic right shift fills the vacated top bits with copies of the sign bit, so for a negative value the shift rounds toward negative infinity: it keeps going down. C's integer division truncates toward zero instead: it stops at the first integer on the way back up. <a class="cite" href="#src-the-shift-that-is-not-a-division-2">[2]</a> <a class="cite" href="#src-the-shift-that-is-not-a-division-3">[3]</a> For positive values the two agree, and the compiler is happy to use the single shift. For negative values they diverge, and the compiler has to repair the shift before it may use it. <a class="cite" href="#src-the-shift-that-is-not-a-division-1">[1]</a></p>
+          <p>The repair is the middle three instructions, and it is a small bias. sraiw a5, a0, 31 smears the sign bit across the whole register: 0 for a non-negative x, all ones for a negative x. srliw a5, a5, 29 turns that into 0 or 7. addw adds the bias into x, and then the shift runs. For x = -7: -7 + 7 is 0, shifted right 3 is 0, which is what -7 / 8 must be. Without the bias the shift gives -1, the wrong answer for division. The general shape: to turn a floor shift into a truncating division by 2^k, add 2^k - 1 to negative values first. <a class="cite" href="#src-the-shift-that-is-not-a-division-1">[1]</a></p>
+          <p>The two functions, reduced to the instructions:</p>
+<pre><code>int shr3(int x){ return x &gt;&gt; 3; }  /* srai a0, a0, 3 */
+int div8(int x){ return x / 8; }   /* sraiw a5, a0, 31
+                                      srliw a5, a5, 29
+                                      addw  a0, a5, a0
+                                      sraiw a0, a0, 3 */</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-shift-that-is-not-a-division/the-shift-that-is-not-a-division.jpg" alt="Blueprint-style bit diagram of -7 as 0xFFFFFFF9 with the sign bit highlighted, the srai by 3 replicating it to produce -1, contrasted with -7 / 8 = 0 under C truncation toward zero and the compiler's four-instruction bias sequence" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One shift, two roundings. The srai replicates the sign bit and rounds toward negative infinity, giving -1; C division truncates toward zero, giving 0, so the compiler adds a bias of 7 before shifting.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The run confirms it. On the virt UART under QEMU 8.2.2, thirteen inputs from -19 to 19: -7 &gt;&gt; 3 printed -1 while -7 / 8 printed 0; -19 &gt;&gt; 3 printed -3 while -19 / 8 printed -2; every non-negative input agreed. The one-instruction path and the four-instruction path disagree exactly where the two rounding rules say they must. <a class="cite" href="#src-the-shift-that-is-not-a-division-1">[1]</a></p>
+          <p>Two habits fall out of this. Reading a disassembly: a shift preceded by a sign-smear and an add is the compiler dividing by a power of two; the bare srai is just a shift, with floor rounding. Writing C: never hand-rewrite x / 8 as x &gt;&gt; 3 when x can be negative, because that changes the rounding. The compiler already performs that optimization itself, bias included, and it does it correctly. Use the shift when floor is what you want, which in fixed-point and bit-index code it often is; write the division when truncation is what you want, and let the compiler add the bias.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division" target="_blank" rel="noopener">systems-lab/lab/164-srai-division</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Twelve Bits That Borrow From the Twenty</h3>
           <!-- LAYER-STRIP:the-twelve-bits-that-borrow-from-the-twenty -->
           <p class="research-date"><time datetime="2026-10-04">2026-10-04 11:25 EDT</time></p>

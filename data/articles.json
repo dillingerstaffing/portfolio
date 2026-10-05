@@ -1,5 +1,73 @@
 [
 {
+  "title": "The Shift That Is Not a Division",
+  "slug": "the-shift-that-is-not-a-division",
+  "date": "2026-10-05",
+  "description": "x >> 3 is not x / 8 when x can be negative. The shift rounds toward negative infinity; C division truncates toward zero. Firsthand gcc 13.2.0 listings and a QEMU run showing the compiler's four-instruction bias repair.",
+  "paragraphs": [
+    "I compiled two three-line functions this morning, gcc 13.2.0 at -O2 for rv64g. int shr3(int x){ return x >> 3; } came back as one instruction: srai a0, a0, 3, then ret. int div8(int x){ return x / 8; } came back as four: sraiw a5, a0, 31; srliw a5, a5, 29; addw a0, a5, a0; sraiw a0, a0, 3; then ret. Same operation on paper, one instruction against four. <a class=\"cite\" href=\"#src-the-shift-that-is-not-a-division-1\">[1]</a>",
+    "The difference is the rounding. An arithmetic right shift fills the vacated top bits with copies of the sign bit, so for a negative value the shift rounds toward negative infinity: it keeps going down. C's integer division truncates toward zero instead: it stops at the first integer on the way back up. <a class=\"cite\" href=\"#src-the-shift-that-is-not-a-division-2\">[2]</a> <a class=\"cite\" href=\"#src-the-shift-that-is-not-a-division-3\">[3]</a> For positive values the two agree, and the compiler is happy to use the single shift. For negative values they diverge, and the compiler has to repair the shift before it may use it. <a class=\"cite\" href=\"#src-the-shift-that-is-not-a-division-1\">[1]</a>",
+    "The repair is the middle three instructions, and it is a small bias. sraiw a5, a0, 31 smears the sign bit across the whole register: 0 for a non-negative x, all ones for a negative x. srliw a5, a5, 29 turns that into 0 or 7. addw adds the bias into x, and then the shift runs. For x = -7: -7 + 7 is 0, shifted right 3 is 0, which is what -7 / 8 must be. Without the bias the shift gives -1, the wrong answer for division. The general shape: to turn a floor shift into a truncating division by 2^k, add 2^k - 1 to negative values first. <a class=\"cite\" href=\"#src-the-shift-that-is-not-a-division-1\">[1]</a>",
+    "The two functions, reduced to the instructions:",
+    "The run confirms it. On the virt UART under QEMU 8.2.2, thirteen inputs from -19 to 19: -7 >> 3 printed -1 while -7 / 8 printed 0; -19 >> 3 printed -3 while -19 / 8 printed -2; every non-negative input agreed. The one-instruction path and the four-instruction path disagree exactly where the two rounding rules say they must. <a class=\"cite\" href=\"#src-the-shift-that-is-not-a-division-1\">[1]</a>",
+    "Two habits fall out of this. Reading a disassembly: a shift preceded by a sign-smear and an add is the compiler dividing by a power of two; the bare srai is just a shift, with floor rounding. Writing C: never hand-rewrite x / 8 as x >> 3 when x can be negative, because that changes the rounding. The compiler already performs that optimization itself, bias included, and it does it correctly. Use the shift when floor is what you want, which in fixed-point and bit-index code it often is; write the division when truncation is what you want, and let the compiler add the bias."
+  ],
+  "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division",
+  "layers": {
+    "ISA": {
+      "applies": true,
+      "because": "The claim is about the srai instruction's semantics: an arithmetic right shift replicates the sign bit, which makes it floor division for negative values, while C's / truncates toward zero. The listings show the single srai for the shift against the compiler's four-instruction bias sequence for division, read straight off objdump."
+    },
+    "MICROARCH": {
+      "applies": false,
+      "because": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the rounding argument is complete from the instruction semantics and the listings."
+    },
+    "FIRMWARE": {
+      "applies": false,
+      "because": "No boot code, machine-mode service, or privilege handoff takes part. The experiment is a freestanding bare-metal binary with no runtime beyond a UART print, and the argument never enters firmware."
+    },
+    "KERNEL": {
+      "applies": false,
+      "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+    },
+    "ALGORITHM": {
+      "applies": false,
+      "because": "The claim is one fixed instruction semantic against one fixed language rule, not a computation proved against an independent oracle. The bias trick is shown working on thirteen inputs, but nothing here establishes a general algorithm."
+    }
+  },
+  "evidence": {
+    "label": "systems-lab lab/164-srai-division: shr3 and div8 compiled with riscv64-unknown-elf-gcc 13.2.0 (-O2 -march=rv64g), listings compared, thirteen inputs run on the virt UART under QEMU 8.2.2",
+    "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division"
+  },
+  "image": "blog/the-shift-that-is-not-a-division/the-shift-that-is-not-a-division.jpg",
+  "image_alt": "Blueprint-style bit diagram of -7 as 0xFFFFFFF9 with the sign bit highlighted, the srai by 3 replicating it to produce -1, contrasted with -7 / 8 = 0 under C truncation toward zero and the compiler's four-instruction bias sequence",
+  "image_caption": "One shift, two roundings. The srai replicates the sign bit and rounds toward negative infinity, giving -1; C division truncates toward zero, giving 0, so the compiler adds a bias of 7 before shifting.",
+  "image_source": "Original diagram",
+  "image_license": "Original work",
+  "image_attribution": "Chris Dillinger",
+  "social_image": "blog/the-shift-that-is-not-a-division/the-shift-that-is-not-a-division-social.jpg",
+  "sources": [
+    {
+      "title": "lab/164-srai-division: the srai/div8 listings and QEMU run",
+      "publisher": "Chris Dillinger",
+      "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/164-srai-division",
+      "note": "The firsthand objdump listings from riscv64-unknown-elf-gcc 13.2.0 (-O2 -march=rv64g): shr3 as a single srai a0, a0, 3, div8 as sraiw, srliw, addw, sraiw, and the thirteen-input UART log from QEMU 8.2.2 showing the two paths diverging on negative inputs."
+    },
+    {
+      "title": "RISC-V ISA Manual, unprivileged architecture",
+      "publisher": "RISC-V International",
+      "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf",
+      "note": "SRAI is an arithmetic shift: the sign bit is replicated into the vacated high bits, which is what makes the shift round toward negative infinity for negative values."
+    },
+    {
+      "title": "Arithmetic operators",
+      "publisher": "cppreference.com",
+      "url": "https://en.cppreference.com/w/c/language/operator_arithmetic",
+      "note": "Integer division yields the algebraic quotient truncated toward zero since C99, the rounding rule the compiler's bias sequence restores."
+    }
+  ]
+},
+{
   "title": "The Twelve Bits That Borrow From the Twenty",
   "slug": "the-twelve-bits-that-borrow-from-the-twenty",
   "date": "2026-10-04",
