@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20261006-153941">
+  <meta name="build-version" content="v20261006-215213">
   <meta name="color-scheme" content="dark" />
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#ece6d5">
@@ -3903,7 +3903,11 @@ andi t1, t1, 1</code></pre>
       });
 
       const projectCards = [...document.querySelectorAll('.project')];
-      const chapterButtons = [...document.querySelectorAll('.chapter-button')];
+      // Originals only: the stuck rail's compact strip holds clones that
+      // delegate to their original via btn.click(). A document-wide query
+      // would hand each clone a second, conflicting toggle handler, so a
+      // stuck-strip click would set the filter and instantly clear it again.
+      const chapterButtons = [...document.querySelectorAll('#proof-filter-list .chapter-button')];
       const recordClose = document.querySelector('.record-close');
       const recordKicker = recordClose.querySelector('.record-kicker');
       const recordTotal = recordClose.querySelector('.record-total');
@@ -4372,19 +4376,25 @@ andi t1, t1, 1</code></pre>
       // instead. On mobile the strip is the rail itself.
       const visibleRailHeight = () => {
         if (!filterRail) return 0;
+        // The rail only obstructs while it is actually on screen. Past the
+        // project browser the rail scrolls off with it, but the stuck class
+        // (and the compact strip's laid-out height) persist, so a bare
+        // height read would over-subtract and strand deep-link landings.
+        const railRect = filterRail.getBoundingClientRect();
+        if (railRect.bottom <= 0 || railRect.top >= window.innerHeight) return 0;
         const compact = filterRail.querySelector('.rail-compact');
         if (compact) {
           const compactHeight = compact.getBoundingClientRect().height;
           if (compactHeight > 0) return compactHeight;
         }
-        return filterRail.classList.contains('is-stuck') ? filterRail.getBoundingClientRect().height : 0;
+        return filterRail.classList.contains('is-stuck') ? railRect.height : 0;
       };
-      const railHeight = () => filterRail ? filterRail.getBoundingClientRect().height : 0;
       const syncHeaderHeight = () => {
         document.documentElement.style.setProperty('--header-height', `${headerHeight()}px`);
         // Deep-link landings must clear the whole sticky stack (header +
-        // filter rail), or the rail covers the card's top edge.
-        document.documentElement.style.setProperty('--rail-height', `${railHeight()}px`);
+        // filter rail), or the rail covers the card's top edge. Measure the
+        // visible strip, never the rail's full laid-out height.
+        document.documentElement.style.setProperty('--rail-height', `${visibleRailHeight()}px`);
       };
       syncHeaderHeight();
       window.addEventListener('resize', syncHeaderHeight);
