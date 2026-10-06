@@ -1721,6 +1721,31 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Add That Returns the Old Value</h3>
+          <!-- LAYER-STRIP:the-add-that-returns-the-old-value -->
+          <p class="research-date"><time datetime="2026-10-06">2026-10-06 11:40 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A shared object keeps a reference count in one word of memory. Two harts finish with it at the same moment, and both run the drop: read the count, subtract one, write it back. Compiled, that is three separate instructions with the read and the write split apart: <code>lw</code>, <code>addiw</code>, <code>sw</code>. Between the load and the store the second hart can run its own load, and both write back the same decremented value. One reference is silently lost: the object is freed while someone still holds it, or it is never freed at all. <a class="cite" href="#src-the-add-that-returns-the-old-value-1">[1]</a></p>
+          <p>One instruction closes the window. <code>amoadd.w a0, a1, (a2)</code> adds <code>a1</code> into the word at the address in <code>a2</code>, and writes the value the word held before the add into <code>a0</code>. The read, the add, and the write happen as one indivisible operation: no hart can observe the middle. The return value is the whole trick. For a drop, pass -1: if the old value comes back as 1, this drop took the count to zero, and the caller holding that return value is the last holder. No lock, no retry loop. <a class="cite" href="#src-the-add-that-returns-the-old-value-1">[1]</a> <a class="cite" href="#src-the-add-that-returns-the-old-value-2">[2]</a></p>
+          <p>The run confirms the contract. On the virt UART under QEMU 8.2.2, starting from a count of 3: the first drop printed <code>old=3 now=2</code>, the second <code>old=2 now=1</code>, the third <code>old=1 now=0</code>, and that third call, the one that saw the 1, is the one that frees. An acquire from zero printed <code>old=0 now=1</code>. The listing shows each drop as a single <code>amoadd.w</code>, against the naive <code>lw</code>, <code>addiw</code>, <code>sw</code> triple. <a class="cite" href="#src-the-add-that-returns-the-old-value-1">[1]</a></p>
+          <p>The one instruction that does the drop:</p>
+<pre><code>unsigned int rc_drop(volatile unsigned int *p) {
+    unsigned int old;
+    __asm__ volatile("amoadd.w %0, %2, (%1)"
+        : "=r"(old) : "r"(p), "r"(-1) : "memory");
+    return old;  /* 1 here means this drop took the count to zero */
+}</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-add-that-returns-the-old-value/the-add-that-returns-the-old-value.jpg" alt="Blueprint-style diagram of amoadd.w: a memory cell holding 3, one instruction producing rd = 3 (the old value, highlighted) and memory = 2, then the drop chain 3 to 2 to 1 to 0 with the drop that saw old = 1 freeing the object" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One instruction, two results. amoadd.w writes old + (-1) back to memory and hands the old value to the caller in rd; the drop that sees old = 1 knows it took the count to zero.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The habit this buys: design the decision around the old value, never a re-read. <code>if (rc_drop(&amp;refs) == 1) free(obj);</code> A load after the atomic op is a second, separate observation; the old value in the destination register is the observation that belongs to your update. <a class="cite" href="#src-the-add-that-returns-the-old-value-1">[1]</a></p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/165-amoadd-refcount" target="_blank" rel="noopener">systems-lab/lab/165-amoadd-refcount</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Shift That Is Not a Division</h3>
           <!-- LAYER-STRIP:the-shift-that-is-not-a-division -->
           <p class="research-date"><time datetime="2026-10-05">2026-10-05 11:50 EDT</time></p>
