@@ -1721,6 +1721,31 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bit That Sorts the Trap</h3>
+          <!-- LAYER-STRIP:the-bit-that-sorts-the-trap -->
+          <p class="research-date"><time datetime="2026-10-07">2026-10-07 11:40 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Two traps hit the same handler on a bare-metal hart. First an M-mode <code>ecall</code>: the handler read <code>mcause</code> and found <code>0xb</code>, an environment call from M-mode, with the register's top bit clear. Then a machine timer interrupt, armed by writing <code>mtimecmp</code> 50000 ticks ahead: the handler read <code>mcause</code> and found <code>0x8000000000000007</code>, a machine timer interrupt with the top bit set. Same register, same handler, one bit of difference between the two visits. <a class="cite" href="#src-the-bit-that-sorts-the-trap-1">[1]</a></p>
+          <p>On RV64, bit 63 of <code>mcause</code> is the sorting office. The hardware sets it when the trap is an asynchronous interrupt and leaves it clear when the trap is a synchronous exception. The remaining bits carry the code: 11 for the <code>ecall</code> above, 7 for the timer. The handler's first decision is one test of one bit, and the two answers demand opposite handling. An interrupt wants its source acknowledged and cleared. An exception wants the faulting instruction decoded, with <code>mepc</code> pointing at it. Mix them up and you treat a timer tick like a broken instruction, or you try to step past an interrupt the way you step past a fault. <a class="cite" href="#src-the-bit-that-sorts-the-trap-2">[2]</a></p>
+          <p>The whole dispatch, in six lines:</p>
+<pre><code>unsigned long cause;
+__asm__ volatile("csrr %0, mcause" : "=r"(cause));
+if (cause &amp; (1UL &lt;&lt; 63))
+    interrupt(cause &amp; ~(1UL &lt;&lt; 63));  /* async: the low bits are the code */
+else
+    exception(cause);                 /* sync: mepc holds the faulting PC */</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-sorts-the-trap/the-bit-that-sorts-the-trap.jpg" alt="Blueprint-style diagram of the 64-bit mcause register drawn twice: after an M-mode ecall with bit 63 clear (exception, code 11) and after a machine timer interrupt with bit 63 set (interrupt, code 7)" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One bit, two stories. mcause reads 0xb after an M-mode ecall, bit 63 clear; it reads 0x8000000000000007 after a machine timer interrupt, bit 63 set. The handler's first branch is that one bit.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The run behind it. A bare-metal M-mode program installed one direct-mode handler, fired an <code>ecall</code>, then armed the machine timer and waited. Sixteen in-program checks, zero mismatches: the <code>ecall</code> printed <code>mcause=0xb bit63=0</code>, the timer printed <code>mcause=0x8000000000000007 bit63=1</code>, the disarm read back all ones, and no unexpected trap fired in either quiet window. One honest boundary: the executor is QEMU 8.2.2's M-mode model, faithful, but still a model, not silicon. <a class="cite" href="#src-the-bit-that-sorts-the-trap-1">[1]</a></p>
+          <p>The habit this buys: branch on the bit before touching anything else. The interrupt half of your handler clears its source first, because a source left armed re-fires the moment you return. The exception half reads <code>mepc</code> first, because the faulting address is the whole story. One bit decides which of those two jobs you are doing, and the register tells you for free. <a class="cite" href="#src-the-bit-that-sorts-the-trap-2">[2]</a></p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcause-interrupt-bit" target="_blank" rel="noopener">riscv-baremetal-demo/src/mcause-interrupt-bit</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Add That Returns the Old Value</h3>
           <!-- LAYER-STRIP:the-add-that-returns-the-old-value -->
           <p class="research-date"><time datetime="2026-10-06">2026-10-06 11:40 EDT</time></p>

@@ -1,5 +1,68 @@
 [
   {
+    "title": "The Bit That Sorts the Trap",
+    "slug": "the-bit-that-sorts-the-trap",
+    "date": "2026-10-07",
+    "description": "On RV64, bit 63 of mcause is set for asynchronous interrupts and clear for synchronous exceptions. A bare-metal QEMU run fired an M-mode ecall and a machine timer interrupt through one handler and read the bit both times.",
+    "paragraphs": [
+      "Two traps hit the same handler on a bare-metal hart. First an M-mode <code>ecall</code>: the handler read <code>mcause</code> and found <code>0xb</code>, an environment call from M-mode, with the register's top bit clear. Then a machine timer interrupt, armed by writing <code>mtimecmp</code> 50000 ticks ahead: the handler read <code>mcause</code> and found <code>0x8000000000000007</code>, a machine timer interrupt with the top bit set. Same register, same handler, one bit of difference between the two visits. <a class=\"cite\" href=\"#src-the-bit-that-sorts-the-trap-1\">[1]</a>",
+      "On RV64, bit 63 of <code>mcause</code> is the sorting office. The hardware sets it when the trap is an asynchronous interrupt and leaves it clear when the trap is a synchronous exception. The remaining bits carry the code: 11 for the <code>ecall</code> above, 7 for the timer. The handler's first decision is one test of one bit, and the two answers demand opposite handling. An interrupt wants its source acknowledged and cleared. An exception wants the faulting instruction decoded, with <code>mepc</code> pointing at it. Mix them up and you treat a timer tick like a broken instruction, or you try to step past an interrupt the way you step past a fault. <a class=\"cite\" href=\"#src-the-bit-that-sorts-the-trap-2\">[2]</a>",
+      "The whole dispatch, in six lines:",
+      "CODEBLOCK",
+      "The run behind it. A bare-metal M-mode program installed one direct-mode handler, fired an <code>ecall</code>, then armed the machine timer and waited. Sixteen in-program checks, zero mismatches: the <code>ecall</code> printed <code>mcause=0xb bit63=0</code>, the timer printed <code>mcause=0x8000000000000007 bit63=1</code>, the disarm read back all ones, and no unexpected trap fired in either quiet window. One honest boundary: the executor is QEMU 8.2.2's M-mode model, faithful, but still a model, not silicon. <a class=\"cite\" href=\"#src-the-bit-that-sorts-the-trap-1\">[1]</a>",
+      "The habit this buys: branch on the bit before touching anything else. The interrupt half of your handler clears its source first, because a source left armed re-fires the moment you return. The exception half reads <code>mepc</code> first, because the faulting address is the whole story. One bit decides which of those two jobs you are doing, and the register tells you for free. <a class=\"cite\" href=\"#src-the-bit-that-sorts-the-trap-2\">[2]</a>"
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcause-interrupt-bit",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is about mcause bit 63 semantics: the top bit marks asynchronous interrupts and stays clear for synchronous exceptions, with the low bits carrying the cause code. The run reads mcause after a real M-mode ecall and a real machine timer interrupt, and checks the bit and the full register value on both."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the bit rule is complete from the architecture definition and the run."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No boot code, machine-mode service, or privilege handoff takes part. The binary installs its own M-mode trap handler on the bare virt machine with no firmware beyond the reset state, and the argument never enters firmware."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed CSR semantic applied as one fixed idiom, not a computation proved against an independent oracle. The bit rule is shown working across one exception and one interrupt, but nothing here establishes a general algorithm."
+      }
+    },
+    "evidence": {
+      "label": "mcause-interrupt-bit PROOF.md: 16 checks, 0 mismatches, FNV-1a 0x68cbef47360252de, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcause-interrupt-bit/PROOF.md"
+    },
+    "offer": "Related work: trap handler bring-up and crash triage, fixed price.",
+    "image": "blog/the-bit-that-sorts-the-trap/the-bit-that-sorts-the-trap.jpg",
+    "image_alt": "Blueprint-style diagram of the 64-bit mcause register drawn twice: after an M-mode ecall with bit 63 clear (exception, code 11) and after a machine timer interrupt with bit 63 set (interrupt, code 7)",
+    "image_caption": "One bit, two stories. mcause reads 0xb after an M-mode ecall, bit 63 clear; it reads 0x8000000000000007 after a machine timer interrupt, bit 63 set. The handler's first branch is that one bit.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-bit-that-sorts-the-trap/the-bit-that-sorts-the-trap-social.jpg",
+    "sources": [
+      {
+        "title": "src/mcause-interrupt-bit: module README and PROOF.md",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcause-interrupt-bit",
+        "note": "The firsthand QEMU run behind the post: the 16-check sequence, the measured mcause values 0xb and 0x8000000000000007, and the PASS verdict."
+      },
+      {
+        "title": "The RISC-V Instruction Set Manual, Volume II: Privileged Architecture (mcause register definition and cause table)",
+        "publisher": "RISC-V International",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/Priv-MSU-Ratification-20190405/riscv-privileged-msu-ratification-20190405.pdf",
+        "note": "Defines the mcause Interrupt bit and lists the machine cause codes: 7 for machine timer interrupt, 11 for environment call from M-mode."
+      }
+    ]
+  },
+  {
     "title": "The Add That Returns the Old Value",
     "slug": "the-add-that-returns-the-old-value",
     "date": "2026-10-06",
