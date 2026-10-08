@@ -91355,6 +91355,322 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-swap-with-no-middle",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The claim is about the csrrw instruction's semantics: one instruction atomically exchanges a CSR with a register, rd receiving the old CSR value while rs1 is written into the CSR. The run performs the swap twice on mscratch and checks both sides of each exchange, the read side in rd and the write side by readback.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is about the csrrw instruction's semantics: one instruction atomically exchanges a CSR with a register, rd receiving the old CSR value while rs1 is written into the CSR. The run performs the swap twice on mscratch and checks both sides of each exchange, the read side in rd and the write side by readback."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mscratch-csrrw run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw"
+          },
+          "text": "The module run: the first csrrw returned the boot value 0x0 in rd while mscratch read back the sentinel 0xa5a55a5a5a5a5a5, and the restore csrrw returned the sentinel in rd while mscratch read back 0x0, across 5 in-program checks with zero mismatches."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V unprivileged ISA, Zicsr",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf"
+          },
+          "text": "The manual defines the CSR read-write instructions: csrrw atomically reads the CSR into rd and writes the value in rs1 into the CSR as one operation."
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The register values read after two deliberate swaps match the manual's atomic exchange definition on both the read side and the write side."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A claim about which values one instruction moves between a register and a CSR, verified against the manual and a firsthand run, is an ISA claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-swap-with-no-middle",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the swap contract is complete from the instruction semantics and the run.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the swap contract is complete from the instruction semantics and the run."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mscratch-csrrw run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw"
+          },
+          "text": "The module reports only register values after each swap: rd and the mscratch readback. No cycle counts, no pipeline or cache observations appear in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Nothing in the argument observes or depends on any implementation detail of any core."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim fully established by instruction semantics plus functional register values, with no implementation behavior asserted, is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-swap-with-no-middle",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No boot code, machine-mode service, or privilege handoff takes part. The binary installs its own M-mode trap handler on the bare virt machine with no firmware beyond the reset state, and the swap argument never enters firmware.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No boot code, machine-mode service, or privilege handoff takes part. The binary installs its own M-mode trap handler on the bare virt machine with no firmware beyond the reset state, and the swap argument never enters firmware."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mscratch-csrrw run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw"
+          },
+          "text": "The module builds with no supervisor binary interface: QEMU runs with bios none, and the binary installs its own M-mode trap handler through mtvec directly."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No firmware component sits between the trap and the handler; the whole path is the binary's own code."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim about a CSR value exchanged by the binary's own handler, with no firmware in the path, is not a firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-swap-with-no-middle",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mscratch-csrrw run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw"
+          },
+          "text": "The module links only boot.S, the UART driver, and its own trap stub: no kernel binary, no system calls, no supervisor software of any kind."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Every value in the argument comes from the binary's own execution on the bare machine."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim about an instruction's effect measured with no operating system present is not a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-swap-with-no-middle",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed instruction semantic applied as one fixed idiom, not a computation proved against an independent oracle. The swap is shown working across one sentinel round-trip, but nothing here establishes a general algorithm.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed instruction semantic applied as one fixed idiom, not a computation proved against an independent oracle. The swap is shown working across one sentinel round-trip, but nothing here establishes a general algorithm."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mscratch-csrrw run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw"
+          },
+          "text": "The run performs one fixed sequence: boot read, swap with one sentinel, restore swap. It checks the four values of that sequence and nothing else."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The evidence covers one concrete exchange pattern, not a family of computations with an independent correctness criterion."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim about one instruction's fixed exchange pattern, shown on one fixed sequence, is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }

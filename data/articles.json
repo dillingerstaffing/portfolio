@@ -1,5 +1,68 @@
 [
   {
+    "title": "The Swap With No Middle",
+    "slug": "the-swap-with-no-middle",
+    "date": "2026-10-08",
+    "description": "One RISC-V instruction exchanges a register with a CSR atomically: csrrw hands the old CSR value to rd while rs1 lands in the CSR. On trap entry, csrrw sp, mscratch, sp parks the victim's stack and loads the handler's in a single step no interrupt can split.",
+    "paragraphs": [
+      "A trap fires and the handler needs a stack. The stack pointer in <code>sp</code> belongs to the interrupted code, and every general register holds something that code was using. You cannot store a single byte until you have a stack, and you cannot get a stack without moving <code>sp</code> somewhere first. <a class=\"cite\" href=\"#src-the-swap-with-no-middle-1\">[1]</a>",
+      "One instruction moves it. <code>csrrw sp, mscratch, sp</code> writes the old <code>sp</code> into <code>mscratch</code> and loads the old <code>mscratch</code> value into <code>sp</code>, as one atomic step. Point <code>mscratch</code> at your handler stack once at boot, and trap entry becomes this single instruction: the victim's stack pointer is parked in <code>mscratch</code>, the handler stack lands in <code>sp</code>. Because it is one instruction, no interrupt can be taken between the read half and the write half. There is no between. No temporary register, no memory traffic. <a class=\"cite\" href=\"#src-the-swap-with-no-middle-1\">[1]</a> <a class=\"cite\" href=\"#src-the-swap-with-no-middle-2\">[2]</a>",
+      "The exchange, in both directions:",
+      "CODEBLOCK",
+      "The run behind it. A bare-metal M-mode program on QEMU 8.2.2 swapped a sentinel through <code>mscratch</code> twice. The boot read found <code>0x0</code>. The first <code>csrrw</code> returned the old value <code>0x0</code> in <code>rd</code> while <code>mscratch</code> read back <code>0xa5a55a5a5a5a5a5</code>; the restore swap returned the sentinel in <code>rd</code> while <code>mscratch</code> read back <code>0x0</code>. Five checks, zero failures, zero traps. One honest boundary: the executor is QEMU's M-mode model, faithful, but still a model, not silicon. <a class=\"cite\" href=\"#src-the-swap-with-no-middle-1\">[1]</a>",
+      "The habit this buys: set <code>mscratch</code> once, at boot, to the top of the handler stack. Every trap entry then starts with one instruction instead of a register-shuffling prologue, and trap exit runs the mirror image. The swap is its own undo: run it twice and everything is exactly where it was. <a class=\"cite\" href=\"#src-the-swap-with-no-middle-2\">[2]</a>"
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is about the csrrw instruction's semantics: one instruction atomically exchanges a CSR with a register, rd receiving the old CSR value while rs1 is written into the CSR. The run performs the swap twice on mscratch and checks both sides of each exchange, the read side in rd and the write side by readback."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the swap contract is complete from the instruction semantics and the run."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No boot code, machine-mode service, or privilege handoff takes part. The binary installs its own M-mode trap handler on the bare virt machine with no firmware beyond the reset state, and the swap argument never enters firmware."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic applied as one fixed idiom, not a computation proved against an independent oracle. The swap is shown working across one sentinel round-trip, but nothing here establishes a general algorithm."
+      }
+    },
+    "evidence": {
+      "label": "mscratch-csrrw PROOF.md: 5 checks, 0 mismatches, FNV-1a 0xd2dc5b584cb8669, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mscratch-csrrw/PROOF.md"
+    },
+    "offer": "Related work: trap handler bring-up and crash triage, fixed price.",
+    "image": "blog/the-swap-with-no-middle/the-swap-with-no-middle.jpg",
+    "image_alt": "Blueprint-style diagram of csrrw sp, mscratch, sp: before the instruction sp points at the victim stack and mscratch at the handler stack; after, the two have traded places, the victim stack parked in mscratch",
+    "image_caption": "One instruction, no middle. csrrw sp, mscratch, sp parks the victim's stack in mscratch and loads the handler stack into sp; running it again swaps them back.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-swap-with-no-middle/the-swap-with-no-middle-social.jpg",
+    "sources": [
+      {
+        "title": "src/mscratch-csrrw: module README and PROOF.md",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw",
+        "note": "The firsthand QEMU run behind the post: the two csrrw swaps on mscratch, the measured values 0x0 and 0xa5a55a5a5a5a5a5 on both the read side in rd and the write side by readback, and the PASS verdict."
+      },
+      {
+        "title": "RISC-V ISA Manual, unprivileged architecture (Zicsr)",
+        "publisher": "RISC-V International",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf",
+        "note": "Defines the CSR read-write instructions: csrrw atomically reads the CSR into rd and writes rs1 into the CSR as one operation."
+      }
+    ]
+  },
+  {
     "title": "The Bit That Sorts the Trap",
     "slug": "the-bit-that-sorts-the-trap",
     "date": "2026-10-07",
