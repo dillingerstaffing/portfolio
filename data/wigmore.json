@@ -91671,6 +91671,311 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-store-that-fails-quietly",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The claim is about the sc.w instruction's contract: a store-conditional with no live reservation for its target address reports failure in rd as a nonzero value, writes nothing to memory, and raises no trap. The run exercises all three shapes, a missing reservation, a mismatched reservation, and the live-reservation control, checking rd and memory readbacks each time.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is about the sc.w instruction's contract: a store-conditional with no live reservation for its target address reports failure in rd as a nonzero value, writes nothing to memory, and raises no trap. The run exercises all three shapes, a missing reservation, a mismatched reservation, and the live-reservation control, checking rd and memory readbacks each time."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sc-fail run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sc-fail"
+          },
+          "text": "The module reports rd = 1 with the target word unchanged for sc.w with no preceding lr.w and for lr.w on one cell with sc.w on another, and rd = 0 with 0x12345678 read back for the lr.w/sc.w pair on the same cell; the trap handler's seen flag stayed 0 across the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The measured values establish exactly the failure contract the instruction defines: the report in rd, the untouched memory, the absent trap."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim fully established by an instruction's defined semantics plus register and memory readbacks from a run is an instruction-set claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-fails-quietly",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the failure contract is complete from the instruction semantics and the run.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the failure contract is complete from the instruction semantics and the run."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sc-fail run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sc-fail"
+          },
+          "text": "The module reports only rd values and memory readbacks. No cycle counts, no pipeline or cache observations appear in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Nothing in the argument observes or depends on any implementation detail of any core."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim fully established by instruction semantics plus functional register values, with no implementation behavior asserted, is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-fails-quietly",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No boot code, machine-mode service, or privilege handoff takes part. The binary installs its own M-mode trap handler on the bare virt machine with no firmware beyond the reset state, and the reservation argument never enters firmware.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No boot code, machine-mode service, or privilege handoff takes part. The binary installs its own M-mode trap handler on the bare virt machine with no firmware beyond the reset state, and the reservation argument never enters firmware."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sc-fail run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sc-fail"
+          },
+          "text": "The binary installs its own M-mode trap vector with csrw mtvec and runs with no SBI or firmware calls; the reservation state is created and consumed entirely by the lr.w/sc.w pair."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No firmware contract is quoted, invoked, or depended upon at any step of the argument."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "An argument that never invokes or depends on a firmware interface makes no firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-fails-quietly",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sc-fail run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sc-fail"
+          },
+          "text": "The binary runs on bare QEMU with no BIOS and no operating system present; no syscall, page table, or scheduler takes part in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The entire observation surface is the bare machine: instructions, registers, and memory."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "An argument whose whole observation surface is the bare machine makes no kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-fails-quietly",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed instruction semantic applied as one fixed idiom, not a computation proved against an independent oracle. The retry loop is shown as the consequence of the contract, but nothing here proves a concurrent algorithm correct.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed instruction semantic applied as one fixed idiom, not a computation proved against an independent oracle. The retry loop is shown as the consequence of the contract, but nothing here proves a concurrent algorithm correct."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sc-fail run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sc-fail"
+          },
+          "text": "The run checks one fixed instruction semantic across three fixed shapes; no general computation is proved against an independent oracle."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The retry loop is presented as the habit the contract forces, not as a verified concurrent algorithm."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A fixed instruction semantic demonstrated on fixed shapes, without an independent oracle, is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }

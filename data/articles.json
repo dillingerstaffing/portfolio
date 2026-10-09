@@ -1,5 +1,68 @@
 [
   {
+    "title": "The Store That Fails Quietly",
+    "slug": "the-store-that-fails-quietly",
+    "date": "2026-10-09",
+    "description": "sc.w never promises; it reports. With no live reservation it returns nonzero in rd, writes nothing, and raises no trap. The applied habit: read rd after every store-conditional, and retry on nonzero.",
+    "paragraphs": [
+      "A lock-free counter on RISC-V is built on two instructions. <code>lr.w</code> loads the word and arms a reservation on its address. <code>sc.w</code> stores the new value, but only if that reservation is still live. The condition sits in the hardware, not in your code. <a class=\"cite\" href=\"#src-the-store-that-fails-quietly-2\">[2]</a>",
+      "What <code>sc.w</code> promises is narrower than it looks. With no live reservation for the target address, the instruction does three things: it writes a nonzero value into <code>rd</code>, it writes nothing to memory, and it raises no trap. That is the entire report, and it arrives in silence. The reservation is dead when you never armed one, or when you armed one on a different address. Either way the answer is identical: <code>rd = 1</code>, the word untouched, no exception. <a class=\"cite\" href=\"#src-the-store-that-fails-quietly-1\">[1]</a> <a class=\"cite\" href=\"#src-the-store-that-fails-quietly-2\">[2]</a>",
+      "The idiom this forces:",
+      "CODEBLOCK",
+      "The run behind it. A bare-metal program on QEMU 8.2.2 ran all three shapes against two aligned cells. <code>sc.w</code> with no <code>lr.w</code> at all: <code>rd = 1</code>, the cell still <code>0xaaaaaaaa</code>. <code>lr.w</code> on cell A followed by <code>sc.w</code> on cell B: <code>rd = 1</code>, both cells unchanged. The control, <code>lr.w</code> then <code>sc.w</code> on the same cell: <code>rd = 0</code>, and <code>0x12345678</code> read back. Eight checks, zero failures, and no trap fired in any run. One honest boundary: the executor is QEMU's machine model, faithful, but still a model, not silicon. <a class=\"cite\" href=\"#src-the-store-that-fails-quietly-1\">[1]</a>",
+      "The habit this buys: read <code>rd</code> after every <code>sc.w</code>, and treat nonzero as routine, not as an error. Contention, a stray store between the pair, or a missing <code>lr.w</code> all report the same way. The dangerous case is the one the hardware cannot flag: code that skips the check and assumes the store landed, because a failed <code>sc.w</code> leaves no trace except the value in <code>rd</code>. <a class=\"cite\" href=\"#src-the-store-that-fails-quietly-2\">[2]</a>"
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sc-fail",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is about the sc.w instruction's contract: a store-conditional with no live reservation for its target address reports failure in rd as a nonzero value, writes nothing to memory, and raises no trap. The run exercises all three shapes, a missing reservation, a mismatched reservation, and the live-reservation control, checking rd and memory readbacks each time."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the failure contract is complete from the instruction semantics and the run."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No boot code, machine-mode service, or privilege handoff takes part. The binary installs its own M-mode trap handler on the bare virt machine with no firmware beyond the reset state, and the reservation argument never enters firmware."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic applied as one fixed idiom, not a computation proved against an independent oracle. The retry loop is shown as the consequence of the contract, but nothing here proves a concurrent algorithm correct."
+      }
+    },
+    "evidence": {
+      "label": "sc-fail PROOF.md: 8 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sc-fail/PROOF.md"
+    },
+    "offer": "Related work: lock-free primitives and bare-metal concurrency bring-up, fixed price.",
+    "image": "blog/the-store-that-fails-quietly/the-store-that-fails-quietly.jpg",
+    "image_alt": "Blueprint-style diagram of three store-conditional cases: sc.w with no lr.w and lr.w on one cell with sc.w on another both report rd = 1 with memory unchanged; lr.w and sc.w on the same cell reports rd = 0 with the value stored",
+    "image_caption": "The whole report arrives in rd. No reservation, or the wrong reservation: rd = 1, nothing written, no trap. Live reservation: rd = 0, stored.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-store-that-fails-quietly/the-store-that-fails-quietly-social.jpg",
+    "sources": [
+      {
+        "title": "src/sc-fail: module README and PROOF.md",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sc-fail",
+        "note": "The firsthand QEMU run behind the post: sc.w with no reservation and with a mismatched reservation both reporting rd = 1 with memory unchanged, the live-reservation control reporting rd = 0 with the stored value read back, eight checks, zero traps."
+      },
+      {
+        "title": "RISC-V ISA Manual, unprivileged architecture (A extension)",
+        "publisher": "RISC-V International",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-dc8bf2a-2026-06-26/riscv-spec.pdf",
+        "note": "Defines the load-reserved/store-conditional contract: a store-conditional whose reservation is not live for its target address writes a nonzero value to rd and does not write memory."
+      }
+    ]
+  },
+  {
     "title": "The Swap With No Middle",
     "slug": "the-swap-with-no-middle",
     "date": "2026-10-08",
