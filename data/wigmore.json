@@ -91976,6 +91976,311 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-bit-that-turns-a-wait-into-a-trap",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The claim is about the mstatus.TW bit's contract: with TW set, a WFI executed in S-mode raises an illegal-instruction exception instead of waiting. The run verifies the TW write sticks (bit 21 readback set), delegates the trap to S-mode, and shows one S-mode wfi taking exactly one trap with scause = 2, sepc exactly at the wfi site, and stval holding the wfi instruction word.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is about the mstatus.TW bit's contract: with TW set, a WFI executed in S-mode raises an illegal-instruction exception instead of waiting. The run verifies the TW write sticks (bit 21 readback set), delegates the trap to S-mode, and shows one S-mode wfi taking exactly one trap with scause = 2, sepc exactly at the wfi site, and stval holding the wfi instruction word."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mstatus-tw-trap run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tw-trap"
+          },
+          "text": "The module writes bit 21 of mstatus, reads back 0xa00200000 with the bit set, delegates the illegal-instruction trap to S-mode with medeleg = 0x4, and records one S-mode trap from a single wfi: scause = 2, sepc exactly at the wfi site, stval = 0x10500073. Six checks, zero mismatches, FNV-1a 0xc32b722c5100e880."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The measured values establish exactly the interception contract the TW bit defines: the write sticks, the trap fires, and sepc and stval identify the instruction."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim fully established by a control bit's defined semantics plus CSR readbacks from a run is an instruction-set claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-turns-a-wait-into-a-trap",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only. The specification permits the trap after a bounded wait, and the immediate trap observed is this implementation's behavior, stated as such.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only. The specification permits the trap after a bounded wait, and the immediate trap observed is this implementation's behavior, stated as such."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mstatus-tw-trap run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tw-trap"
+          },
+          "text": "The module reports only CSR values, trap counts, and addresses. No cycle counts, no pipeline or cache observations appear in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Nothing in the argument observes or depends on any implementation detail of any core."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim fully established by control-bit semantics plus functional CSR values, with no implementation behavior asserted, is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-turns-a-wait-into-a-trap",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No firmware service takes part in the claim. The M-mode setup (the TW write, the medeleg delegation, the mret drop to S-mode) is the experiment harness; the behavior under test is the S-mode wfi and the delegated trap that follows it.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No firmware service takes part in the claim. The M-mode setup (the TW write, the medeleg delegation, the mret drop to S-mode) is the experiment harness; the behavior under test is the S-mode wfi and the delegated trap that follows it."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mstatus-tw-trap run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tw-trap"
+          },
+          "text": "The M-mode code writes mstatus.TW and medeleg and executes mret to drop to S-mode; no SBI call, no bootloader, and no firmware service takes part after the drop, and the trap is delegated to the S-mode handler."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The machine-mode code is the harness that arms the bit; the claim concerns what the S-mode wfi does once the bit is set."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "Harness code that configures a bit before the measurement does not make the measured behavior a firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-turns-a-wait-into-a-trap",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mstatus-tw-trap run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tw-trap"
+          },
+          "text": "The binary runs on bare QEMU with no operating system; no system call and no virtual memory takes part in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No kernel exists anywhere in the argument."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A bare-metal run with no operating system is not a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-bit-that-turns-a-wait-into-a-trap",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed control bit applied as one fixed interception idiom, not a computation proved against an independent oracle. The world-switch use is the consequence the specification itself names, but nothing here proves any scheduling policy correct.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed control bit applied as one fixed interception idiom, not a computation proved against an independent oracle. The world-switch use is the consequence the specification itself names, but nothing here proves any scheduling policy correct."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mstatus-tw-trap run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tw-trap"
+          },
+          "text": "The run checks one fixed control bit across one fixed interception shape; no general computation is proved against an independent oracle."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The world-switch use is the consequence the specification names, but nothing here proves any scheduling policy correct."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A single control-bit semantic applied as a single idiom is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
