@@ -1721,6 +1721,29 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Registers MRET Will Not Restore</h3>
+          <!-- LAYER-STRIP:the-registers-mret-will-not-restore -->
+          <p class="research-date"><time datetime="2026-10-11">2026-10-11 11:31 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A trap is not a function call. When the <code>ecall</code> landed, the hardware set aside exactly three things: <code>mcause</code> (0xb, an M-mode environment call), <code>mepc</code> (0x80000556, the address of the <code>ecall</code>), and the privilege stack in <code>mstatus</code>, the old privilege in MPP and the old interrupt enable in MPIE. It set aside none of the general registers. The eight values in <code>a0</code> through <code>a7</code> still belonged to the interrupted program, and they were still sitting in the registers when the handler started. <a class="cite" href="#src-the-registers-mret-will-not-restore-1">[1]</a></p>
+          <p>The handler wrote eight new sentinels into <code>a0</code>..<code>a7</code> and executed <code>mret</code>. The specification's contract for xRET fits in two clauses: it manipulates the privilege stack (MPIE back into MIE, MPP back into the privilege mode) and sets the pc to the value in <code>mepc</code>. Register save and restore are not in either clause, because they are not the hardware's job. After <code>mret</code>, every one of the eight registers read back the handler's value: <code>a0</code> went from 0x1111111111111111 to 0x9999999999999999, <code>a1</code> from 0x2222222222222222 to 0xaaaaaaaaaaaaaaaa, down to <code>a7</code> from 0x8888888888888888 to 0x123456789abcdef0. Nothing was restored, because nothing was saved. <a class="cite" href="#src-the-registers-mret-will-not-restore-1">[1]</a> <a class="cite" href="#src-the-registers-mret-will-not-restore-2">[2]</a></p>
+          <p>The handler's end, the part that never puts anything back:</p>
+<pre><code>    li a0, POST_A0        # the handler's own sentinel set
+    ...
+    li a7, POST_A7
+    mret                  # pc and privilege return; a0..a7 stay as written</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-registers-mret-will-not-restore/the-registers-mret-will-not-restore.jpg" alt="Blueprint-style diagram of the mret no-restore behavior: on trap entry the hardware saves mepc, mcause, and the privilege stack but no general registers; after the handler writes a0..a7 and executes mret, the pc and privilege return while all eight registers still carry the handler's sentinels" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">mret returns the pc and the privilege stack. a0..a7 keep whatever the handler last wrote; nothing is restored.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The run behind it. A bare-metal M-mode program on QEMU 8.2.2 loaded eight sentinels into <code>a0</code>..<code>a7</code>, recorded them, issued one <code>ecall</code>, and read the registers back after <code>mret</code>. <code>mie</code> read 0x0 at boot and <code>mstatus</code>.MIE was cleared, so the <code>ecall</code> was the only trap the run could take. One trap, eight readbacks, each matching the handler's sentinel set and none matching the pre-trap value. One honest boundary: the executor is QEMU's machine model, faithful, but still a model, not silicon. <a class="cite" href="#src-the-registers-mret-will-not-restore-1">[1]</a></p>
+          <p>The habit this buys: a handler parks every register it touches and puts each one back before <code>mret</code>, or the interrupted code resumes with your values in its registers. The save and restore are a convention the handler owns; the hardware signs only for the pc and the privilege stack. <a class="cite" href="#src-the-registers-mret-will-not-restore-2">[2]</a></p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mret-no-restore" target="_blank" rel="noopener">riscv-baremetal-demo/src/mret-no-restore</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Bit That Turns a Wait Into a Trap</h3>
           <!-- LAYER-STRIP:the-bit-that-turns-a-wait-into-a-trap -->
           <p class="research-date"><time datetime="2026-10-10">2026-10-10 11:30 EDT</time></p>

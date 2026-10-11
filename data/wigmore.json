@@ -92281,6 +92281,311 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-registers-mret-will-not-restore",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The claim is about the xRET instruction's contract: mret restores the pc from mepc and pops the privilege stack (MPIE into MIE, MPP into the privilege mode), and it restores no general registers. The run executes one ecall and shows all eight argument registers, a0 through a7, coming back with the handler's values after mret, proving the no-restore half of the contract by readback.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is about the xRET instruction's contract: mret restores the pc from mepc and pops the privilege stack (MPIE into MIE, MPP into the privilege mode), and it restores no general registers. The run executes one ecall and shows all eight argument registers, a0 through a7, coming back with the handler's values after mret, proving the no-restore half of the contract by readback."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mret-no-restore run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mret-no-restore"
+          },
+          "text": "The module issues one M-mode ecall (mcause 0xb, mepc 0x80000556) and the handler writes eight sentinels into a0..a7, then returns with mret and no restore. All eight registers read back the handler's values, none the pre-trap values. Ninety-five checks, zero mismatches."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The measured readbacks establish exactly the no-restore half of the xRET contract: pc and privilege return, the registers keep the handler's values."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim fully established by an instruction's defined semantics plus register readbacks from a run is an instruction-set claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-registers-mret-will-not-restore",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the restore contract is complete from the instruction semantics and the run.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the restore contract is complete from the instruction semantics and the run."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mret-no-restore run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mret-no-restore"
+          },
+          "text": "The module reports only register values, CSR readbacks, and the trap count. No cycle counts, no pipeline or cache observations appear in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Nothing in the argument observes or depends on any implementation detail of any core."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim fully established by instruction semantics plus functional register values, with no implementation behavior asserted, is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-registers-mret-will-not-restore",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No firmware service takes part in the claim. The M-mode trap handler is the experiment subject, written for the test; the behavior under test is the mret instruction's own contract, and no boot service or supervisor interface appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No firmware service takes part in the claim. The M-mode trap handler is the experiment subject, written for the test; the behavior under test is the mret instruction's own contract, and no boot service or supervisor interface appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mret-no-restore run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mret-no-restore"
+          },
+          "text": "The binary installs its own M-mode trap vector and runs with no SBI or firmware calls; the handler under test is written for the experiment, and mret's contract is the behavior measured."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No firmware contract is quoted, invoked, or depended upon at any step of the argument."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "An argument that never invokes or depends on a firmware interface makes no firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-registers-mret-will-not-restore",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mret-no-restore run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mret-no-restore"
+          },
+          "text": "The binary runs on bare QEMU with no operating system; no system call and no virtual memory takes part in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No kernel exists anywhere in the argument."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A bare-metal run with no operating system is not a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-registers-mret-will-not-restore",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed instruction semantic exercised as one fixed before-and-after readback, not a computation proved against an independent oracle. The save/restore idiom is shown as the consequence of the contract, but nothing here proves any handler discipline correct.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed instruction semantic exercised as one fixed before-and-after readback, not a computation proved against an independent oracle. The save/restore idiom is shown as the consequence of the contract, but nothing here proves any handler discipline correct."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/mret-no-restore run, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mret-no-restore"
+          },
+          "text": "The run checks one fixed instruction semantic across one fixed before-and-after shape; no general computation is proved against an independent oracle."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The save/restore idiom is presented as the habit the contract forces, not as a verified algorithm."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A fixed instruction semantic demonstrated on a fixed shape, without an independent oracle, is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the layer rule yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
