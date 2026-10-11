@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="build-version" content="v20260930-072000" />
+  <meta name="build-version" content="v20261011-fp01" />
   <meta name="color-scheme" content="light dark" />
   <meta name="theme-color" content="#ece6d5" />
   <title>First Principles &middot; Chris Dillinger</title>
@@ -896,7 +896,7 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
         </dl>
         <ul class="fp-facts">
           <li>SIMD applies one operation to many elements. RISC-V's V extension is vector-length agnostic: the same code runs on 128-bit and 512-bit implementations.</li>
-          <li>SIMT (GPU): on NVIDIA GPUs, threads group into warps of 32 that execute in lockstep. Divergent branches serialize the taken and not-taken paths, costing the parallelism you came for.</li>
+          <li>SIMT (GPU): on NVIDIA GPUs, threads group into warps of 32 that execute in lockstep. Divergent branches serialize the taken and not-taken paths; a fully divergent warp runs at scalar speed.</li>
           <li>Memory is the real bottleneck: coalesced global accesses and programmer-managed per-block shared memory exist because bandwidth, not arithmetic, usually limits.</li>
         </ul>
         <div class="fp-evidence">
@@ -928,7 +928,7 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
         <ul class="fp-facts">
           <li>CUDA is the programming model for the L5 machine: kernels launch as grids of thread blocks; the hardware schedules the warps.</li>
           <li>Tensor cores collapse a small matrix-multiply-accumulate (for example 4x4 FP16 into FP32) into one instruction: the operation AI actually performs, in silicon.</li>
-          <li>This array is output-stationary: each cell holds its running sum while A and B pulse through, reused without refetching, which is where the energy goes.</li>
+          <li>This array is output-stationary: each cell holds its running sum while A and B pulse through, so each fetched element is reused by many cells instead of refetched for every multiply.</li>
           <li>Roofline: attainable performance is the minimum of peak compute and bandwidth times arithmetic intensity. Every accelerator argument is this curve.</li>
         </ul>
         <div class="fp-evidence">
