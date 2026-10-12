@@ -1721,6 +1721,29 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Shift That Needs Thirty-Three Bits</h3>
+          <!-- LAYER-STRIP:the-shift-that-needs-thirty-three-bits -->
+          <p class="research-date"><time datetime="2026-10-12">2026-10-12 12:20 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A peripheral register is 32 bits wide, and the bit you want is bit 31: the enable, the top flag, the master interrupt. My UART driver plays this game lower down: <code>src/uart.c</code> defines <code>LSR_THRE</code> as <code>(1 &lt;&lt; 5)</code>, one bit up from zero. Bit 31 looks like the same trick, one shift higher. <a class="cite" href="#src-the-shift-that-needs-thirty-three-bits-1">[1]</a></p>
+          <p>It is not the same trick. The literal <code>1</code> has type <code>int</code>, and <code>int</code> is 32 bits here. Shifting a 1 into the sign position asks for a value that needs 33 bits to represent. GCC 13.3.0 says it out loud with <code>-Wshift-overflow</code>: "result of '1 &lt;&lt; 31' requires 33 bits to represent, but 'int' only has 32 bits". The language reference is blunter: for signed left operands the result is defined only when it is representable in the promoted type, otherwise the behavior is undefined. The compiler is allowed to assume it never happens. <a class="cite" href="#src-the-shift-that-needs-thirty-three-bits-2">[2]</a></p>
+          <p>On this machine it produced <code>0x80000000</code> anyway, which is exactly why the bug survives for years. It works on every compiler you try, right up until the optimization pass that folds it differently, and then your enable bit is a coin flip. Undefined does not mean broken today; it means no promise about tomorrow.</p>
+
+          <p>The fix is one character: <code>1u</code>. Unsigned int has the same 32 bits, but its top bit is a value bit, not a sign bit, and an unsigned left shift is defined as the value reduced modulo 2^32. So <code>1u &lt;&lt; 31</code> is exactly <code>0x80000000</code>, on every compiler, forever. The habit: every bit mask in a driver is unsigned. <code>(1u &lt;&lt; 31)</code>, <code>(1u &lt;&lt; 5)</code>, all of them. <a class="cite" href="#src-the-shift-that-needs-thirty-three-bits-2">[2]</a></p>
+<pre><code>#define ENABLE_BIT (1u &lt;&lt; 31)  /* defined: exactly 0x80000000 */
+
+/* not (1 &lt;&lt; 31): that value needs 33 bits in a 32-bit int,
+   so the standard calls it undefined */</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-shift-that-needs-thirty-three-bits/the-shift-that-needs-thirty-three-bits.jpg" alt="Blueprint-style diagram of a 32-bit register row: bit 31 is lit amber holding the shifted 1, and a dashed red 33rd cell hangs off the left edge labeled needs 33 bits. Below, the two verdicts: 1 shifted left by 31 is undefined, 1u shifted left by 31 is defined as exactly 0x80000000." style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One bit past the edge. (1 &lt;&lt; 31) asks for 33 bits in a 32-bit int, so it is undefined; (1u &lt;&lt; 31) is exactly 0x80000000, defined.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c" target="_blank" rel="noopener">riscv-baremetal-demo/src/uart.c</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Registers MRET Will Not Restore</h3>
           <!-- LAYER-STRIP:the-registers-mret-will-not-restore -->
           <p class="research-date"><time datetime="2026-10-11">2026-10-11 11:31 EDT</time></p>

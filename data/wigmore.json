@@ -92586,6 +92586,322 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-shift-that-needs-thirty-three-bits",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "No instruction-set claim is made. The 33-bit verdict follows from C's type rules for the shift operator: the literal 1 has type int, int is 32 bits, and a signed shift is defined only when the value is representable in the promoted type. The compiler's diagnostic is emitted before any target is chosen, and the verdict holds with the CPU swapped.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No instruction-set claim is made. The 33-bit verdict follows from C's type rules for the shift operator: the literal 1 has type int, int is 32 bits, and a signed shift is defined only when the value is representable in the promoted type. The compiler's diagnostic is emitted before any target is chosen, and the verdict holds with the CPU swapped."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "uart.c mask idiom, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+          },
+          "text": "src/uart.c defines its register masks with left shifts: LSR_THRE is 1 shifted left by 5. The idiom is identical at bit 31; only the type width changes the verdict."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "C shift operator rules",
+            "tier": "reference",
+            "url": "https://en.cppreference.com/c/language/operator_arithmetic"
+          },
+          "text": "The C reference states the signed-shift rule as a representability condition: defined only when the result fits the promoted type of the left operand, otherwise undefined; unsigned shifts are reduced modulo 2 to the n."
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The undefinedness follows from the type of the literal, not from any target."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ISA decision test lights the slot only when the verified claim is stated in one architecture's terms; a C abstract-machine type rule is architecture-neutral."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-shift-that-needs-thirty-three-bits",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; the evidence is the compiler's diagnostic text and the defined value of the unsigned form, both produced before any hardware runs.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; the evidence is the compiler's diagnostic text and the defined value of the unsigned form, both produced before any hardware runs."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "compiler diagnostic, GCC 13.3.0",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+          },
+          "text": "The signed form was never executed or timed: its verdict is read off the compiler diagnostic, and the unsigned form's value is the language's defined constant. The lab URL names the repo the mask idiom comes from."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "Nothing in the proof depends on how hardware executes a shift."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The MICROARCH decision test lights the slot only when a claim depends on how a core implements the machine."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-shift-that-needs-thirty-three-bits",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No boot code, machine-mode service, or privilege handoff takes part. The check is a host-side compile of two constant expressions, and the argument never enters firmware.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No boot code, machine-mode service, or privilege handoff takes part. The check is a host-side compile of two constant expressions, and the argument never enters firmware."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "host-side compile setup",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+          },
+          "text": "The experiment is a host-side compile of two constant expressions; no boot code, trap vector, or privilege mode appears anywhere in the setup."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The argument never leaves the compiler's front end."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The FIRMWARE decision test lights the slot only when boot code or a privilege handoff takes part in the claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-shift-that-needs-thirty-three-bits",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The signed form was compiled as a userspace program on the build VM, and the comparison is between two expressions' definedness, read off the compiler's output rather than from any system call.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The signed form was compiled as a userspace program on the build VM, and the comparison is between two expressions' definedness, read off the compiler's output rather than from any system call."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "userspace compile on the build VM",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/uart.c"
+          },
+          "text": "The signed form was compiled as a userspace program on the build VM with -Wshift-overflow=2; the diagnostic is the verdict, and no system call was issued to obtain it."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The comparison needs only the compiler's output, not an operating system."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The KERNEL decision test lights the slot only when a kernel mechanism takes part in the verified claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-shift-that-needs-thirty-three-bits",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is a language contract about representability, not a computation. Nothing is proved against an independent oracle, and no portable mechanism is under test.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is a language contract about representability, not a computation. Nothing is proved against an independent oracle, and no portable mechanism is under test."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "C shift operator rules",
+            "tier": "reference",
+            "url": "https://en.cppreference.com/c/language/operator_arithmetic"
+          },
+          "text": "The reference states the signed-shift rule as a representability condition, a contract on the value, not a procedure to be proved correct."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "There is no oracle to check the result against; definedness is the whole claim."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The ALGORITHM decision test lights the slot only when a portable computation is proved against an independent oracle."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
