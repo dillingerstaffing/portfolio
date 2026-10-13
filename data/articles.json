@@ -1,5 +1,63 @@
 [
   {
+    "title": "The Sleep That Cannot Miss Its Wakeup",
+    "slug": "the-sleep-that-cannot-miss-its-wakeup",
+    "date": "2026-10-13",
+    "description": "xv6's wait() registers its sleep channel under the process's own lock before releasing the wait lock. exit()'s wakeup clears that channel under the same lock, so no wakeup can fall into the gap between the decision to sleep and the sleep itself.",
+    "paragraphs": [
+      "<p>A parent calls <code>wait()</code>. No child has exited yet, so the parent must sleep until one does. The oldest race in kernel code lives in the breath between those two facts: the scan says \"nothing yet\", and before the parent actually goes to sleep, a child exits. A wakeup fired at a process that is not yet asleep reaches nobody, and a wakeup that reaches nobody is lost. The parent sleeps, and nothing will ever wake it. <a class=\"cite\" href=\"#src-the-sleep-that-cannot-miss-its-wakeup-1\">[1]</a></p>",
+      "<p>The fix is the order of three calls. <code>wait()</code> still holds the wait lock while it scans the children. Finding none exited, it does not release the lock yet. First it calls <code>sleep_prepare(p)</code>, which takes the parent's own per-process lock and registers the sleep channel: wake me on this pointer. Only then does <code>wait()</code> release the wait lock, and only then does it call <code>sleep()</code>, which takes the per-process lock again and goes to sleep only if the channel is still registered. <a class=\"cite\" href=\"#src-the-sleep-that-cannot-miss-its-wakeup-1\">[1]</a></p>",
+      "<p>The child's half runs under the same wait lock. <code>exit()</code> reparents the dying child, then calls <code>wakeup(p-&gt;parent)</code>. <code>wakeup</code> walks the process table, takes each process's per-process lock, and where the channel matches it clears the channel; if the process already reached <code>SLEEPING</code>, it marks it <code>RUNNABLE</code> instead. <a class=\"cite\" href=\"#src-the-sleep-that-cannot-miss-its-wakeup-1\">[1]</a></p>",
+      "<p>So order the child's exit anywhere on the timeline. Before the registration: the parent's scan found the zombie, so it never slept. Between the registration and the actual sleep: the wakeup clears the channel under the same lock, and <code>sleep()</code> sees an empty channel and returns without sleeping. After the sleep: <code>SLEEPING</code> flips to <code>RUNNABLE</code>. There is no fourth position. The registration is what collapses the gap: a wakeup can arrive early or late, but it can never arrive between.</p>",
+      "<p>The three calls that seal the gap:</p>\n<pre><code>sleep_prepare(p);      /* register the channel, holding p-&gt;lock */\nrelease(&amp;wait_lock);   /* the decision is sealed */\nsleep();               /* sleeps only if the channel is still set */</code></pre>\n<figure style=\"margin:28px 0;max-width:560px\">\n<img src=\"/portfolio/blog/the-sleep-that-cannot-miss-its-wakeup/the-sleep-that-cannot-miss-its-wakeup.jpg\" alt=\"Blueprint-style timeline of the sleep/wakeup ordering: the wait() sequence of scan, registration, lock release, and sleep on a timeline, with three wakeup landing positions. A wakeup before registration finds the zombie child; one between registration and sleep clears the channel so sleep() returns without sleeping; one after the sleep flips SLEEPING to RUNNABLE. No fourth position exists.\" style=\"width:100%;height:auto;display:block\" loading=\"lazy\" />\n<figcaption style=\"margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)\">Every wakeup lands on one of three positions. Registering the channel before releasing the wait lock means there is no gap between the decision to sleep and the sleep itself.<br><span style=\"opacity:.7\">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>\n</figure>",
+      "<p>The bench habit: whenever you add a sleep and wakeup pair to driver or kernel code, register your interest before you drop the guard lock, then re-read the three positions. If a wakeup can land somewhere with no verdict, the gap is still open.</p>",
+      "<p class=\"research-code-link\">Code: <a href=\"https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/proc.c\" target=\"_blank\" rel=\"noopener\">xv6-getscount/kernel/proc.c</a></p>"
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/proc.c",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "No instruction-set claim is made. The whole mechanism is locks and state flags in C: register a channel, clear a channel, set a state. No instruction, CSR, or privilege behavior is asserted or measured."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements anything. The ordering argument rests on lock serialization, which holds identically on any core; no cache, pipeline, or timing behavior is asserted."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No boot code, machine-mode service, or privilege handoff takes part. The code runs in the kernel proper, in wait(), sleep_prepare(), sleep(), exit(), and wakeup()."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The verdict is a kernel sleep/wakeup protocol. Correctness rests on which lock is held at each step: wait() registers the channel under the process lock while still holding wait_lock, and exit()'s wakeup clears or honors it under the same process lock, which is exactly what the cited source shows."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The exclusion is a hand-checked case analysis over the three positions a wakeup can take relative to the registration, read off the lock order in the source. No independent oracle, known-answer vector, or mechanized proof is involved."
+      }
+    },
+    "evidence": {
+      "label": "xv6-getscount kernel/proc.c read directly on the build VM: sleep_prepare registers the sleep channel under the process lock; sleep sleeps only while the channel is still set; wakeup clears a matching channel or marks a sleeping process runnable under the same lock; wait registers before releasing the wait lock; exit wakes the parent while holding the wait lock",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/proc.c"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-sleep-that-cannot-miss-its-wakeup/the-sleep-that-cannot-miss-its-wakeup.jpg",
+    "image_alt": "Blueprint-style timeline of the sleep/wakeup ordering: the wait() sequence of scan, registration, lock release, and sleep on a timeline, with three wakeup landing positions. A wakeup before registration finds the zombie child; one between registration and sleep clears the channel so sleep() returns without sleeping; one after the sleep flips SLEEPING to RUNNABLE. No fourth position exists.",
+    "image_caption": "Every wakeup lands on one of three positions. Registering the channel before releasing the wait lock means there is no gap between the decision to sleep and the sleep itself.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-sleep-that-cannot-miss-its-wakeup/the-sleep-that-cannot-miss-its-wakeup-social.jpg",
+    "sources": [
+      {
+        "title": "proc.c: sleep_prepare, sleep, wakeup, wait, and exit",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/proc.c",
+        "note": "The three primitives and their caller order, read directly: sleep_prepare takes the process lock and records the channel; sleep takes the process lock and sleeps only while the channel is still set; wakeup takes each process's lock, clears a matching channel, and marks an already-sleeping process runnable. wait calls sleep_prepare before releasing the wait lock, then sleep; exit calls wakeup on the parent while holding the wait lock, so the child's exit lands either before the scan or after the registration, never between."
+      }
+    ]
+  },
+  {
     "title": "The Shift That Needs Thirty-Three Bits",
     "slug": "the-shift-that-needs-thirty-three-bits",
     "date": "2026-10-12",
