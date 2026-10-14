@@ -93218,6 +93218,322 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-misaligned-access-that-never-trapped",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The verdict is the ISA's own latitude: the manual leaves misaligned loads and stores to the execution environment, which may handle them invisibly or raise an address-misaligned exception. The run shows which choice this machine made: both accesses completed with no trap, the handler never running.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The verdict is the ISA's own latitude: the manual leaves misaligned loads and stores to the execution environment, which may handle them invisibly or raise an address-misaligned exception. The run shows which choice this machine made: both accesses completed with no trap, the handler never running."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "RISC-V unprivileged manual, section 2.6",
+            "tier": "reference",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf"
+          },
+          "text": "The manual states the rule in two halves: naturally aligned accesses shall not raise an address-misaligned exception on any implementation, while misaligned accesses are left to the execution environment, which may handle them invisibly or raise an address-misaligned or access-fault exception."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "src/misaligned PROOF.md, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned"
+          },
+          "text": "The QEMU 8.2.2 run issued a word load from 0x80000c01 and a word store to 0x80000c02; neither trapped, the handler never ran, and the values round-tripped byte-exact. Re-verified on this run with identical results."
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The specification names the two permitted outcomes, and the run records which one this machine chose."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ISA slot lights when the verified claim is the architecture's own contract, exercised by a run on one implementation."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-misaligned-access-that-never-trapped",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the invisible-handling verdict is read off the trap registers, not the microarchitecture.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements anything. No cache, pipeline, or timing behavior is asserted or measured; QEMU serves as a functional executor only, and the invisible-handling verdict is read off the trap registers, not the microarchitecture."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/misaligned PROOF.md, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned"
+          },
+          "text": "The verdict is read off architectural trap registers: the handler's seen flag stayed zero and mcause, mepc, and mtval read back zero. No cache, pipeline, or timing measurement appears in the argument."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The invisible-handling verdict comes from trap registers, not from how any core implements the access."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The microarchitecture slot lights only for claims about implementation behavior; a verdict read off architectural state holds regardless of the core behind it."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-misaligned-access-that-never-trapped",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No boot code, machine-mode service, or privilege handoff takes part. The M-mode trap handler is the experiment harness, and it never ran: the seen flag stayed zero and mcause, mepc, and mtval read back zero.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No boot code, machine-mode service, or privilege handoff takes part. The M-mode trap handler is the experiment harness, and it never ran: the seen flag stayed zero and mcause, mepc, and mtval read back zero."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/misaligned PROOF.md, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned"
+          },
+          "text": "The M-mode trap handler is the experiment's tripwire: it records mcause, mepc, and mtval if a trap fires. It never ran, so no machine-mode service carried any part of the claim."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The handler exists to detect the trap; its non-execution is the evidence, not a firmware behavior."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The firmware slot lights only when boot code, a machine-mode service, or a privilege handoff carries part of the claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-misaligned-access-that-never-trapped",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system, and no system interface appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/misaligned PROOF.md, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned"
+          },
+          "text": "The test binary is a bare-metal ELF run with -bios none: no operating system, no supervisor, and no system call appears anywhere in the run."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "There is no kernel in the experiment at any step."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The kernel slot lights only when kernel code or a kernel interface carries part of the claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-misaligned-access-that-never-trapped",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed machine behavior exercised as two fixed accesses with readback, not a computation proved against an independent oracle. No invariant is proved beyond the two observed outcomes.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed machine behavior exercised as two fixed accesses with readback, not a computation proved against an independent oracle. No invariant is proved beyond the two observed outcomes."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/misaligned PROOF.md, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/misaligned"
+          },
+          "text": "The experiment is two fixed accesses with readback against byte-wise ground truth computed at run time. No procedure with an invariant is presented and no independent oracle is consulted."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The argument is two observed outcomes, not a computation checked against an oracle."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "The algorithm slot lights only when correctness is proved against an independent oracle or known-answer check."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }
