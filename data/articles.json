@@ -1,5 +1,63 @@
 [
   {
+    "title": "The Zero That strncpy Skips",
+    "slug": "the-zero-that-strncpy-skips",
+    "date": "2026-10-15",
+    "description": "strncpy copies at most n bytes and writes no terminator when the source is longer than n. xv6's safestrcpy decrements the count before copying, reserving the last byte, then writes the zero unconditionally: the terminator is structural, not conditional.",
+    "paragraphs": [
+      "<p>The buffer starts full of <code>X</code>. One call through the actual <code>strncpy</code> in xv6's <code>kernel/string.c</code>, <code>strncpy(dst, \"hello world\", 5)</code>, and the first five bytes read <code>68 65 6c 6c 6f</code>: \"hello\", exactly as promised. The sixth byte is still <code>58</code>: an <code>X</code>. No zero landed anywhere in the first five bytes, so anything that prints the result as a string walks straight past the end. <a class=\"cite\" href=\"#src-the-zero-that-strncpy-skips-1\">[1]</a></p>",
+      "<p>The same call through <code>safestrcpy</code>, the other function in the same file, writes <code>68 65 6c 6c 00</code>: \"hell\" plus the zero. The whole difference is where the decrement lands. <code>strncpy</code> tests <code>n-- &gt; 0</code>: the decrement happens after the test, so all five bytes stay available for copying, and the terminator lands only when the source ends early. <code>safestrcpy</code> tests <code>--n &gt; 0</code>: the decrement happens first, so the loop can consume at most four bytes, and the last byte is reserved before the first byte is copied. <a class=\"cite\" href=\"#src-the-zero-that-strncpy-skips-1\">[1]</a></p>",
+      "<p>The reservation, in three lines:</p>\n<pre><code>while (--n &gt; 0 &amp;&amp; (*s++ = *t++) != 0)\n  ;\n*s = 0;   /* the last byte was reserved before the first was copied */</code></pre>",
+      "<p>The run, with both functions compiled from the real <code>kernel/string.c</code> and run on the build VM: destination pre-filled with <code>X</code>, source <code>\"hello world\"</code>, <code>n = 5</code>. <code>strncpy</code> left <code>68 65 6c 6c 6f 58 58 58</code>. <code>safestrcpy</code> left <code>68 65 6c 6c 00 58 58 58</code>. The short-source case shows the other side: <code>strncpy(dst, \"hi\", 5)</code> gives <code>68 69 00 00 00</code>, padding zeros once the source ends, while <code>safestrcpy</code> gives <code>68 69 00</code> and stops, leaving the old fill behind the terminator. One pads but does not guarantee; the other guarantees but does not pad. <a class=\"cite\" href=\"#src-the-zero-that-strncpy-skips-1\">[1]</a></p>",
+      "<figure style=\"margin:28px 0;max-width:560px\">\n<img src=\"/portfolio/blog/the-zero-that-strncpy-skips/the-zero-that-strncpy-skips.jpg\" alt=\"Blueprint-style diagram of two destination buffers pre-filled with X, each receiving the string 'hello world' with n = 5: strncpy writes h e l l o and leaves the sixth byte as X with no terminator; safestrcpy writes h e l l and a zero terminator in the fifth byte, the decrement's position deciding which byte the zero gets.\" style=\"width:100%;height:auto;display:block\" loading=\"lazy\" />\n<figcaption style=\"margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)\">Same source, same n. strncpy spends all five bytes on the copy and leaves no terminator; safestrcpy spends four and reserves the fifth for the zero.<br><span style=\"opacity:.7\">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>\n</figure>",
+      "<p>The bench habit: in kernel code a bounded copy has to guarantee its own terminator, because the next reader downstream will treat the buffer as a string. The question is not \"did the source fit\"; it is \"can I point at the byte that ends it\". In xv6 that question has one answer: <code>safestrcpy</code>.</p>",
+      "<p class=\"research-code-link\">Code: <a href=\"https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/string.c\" target=\"_blank\" rel=\"noopener\">xv6-getscount/kernel/string.c</a></p>"
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/string.c",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "No instruction-set claim is made. The guarantee is a C loop invariant: decrementing the count before the loop test reserves the last byte before the first byte is copied. No instruction, CSR, or privilege behavior is asserted or measured."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements anything. The byte dumps came from compiling the actual xv6 functions on the build VM and running them as a userspace test; no cache, pipeline, or timing behavior is asserted."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No boot code, machine-mode service, or privilege handoff takes part. Both functions are plain C from the kernel string library, exercised outside any firmware context."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The verdict is a kernel string-copy contract. xv6's kernel/string.c carries both functions side by side: strncpy leaves the destination unterminated when the source is longer than n, while safestrcpy decrements the count before copying and then writes the terminator unconditionally, so the last byte always holds the zero, which is exactly what the cited source shows."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one loop invariant checked against two observed byte dumps, not a computation proved against an independent oracle. No invariant is proved beyond the observed output."
+      }
+    },
+    "evidence": {
+      "label": "xv6-getscount kernel/string.c read directly on the build VM: strncpy copies up to n bytes and pads with zeros only when the source ends early, leaving no terminator when the source is longer than n; safestrcpy decrements n before the loop test and writes the terminator unconditionally, so the final byte is always the zero",
+      "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/string.c"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-zero-that-strncpy-skips/the-zero-that-strncpy-skips.jpg",
+    "image_alt": "Blueprint-style diagram of two destination buffers pre-filled with X, each receiving the string 'hello world' with n = 5: strncpy writes h e l l o and leaves the sixth byte as X with no terminator; safestrcpy writes h e l l and a zero terminator in the fifth byte, the decrement's position deciding which byte the zero gets.",
+    "image_caption": "Same source, same n. strncpy spends all five bytes on the copy and leaves no terminator; safestrcpy spends four and reserves the fifth for the zero.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-zero-that-strncpy-skips/the-zero-that-strncpy-skips-social.jpg",
+    "sources": [
+      {
+        "title": "kernel/string.c: strncpy and safestrcpy, plus the firsthand run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/string.c",
+        "note": "Both functions read directly from the xv6 source: strncpy decrements the count after the loop test, so all n bytes stay copyable and the terminator lands only when the source ends early; safestrcpy decrements before the test, so the loop can consume at most n-1 bytes, then writes the terminator unconditionally. Both compiled from this file on the build VM and run with dst pre-filled with X, src 'hello world', n=5: strncpy left 68 65 6c 6c 6f with the sixth byte still 58; safestrcpy left 68 65 6c 6c 00."
+      }
+    ]
+  },
+  {
     "title": "The Misaligned Access That Never Trapped",
     "slug": "the-misaligned-access-that-never-trapped",
     "date": "2026-10-14",

@@ -1721,6 +1721,28 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Zero That strncpy Skips</h3>
+          <!-- LAYER-STRIP:the-zero-that-strncpy-skips -->
+          <p class="research-date"><time datetime="2026-10-15">2026-10-15 11:40 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The buffer starts full of <code>X</code>. One call through the actual <code>strncpy</code> in xv6's <code>kernel/string.c</code>, <code>strncpy(dst, "hello world", 5)</code>, and the first five bytes read <code>68 65 6c 6c 6f</code>: "hello", exactly as promised. The sixth byte is still <code>58</code>: an <code>X</code>. No zero landed anywhere in the first five bytes, so anything that prints the result as a string walks straight past the end. <a class="cite" href="#src-the-zero-that-strncpy-skips-1">[1]</a></p>
+          <p>The same call through <code>safestrcpy</code>, the other function in the same file, writes <code>68 65 6c 6c 00</code>: "hell" plus the zero. The whole difference is where the decrement lands. <code>strncpy</code> tests <code>n-- &gt; 0</code>: the decrement happens after the test, so all five bytes stay available for copying, and the terminator lands only when the source ends early. <code>safestrcpy</code> tests <code>--n &gt; 0</code>: the decrement happens first, so the loop can consume at most four bytes, and the last byte is reserved before the first byte is copied. <a class="cite" href="#src-the-zero-that-strncpy-skips-1">[1]</a></p>
+          <p>The reservation, in three lines:</p>
+<pre><code>while (--n &gt; 0 &amp;&amp; (*s++ = *t++) != 0)
+  ;
+*s = 0;   /* the last byte was reserved before the first was copied */</code></pre>
+          <p>The run, with both functions compiled from the real <code>kernel/string.c</code> and run on the build VM: destination pre-filled with <code>X</code>, source <code>"hello world"</code>, <code>n = 5</code>. <code>strncpy</code> left <code>68 65 6c 6c 6f 58 58 58</code>. <code>safestrcpy</code> left <code>68 65 6c 6c 00 58 58 58</code>. The short-source case shows the other side: <code>strncpy(dst, "hi", 5)</code> gives <code>68 69 00 00 00</code>, padding zeros once the source ends, while <code>safestrcpy</code> gives <code>68 69 00</code> and stops, leaving the old fill behind the terminator. One pads but does not guarantee; the other guarantees but does not pad. <a class="cite" href="#src-the-zero-that-strncpy-skips-1">[1]</a></p>
+          <figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-zero-that-strncpy-skips/the-zero-that-strncpy-skips.jpg" alt="Blueprint-style diagram of two destination buffers pre-filled with X, each receiving the string 'hello world' with n = 5: strncpy writes h e l l o and leaves the sixth byte as X with no terminator; safestrcpy writes h e l l and a zero terminator in the fifth byte, the decrement's position deciding which byte the zero gets." style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Same source, same n. strncpy spends all five bytes on the copy and leaves no terminator; safestrcpy spends four and reserves the fifth for the zero.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The bench habit: in kernel code a bounded copy has to guarantee its own terminator, because the next reader downstream will treat the buffer as a string. The question is not "did the source fit"; it is "can I point at the byte that ends it". In xv6 that question has one answer: <code>safestrcpy</code>.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/string.c" target="_blank" rel="noopener">xv6-getscount/kernel/string.c</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Misaligned Access That Never Trapped</h3>
           <!-- LAYER-STRIP:the-misaligned-access-that-never-trapped -->
           <p class="research-date"><time datetime="2026-10-14">2026-10-14 11:23 EDT</time></p>
