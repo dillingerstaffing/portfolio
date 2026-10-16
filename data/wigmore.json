@@ -93861,6 +93861,366 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-register-with-no-name",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The verdict is the AUIPC semantic from the unprivileged ISA: the 20-bit immediate with 12 zero bits appended is added to the address of the auipc instruction itself. The QEMU run confirmed it twice: the auipc at 0x800001d2 returned 0x800001d2, and the auipc with immediate 0x12345 at 0x800001f4 returned 0x923451f4, which is 0x800001f4 plus 0x12345000.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The verdict is the AUIPC semantic from the unprivileged ISA: the 20-bit immediate with 12 zero bits appended is added to the address of the auipc instruction itself. The QEMU run confirmed it twice: the auipc at 0x800001d2 returned 0x800001d2, and the auipc with immediate 0x12345 at 0x800001f4 returned 0x923451f4, which is 0x800001f4 plus 0x12345000."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The RISC-V User-Level ISA describes AUIPC as forming a 32-bit offset from the 20-bit U-immediate with the lowest 12 bits zero, adding it to the pc of the AUIPC instruction, and placing the result in rd.",
+          "source": {
+            "cite": "RISC-V User-Level ISA, AUIPC",
+            "tier": "spec",
+            "url": "https://www.five-embeddev.com/riscv-user-isa-manual/riscv-user-2.2/rv64"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "Disassembly of the test image shows the check-1 auipc s0,0 at 0x800001d2 and the check-2 auipc s0,0x12345 at 0x800001f4; the QEMU UART log shows 0x800001d2 and 0x923451f4 respectively.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The observed register values equal the auipc addresses plus the stated immediate offsets, exactly the manual's semantic."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ISA slot lights when the verified claim is the defined behavior of one instruction, confirmed against both the manual text and observed execution."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-register-with-no-name",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements the addition. The three values came from one run on QEMU's virt board, and the post asserts nothing about pipelines, caches, or timing.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements the addition. The three values came from one run on QEMU's virt board, and the post asserts nothing about pipelines, caches, or timing."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The post's numbers are three register values from a single QEMU run: 0x800001d2, 0x923451f4, and 0x123456789abcdef0.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "No sentence in the post names a pipeline stage, a cache, a predictor, or any timing; the verdict is a value equality, not a performance claim.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The claim's vocabulary is instruction semantics and observed values, not implementation internals."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The MICROARCH slot lights only when the verified claim depends on how a core implements the behavior; a value equality confirmed on one machine does not."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-register-with-no-name",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "The test runs on bare metal without calling any firmware service, and the verdict asserts nothing about firmware behavior. The auipc semantic is defined by the instruction itself, independent of privilege level.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The test runs on bare metal without calling any firmware service, and the verdict asserts nothing about firmware behavior. The auipc semantic is defined by the instruction itself, independent of privilege level."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The test image boots with -bios none straight into M-mode _start and calls no firmware service; the UART log shows only the three check lines.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The verdict states the AUIPC addition rule, which the ISA defines per instruction with no privilege-level condition.",
+          "source": {
+            "cite": "RISC-V User-Level ISA, AUIPC",
+            "tier": "spec",
+            "url": "https://www.five-embeddev.com/riscv-user-isa-manual/riscv-user-2.2/rv64"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The claim's vocabulary is one instruction's arithmetic, not a boot service or privilege handoff."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The FIRMWARE slot lights only when the verified claim is stated in terms of boot code or a machine-mode service; bare-metal execution alone does not light it."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-register-with-no-name",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "The verdict concerns one user-level instruction and its register result. No trap, no system call, and no operating system data structure takes part in any of the three checks.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The verdict concerns one user-level instruction and its register result. No trap, no system call, and no operating system data structure takes part in any of the three checks."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The three checks are inline asm in a freestanding main: two auipc reads and one auipc/ld pair, with no trap handler installed and no system call issued.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "The verdict names a register result of one user-level instruction; it names no trap, no scheduling, and no OS data structure.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The claim's vocabulary is an instruction result, not an operating system mechanism."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The KERNEL slot lights only when the verified claim is stated in terms of kernel behavior; a bare-metal instruction check stays dark."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
+    },
+    {
+      "item": "the-register-with-no-name",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one instruction semantic checked against three observed register values, not a computation proved against an independent oracle. No invariant is proved beyond the observed output.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one instruction semantic checked against three observed register values, not a computation proved against an independent oracle. No invariant is proved beyond the observed output."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "text": "The post checks one semantic, auipc adds the immediate shifted left by 12 to its own PC, against three observed values from a single run.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "text": "No independent oracle, model, or proof object appears; the check is observation against disassembly, not a proved invariant.",
+          "source": {
+            "cite": "src/auipc-pcread, riscv-baremetal-demo",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+          }
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The argument is one observed behavior matched to its specification, not a computation verified against an independent oracle."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "The ALGORITHM slot lights only when a computation is proved against an independent oracle; a measured value equality does not."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "note": "The evidence plus the decision test settles the slot the penultimate states.",
+          "strength": "strong"
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "note": "The penultimate plus the decision test yields the verdict in (1).",
+          "strength": "strong"
+        }
+      ]
     }
   ]
 }

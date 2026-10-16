@@ -1,5 +1,64 @@
 [
   {
+    "title": "The Register With No Name",
+    "slug": "the-register-with-no-name",
+    "date": "2026-10-16",
+    "description": "RISC-V gives the program counter no register number, and no instruction reads it directly. auipc rd, 0 is the one instruction that returns the PC itself: on QEMU it sat at 0x800001d2 and returned 0x800001d2, and the auipc/ld pair built on it reaches data without knowing the load address.",
+    "paragraphs": [
+      "<p>The program counter has no register number. RISC-V names 32 integer registers, x0 through x31, and the PC is not one of them: no instruction takes it as a source operand, and there is no <code>mv t0, pc</code>. The one instruction that looks at it does so sideways: <a class=\"cite\" href=\"#src-the-register-with-no-name-1\">[1]</a></p>",
+      "<pre><code>auipc s0, 0   # s0 = the address of this very instruction</code></pre>",
+      "<p>On the QEMU virt board that <code>auipc</code> sat at <code>0x800001d2</code>, and it put <code>0x800001d2</code> into <code>s0</code>: its own address, read off the UART. The mechanism is one addition. <code>auipc</code> takes the 20-bit immediate, appends 12 zero bits, and adds the result to the address of the <code>auipc</code> instruction itself. With an immediate of zero the offset is zero, so the PC comes back unchanged. <a class=\"cite\" href=\"#src-the-register-with-no-name-1\">[1]</a></p>",
+      "<p>With <code>auipc s0, 0x12345</code> sitting at <code>0x800001f4</code>, the UART printed <code>0x923451f4</code>, and <code>0x800001f4 + 0x12345000 = 0x923451f4</code> exactly. The immediate is the upper 20 bits; the low 12 are always zero. <a class=\"cite\" href=\"#src-the-register-with-no-name-1\">[1]</a></p>",
+      "<p>This is how code that does not know where it was loaded still reaches its own data. The pair <code>auipc t0, %pcrel_hi(table)</code> / <code>ld t1, %pcrel_lo(1b)(t0)</code> adds the link-time distance from the <code>auipc</code> to the symbol onto the live PC. In the test it fetched the constant <code>0x123456789abcdef0</code> through that pair, and the same two instructions work wherever the image lands, because the distance never changes and the PC is always true. <a class=\"cite\" href=\"#src-the-register-with-no-name-1\">[1]</a></p>",
+      "<figure style=\"margin:28px 0;max-width:560px\">\n<img src=\"/portfolio/blog/the-register-with-no-name/the-register-with-no-name.jpg\" alt=\"Blueprint-style diagram of the auipc PC read: the 32 numbered registers x0 through x31 with the program counter shown outside them in a dashed red box; the auipc s0, 0 instruction at 0x800001d2 with its fields imm 0x00000, rd 01000, opcode 0010111, an arrow down to s0 holding 0x800001d2; and the addition 0x800001f4 + 0x12345000 = 0x923451f4.\" style=\"width:100%;height:auto;display:block\" loading=\"lazy\" />\n<figcaption style=\"margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)\">One instruction reads the PC by adding zero to it. With an immediate, the same instruction adds the upper 20 bits.<br><span style=\"opacity:.7\">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>\n</figure>",
+      "<p>The bench habit: when a bare-metal image misbehaves after moving to a new load address, the first suspect is an absolute address baked in somewhere. PC-relative access through <code>auipc</code> has no absolute address to go stale, which is why the toolchain reaches for it whenever code must address data without knowing where it will live.</p>",
+      "<p class=\"research-code-link\">Code: <a href=\"https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread\" target=\"_blank\" rel=\"noopener\">riscv-baremetal-demo/src/auipc-pcread</a></p>"
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The verdict is the AUIPC semantic from the unprivileged ISA: the 20-bit immediate with 12 zero bits appended is added to the address of the auipc instruction itself. The QEMU run confirmed it twice: the auipc at 0x800001d2 returned 0x800001d2, and the auipc with immediate 0x12345 at 0x800001f4 returned 0x923451f4, which is 0x800001f4 plus 0x12345000."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements the addition. The three values came from one run on QEMU's virt board, and the post asserts nothing about pipelines, caches, or timing."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "The test runs on bare metal without calling any firmware service, and the verdict asserts nothing about firmware behavior. The auipc semantic is defined by the instruction itself, independent of privilege level."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "The verdict concerns one user-level instruction and its register result. No trap, no system call, and no operating system data structure takes part in any of the three checks."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one instruction semantic checked against three observed register values, not a computation proved against an independent oracle. No invariant is proved beyond the observed output."
+      }
+    },
+    "evidence": {
+      "label": "riscv-baremetal-demo src/auipc-pcread on QEMU 8.2.2: auipc rd,0 at 0x800001d2 returned 0x800001d2; auipc rd,0x12345 at 0x800001f4 returned 0x923451f4; auipc/ld pair loaded 0x123456789abcdef0 through the PC-relative offset",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-register-with-no-name/the-register-with-no-name.jpg",
+    "image_alt": "Blueprint-style diagram of the auipc PC read: the 32 numbered registers x0 through x31 with the program counter shown outside them in a dashed red box; the auipc s0, 0 instruction at 0x800001d2 with its fields imm 0x00000, rd 01000, opcode 0010111, an arrow down to s0 holding 0x800001d2; and the addition 0x800001f4 + 0x12345000 = 0x923451f4.",
+    "image_caption": "One instruction reads the PC by adding zero to it. With an immediate, the same instruction adds the upper 20 bits.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-register-with-no-name/the-register-with-no-name-social.jpg",
+    "sources": [
+      {
+        "title": "src/auipc-pcread: auipc PC-read checks, plus the firsthand run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread",
+        "note": "Three checks built from src/boot.S and src/uart.c, run on QEMU 8.2.2 with the image at 0x80000000: auipc s0,0 at 0x800001d2 printed 0x800001d2; auipc s0,0x12345 at 0x800001f4 printed 0x923451f4, equal to 0x800001f4 plus 0x12345000; the auipc t0,%pcrel_hi(marker) and ld s0,%pcrel_lo(1b)(t0) pair loaded 0x123456789abcdef0 from marker at 0x80000350. The AUIPC semantic (20-bit immediate, 12 zero bits appended, added to the address of the auipc itself) follows the RISC-V User-Level ISA description of AUIPC."
+      }
+    ]
+  },
+  {
     "title": "The Zero That strncpy Skips",
     "slug": "the-zero-that-strncpy-skips",
     "date": "2026-10-15",

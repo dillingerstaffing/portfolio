@@ -1721,6 +1721,27 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Register With No Name</h3>
+          <!-- LAYER-STRIP:the-register-with-no-name -->
+          <p class="research-date"><time datetime="2026-10-16">2026-10-16 11:45 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>The program counter has no register number. RISC-V names 32 integer registers, x0 through x31, and the PC is not one of them: no instruction takes it as a source operand, and there is no <code>mv t0, pc</code>. The one instruction that looks at it does so sideways: <a class="cite" href="#src-the-register-with-no-name-1">[1]</a></p>
+          <pre><code>auipc s0, 0   # s0 = the address of this very instruction</code></pre>
+          <p>On the QEMU virt board that <code>auipc</code> sat at <code>0x800001d2</code>, and it put <code>0x800001d2</code> into <code>s0</code>: its own address, read off the UART. The mechanism is one addition. <code>auipc</code> takes the 20-bit immediate, appends 12 zero bits, and adds the result to the address of the <code>auipc</code> instruction itself. With an immediate of zero the offset is zero, so the PC comes back unchanged. <a class="cite" href="#src-the-register-with-no-name-1">[1]</a></p>
+          <p>With <code>auipc s0, 0x12345</code> sitting at <code>0x800001f4</code>, the UART printed <code>0x923451f4</code>, and <code>0x800001f4 + 0x12345000 = 0x923451f4</code> exactly. The immediate is the upper 20 bits; the low 12 are always zero. <a class="cite" href="#src-the-register-with-no-name-1">[1]</a></p>
+          <p>This is how code that does not know where it was loaded still reaches its own data. The pair <code>auipc t0, %pcrel_hi(table)</code> / <code>ld t1, %pcrel_lo(1b)(t0)</code> adds the link-time distance from the <code>auipc</code> to the symbol onto the live PC. In the test it fetched the constant <code>0x123456789abcdef0</code> through that pair, and the same two instructions work wherever the image lands, because the distance never changes and the PC is always true. <a class="cite" href="#src-the-register-with-no-name-1">[1]</a></p>
+          <figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-register-with-no-name/the-register-with-no-name.jpg" alt="Blueprint-style diagram of the auipc PC read: the 32 numbered registers x0 through x31 with the program counter shown outside them in a dashed red box; the auipc s0, 0 instruction at 0x800001d2 with its fields imm 0x00000, rd 01000, opcode 0010111, an arrow down to s0 holding 0x800001d2; and the addition 0x800001f4 + 0x12345000 = 0x923451f4." style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One instruction reads the PC by adding zero to it. With an immediate, the same instruction adds the upper 20 bits.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The bench habit: when a bare-metal image misbehaves after moving to a new load address, the first suspect is an absolute address baked in somewhere. PC-relative access through <code>auipc</code> has no absolute address to go stale, which is why the toolchain reaches for it whenever code must address data without knowing where it will live.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread" target="_blank" rel="noopener">riscv-baremetal-demo/src/auipc-pcread</a></p>
+        </div>
+      </article>
+
+      <article class="research-note">
+        <div>
           <h3>The Zero That strncpy Skips</h3>
           <!-- LAYER-STRIP:the-zero-that-strncpy-skips -->
           <p class="research-date"><time datetime="2026-10-15">2026-10-15 11:40 EDT</time></p>
