@@ -1721,6 +1721,27 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Load That Sign-Extended</h3>
+          <!-- LAYER-STRIP:the-load-that-sign-extended -->
+          <p class="research-date"><time datetime="2026-10-17">2026-10-17 11:19 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A 32-bit word sits in a scratch buffer holding <code>0x80000001</code>, its top bit set. Two loads read that same word, one instruction apart, on the same hart. The UART printed <code>0xffffffff80000001</code> for the first and <code>0x80000001</code> for the second. Same word, same address, two different registers, two different values. <a class="cite" href="#src-the-load-that-sign-extended-1">[1]</a></p>
+          <p>The difference is the extension. <code>lw</code> loads the 32-bit value and sign-extends it to 64 bits: bit 31 is copied into every bit from 32 through 63. <code>lwu</code> loads the same 32 bits and zero-extends: the upper half is zeros. The manual states both in one breath, and the run shows them side by side. <a class="cite" href="#src-the-load-that-sign-extended-1">[1]</a> <a class="cite" href="#src-the-load-that-sign-extended-2">[2]</a></p>
+          <p>The two loads, reduced to their results:</p>
+<pre><code>lw  t0, 0(s0)   # t0 = 0xffffffff80000001 : bit 31 copied upward
+lwu t1, 0(s0)   # t1 = 0x0000000080000001 : bits 63..32 are zero</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-load-that-sign-extended/the-load-that-sign-extended.jpg" alt="Blueprint-style diagram of the lw/lwu extension behavior: a 32-bit memory word holding 0x80000001 with bit 31 highlighted as the sign bit; below, the 64-bit result of lw t0, 0(s0) with bits 63 through 32 all ones, and of lwu t1, 0(s0) with bits 63 through 32 all zeros; at the bottom, t0 == 0x80000001 marked FALSE and t1 == 0x80000001 marked TRUE" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One word, two loads. lw fills the upper 32 bits with copies of bit 31; lwu fills them with zeros.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The run behind it. A bare-metal M-mode program on QEMU 8.2.2 stored <code>0x80000001</code> with <code>sw</code>, then issued the <code>lw</code> and the <code>lwu</code> back to back and read both registers off the UART: <code>lw -&gt; 0xffffffff80000001</code>, <code>lwu -&gt; 0x80000001</code>, the same as <code>0x0000000080000001</code>. The disassembly shows the real instructions: <code>sw</code> at <code>0x80000204</code>, <code>lw</code> at <code>0x80000206</code>, <code>lwu</code> at <code>0x80000208</code>. Four checks, zero mismatches: both exact values, plus the comparison consequence below. <a class="cite" href="#src-the-load-that-sign-extended-1">[1]</a></p>
+          <p>The bench habit. A 32-bit status word is usually a bit pattern, not a signed number, so the sign-extended upper half is garbage you never asked for. The classic failure is silent: <code>t0 == 0x80000001</code> is false after the <code>lw</code> and true after the <code>lwu</code>, and nothing in the code warns you. The habit: when the value is 32 bits of flags, reach for <code>lwu</code> (or <code>ld</code> when it is really 64 bits), and never trust a bare <code>==</code> on a register you did not fill yourself. <a class="cite" href="#src-the-load-that-sign-extended-2">[2]</a></p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/load-sign-ext" target="_blank" rel="noopener">riscv-baremetal-demo/src/load-sign-ext</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Register With No Name</h3>
           <!-- LAYER-STRIP:the-register-with-no-name -->
           <p class="research-date"><time datetime="2026-10-16">2026-10-16 11:45 EDT</time></p>
