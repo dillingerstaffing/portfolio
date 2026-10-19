@@ -1721,6 +1721,28 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Register That Names the Bad Address</h3>
+          <!-- LAYER-STRIP:the-register-that-names-the-bad-address -->
+          <p class="research-date"><time datetime="2026-10-19">2026-10-19 11:23 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Two traps, one address. A bare-metal program loads a word from the unmapped address <code>0xffffffffc0000000</code> with <code>lw a0, 0(a1)</code>, and the hart traps with mcause <code>0x5</code>, a load access fault. It then stores to the same address with <code>sw a0, 0(a1)</code>: mcause <code>0x7</code>, a store access fault. The handler reads <code>mtval</code> on each trap, and the UART printed <code>0xffffffffc0000000</code> both times. Two different traps, two different cause codes, one identical witness. <a class="cite" href="#src-the-register-that-names-the-bad-address-1">[1]</a></p>
+          <p>The mechanism is one register the hardware fills on the way into the trap. The privileged manual, section 3.1.16, says that when a trap is taken into M-mode, <code>mtval</code> is either set to zero or written with exception-specific information to assist software in handling the trap. Then the sentence that matters: if <code>mtval</code> is written with a nonzero value when an access-fault exception occurs on a load or store, then <code>mtval</code> will contain the faulting virtual address. The platform decides whether it reports or writes zero; the contract is about what a nonzero value means, not a promise that every hart reports. <a class="cite" href="#src-the-register-that-names-the-bad-address-1">[1]</a> <a class="cite" href="#src-the-register-that-names-the-bad-address-2">[2]</a></p>
+          <p>The two trap records, reduced to their witness:</p>
+<pre><code>load trap:  mcause=0x5  mtval=0xffffffffc0000000   # lw a0,0(a1) at 0x80000322
+store trap: mcause=0x7  mtval=0xffffffffc0000000   # sw a0,0(a1) at 0x8000036a</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-register-that-names-the-bad-address/the-register-that-names-the-bad-address.jpg" alt="Blueprint-style diagram of mtval on access faults: a LOAD TRAP box with mcause 0x5 and a STORE TRAP box with mcause 0x7, both showing mtval = 0xffffffffc0000000; two arrows converge on the one address both traps named, labeled unmapped on the QEMU virt board" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Two traps, two mcause codes, one identical witness. Both the load fault and the store fault reported the same mtval.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The run behind it. A bare-metal M-mode program on QEMU 8.2.2 issued one load and one store at the unmapped address and recorded the mcause/mepc/mtval triple for each trap. Both <code>mtval</code> values came back <code>0xffffffffc0000000</code>, equal to the address in the register and equal to each other. The disassembly shows the real instructions: the <code>lw</code> encoding <code>0x0005a503</code> at <code>0x80000322</code>, the <code>sw</code> encoding <code>0x00a5a023</code> at <code>0x8000036a</code>, each <code>mepc</code> matching its faulting address exactly. Nineteen checks, zero mismatches, and the machine exited clean. <a class="cite" href="#src-the-register-that-names-the-bad-address-1">[1]</a></p>
+          <p>The bench habit. In your access-fault handler, read <code>mtval</code> first, before you decode anything. A nonzero value names the exact address that faulted; <code>mcause</code> tells you whether it was a load (5) or a store (7); <code>mepc</code> points at the instruction. Without it you would disassemble the faulting instruction at <code>mepc</code> to recover the base register and the offset, which is work the hardware already did for you. One stated limit: a zero <code>mtval</code> means the platform chose not to report, so treat zero as "not told", never as "the fault was at address zero". <a class="cite" href="#src-the-register-that-names-the-bad-address-2">[2]</a></p>
+          <p>One sentence to carry away: when a load or store faults, check <code>mtval</code> before anything else. If it is nonzero, the hardware already named the bad address.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtval-fault-address" target="_blank" rel="noopener">riscv-baremetal-demo/src/mtval-fault-address</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Branch That Inverts the Address Map</h3>
           <!-- LAYER-STRIP:the-branch-that-inverts-the-address-map -->
           <p class="research-date"><time datetime="2026-10-18">2026-10-18 11:21 EDT</time></p>
