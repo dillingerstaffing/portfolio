@@ -1721,6 +1721,30 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Trap You Plant on Purpose</h3>
+          <!-- LAYER-STRIP:the-trap-you-plant-on-purpose -->
+          <p class="research-date"><time datetime="2026-10-20">2026-10-20 11:24 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Every bare-metal program has a path that should never execute: the default case the hardware manual says is impossible, the error return that cannot happen. The usual treatment is an empty infinite loop, and when the impossible happens you get silence. The hart spins, and nothing tells you which loop it died in. There is a one-instruction alternative: plant a breakpoint on the path and let the hardware report the exact address.</p>
+          <p>The instruction is <code>ebreak</code>. Section 2.8 of the unprivileged manual says it plainly: EBREAK is used to return control to a debugging environment, and it was designed for a debugger to make execution stop and fall back into the debugger. When the hart executes it, it traps with mcause 3, the breakpoint code, and mepc holds the address of the ebreak itself. A run on QEMU 8.2.2 executed one <code>ebreak</code> at <code>0x800002fe</code>: the handler recorded mcause <code>0x3</code> and mepc <code>0x800002fe</code>, the word at that address read back <code>0x00100073</code>, the ebreak encoding, and execution resumed 4 bytes later at <code>0x80000302</code>. <a class="cite" href="#src-the-trap-you-plant-on-purpose-1">[1]</a> <a class="cite" href="#src-the-trap-you-plant-on-purpose-2">[2]</a></p>
+          <p>The trap record, reduced to its witness:</p>
+<pre><code>tripwire: ebreak at 0x800002fe          # encoding 0x00100073
+trap:     mcause=0x3  mepc=0x800002fe   # the hardware names the PC
+resume:   0x80000302                    # 4 bytes past the tripwire</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-trap-you-plant-on-purpose/the-trap-you-plant-on-purpose.jpg" alt="Blueprint-style diagram of the planted-breakpoint contract: a 4-BYTE EBREAK box with tripwire at 0x800002fe, encoding 0x00100073, mcause 0x3 and mepc 0x800002fe, and a 2-BYTE C.EBREAK box with tripwire at 0x80000320, encoding 0x9002, mcause 0x3 and mepc 0x80000320; both arrows converge on the C spelling __builtin_trap(), which compiles to the 2-byte c.ebreak at -O2" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The same breakpoint trap in two encodings: the 4-byte ebreak and the 2-byte compressed c.ebreak. Both trap with mcause 3; mepc names the planted instruction in each case.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>There are two spellings, and the length is the part that bites. The compressed form, <code>c.ebreak</code>, is two bytes, encoding <code>0x9002</code>. The same run fired it at <code>0x80000320</code>: mcause <code>0x3</code> again, mepc <code>0x80000320</code>, the halfword at that address <code>0x9002</code>, resume 2 bytes later at <code>0x80000322</code>. A handler that steps over the tripwire must skip the right length for the form planted, 4 for ebreak, 2 for c.ebreak, or it resumes in the middle of the next instruction. <a class="cite" href="#src-the-trap-you-plant-on-purpose-1">[1]</a></p>
+          <p>The C spelling is the one you will actually plant. The manual notes that EBREAK is used by the standard GCC compiler to mark code paths that should not be executed, and the current spelling of that is <code>__builtin_trap()</code>: compiled at -O2 it emits the compressed <code>c.ebreak</code>, a single <code>0x9002</code> sitting in <code>.text.unlikely</code>. So the can't-happen path in C is one builtin call, and the trap still arrives with mcause 3 and mepc naming it. Thirteen checks across the run, zero mismatches. <a class="cite" href="#src-the-trap-you-plant-on-purpose-1">[1]</a> <a class="cite" href="#src-the-trap-you-plant-on-purpose-2">[2]</a></p>
+          <p>The bench habit. On a can't-happen path, plant <code>__builtin_trap()</code> instead of an empty loop. When the impossible happens, your trap handler reads mepc and you know the exact address that died, instead of hunting every parked loop in the binary. One stated limit: this names where the hart stopped, not why. The why is still your bug to find. <a class="cite" href="#src-the-trap-you-plant-on-purpose-2">[2]</a></p>
+          <p>One sentence to carry away: a planted breakpoint turns a silent hang into a trap that names its own address.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/ebreak-tripwire" target="_blank" rel="noopener">riscv-baremetal-demo/src/ebreak-tripwire</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Register That Names the Bad Address</h3>
           <!-- LAYER-STRIP:the-register-that-names-the-bad-address -->
           <p class="research-date"><time datetime="2026-10-19">2026-10-19 11:23 EDT</time></p>
