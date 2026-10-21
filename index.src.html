@@ -1721,6 +1721,31 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Borrow That Betrays the Zero</h3>
+          <!-- LAYER-STRIP:the-borrow-that-betrays-the-zero -->
+          <p class="research-date"><time datetime="2026-10-21">2026-10-21 11:37 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A strlen loop checks one byte at a time: is this the terminator, is this the terminator. Eight checks for eight bytes. There is a way to ask all eight bytes at once, and the whole trick is a subtraction.</p>
+          <p>Take the word <code>0x4200</code>. Its lowest byte is <code>0x00</code>, the byte you are hunting. Subtract <code>0x0101</code>, which takes <code>0x01</code> off each of the two low bytes. The low byte computes <code>0x00</code> minus <code>0x01</code>. That borrows, wraps to <code>0xFF</code>, and the borrow sets the byte's top bit. The byte above computes <code>0x42</code> minus <code>0x01</code> minus the incoming borrow, landing at <code>0x40</code> with its top bit quiet. The zero byte just announced itself through its top bit.</p>
+          <p>A nonzero byte cannot fake this. Subtract <code>0x01</code> from <code>0x05</code> and you get <code>0x04</code>: no borrow, top bit unchanged. Subtract <code>0x01</code> from <code>0xFF</code> and the top bit stays on, but that is what the second half of the expression is for. AND the result with <code>~x</code>, the bitwise inverse of the original word: a byte that already had its top bit set has a zero in <code>~x</code> at that position, so the AND clears it. Only a top bit that the subtraction itself set survives, and the subtraction sets it by borrowing out of a zero byte. <a class="cite" href="#src-the-borrow-that-betrays-the-zero-1">[1]</a></p>
+          <p>The whole test, for all eight bytes at once:</p>
+<pre><code>uint64_t has_zero_byte(uint64_t x) {
+    return (x - 0x0101010101010101ULL) &amp; ~x &amp; 0x8080808080808080ULL;
+}</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-borrow-that-betrays-the-zero/the-borrow-that-betrays-the-zero.jpg" alt="Blueprint-style diagram of the zero-byte borrow mechanism: a 0x00 byte shown as eight zero bits becomes eight one bits after subtracting 0x01, with the top bit lit amber, while a 0x42 byte becomes 0x40 with its top bit quiet; below, the full expression (x - 0x0101010101010101) & ~x & 0x8080808080808080 with the verdict that a nonzero mask means a zero byte lives in the word" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The borrow is the signal: 0x00 minus 0x01 wraps to 0xFF and flips the top bit on, while a nonzero byte subtracts cleanly. One 64-bit subtraction asks all eight bytes at once.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>I ran this over every 24-bit input, all 16,777,216 of them, against a byte-by-byte reference loop: the mask fired exactly when a zero byte was present, with zero misses, and a zero mask always meant no zero byte. That is the direction a scanner needs. A word-at-a-time strlen walks the string in 8-byte steps; when the mask is zero the whole word is clean and it moves on, and only when the mask fires does it drop to the byte loop to find where. <a class="cite" href="#src-the-borrow-that-betrays-the-zero-1">[1]</a></p>
+          <p>One measured boundary, not an assumption: the mask names the word, not the byte. A borrow out of a zero byte can spill into the byte above it. With <code>x = 0x0100</code>, byte 0 is <code>0x00</code> and byte 1 is <code>0x01</code>, and the borrow turns byte 1 into <code>0xFF</code>, setting its top bit too: a phantom. The lab behind this post measured 1001 such overcounts in 10,065,536 differential inputs when the identity was used for counting. So never count the mask's bits as zero positions. Use it as the tripwire, then let the byte loop do the locating. <a class="cite" href="#src-the-borrow-that-betrays-the-zero-1">[1]</a></p>
+          <p>The bench habit: when you scan for a sentinel byte, test the word first and read the bytes only on a hit.</p>
+          <p>One sentence to carry away: one subtraction asks eight bytes whether any of them is zero, and a zero mask is proof that none are.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/systems-lab/tree/main/lab/93-swar-zero-count" target="_blank" rel="noopener">systems-lab/lab/93-swar-zero-count</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Trap You Plant on Purpose</h3>
           <!-- LAYER-STRIP:the-trap-you-plant-on-purpose -->
           <p class="research-date"><time datetime="2026-10-20">2026-10-20 11:24 EDT</time></p>

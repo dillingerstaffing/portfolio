@@ -1,5 +1,65 @@
 [
   {
+    "title": "The Borrow That Betrays the Zero",
+    "slug": "the-borrow-that-betrays-the-zero",
+    "date": "2026-10-21",
+    "description": "One 64-bit subtraction asks all eight bytes whether any of them is zero: a 0x00 byte borrows and its top bit flips on, and a zero mask is proof the word is clean. The bench habit: test the word first, read the bytes only on a hit.",
+    "paragraphs": [
+      "A strlen loop checks one byte at a time: is this the terminator, is this the terminator. Eight checks for eight bytes. There is a way to ask all eight bytes at once, and the whole trick is a subtraction.",
+      "Take the word <code>0x4200</code>. Its lowest byte is <code>0x00</code>, the byte you are hunting. Subtract <code>0x0101</code>, which takes <code>0x01</code> off each of the two low bytes. The low byte computes <code>0x00</code> minus <code>0x01</code>. That borrows, wraps to <code>0xFF</code>, and the borrow sets the byte's top bit. The byte above computes <code>0x42</code> minus <code>0x01</code> minus the incoming borrow, landing at <code>0x40</code> with its top bit quiet. The zero byte just announced itself through its top bit.",
+      "A nonzero byte cannot fake this. Subtract <code>0x01</code> from <code>0x05</code> and you get <code>0x04</code>: no borrow, top bit unchanged. Subtract <code>0x01</code> from <code>0xFF</code> and the top bit stays on, but that is what the second half of the expression is for. AND the result with <code>~x</code>, the bitwise inverse of the original word: a byte that already had its top bit set has a zero in <code>~x</code> at that position, so the AND clears it. Only a top bit that the subtraction itself set survives, and the subtraction sets it by borrowing out of a zero byte. <a class=\"cite\" href=\"#src-the-borrow-that-betrays-the-zero-1\">[1]</a>",
+      "The whole test, for all eight bytes at once:",
+      "CODEBLOCK",
+      "I ran this over every 24-bit input, all 16,777,216 of them, against a byte-by-byte reference loop: the mask fired exactly when a zero byte was present, with zero misses, and a zero mask always meant no zero byte. That is the direction a scanner needs. A word-at-a-time strlen walks the string in 8-byte steps; when the mask is zero the whole word is clean and it moves on, and only when the mask fires does it drop to the byte loop to find where. <a class=\"cite\" href=\"#src-the-borrow-that-betrays-the-zero-1\">[1]</a>",
+      "One measured boundary, not an assumption: the mask names the word, not the byte. A borrow out of a zero byte can spill into the byte above it. With <code>x = 0x0100</code>, byte 0 is <code>0x00</code> and byte 1 is <code>0x01</code>, and the borrow turns byte 1 into <code>0xFF</code>, setting its top bit too: a phantom. The lab behind this post measured 1001 such overcounts in 10,065,536 differential inputs when the identity was used for counting. So never count the mask's bits as zero positions. Use it as the tripwire, then let the byte loop do the locating. <a class=\"cite\" href=\"#src-the-borrow-that-betrays-the-zero-1\">[1]</a>",
+      "The bench habit: when you scan for a sentinel byte, test the word first and read the bytes only on a hit.",
+      "One sentence to carry away: one subtraction asks eight bytes whether any of them is zero, and a zero mask is proof that none are."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/93-swar-zero-count",
+    "layers": {
+      "ISA": {
+        "applies": false,
+        "because": "No instruction-set claim is made. The guarantee is C unsigned arithmetic: subtraction wraps modulo 2^64 and each byte borrows exactly as the language defines, so the identity holds on any target with two's-complement integers. No instruction, CSR, or privilege behavior is asserted or measured."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements anything. The verdicts are differential equalities between the mask and a per-byte reference loop that hold regardless of pipeline or cache behavior; no timing, throughput, or implementation detail is asserted."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No boot code, machine-mode service, or privilege handoff takes part. The test compiles the identity as an ordinary C function and runs it as a userspace program; no firmware call enters the computation, so nothing firmware does can move the result."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The program makes no system call and no kernel data structure appears in the argument; the scanner use case is ordinary string handling, and kernel behavior cannot move any verdict."
+      },
+      "ALGORITHM": {
+        "applies": true,
+        "because": "The claim is an arithmetic identity proved against an independent oracle: the mask is nonzero exactly when a zero byte is present, checked exhaustively over all 16,777,216 24-bit inputs plus 65,536 16-bit and 2 million random 64-bit words against a per-byte reference loop, with zero mismatches. The phantom-borrow boundary is measured the same way: 1001 counting overcounts in 10,065,536 differential inputs."
+      }
+    },
+    "evidence": {
+      "label": "lab/93-swar-zero-count PROOF.md: 10,065,536 differential checks, 0 mismatches",
+      "url": "https://github.com/dillingerstaffing/systems-lab/blob/main/lab/93-swar-zero-count/PROOF.md"
+    },
+    "offer": "Related work: C audit from $350, fixed price.",
+    "image": "blog/the-borrow-that-betrays-the-zero/the-borrow-that-betrays-the-zero.jpg",
+    "image_alt": "Blueprint-style diagram of the zero-byte borrow mechanism: a 0x00 byte shown as eight zero bits becomes eight one bits after subtracting 0x01, with the top bit lit amber, while a 0x42 byte becomes 0x40 with its top bit quiet; below, the full expression (x - 0x0101010101010101) & ~x & 0x8080808080808080 with the verdict that a nonzero mask means a zero byte lives in the word",
+    "image_caption": "The borrow is the signal: 0x00 minus 0x01 wraps to 0xFF and flips the top bit on, while a nonzero byte subtracts cleanly. One 64-bit subtraction asks all eight bytes at once.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-borrow-that-betrays-the-zero/the-borrow-that-betrays-the-zero-social.jpg",
+    "sources": [
+      {
+        "title": "lab/93-swar-zero-count: module source and firsthand PROOF.md",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/systems-lab/tree/main/lab/93-swar-zero-count",
+        "note": "The verification behind the post: the zero-byte detection identity, the measured 1001 counting overcounts in 10,065,536 differential inputs that bound the naive identity to existence testing, and the guarded 16-bit lane construction that counts exactly. The post's own firsthand run (exhaustive 24-bit sweep, 16,777,216 inputs, zero mismatches between the mask and a per-byte reference) re-verified the existence direction on the build VM."
+      }
+    ]
+  },
+  {
     "title": "The Trap You Plant on Purpose",
     "slug": "the-trap-you-plant-on-purpose",
     "date": "2026-10-20",
@@ -135,7 +195,7 @@
     "description": "blt compares its operands as signed integers and bltu compares them as unsigned: on the same register pair 0x8000000000000000 and 0x1000, blt takes the branch and bltu does not. The applied habit: address range checks must use the unsigned compare, or a high-half address reads as below a low limit.",
     "paragraphs": [
       "Two addresses sit in registers: <code>0x8000000000000000</code> and <code>0x0000000000001000</code>. Two branch instructions compare the same pair, one after the other, on the same hart. The UART printed the verdicts: <code>blt</code> took the branch, <code>bltu</code> fell through. Same registers, same order, opposite answers. <a class=\"cite\" href=\"#src-the-branch-that-inverts-the-address-map-1\">[1]</a>",
-      "The difference is the signedness of the compare, and it lives in the instruction, not the data. <code>blt</code> reads its operands as two\u2019s-complement signed integers: <code>0x8000...0000</code> is the most negative 64-bit value, which is less than <code>0x1000</code>, so the branch is taken. <code>bltu</code> reads the same bits as unsigned: <code>0x8000...0000</code> is the larger address, so the branch is not taken. One letter in the mnemonic flips the meaning of every bit pattern with the top bit set. <a class=\"cite\" href=\"#src-the-branch-that-inverts-the-address-map-1\">[1]</a> <a class=\"cite\" href=\"#src-the-branch-that-inverts-the-address-map-2\">[2]</a>",
+      "The difference is the signedness of the compare, and it lives in the instruction, not the data. <code>blt</code> reads its operands as two’s-complement signed integers: <code>0x8000...0000</code> is the most negative 64-bit value, which is less than <code>0x1000</code>, so the branch is taken. <code>bltu</code> reads the same bits as unsigned: <code>0x8000...0000</code> is the larger address, so the branch is not taken. One letter in the mnemonic flips the meaning of every bit pattern with the top bit set. <a class=\"cite\" href=\"#src-the-branch-that-inverts-the-address-map-1\">[1]</a> <a class=\"cite\" href=\"#src-the-branch-that-inverts-the-address-map-2\">[2]</a>",
       "The two branches, reduced to their verdicts:",
       "CODEBLOCK",
       "The run behind it. A bare-metal M-mode program on QEMU 8.2.2 issued both branches on three register pairs: <code>(0x8000000000000000, 0x1000)</code>, the reverse, and a high-half address <code>0xfffffffffffff000</code> against <code>0x1000</code>. The disassembly shows the real instructions: <code>blt</code> at <code>0x80000292</code>, <code>bltu</code> at <code>0x800002ca</code>, the high-half pair at <code>0x80000304</code> and <code>0x80000320</code>. Six checks, zero mismatches. The high-half pair is the one that matters: <code>blt</code> said <code>0xfffffffffffff000</code> was below <code>0x1000</code> (taken), <code>bltu</code> said it was above (not taken). <a class=\"cite\" href=\"#src-the-branch-that-inverts-the-address-map-1\">[1]</a>",
