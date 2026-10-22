@@ -1,5 +1,75 @@
 [
   {
+    "title": "The Page Table Edit That Changed Nothing",
+    "slug": "the-page-table-edit-that-changed-nothing",
+    "date": "2026-10-22",
+    "description": "A page-table rewrite lands in memory, but the hart keeps using its cached translation: the load returns the stale page until one sfence.vma forces a fresh walk. The bench habit: fence after every page-table edit.",
+    "paragraphs": [
+      "One virtual address, <code>0x40000000</code>. A hand-built Sv39 page table maps it to a physical page holding the canary <code>0xaaaaaaaaaaaaaaaa</code>. A supervisor-mode program loads the word and gets <code>0xaaaaaaaaaaaaaaaa</code> back. That walk does something invisible too: the hart caches the translation, <code>0x40000000</code> goes to the canary-A page, in its address-translation cache. <a class=\"cite\" href=\"#src-the-page-table-edit-that-changed-nothing-1\">[1]</a>",
+      "Now machine mode rewrites the leaf page-table entry in memory, repointing the address at a second page holding <code>0xbbbbbbbbbbbbbbbb</code>. The PTE readback proves the write landed: <code>0x200010c7</code> before, <code>0x20000cc7</code> after. No fence is issued. The supervisor program loads the address again and gets <code>0xaaaaaaaaaaaaaaaa</code>. The edit changed nothing the hart could see. The cache still holds the old walk, and the architecture permits the hart to keep using it. <a class=\"cite\" href=\"#src-the-page-table-edit-that-changed-nothing-1\">[1]</a>",
+      "The three phases, reduced to their witness:",
+      "CODEBLOCK",
+      "Then machine mode executes one <code>sfence.vma</code>. The same load now returns <code>0xbbbbbbbbbbbbbbbb</code>. Note what the fence did not do: it did not move the write. The write was already in memory before the fence ran. The fence invalidated the hart's cached translation, so the next load walked the table again and found the new leaf. The privileged manual, section 12.2.1, states the contract: the fence guarantees that previous stores already visible to the hart are ordered before its subsequent implicit reads of the memory-management data structures, and it invalidates entries in the address-translation cache. <a class=\"cite\" href=\"#src-the-page-table-edit-that-changed-nothing-1\">[1]</a> <a class=\"cite\" href=\"#src-the-page-table-edit-that-changed-nothing-2\">[2]</a>",
+      "The bench habit: after every page-table edit, a map, an unmap, a permission change, issue <code>sfence.vma</code> before the address is used again. One boundary from the manual: the fence orders only the local hart, so every hart that may hold the entry needs its own fence, which is why operating systems do TLB shootdowns with interprocessor interrupts. <a class=\"cite\" href=\"#src-the-page-table-edit-that-changed-nothing-2\">[2]</a> One boundary measured: the manual explicitly permits over-fencing, an implementation may ignore the address in <code>rs1</code> and flush everything. The sibling run on QEMU 8.2.2 confirmed it: a scoped <code>sfence.vma</code> naming one address freshened both test addresses. Scoping is a performance hint, not a correctness tool you can verify on every implementation. <a class=\"cite\" href=\"#src-the-page-table-edit-that-changed-nothing-3\">[3]</a>",
+      "One sentence to carry away: the PTE rewrite lands in memory; only <code>sfence.vma</code> lands it in the hart."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sfence-vma-remap",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the privileged specification's SFENCE.VMA contract: the fence orders prior page-table stores before the hart's subsequent implicit translation reads, and invalidates the address-translation cache. The run shows both faces on one hart: the PTE rewrite with no fence reads stale, the same load after sfence.vma reads fresh."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements its translation cache. QEMU serves as a functional executor only; no cache geometry, pipeline, or timing behavior is asserted or measured, and the stale phase is the architecture-permitted behavior the fence exists to order."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the fence is executed directly by the test's own M-mode code."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel takes part at any step. The binary runs on bare QEMU with no operating system; the S-mode phases are a test payload, and no system call or kernel data structure appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed ordering semantic exercised as three fixed phases with readback, not a computation proved against an independent oracle. The stale-then-fresh contrast is shown as the consequence the fence contract forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "sfence-vma-remap PROOF.md: 39 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-page-table-edit-that-changed-nothing/the-page-table-edit-that-changed-nothing.jpg",
+    "image_alt": "Blueprint-style diagram of the sfence.vma remap experiment in three phases: phase A loads 0xaaaaaaaaaaaaaaaa from virtual address 0x40000000 and the hart caches the translation; M-mode rewrites the leaf PTE from 0x200010c7 to 0x20000cc7 with no fence and the next load still returns 0xaaaaaaaaaaaaaaaa, stale; after one sfence.vma the same load returns 0xbbbbbbbbbbbbbbbb, fresh",
+    "image_caption": "The PTE rewrite landed in memory (the readback proved it) but the hart kept its cached translation until one sfence.vma forced a fresh walk.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-page-table-edit-that-changed-nothing/the-page-table-edit-that-changed-nothing-social.jpg",
+    "sources": [
+      {
+        "title": "src/sfence-vma-remap: module PROOF.md and the firsthand run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sfence-vma-remap",
+        "note": "The firsthand QEMU 8.2.2 run behind the post: TEST_VA 0x40000000 mapped to the canary-A page; M-mode rewrote the leaf PTE, readback 0x200010c7 to 0x20000cc7, with no fence; the S-mode load returned stale 0xaaaaaaaaaaaaaaaa; after one sfence.vma the same load returned fresh 0xbbbbbbbbbbbbbbbb. 39 checks, 0 mismatches, byte-identical across runs; the post's own rebuild and rerun on the build VM reproduced the PASS and the checksum."
+      },
+      {
+        "title": "RISC-V ISA Manual, privileged architecture (SFENCE.VMA, section 12.2.1)",
+        "publisher": "RISC-V International",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-privileged.pdf",
+        "note": "The fence contract, read from the pinned release, section 12.2.1: executing SFENCE.VMA guarantees that previous stores already visible to the hart are ordered before subsequent implicit references to the memory-management data structures, and the instruction invalidates entries in the address-translation cache. The same section states the fence orders only the local hart and that over-fencing is always legal."
+      },
+      {
+        "title": "src/sfence-vma-rs1-scoped: module PROOF.md",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-rs1-scoped/PROOF.md",
+        "note": "The sibling run behind the post's stated limit: sfence.vma with rs1 naming one address freshened both test addresses on QEMU 8.2.2, so the scoped form behaved as a full invalidation; 60 checks, 0 mismatches. The manual's over-fencing note predicts exactly this latitude."
+      }
+    ]
+  },
+  {
     "title": "The Borrow That Betrays the Zero",
     "slug": "the-borrow-that-betrays-the-zero",
     "date": "2026-10-21",

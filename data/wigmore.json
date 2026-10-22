@@ -95746,6 +95746,322 @@
           "strength": "strong"
         }
       ]
+    },
+    {
+      "item": "the-page-table-edit-that-changed-nothing",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The claim is the privileged specification's SFENCE.VMA contract: the fence orders prior page-table stores before the hart's subsequent implicit translation reads, and invalidates the address-translation cache. The run shows both faces on one hart: the PTE rewrite with no fence reads stale, the same load after sfence.vma reads fresh.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is the privileged specification's SFENCE.VMA contract: the fence orders prior page-table stores before the hart's subsequent implicit translation reads, and invalidates the address-translation cache. The run shows both faces on one hart: the PTE rewrite with no fence reads stale, the same load after sfence.vma reads fresh."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sfence-vma-remap PROOF.md and the firsthand QEMU run",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          },
+          "text": "The firsthand run rewrote the leaf PTE, readback 0x200010c7 to 0x20000cc7, with no fence and read stale 0xaaaaaaaaaaaaaaaa; after sfence.vma the same load read fresh 0xbbbbbbbbbbbbbbbb. 39 checks, 0 mismatches, QEMU 8.2.2."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V privileged ISA manual, section 12.2.1",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-privileged.pdf"
+          },
+          "text": "Section 12.2.1: executing SFENCE.VMA guarantees that previous stores already visible to the hart are ordered before subsequent implicit references to the memory-management data structures, and the instruction invalidates entries in the address-translation cache."
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The stale-then-fresh readback pair is exactly the ordering contract the manual describes."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A run that exhibits the permitted-before and ordered-after behavior of a specified fence is an instruction-set claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-page-table-edit-that-changed-nothing",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements its translation cache. QEMU serves as a functional executor only; no cache geometry, pipeline, or timing behavior is asserted or measured, and the stale phase is the architecture-permitted behavior the fence exists to order.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements its translation cache. QEMU serves as a functional executor only; no cache geometry, pipeline, or timing behavior is asserted or measured, and the stale phase is the architecture-permitted behavior the fence exists to order."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sfence-vma-remap PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          },
+          "text": "The verdicts are stale and fresh readback equalities that hold regardless of translation-cache implementation; the run asserts no cache geometry, pipeline, or timing value."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No implementation detail is needed to establish the claim."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established as readback equalities with no implementation behavior asserted is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-page-table-edit-that-changed-nothing",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the fence is executed directly by the test's own M-mode code.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the fence is executed directly by the test's own M-mode code."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sfence-vma-remap PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          },
+          "text": "The module runs in M-mode on bare QEMU with no SBI or firmware calls; the only traps are the three phase-return ecalls handled by the test's own M-mode entry."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No firmware behavior can move any verdict."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established without any firmware call is not a firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-page-table-edit-that-changed-nothing",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel takes part at any step. The binary runs on bare QEMU with no operating system; the S-mode phases are a test payload, and no system call or kernel data structure appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel takes part at any step. The binary runs on bare QEMU with no operating system; the S-mode phases are a test payload, and no system call or kernel data structure appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sfence-vma-remap PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          },
+          "text": "The program runs on bare QEMU with no operating system; the S-mode payloads make no system call and no kernel data structure appears in the test."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No kernel behavior can move any verdict."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established on bare hardware with no operating system is not a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-page-table-edit-that-changed-nothing",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed ordering semantic exercised as three fixed phases with readback, not a computation proved against an independent oracle. The stale-then-fresh contrast is shown as the consequence the fence contract forces, not as a verified algorithm.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed ordering semantic exercised as three fixed phases with readback, not a computation proved against an independent oracle. The stale-then-fresh contrast is shown as the consequence the fence contract forces, not as a verified algorithm."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/sfence-vma-remap PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/sfence-vma-remap/PROOF.md"
+          },
+          "text": "The run executes three fixed phases, one PTE rewrite, one fence, and reads back the canary on each phase; no computed result is checked against an independent oracle."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The argument is a fixed semantic exercised with readback, not a proved computation."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A fixed hardware semantic demonstrated by readback, with no oracle-checked computation, is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
     }
   ]
 }

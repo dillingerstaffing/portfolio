@@ -1721,6 +1721,29 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Page Table Edit That Changed Nothing</h3>
+          <!-- LAYER-STRIP:the-page-table-edit-that-changed-nothing -->
+          <p class="research-date"><time datetime="2026-10-22">2026-10-22 11:32 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>One virtual address, <code>0x40000000</code>. A hand-built Sv39 page table maps it to a physical page holding the canary <code>0xaaaaaaaaaaaaaaaa</code>. A supervisor-mode program loads the word and gets <code>0xaaaaaaaaaaaaaaaa</code> back. That walk does something invisible too: the hart caches the translation, <code>0x40000000</code> goes to the canary-A page, in its address-translation cache. <a class="cite" href="#src-the-page-table-edit-that-changed-nothing-1">[1]</a></p>
+          <p>Now machine mode rewrites the leaf page-table entry in memory, repointing the address at a second page holding <code>0xbbbbbbbbbbbbbbbb</code>. The PTE readback proves the write landed: <code>0x200010c7</code> before, <code>0x20000cc7</code> after. No fence is issued. The supervisor program loads the address again and gets <code>0xaaaaaaaaaaaaaaaa</code>. The edit changed nothing the hart could see. The cache still holds the old walk, and the architecture permits the hart to keep using it. <a class="cite" href="#src-the-page-table-edit-that-changed-nothing-1">[1]</a></p>
+          <p>The three phases, reduced to their witness:</p>
+<pre><code>pte:    0x200010c7 -&gt; 0x20000cc7   # the rewrite landed in memory
+phaseB: readback 0xaaaaaaaaaaaaaaaa # stale: no fence issued
+phaseC: readback 0xbbbbbbbbbbbbbbbb # fresh: after sfence.vma</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-page-table-edit-that-changed-nothing/the-page-table-edit-that-changed-nothing.jpg" alt="Blueprint-style diagram of the sfence.vma remap experiment in three phases: phase A loads 0xaaaaaaaaaaaaaaaa from virtual address 0x40000000 and the hart caches the translation; M-mode rewrites the leaf PTE from 0x200010c7 to 0x20000cc7 with no fence and the next load still returns 0xaaaaaaaaaaaaaaaa, stale; after one sfence.vma the same load returns 0xbbbbbbbbbbbbbbbb, fresh" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The PTE rewrite landed in memory (the readback proved it) but the hart kept its cached translation until one sfence.vma forced a fresh walk.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>Then machine mode executes one <code>sfence.vma</code>. The same load now returns <code>0xbbbbbbbbbbbbbbbb</code>. Note what the fence did not do: it did not move the write. The write was already in memory before the fence ran. The fence invalidated the hart's cached translation, so the next load walked the table again and found the new leaf. The privileged manual, section 12.2.1, states the contract: the fence guarantees that previous stores already visible to the hart are ordered before its subsequent implicit reads of the memory-management data structures, and it invalidates entries in the address-translation cache. <a class="cite" href="#src-the-page-table-edit-that-changed-nothing-1">[1]</a> <a class="cite" href="#src-the-page-table-edit-that-changed-nothing-2">[2]</a></p>
+          <p>The bench habit: after every page-table edit, a map, an unmap, a permission change, issue <code>sfence.vma</code> before the address is used again. One boundary from the manual: the fence orders only the local hart, so every hart that may hold the entry needs its own fence, which is why operating systems do TLB shootdowns with interprocessor interrupts. <a class="cite" href="#src-the-page-table-edit-that-changed-nothing-2">[2]</a> One boundary measured: the manual explicitly permits over-fencing, an implementation may ignore the address in <code>rs1</code> and flush everything. The sibling run on QEMU 8.2.2 confirmed it: a scoped <code>sfence.vma</code> naming one address freshened both test addresses. Scoping is a performance hint, not a correctness tool you can verify on every implementation. <a class="cite" href="#src-the-page-table-edit-that-changed-nothing-3">[3]</a></p>
+          <p>One sentence to carry away: the PTE rewrite lands in memory; only <code>sfence.vma</code> lands it in the hart.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sfence-vma-remap" target="_blank" rel="noopener">riscv-baremetal-demo/src/sfence-vma-remap</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Borrow That Betrays the Zero</h3>
           <!-- LAYER-STRIP:the-borrow-that-betrays-the-zero -->
           <p class="research-date"><time datetime="2026-10-21">2026-10-21 11:37 EDT</time></p>
