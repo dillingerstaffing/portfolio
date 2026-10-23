@@ -1721,6 +1721,31 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
       <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Store That Kills the Reservation</h3>
+          <!-- LAYER-STRIP:the-store-that-kills-the-reservation -->
+          <p class="research-date"><time datetime="2026-10-23">2026-10-23 11:40 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A lock-free retry loop is three instructions wide. <code>lr.w</code> reads the word and registers a reservation on it. You compute the new value. <code>sc.w</code> writes it only if the reservation is still valid. The question the whole pattern hangs on is what counts as breaking the reservation.</p>
+          <p>Here is one answer, measured on QEMU 8.2.2. One aligned word, <code>cell_a</code>, holding <code>0xAAAA0000</code>. The sequence runs as one volatile asm block so the compiler cannot reorder it: <code>lr.w t1, 0(a3)</code>, then an ordinary <code>sw</code> of <code>0xBBBB1111</code> to the same address, then <code>sc.w s2, a4, 0(a3)</code> attempting <code>0xCCCC2222</code>. The run printed <code>rd = 1</code>: the store-conditional reported failure. Memory held <code>0xBBBB1111</code>, the intervening store's value. The failed store-conditional had stored nothing: <code>0xCCCC2222</code> never landed. <a class="cite" href="#src-the-store-that-kills-the-reservation-1">[1]</a></p>
+          <p>The witness, three instructions and their aftermath:</p>
+<pre><code>lr.w t1, 0(a3)        # reserve cell_a, holding 0xAAAA0000
+sw   a5, 0(a3)        # 0xBBBB1111 lands between
+sc.w s2, a4, 0(a3)    # rd=1: reservation gone, nothing stored</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-store-that-kills-the-reservation/the-store-that-kills-the-reservation.jpg" alt="Blueprint-style diagram of the reservation-invalidation experiment in three panels: THE WINDOW OPENS shows lr.w arming the reservation on cell_a holding 0xAAAA0000; THE STORE LANDS BETWEEN shows an ordinary sw writing 0xBBBB1111 to the same address with the reservation dead; THE SC REPORTS shows sc.w attempting 0xCCCC2222 returning rd=1 with nothing stored, cell_a holding 0xBBBB1111" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One ordinary store between the load-reserved and the store-conditional killed the reservation: rd=1, and the failed store-conditional stored nothing.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The control rules out the alternative. A second word, <code>cell_b</code>, ran <code>lr.w</code> immediately followed by <code>sc.w</code> with nothing between: <code>rd = 0</code>, and <code>cell_b</code> read back <code>0xEEEE4444</code>. The reservation mechanism works here; the failure in the first test belongs to the intervening store. The disassembly confirmed the emitted order is <code>lr.w</code> / <code>sw</code> / <code>sc.w</code>, so no reordering is in play either. Six checks, zero mismatches, three runs byte-identical. <a class="cite" href="#src-the-store-that-kills-the-reservation-1">[1]</a></p>
+          <p>The unprivileged manual states the contract in section 13.2: if the store-conditional succeeds, it writes the word to memory and writes zero to <code>rd</code>; if it fails, it writes nothing to memory and writes a nonzero value to <code>rd</code>. Failure code 1 encodes an unspecified failure, and portable software should only assume the failure code will be nonzero. <a class="cite" href="#src-the-store-that-kills-the-reservation-2">[2]</a></p>
+          <p>The bench habit has two parts. First, check <code>rd</code> and retry from the load-reserved, never from the store-conditional: executing an <code>sc</code>, success or failure, invalidates the reservation the hart holds, so re-issuing the <code>sc</code> alone can never succeed. <a class="cite" href="#src-the-store-that-kills-the-reservation-2">[2]</a> Second, keep the window empty. The constrained LR/SC loop in section 13.3 forbids loads, stores, backward jumps, and several other instruction types between the <code>lr</code> and the <code>sc</code>; a store in the window breaks the eventual-success guarantee. The experiment's intervening <code>sw</code> is exactly that forbidden store, and on this QEMU build the reservation died for it. <a class="cite" href="#src-the-store-that-kills-the-reservation-1">[1]</a> <a class="cite" href="#src-the-store-that-kills-the-reservation-2">[2]</a></p>
+          <p>One measured boundary, stated honestly: these are emulator results, not silicon. The spec mandates failure for stores from another hart and for a second <code>sc</code> in the window, but it does not mandate that an ordinary same-hart store kills the reservation. The run proves the observable outcome on QEMU 8.2.2, not the internal mechanism behind it. <a class="cite" href="#src-the-store-that-kills-the-reservation-1">[1]</a></p>
+          <p>One sentence to carry away: between your load-reserved and your store-conditional there is room for exactly nothing, and a failed store-conditional tells you so in <code>rd</code> without touching memory.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/lrsc-store-invalidate" target="_blank" rel="noopener">riscv-baremetal-demo/src/lrsc-store-invalidate</a></p>
+        </div>
+      </article>
+      <article class="research-note">
+        <div>
           <h3>The Page Table Edit That Changed Nothing</h3>
           <!-- LAYER-STRIP:the-page-table-edit-that-changed-nothing -->
           <p class="research-date"><time datetime="2026-10-22">2026-10-22 11:32 EDT</time></p>

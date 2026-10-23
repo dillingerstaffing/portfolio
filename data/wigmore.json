@@ -96062,6 +96062,322 @@
           "note": "The penultimate plus the layer rule yields the verdict in (1)."
         }
       ]
+    },
+    {
+      "item": "the-store-that-kills-the-reservation",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The claim is the unprivileged specification's LR/SC contract, sections 13.2 and 13.3: a failed store-conditional writes nothing to memory and reports nonzero in rd, and a store between the lr and the sc breaks the constrained loop. The run shows both halves: the intervening sw makes sc.w report rd=1 and store nothing, while the control pair with nothing between succeeds.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is the unprivileged specification's LR/SC contract, sections 13.2 and 13.3: a failed store-conditional writes nothing to memory and reports nonzero in rd, and a store between the lr and the sc breaks the constrained loop. The run shows both halves: the intervening sw makes sc.w report rd=1 and store nothing, while the control pair with nothing between succeeds."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/lrsc-store-invalidate PROOF.md and the firsthand QEMU run",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+          },
+          "text": "The firsthand run executed lr.w, an intervening sw of 0xBBBB1111, then sc.w attempting 0xCCCC2222 on cell_a: rd printed 1, cell_a held 0xBBBB1111, the failed sc stored nothing. The control lr.w/sc.w on cell_b returned rd=0 and stored 0xEEEE4444. 6 checks, 0 mismatches, QEMU 8.2.2."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V unprivileged ISA manual, sections 13.2 and 13.3",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf"
+          },
+          "text": "Section 13.2: if the SC.W fails, the instruction does not write to memory, and it writes a nonzero value to rd; failure code 1 encodes an unspecified failure, and executing an SC.W invalidates any reservation held by the hart. Section 13.3: the dynamic code between the LR and SC may not contain loads, stores, backward jumps, taken backward branches, JALR, FENCE, or SYSTEM instructions."
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The kill-then-report pair is exactly the semantic the manual's contract and constrained-loop rules describe."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A run that exhibits the specified failure semantics of an instruction is an instruction-set claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-kills-the-reservation",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements reservations. QEMU serves as a functional executor only; no reservation-set geometry, pipeline, or timing behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements reservations. QEMU serves as a functional executor only; no reservation-set geometry, pipeline, or timing behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/lrsc-store-invalidate PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+          },
+          "text": "The verdicts are rd and memory readback equalities that hold regardless of how the reservation is implemented; the run asserts no reservation-set geometry, pipeline, or timing value."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No implementation detail is needed to establish the claim."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established as register and memory readback equalities with no implementation behavior asserted is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-kills-the-reservation",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the atomic instructions' own contract.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the atomic instructions' own contract."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/lrsc-store-invalidate PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+          },
+          "text": "The module runs in M-mode on bare QEMU with no SBI or firmware calls; a minimal M-mode trap entry halts the hart on any unexpected trap, and the trap seen-flag stayed 0."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No firmware behavior can move any verdict."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established without any firmware call is not a firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-kills-the-reservation",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; the lock-free pattern is shown as a userspace mechanism, and no system call or kernel data structure appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; the lock-free pattern is shown as a userspace mechanism, and no system call or kernel data structure appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/lrsc-store-invalidate PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+          },
+          "text": "The program runs on bare QEMU with no operating system; it makes no system call and no kernel data structure appears in the test."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No kernel behavior can move any verdict."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established on bare hardware with no operating system is not a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-store-that-kills-the-reservation",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed instruction semantic exercised as a three-instruction sequence with register and memory readback, not a computation proved against an independent oracle. The kill-then-report contrast is shown as the consequence the contract forces, not as a verified algorithm.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed instruction semantic exercised as a three-instruction sequence with register and memory readback, not a computation proved against an independent oracle. The kill-then-report contrast is shown as the consequence the contract forces, not as a verified algorithm."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/lrsc-store-invalidate PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+          },
+          "text": "The run executes a fixed three-instruction sequence and reads back rd and both cells; no computed result is checked against an independent oracle."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The argument is a fixed semantic exercised with readback, not a proved computation."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A fixed hardware semantic demonstrated by readback, with no oracle-checked computation, is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
     }
   ]
 }

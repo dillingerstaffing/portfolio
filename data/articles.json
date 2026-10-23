@@ -1,5 +1,71 @@
 [
   {
+    "title": "The Store That Kills the Reservation",
+    "slug": "the-store-that-kills-the-reservation",
+    "date": "2026-10-23",
+    "description": "An ordinary store between lr.w and sc.w kills the reservation: the store-conditional reports failure in rd and writes nothing to memory. The bench habit: check rd, retry from the load-reserved, keep the window empty.",
+    "paragraphs": [
+      "A lock-free retry loop is three instructions wide. <code>lr.w</code> reads the word and registers a reservation on it. You compute the new value. <code>sc.w</code> writes it only if the reservation is still valid. The question the whole pattern hangs on is what counts as breaking the reservation.",
+      "Here is one answer, measured on QEMU 8.2.2. One aligned word, <code>cell_a</code>, holding <code>0xAAAA0000</code>. The sequence runs as one volatile asm block so the compiler cannot reorder it: <code>lr.w t1, 0(a3)</code>, then an ordinary <code>sw</code> of <code>0xBBBB1111</code> to the same address, then <code>sc.w s2, a4, 0(a3)</code> attempting <code>0xCCCC2222</code>. The run printed <code>rd = 1</code>: the store-conditional reported failure. Memory held <code>0xBBBB1111</code>, the intervening store's value. The failed store-conditional had stored nothing: <code>0xCCCC2222</code> never landed. <a class=\"cite\" href=\"#src-the-store-that-kills-the-reservation-1\">[1]</a>",
+      "The witness, three instructions and their aftermath:",
+      "CODEBLOCK",
+      "The control rules out the alternative. A second word, <code>cell_b</code>, ran <code>lr.w</code> immediately followed by <code>sc.w</code> with nothing between: <code>rd = 0</code>, and <code>cell_b</code> read back <code>0xEEEE4444</code>. The reservation mechanism works here; the failure in the first test belongs to the intervening store. The disassembly confirmed the emitted order is <code>lr.w</code> / <code>sw</code> / <code>sc.w</code>, so no reordering is in play either. Six checks, zero mismatches, three runs byte-identical. <a class=\"cite\" href=\"#src-the-store-that-kills-the-reservation-1\">[1]</a>",
+      "The unprivileged manual states the contract in section 13.2: if the store-conditional succeeds, it writes the word to memory and writes zero to <code>rd</code>; if it fails, it writes nothing to memory and writes a nonzero value to <code>rd</code>. Failure code 1 encodes an unspecified failure, and portable software should only assume the failure code will be nonzero. <a class=\"cite\" href=\"#src-the-store-that-kills-the-reservation-2\">[2]</a>",
+      "The bench habit has two parts. First, check <code>rd</code> and retry from the load-reserved, never from the store-conditional: executing an <code>sc</code>, success or failure, invalidates the reservation the hart holds, so re-issuing the <code>sc</code> alone can never succeed. <a class=\"cite\" href=\"#src-the-store-that-kills-the-reservation-2\">[2]</a> Second, keep the window empty. The constrained LR/SC loop in section 13.3 forbids loads, stores, backward jumps, and several other instruction types between the <code>lr</code> and the <code>sc</code>; a store in the window breaks the eventual-success guarantee. The experiment's intervening <code>sw</code> is exactly that forbidden store, and on this QEMU build the reservation died for it. <a class=\"cite\" href=\"#src-the-store-that-kills-the-reservation-1\">[1]</a> <a class=\"cite\" href=\"#src-the-store-that-kills-the-reservation-2\">[2]</a>",
+      "One measured boundary, stated honestly: these are emulator results, not silicon. The spec mandates failure for stores from another hart and for a second <code>sc</code> in the window, but it does not mandate that an ordinary same-hart store kills the reservation. The run proves the observable outcome on QEMU 8.2.2, not the internal mechanism behind it. <a class=\"cite\" href=\"#src-the-store-that-kills-the-reservation-1\">[1]</a>",
+      "One sentence to carry away: between your load-reserved and your store-conditional there is room for exactly nothing, and a failed store-conditional tells you so in <code>rd</code> without touching memory."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/lrsc-store-invalidate",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the unprivileged specification's LR/SC contract, sections 13.2 and 13.3: a failed store-conditional writes nothing to memory and reports nonzero in rd, and a store between the lr and the sc breaks the constrained loop. The run shows both halves: the intervening sw makes sc.w report rd=1 and store nothing, while the control pair with nothing between succeeds."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements reservations. QEMU serves as a functional executor only; no reservation-set geometry, pipeline, or timing behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the atomic instructions' own contract."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; the lock-free pattern is shown as a userspace mechanism, and no system call or kernel data structure appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic exercised as a three-instruction sequence with register and memory readback, not a computation proved against an independent oracle. The kill-then-report contrast is shown as the consequence the contract forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "lrsc-store-invalidate PROOF.md: 6 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/lrsc-store-invalidate/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-store-that-kills-the-reservation/the-store-that-kills-the-reservation.jpg",
+    "image_alt": "Blueprint-style diagram of the reservation-invalidation experiment in three panels: THE WINDOW OPENS shows lr.w arming the reservation on cell_a holding 0xAAAA0000; THE STORE LANDS BETWEEN shows an ordinary sw writing 0xBBBB1111 to the same address with the reservation dead; THE SC REPORTS shows sc.w attempting 0xCCCC2222 returning rd=1 with nothing stored, cell_a holding 0xBBBB1111",
+    "image_caption": "One ordinary store between the load-reserved and the store-conditional killed the reservation: rd=1, and the failed store-conditional stored nothing.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-store-that-kills-the-reservation/the-store-that-kills-the-reservation-social.jpg",
+    "sources": [
+      {
+        "title": "src/lrsc-store-invalidate: module PROOF.md and the firsthand run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/lrsc-store-invalidate",
+        "note": "The firsthand QEMU 8.2.2 run behind the post: cell_a held 0xAAAA0000; lr.w, an intervening sw of 0xBBBB1111, then sc.w attempting 0xCCCC2222 on the same address. rd printed 1 (failure), cell_a read back 0xBBBB1111 (the intervening store), and 0xCCCC2222 never landed. Control: lr.w then sc.w on cell_b with nothing between, rd 0, cell_b 0xEEEE4444. 6 checks, 0 mismatches, byte-identical across three runs, checksum 0xa61fb63cece6cebc; the post's own rebuild and rerun on the build VM reproduced the PASS and the checksum. The disassembly confirmed the emitted order lr.w / sw / sc.w in one volatile asm block."
+      },
+      {
+        "title": "RISC-V ISA Manual, unprivileged architecture (LR/SC, sections 13.2 and 13.3)",
+        "publisher": "RISC-V International",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf",
+        "note": "The contract, read from the pinned release. Section 13.2: 'If the SC.W succeeds, the instruction writes the word in rs2 to memory, and it writes zero to rd. If the SC.W fails, the instruction does not write to memory, and it writes a nonzero value to rd'; 'The failure code with value 1 encodes an unspecified failure. Other failure codes are reserved at this time. Portable software should only assume the failure code will be non-zero'; 'Regardless of success or failure, executing an SC.W instruction invalidates any reservation held by this hart'; 'An SC must fail if there is another SC (to any address) between the LR and the SC in program order.' Section 13.3: the constrained LR/SC loop's dynamic code between the LR and SC can only contain base I instructions excluding loads, stores, backward jumps, taken backward branches, JALR, FENCE, and SYSTEM instructions."
+      }
+    ]
+  },
+  {
     "title": "The Page Table Edit That Changed Nothing",
     "slug": "the-page-table-edit-that-changed-nothing",
     "date": "2026-10-22",
