@@ -1,5 +1,71 @@
 [
   {
+    "title": "The Rounding Mode Written Into the Instruction",
+    "slug": "the-rounding-mode-written-into-the-instruction",
+    "date": "2026-10-24",
+    "description": "A static rounding mode written into fdiv.d beats fcsr.frm and leaves frm untouched: static RNE returned 0x3FD5555555555555 under both RDN and RUP, while the dynamic control under RUP moved one ulp. The bench habit: write the mode into the one instruction that needs it.",
+    "paragraphs": [
+      "A floating-point divide gets its rounding mode from two places: the instruction itself, or the <code>fcsr</code> register. Most code leaves the choice to <code>fcsr.frm</code> and never thinks about it again. But the instruction carries its own <code>rm</code> field, and when that field names a mode, the register does not get a vote.",
+      "Measured on QEMU 8.2.2, dividing 1.0 by 3.0 in double precision. With <code>fcsr.frm</code> set to RDN, round toward negative infinity, the static-RNE divide returned <code>0x3FD5555555555555</code>, and <code>frm</code> still read back RDN afterward. Under <code>frm</code> set to RUP, round toward positive infinity, the same static-RNE divide returned the same <code>0x3FD5555555555555</code>, and <code>frm</code> still read back RUP. The instruction's mode won twice, and the register came back untouched both times. <a class=\"cite\" href=\"#src-the-rounding-mode-written-into-the-instruction-1\">[1]</a>",
+      "The witness, the static divide and its dynamic control:",
+      "CODEBLOCK",
+      "The control is what makes the override real. The same divide with the rounding operand omitted encodes <code>rm</code> 111, dynamic, so it follows <code>frm</code>. Under <code>frm</code> set to RUP, that dynamic divide returned <code>0x3FD5555555555556</code>, one ulp above the static result. The rounding path is live; the static agreement is not a dead rounding unit ignoring the mode. All four divides showed <code>fflags</code> NX only, the inexact flag, as 1.0/3.0 is inexact with no other exception. Nineteen checks, zero mismatches, three runs byte-identical, checksum <code>0xaaf26cfb83385742</code>. <a class=\"cite\" href=\"#src-the-rounding-mode-written-into-the-instruction-1\">[1]</a>",
+      "The unprivileged manual states the rule plainly: a value of 111 in the instruction's <code>rm</code> field selects the dynamic rounding mode held in <code>frm</code>. Every other value names its own mode: RNE is 000, RDN is 010, RUP is 011. The operands here traveled as raw bit patterns in integer registers and were moved into floating-point registers with <code>fmv.d.x</code> inside volatile asm, so the compiler could not constant-fold the divides; every division executed on the hart. <a class=\"cite\" href=\"#src-the-rounding-mode-written-into-the-instruction-1\">[1]</a> <a class=\"cite\" href=\"#src-the-rounding-mode-written-into-the-instruction-2\">[2]</a>",
+      "The bench habit: when one computation needs a specific rounding, a correctly rounded constant or a directed-rounding bound, and the rest of the program runs under a global <code>frm</code>, write the mode into that one instruction instead of saving <code>frm</code>, setting it, dividing, and restoring it. The save, set, and restore dance disappears, and a forgotten restore cannot leak the temporary mode into later arithmetic.",
+      "One measured boundary, stated honestly: these are emulator results, not silicon. And the static mode leaves <code>frm</code> untouched, which is the point, but it also means code that reads <code>frm</code> afterward learns nothing about how that divide rounded. The rounding decision lives in the instruction stream, so it is visible only in the disassembly. <a class=\"cite\" href=\"#src-the-rounding-mode-written-into-the-instruction-1\">[1]</a>",
+      "One sentence to carry away: the rounding mode you write into the instruction beats the rounding mode in the register, and leaves the register exactly as it found it."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/frm-dynamic-vs-static",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the unprivileged specification's floating-point rounding rule: a value of 111 in the instruction's rm field selects the dynamic rounding mode held in fcsr.frm, and every other rm value names its own mode. The run shows both halves: a static-RNE divide ignores frm under RDN and RUP alike, while the dynamic control under RUP diverges by one ulp."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements floating-point rounding. QEMU serves as a functional executor only; no pipeline, latency, or rounding-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the floating-point instruction's own rounding semantic."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; no system call or kernel data structure appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic exercised as four fixed divides with register readback, not a computation proved against an independent oracle. The static-then-dynamic contrast is shown as the consequence the rounding rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "frm-dynamic-vs-static PROOF.md: 19 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-rounding-mode-written-into-the-instruction/the-rounding-mode-written-into-the-instruction.jpg",
+    "image_alt": "Blueprint-style diagram of the static rounding mode experiment in three panels: FRM SAYS RDN shows fcsr.frm set to RDN while the instruction says RNE; THE INSTRUCTION WINS shows the static-RNE divide returning 0x3FD5555555555555 with frm still reading RDN; THE CONTROL DIVERGES shows the dynamic divide under frm RUP returning 0x3FD5555555555556, one ulp higher",
+    "image_caption": "The static mode in the instruction beat frm twice and left frm untouched, while the dynamic control under RUP moved one ulp.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-rounding-mode-written-into-the-instruction/the-rounding-mode-written-into-the-instruction-social.jpg",
+    "sources": [
+      {
+        "title": "src/frm-dynamic-vs-static: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/frm-dynamic-vs-static",
+        "note": "The QEMU 8.2.2 run behind the post: fdiv.d 1.0/3.0 with a static RNE encoding under frm=RDN returned 0x3FD5555555555555 with frm still RDN, and under frm=RUP returned the same 0x3FD5555555555555 with frm still RUP. The dynamic control under frm=RUP returned 0x3FD5555555555556. All four divides showed fflags NX only; traps 0; 19 checks, 0 mismatches, byte-identical across three runs, checksum 0xaaf26cfb83385742; the post's own rebuild and rerun on the build VM reproduced the PASS and the checksum in three runs. The disassembly confirmed the static encoding (rm bits 14:12 = 000) and the dynamic encoding (rm bits 14:12 = 111)."
+      },
+      {
+        "title": "RISC-V ISA Manual, unprivileged architecture (F extension, rounding modes)",
+        "publisher": "RISC-V International",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf",
+        "note": "The rounding rule, read from the pinned release. A value of 111 in the instruction's rm field selects the dynamic rounding mode held in frm. RNE is 000, RDN is 010, RUP is 011. The manual's rounding-mode table gives the same encodings for the instruction rm field and the frm register, with 111 meaning dynamic only in the instruction field."
+      }
+    ]
+  },
+  {
     "title": "The Store That Kills the Reservation",
     "slug": "the-store-that-kills-the-reservation",
     "date": "2026-10-23",

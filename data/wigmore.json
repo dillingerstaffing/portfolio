@@ -96378,6 +96378,322 @@
           "note": "The penultimate plus the layer rule yields the verdict in (1)."
         }
       ]
+    },
+    {
+      "item": "the-rounding-mode-written-into-the-instruction",
+      "kind": "article",
+      "slot": "ISA",
+      "probandum": "The claim is the unprivileged specification's floating-point rounding rule: a value of 111 in the instruction's rm field selects the dynamic rounding mode held in fcsr.frm, and every other rm value names its own mode. The run shows both halves: a static-RNE divide ignores frm under RDN and RUP alike, while the dynamic control under RUP diverges by one ulp.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is the unprivileged specification's floating-point rounding rule: a value of 111 in the instruction's rm field selects the dynamic rounding mode held in fcsr.frm, and every other rm value names its own mode. The run shows both halves: a static-RNE divide ignores frm under RDN and RUP alike, while the dynamic control under RUP diverges by one ulp."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/frm-dynamic-vs-static PROOF.md and the QEMU run",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+          },
+          "text": "The run executed fdiv.d 1.0/3.0 with a static RNE encoding under frm=RDN and frm=RUP: both quotients 0x3FD5555555555555, frm reading back unchanged each time. The dynamic control under frm=RUP yielded 0x3FD5555555555556. 19 checks, 0 mismatches, QEMU 8.2.2."
+        },
+        {
+          "kind": "evidence",
+          "n": 3,
+          "source": {
+            "cite": "RISC-V unprivileged ISA manual, F extension rounding modes",
+            "tier": "spec",
+            "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf"
+          },
+          "text": "A value of 111 in the instruction's rm field selects the dynamic rounding mode held in frm; RNE is 000, RDN is 010, RUP is 011."
+        },
+        {
+          "kind": "penultimate",
+          "n": 4,
+          "text": "The static-then-dynamic pair is exactly the semantic the manual's rounding rule describes."
+        },
+        {
+          "kind": "generalization",
+          "n": 5,
+          "text": "A run that exhibits the specified rounding semantics of an instruction is an instruction-set claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2,
+            3
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            4
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            4
+          ],
+          "via": [
+            5
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-rounding-mode-written-into-the-instruction",
+      "kind": "article",
+      "slot": "MICROARCH",
+      "probandum": "No claim depends on how any core implements floating-point rounding. QEMU serves as a functional executor only; no pipeline, latency, or rounding-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No claim depends on how any core implements floating-point rounding. QEMU serves as a functional executor only; no pipeline, latency, or rounding-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/frm-dynamic-vs-static PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+          },
+          "text": "The verdicts are quotient and frm readback equalities that hold regardless of how rounding is implemented; the run asserts no pipeline, latency, or rounding-unit behavior."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No implementation detail is needed to establish the claim."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established as register readback equalities with no implementation behavior asserted is not a microarchitecture claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-rounding-mode-written-into-the-instruction",
+      "kind": "article",
+      "slot": "FIRMWARE",
+      "probandum": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the floating-point instruction's own rounding semantic.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the floating-point instruction's own rounding semantic."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/frm-dynamic-vs-static PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+          },
+          "text": "The module runs in M-mode on bare QEMU with no SBI or firmware calls; a counting M-mode trap handler stayed at zero traps."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No firmware behavior can move any verdict."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established without any firmware call is not a firmware claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-rounding-mode-written-into-the-instruction",
+      "kind": "article",
+      "slot": "KERNEL",
+      "probandum": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; no system call or kernel data structure appears in the argument.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; no system call or kernel data structure appears in the argument."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/frm-dynamic-vs-static PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+          },
+          "text": "The program runs on bare QEMU with no operating system; it makes no system call and no kernel data structure appears in the test."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "No kernel behavior can move any verdict."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A claim established on bare hardware with no operating system is not a kernel claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
+    },
+    {
+      "item": "the-rounding-mode-written-into-the-instruction",
+      "kind": "article",
+      "slot": "ALGORITHM",
+      "probandum": "The claim is one fixed instruction semantic exercised as four fixed divides with register readback, not a computation proved against an independent oracle. The static-then-dynamic contrast is shown as the consequence the rounding rule forces, not as a verified algorithm.",
+      "keyList": [
+        {
+          "kind": "probandum",
+          "n": 1,
+          "text": "The claim is one fixed instruction semantic exercised as four fixed divides with register readback, not a computation proved against an independent oracle. The static-then-dynamic contrast is shown as the consequence the rounding rule forces, not as a verified algorithm."
+        },
+        {
+          "kind": "evidence",
+          "n": 2,
+          "source": {
+            "cite": "src/frm-dynamic-vs-static PROOF.md",
+            "tier": "lab",
+            "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/frm-dynamic-vs-static/PROOF.md"
+          },
+          "text": "The run executes four fixed divides and reads back quotients and frm; no computed result is checked against an independent oracle."
+        },
+        {
+          "kind": "penultimate",
+          "n": 3,
+          "text": "The argument is a fixed semantic exercised with readback, not a proved computation."
+        },
+        {
+          "kind": "generalization",
+          "n": 4,
+          "text": "A fixed hardware semantic demonstrated by readback, with no oracle-checked computation, is not an algorithm claim."
+        }
+      ],
+      "inferences": [
+        {
+          "from": [
+            2
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            3
+          ],
+          "strength": "strong",
+          "note": "The evidence plus the layer rule places the claim where the penultimate says it is."
+        },
+        {
+          "from": [
+            3
+          ],
+          "via": [
+            4
+          ],
+          "to": [
+            1
+          ],
+          "strength": "strong",
+          "note": "The penultimate plus the layer rule yields the verdict in (1)."
+        }
+      ]
     }
   ]
 }
