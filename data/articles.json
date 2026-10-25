@@ -1,5 +1,71 @@
 [
   {
+    "title": "The Jump That Always Lands Even",
+    "slug": "the-jump-that-always-lands-even",
+    "date": "2026-10-25",
+    "description": "Hand jalr an odd address and it still lands on the even label: the jump to 0x800001f3 ran the block at 0x800001f2 and returned. The bench habit: a set low bit on a function pointer is a tag, not a bug.",
+    "paragraphs": [
+      "A function pointer with its low bit set looks broken. On RISC-V it is not. The indirect jump instruction, <code>jalr</code>, clears bit 0 of its target before it jumps, so a pointer that ends in 1 still lands on the even address next door. The manual says this clearing is deliberate: it lets the low bit of a function pointer store auxiliary information, a tag, instead of an address bit.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. The label block sat at <code>0x800001f2</code>. Adding 1 made the jump target <code>0x800001f3</code>, odd on purpose. The <code>jalr</code> to that odd address ran the block at <code>0x800001f2</code> anyway, the block stored 1 into a flag, and the jump back through the link register returned to the caller. Four checks, zero mismatches, three runs byte-identical. <a class=\"cite\" href=\"#src-the-jump-that-always-lands-even-1\">[1]</a>",
+      "The witness, the jump and its return:",
+      "CODEBLOCK",
+      "The disassembly confirms the jump the source describes: <code>jalr t2, s0</code> at <code>0x800001ec</code>, where <code>s0</code> was formed as the label address plus 1, and the label block at <code>0x800001f2</code> ends with a return through <code>t2</code>. Nothing in the run depended on the compiler tidying the odd address away first: the odd value was formed in a register at run time, inside volatile asm, and handed to <code>jalr</code> as its base. <a class=\"cite\" href=\"#src-the-jump-that-always-lands-even-1\">[1]</a>",
+      "The unprivileged manual states the rule plainly: the target address is obtained by adding the sign-extended 12-bit immediate to <code>rs1</code>, then setting the least-significant bit of the result to zero, and the address of the following instruction goes to the link register. The return instruction itself is just this rule with the link register as base: <code>ret</code> is <code>jalr x0, 0(x1)</code>. <a class=\"cite\" href=\"#src-the-jump-that-always-lands-even-1\">[1]</a> <a class=\"cite\" href=\"#src-the-jump-that-always-lands-even-2\">[2]</a>",
+      "The bench habit, in both directions. If you tag a function pointer's low bit, or you receive one from code that does, you do not need to clear the bit before an indirect call: <code>jalr</code> clears it for you. And the reverse is a trap of its own: do not use bit 0 to tell two targets apart. Two pointers that differ only in bit 0 jump to the same place, so a tag bit read back from a pointer is not an address bit, and a comparison that treats it as one will lie.",
+      "One measured boundary, stated honestly: these are emulator results, not silicon, and this build had the compressed extension, so a two-byte-aligned target was enough. Without the compressed extension, a target must be four-byte aligned or the jump raises an instruction-address-misaligned exception. The clearing only forgives bit 0; it does not forgive a genuinely misaligned target on a machine without compressed instructions. <a class=\"cite\" href=\"#src-the-jump-that-always-lands-even-1\">[1]</a> <a class=\"cite\" href=\"#src-the-jump-that-always-lands-even-2\">[2]</a>",
+      "One sentence to carry away: <code>jalr</code> never jumps to an odd address, it jumps to the even address next door, and a set low bit on a function pointer is a tag, not a bug."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/jalr-clears-bit0",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the unprivileged specification's jalr target rule: the target is rs1 plus the sign-extended 12-bit immediate, with the least-significant bit set to zero. The run shows it directly: jalr handed the odd address 0x800001f3 ran the block at the even label 0x800001f2 and returned through t2."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements indirect jumps. QEMU serves as a functional executor only; no pipeline, return-stack, or predictor behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the jalr instruction's own target semantic."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; no system call or kernel data structure appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic exercised as a single odd-target jump with register readback, not a computation proved against an independent oracle. The landing and return are shown as the consequence the jalr rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "jalr-clears-bit0 PROOF.md: 4 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/jalr-clears-bit0/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-jump-that-always-lands-even/the-jump-that-always-lands-even.jpg",
+    "image_alt": "Blueprint-style diagram of the jalr odd-target experiment in three panels: HAND IT AN ODD ADDRESS shows the label at 0x800001f2 with the jump target made odd at 0x800001f3; IT LANDS EVEN shows jalr clearing bit 0 and the label block running at 0x800001f2; AND IT COMES BACK shows the return through t2 with landed equal to 1",
+    "image_caption": "Handed 0x800001f3, jalr landed on 0x800001f2, ran the block, and returned: landed 1, four checks, zero mismatches.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-jump-that-always-lands-even/the-jump-that-always-lands-even-social.jpg",
+    "sources": [
+      {
+        "title": "src/jalr-clears-bit0: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/jalr-clears-bit0",
+        "note": "The QEMU 8.2.2 run behind the post: the label block at 0x800001f2, the odd jump target 0x800001f3 formed at run time in volatile asm, jalr landing on 0x800001f2, the block storing 1 into landed, and the return through t2. 4 checks, 0 mismatches, byte-identical across three runs, md5 27d8e494ce968d8ba1bdd193ad9bc41c. The disassembly confirmed jalr t2, s0 at 0x800001ec with s0 equal to the label address plus 1, and the label block returning with jr t2."
+      },
+      {
+        "title": "RISC-V ISA Manual, unprivileged architecture (JALR target rule)",
+        "publisher": "RISC-V International",
+        "url": "https://github.com/riscv/riscv-isa-manual/releases/download/riscv-isa-release-7fc198f-2026-02-15/riscv-unprivileged.pdf",
+        "note": "The jalr rule, read from the pinned release. The target address is obtained by adding the sign-extended 12-bit I-immediate to rs1, then setting the least-significant bit of the result to zero. Clearing that bit lets the low bit of function pointers store auxiliary information. Without the compressed extension, a target not aligned to a four-byte boundary raises an instruction-address-misaligned exception."
+      }
+    ]
+  },
+  {
     "title": "The Rounding Mode Written Into the Instruction",
     "slug": "the-rounding-mode-written-into-the-instruction",
     "date": "2026-10-24",
