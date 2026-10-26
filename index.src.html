@@ -1721,6 +1721,31 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Comparison That Tests for Zero</h3>
+          <!-- LAYER-STRIP:the-comparison-that-tests-for-zero -->
+          <p class="research-date"><time datetime="2026-10-26">2026-10-26 11:23 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>Testing for zero usually means a branch: compare, then jump. RISC-V has a branchless way. The instruction <code>sltiu</code> compares its input against an immediate as an unsigned number and writes 1 when the input is smaller, else 0. Compare against 1, and only one unsigned value qualifies: zero itself.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. The program ran <code>sltiu</code> against 1 for five inputs. Zero returned 1. One, two, and five returned 0. All ones, the 64-bit value <code>0xffffffffffffffff</code>, returned 0. Five checks, zero mismatches, two runs identical. <a class="cite" href="#src-the-comparison-that-tests-for-zero-1">[1]</a></p>
+          <p>The witness, the zero test itself:</p>
+<pre><code>sltiu a2, a1, 1   # a2 = 1 exactly when a1 == 0
+# a1 = 0                    -&gt; a2 = 1
+# a1 = 5                    -&gt; a2 = 0
+# a1 = 0xffffffffffffffff  -&gt; a2 = 0</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-comparison-that-tests-for-zero/the-comparison-that-tests-for-zero.jpg" alt="Blueprint-style diagram of the sltiu zero test in three panels: HAND IT ZERO shows sltiu a2, a1, 1 with a1 equal to 0 giving a2 equal to 1; HAND IT FIVE shows a1 equal to 5 giving a2 equal to 0; HAND IT ALL ONES shows a1 equal to 0xffffffffffffffff giving a2 equal to 0 because the compare is unsigned" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Zero gave 1, five gave 0, and all ones gave 0: sltiu against 1 is a zero test, five checks, zero mismatches.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>The all-ones result is the point of the unsigned compare. Read as a signed number, all ones is negative one, and negative one is below 1. But <code>sltiu</code> reads it unsigned, where it is the largest possible value, far above 1, so it returns 0. The signed twin, <code>slti</code>, would have answered 1 for that input. Picking the wrong twin turns a zero test into a test for zero or negative. <a class="cite" href="#src-the-comparison-that-tests-for-zero-1">[1]</a></p>
+          <p>The disassembly gives the idiom its short name. The loop kept the test as one instruction, and objdump prints it as <code>seqz a0, s0</code> at <code>0x80000218</code>: seqz is the assembler's name for exactly <code>sltiu rd, rs, 1</code>. Writing seqz in your own assembly says the same thing, and says it more plainly. <a class="cite" href="#src-the-comparison-that-tests-for-zero-1">[1]</a></p>
+          <p>The bench habit: when you need a 0-or-1 flag that says whether a value is zero, and you do not want a branch, <code>sltiu</code> against 1 is the one instruction. The flag it writes can feed an add, a mask, or a count without ever jumping.</p>
+          <p>One sentence to carry away: <code>sltiu</code> against 1 is a zero test, because zero is the only unsigned value below 1.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/sltiu-zero-test" target="_blank" rel="noopener">riscv-baremetal-demo/src/sltiu-zero-test</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Jump That Always Lands Even</h3>
           <!-- LAYER-STRIP:the-jump-that-always-lands-even -->
           <p class="research-date"><time datetime="2026-10-25">2026-10-25 11:17 EDT</time></p>
