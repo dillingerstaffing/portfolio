@@ -1721,6 +1721,32 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Add That Sign-Extends the Word</h3>
+          <!-- LAYER-STRIP:the-add-that-sign-extends-the-word -->
+          <p class="research-date"><time datetime="2026-10-27">2026-10-27 11:18 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A 32-bit value living in a 64-bit register can carry junk upstairs. Take 0x0000000180000001. Its low word is 0x80000001, which as a signed 32-bit number means negative 2,147,483,647. But the register as a whole has bit 32 set too, so as a 64-bit number it is a large positive value, not that negative number at all. The word and the register disagree, and any code that trusts the register gets the wrong sign.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. The program ran <code>addiw</code> with immediate 0 and <code>addi</code> with immediate 0 on five inputs. The <code>addiw</code> column matched the sign extension of the low word every time, and the <code>addi</code> column matched the input every time. Five <code>addiw</code> checks, zero mismatches, two runs identical. <a class="cite" href="#src-the-add-that-sign-extends-the-word-1">[1]</a></p>
+          <p>The witness, the one instruction and three of its answers:</p>
+<pre><code>addiw t0, s0, 0   # sext.w: keep the low word, sign-extend it
+# s0 = 0x0000000080000001  -&gt; t0 = 0xffffffff80000001
+# s0 = 0x000000007fffffff  -&gt; t0 = 0x000000007fffffff
+# s0 = 0x00000000ffffffff  -&gt; t0 = 0xffffffffffffffff</code></pre>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-add-that-sign-extends-the-word/the-add-that-sign-extends-the-word.jpg" alt="Blueprint-style diagram of the addiw sign extension in three panels: HAND IT 0x80000001 shows addiw t0, s0, 0 with s0 equal to 0x0000000080000001 giving t0 equal to 0xffffffff80000001; HAND IT 0x7fffffff shows s0 equal to 0x000000007fffffff giving t0 unchanged; HAND IT LOW ALL ONES shows s0 equal to 0x00000000ffffffff giving t0 equal to 0xffffffffffffffff because the low word means -1" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">0x80000001 gained ones upstairs, 0x7fffffff stayed put, and 0xffffffff became -1: addiw with 0 is sext.w, five checks, zero mismatches.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p>Why <code>addiw</code> and not <code>addi</code>. The <code>addi</code> instruction works on all 64 bits, so adding 0 changes nothing, and the junk upstairs survives. The <code>addiw</code> instruction works on 32 bits: it adds the immediate to the low word, keeps only the low 32 bits of that sum, then sign-extends the result back to 64 bits. With an immediate of 0, the addition does nothing, and what is left is pure narrowing plus sign extension. The 0 is just the excuse; the narrowing is the trick.</p>
+          <p>The other two inputs close the loop. The dirty-upper-bits input 0x0000000180000001 also came out 0xffffffff80000001, because <code>addiw</code> never looks above bit 31. And the already extended 0xffffffff80000001 came out unchanged, so running <code>sext.w</code> twice is harmless: the second pass is a no-op. <a class="cite" href="#src-the-add-that-sign-extends-the-word-1">[1]</a></p>
+          <p>The disassembly gives the idiom its short name. The loop test is one instruction, and objdump prints it as <code>sext.w a0, s0</code> at <code>0x80000222</code>: <code>sext.w</code> is the assembler's name for exactly <code>addiw rd, rs, 0</code>. Writing <code>sext.w</code> in your own assembly says what you mean, and the reader never has to wonder why you are adding zero. The <code>addi</code> side of the loop prints as <code>mv</code>, the assembler's name for <code>addi</code> with immediate 0, which is why that column never moved. <a class="cite" href="#src-the-add-that-sign-extends-the-word-1">[1]</a></p>
+          <p>The bench habit: whenever a value reaches you as a 32-bit int but sits in a 64-bit register, and you cannot prove the upper bits are clean, one <code>sext.w</code> settles it. After that instruction the register and the word agree, and a comparison, a sign test, or a widening conversion reads the number the word actually names.</p>
+          <p>One sentence to carry away: <code>addiw</code> with 0 is not an addition at all, it is a sign extension wearing an addition's clothes.</p>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/addiw-sextw" target="_blank" rel="noopener">riscv-baremetal-demo/src/addiw-sextw</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Comparison That Tests for Zero</h3>
           <!-- LAYER-STRIP:the-comparison-that-tests-for-zero -->
           <p class="research-date"><time datetime="2026-10-26">2026-10-26 11:23 EDT</time></p>
