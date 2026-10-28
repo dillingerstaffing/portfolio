@@ -1,5 +1,65 @@
 [
   {
+    "title": "The Mask That Won't Fit in Twelve Bits",
+    "slug": "the-mask-that-wont-fit-in-twelve-bits",
+    "date": "2026-10-28",
+    "description": "andi takes a 12-bit signed immediate, so 0xFFF cannot be written as one: the assembler refuses it, andi with 2047 keeps only 11 bits, and the shift pair slli 52, srli 52 recovers the true 12-bit mask. Verified on QEMU 8.2.2, bare metal in M-mode.",
+    "paragraphs": [
+      "You have a value in a register and you want its low 12 bits, a packed field, a page offset, a tag. The line that writes itself is <code>andi t0, s0, 0xfff</code>: AND the register with twelve ones, keep the field, throw the rest away. It reads exactly like the mask it means. It does not assemble.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. The program ran three ways of masking for four inputs: <code>andi</code> with 2047, the shift pair <code>slli</code> 52 then <code>srli</code> 52, and <code>and</code> against 4095 loaded with <code>li</code>. The shift pair and the loaded constant agreed on every input. The <code>andi</code> column agreed only where bit 11 was clear, and lost bit 11 everywhere else. Four inputs, zero mismatches between the two true 0xFFF masks, two runs identical. <a class=\"cite\" href=\"#src-the-mask-that-wont-fit-in-twelve-bits-1\">[1]</a>",
+      "The witness, the refused line and the two that work:",
+      "CODEBLOCK",
+      "Why the assembler says no. The immediate in an I-type instruction is 12 bits, and it is sign-extended, so it runs from -2048 to 2047. A mask is a positive number, so the largest mask you can write as an <code>andi</code> immediate is 2047, which is 0x7FF, eleven ones. 0xFFF is 4095, one past the top of the range, and 0x800 is 2048, also past it, so the assembler refuses both. The sign extension is not a detail here; it is the whole limit, because bit 11 of the immediate is the sign bit, not a mask bit you can set freely.",
+      "The numbers show the cost of settling for 2047. For 0x12345abc the <code>andi</code> column gave 0x2bc and the true mask gave 0xabc: the field's top bit, bit 11, silently dropped. For 0xfff the columns gave 0x7ff and 0xfff, and for 0xffff the same split. For 0x1000 all three gave 0, because bit 12 is outside both masks. Settling for the smaller mask does not error; it quietly reads a narrower field. <a class=\"cite\" href=\"#src-the-mask-that-wont-fit-in-twelve-bits-1\">[1]</a>",
+      "The compiler already knows the dodge. Given <code>x &amp; 0xFFFUL</code> in C at -O2, GCC 13.2.0 for rv64imac did not emit an <code>andi</code> at all. It emitted <code>slli a0, a0, 52</code> then <code>srli a0, a0, 52</code>: shift left to throw away everything above bit 11, shift right to bring the twelve bits back down, zero-filled. <a class=\"cite\" href=\"#src-the-mask-that-wont-fit-in-twelve-bits-1\">[1]</a>",
+      "The bench habit: when a mask in hand-written assembly needs bit 11 or higher, do not reach for <code>andi</code>. Write the shift pair, or load the constant and use <code>and</code>. If the assembler accepts your <code>andi</code> mask, it fits; if it refuses it, the refusal is the specification telling you the range, not a quirk to work around with a different spelling of the same immediate.",
+      "One sentence to carry away: an <code>andi</code> immediate is a signed 12-bit number, so the widest low mask it can spell is 0x7FF, and 0xFFF has to be built, not written."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/andi-mask12",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the I-type immediate rule: the immediate is 12 bits, sign-extended, so its range is -2048 to 2047 and the largest positive mask it can spell is 2047, or 0x7FF. The run shows it directly: the assembler refuses andi with 0xfff and with 0x800, andi with 2047 loses bit 11 on 0x12345abc, 0xfff, and 0xffff, and the shift pair matches a loaded 4095 constant on all four inputs."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements immediate AND. QEMU serves as a functional executor only; no pipeline or execution-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the andi immediate encoding itself."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel is involved at any step. The test binary runs on bare QEMU with no operating system; no system call or kernel data structure appears in the argument."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic exercised as four fixed inputs with register readback, not a computation proved against an independent oracle. The four results are shown as the consequence the immediate rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "andi-mask12 PROOF.md: 6 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/andi-mask12/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-mask-that-wont-fit-in-twelve-bits/the-mask-that-wont-fit-in-twelve-bits.jpg",
+    "image_alt": "Blueprint-style diagram of the andi immediate limit in three panels: THE MASK THAT FITS shows andi t0, s0, 2047 with v equal to 0x12345abc giving t0 equal to 0x2bc; THE MASK THAT DOES NOT shows andi t0, s0, 0xfff refused as illegal operands because 4095 is out of range; THE WAY AROUND shows slli t0, s0, 52 then srli t0, t0, 52 giving t0 equal to 0xabc",
+    "image_caption": "andi with 2047 gave 0x2bc, the assembler refused 0xFFF, and the shift pair gave 0xabc: the widest low mask an andi immediate can spell is 0x7FF.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-mask-that-wont-fit-in-twelve-bits/the-mask-that-wont-fit-in-twelve-bits-social.jpg",
+    "sources": [
+      {
+        "title": "src/andi-mask12: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/andi-mask12",
+        "note": "The QEMU 8.2.2 run behind the post: andi with 2047, the slli 52 and srli 52 pair, and and against a loaded 4095 for four inputs on bare metal in M-mode, the shift pair and the loaded constant agreeing on all four and the andi column losing bit 11 where it was set. 6 checks, 0 mismatches, two runs identical. The assembler rejection log and the GCC 13.2.0 shift-pair output for x and 0xFFFUL are in the same module's bench-logs."
+      }
+    ]
+  },
+  {
     "title": "The Add That Sign-Extends the Word",
     "slug": "the-add-that-sign-extends-the-word",
     "date": "2026-10-27",
