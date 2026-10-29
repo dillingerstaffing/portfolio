@@ -1,5 +1,70 @@
 [
   {
+    "title": "The Swap That Needs No Spare Register",
+    "slug": "the-swap-that-needs-no-spare-register",
+    "date": "2026-10-29",
+    "description": "csrrw swaps a register with a scratch CSR in one instruction, so a trap handler gains a free register without needing one first. Verified on QEMU 8.2.2, bare metal in M-mode.",
+    "paragraphs": [
+      "A trap lands and every register belongs to the interrupted code. The handler must save all 32 registers before it can use any of them, but storing to memory needs an address, and an address needs a register. There is no register to spare, and no place to put one down first. That is the trap-entry problem, and one instruction solves it.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. The program swapped a sentinel into mscratch, then swapped the boot value back. The first swap returned the boot value, 0x0, and the readback showed the sentinel, 0xa5a55a5a5a5a5a5. The restoring swap returned the sentinel, and the final readback was 0x0 again. Five checks, zero failures, no traps, and the run printed the same checksum the module records, 0xd2dc5b584cb8669. <a class=\"cite\" href=\"#src-the-swap-that-needs-no-spare-register-1\">[1]</a>",
+      "The witness, the one instruction and what it returned:",
+      "CODEBLOCK",
+      "Why one instruction matters. A read followed by a write is two steps with a gap between them: the read puts the old value in a register, and until the write lands, the exchange is half done and a register is spent holding the copy. csrrw has no gap and spends no register. The destination register receives the old CSR value at the same moment the CSR receives the register's value, so neither value is ever homeless, and nothing needs a third place to sit. The swap is the whole operation, not two operations stapled together.",
+      "That is exactly the door xv6 walks through. Before a process runs in user space, the kernel writes the address of its trapframe into sscratch. When a trap lands, uservec opens with <code>csrrw a0, sscratch, a0</code>: a0 now holds the trapframe address, sscratch now holds the user's a0, and the handler stores every register into the trapframe through a0, including the user's a0, read back from sscratch. <a class=\"cite\" href=\"#src-the-swap-that-needs-no-spare-register-2\">[2]</a> The module behind this post proves the same exchange on mscratch in M-mode, because that is the CSR a bare-metal M-mode program can touch; the instruction is the same, only the scratch register changes. <a class=\"cite\" href=\"#src-the-swap-that-needs-no-spare-register-1\">[1]</a>",
+      "The bench habit: whenever a trap entry or a context switch needs a register before it has anywhere to save one, park the pointer in a scratch CSR ahead of time and open with the swap. One instruction buys the first free register, and the value it displaced is already safe in the CSR, waiting to be stored with the rest.",
+      "One sentence to carry away: csrrw does not read a CSR and then write it, it exchanges with it, and the exchange is what frees the first register."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the Zicsr csrrw rule: one instruction writes rd with the old CSR value and writes rs1 into the CSR, so the two values exchange with no third register spent. The run shows both sides directly: the swap returned the boot value 0x0 and the readback showed the sentinel 0xa5a55a5a5a5a5a5, then the restore swap returned the sentinel and the final readback was 0x0 again."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements a CSR swap. QEMU serves as a functional executor only; no pipeline or execution-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the csrrw instruction's own exchange semantic."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The exchange is the trap-entry idiom kernels are written against: at trap entry no general-purpose register is free, so xv6's uservec opens with csrrw a0, sscratch, a0, putting the trapframe address in a0 and the user's a0 in sscratch. The module verifies the same exchange on mscratch in M-mode, which is the mechanism the idiom relies on."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic exercised as a single sentinel round trip with register and CSR readback, not a computation proved against an independent oracle. The results are shown as the consequence the csrrw rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "mscratch-csrrw PROOF.md: 5 checks, 0 failures, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mscratch-csrrw/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-swap-that-needs-no-spare-register/the-swap-that-needs-no-spare-register.jpg",
+    "image_alt": "Blueprint-style diagram of the csrrw swap in three panels: NO FREE REGISTER shows all 32 registers holding user values with nowhere to save; THE SWAP shows csrrw a0, sscratch, a0 giving a0 the trapframe address and sscratch the user's a0; NOW SAVE shows all 32 registers stored through a0 with nothing lost",
+    "image_caption": "One swap freed the first register: csrrw returned the boot value 0x0, the readback showed the sentinel, and the restore returned the sentinel with 0x0 back in place.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-swap-that-needs-no-spare-register/the-swap-that-needs-no-spare-register-social.jpg",
+    "sources": [
+      {
+        "title": "src/mscratch-csrrw: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw",
+        "note": "The QEMU 8.2.2 run behind the post: csrrw on mscratch in M-mode, a sentinel swapped in and the boot value swapped back, the swap returning the boot value 0x0, the readback showing the sentinel 0xa5a55a5a5a5a5a5, the restore returning the sentinel, and the final readback 0x0. 5 checks, 0 failures, 0 traps, checksum 0xd2dc5b584cb8669, re-run firsthand for this post with the same verdict."
+      },
+      {
+        "title": "L Internal: xv6 trap internals lecture notes",
+        "publisher": "MIT 6.S081",
+        "url": "https://pdos.csail.mit.edu/6.S081/2019/lec/l-internal.txt",
+        "note": "uservec starts with csrrw a0, sscratch, a0: the swap saves user a0 in sscratch and gives a0 the trapframe address, so the handler can save the remaining registers. The kernel set sscratch to the trapframe address before entering user space."
+      }
+    ]
+  },
+  {
     "title": "The Mask That Won't Fit in Twelve Bits",
     "slug": "the-mask-that-wont-fit-in-twelve-bits",
     "date": "2026-10-28",

@@ -1721,6 +1721,30 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Swap That Needs No Spare Register</h3>
+          <!-- LAYER-STRIP:the-swap-that-needs-no-spare-register -->
+          <p class="research-date"><time datetime="2026-10-29">2026-10-29 11:17 EDT</time></p>
+        </div>
+        <div class="research-body">
+          <p>A trap lands and every register belongs to the interrupted code. The handler must save all 32 registers before it can use any of them, but storing to memory needs an address, and an address needs a register. There is no register to spare, and no place to put one down first. That is the trap-entry problem, and one instruction solves it.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. The program swapped a sentinel into mscratch, then swapped the boot value back. The first swap returned the boot value, 0x0, and the readback showed the sentinel, 0xa5a55a5a5a5a5a5. The restoring swap returned the sentinel, and the final readback was 0x0 again. Five checks, zero failures, no traps, and the run printed the same checksum the module records, 0xd2dc5b584cb8669. <a class="cite" href="#src-the-swap-that-needs-no-spare-register-1">[1]</a></p>
+          <p>The witness, the one instruction and what it returned:</p>
+<pre><code>csrrw a0, sscratch, a0  # exchange, not read then write
+# before: a0 = user value, sscratch = trapframe
+# after:  a0 = trapframe, sscratch = user value</code></pre>
+          <p>Why one instruction matters. A read followed by a write is two steps with a gap between them: the read puts the old value in a register, and until the write lands, the exchange is half done and a register is spent holding the copy. csrrw has no gap and spends no register. The destination register receives the old CSR value at the same moment the CSR receives the register's value, so neither value is ever homeless, and nothing needs a third place to sit. The swap is the whole operation, not two operations stapled together.</p>
+          <p>That is exactly the door xv6 walks through. Before a process runs in user space, the kernel writes the address of its trapframe into sscratch. When a trap lands, uservec opens with <code>csrrw a0, sscratch, a0</code>: a0 now holds the trapframe address, sscratch now holds the user's a0, and the handler stores every register into the trapframe through a0, including the user's a0, read back from sscratch. <a class="cite" href="#src-the-swap-that-needs-no-spare-register-2">[2]</a> The module behind this post proves the same exchange on mscratch in M-mode, because that is the CSR a bare-metal M-mode program can touch; the instruction is the same, only the scratch register changes. <a class="cite" href="#src-the-swap-that-needs-no-spare-register-1">[1]</a></p>
+          <p>The bench habit: whenever a trap entry or a context switch needs a register before it has anywhere to save one, park the pointer in a scratch CSR ahead of time and open with the swap. One instruction buys the first free register, and the value it displaced is already safe in the CSR, waiting to be stored with the rest.</p>
+          <p>One sentence to carry away: csrrw does not read a CSR and then write it, it exchanges with it, and the exchange is what frees the first register.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-swap-that-needs-no-spare-register/the-swap-that-needs-no-spare-register.jpg" alt="Blueprint-style diagram of the csrrw swap in three panels: NO FREE REGISTER shows all 32 registers holding user values with nowhere to save; THE SWAP shows csrrw a0, sscratch, a0 giving a0 the trapframe address and sscratch the user's a0; NOW SAVE shows all 32 registers stored through a0 with nothing lost" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One swap freed the first register: csrrw returned the boot value 0x0, the readback showed the sentinel, and the restore returned the sentinel with 0x0 back in place.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mscratch-csrrw" target="_blank" rel="noopener">riscv-baremetal-demo/src/mscratch-csrrw</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Mask That Won't Fit in Twelve Bits</h3>
           <!-- LAYER-STRIP:the-mask-that-wont-fit-in-twelve-bits -->
           <p class="research-date"><time datetime="2026-10-28">2026-10-28 11:17 EDT</time></p>
