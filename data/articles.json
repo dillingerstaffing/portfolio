@@ -1,5 +1,70 @@
 [
   {
+    "title": "The Gate That Holds the Interrupt",
+    "slug": "the-gate-that-holds-the-interrupt",
+    "date": "2026-10-30",
+    "description": "mstatus.MIE is a global gate on interrupt delivery: a pending timer interrupt waits while the gate is shut and arrives exactly once when it opens. Verified on QEMU 8.2.2, bare metal in M-mode.",
+    "paragraphs": [
+      "A timer fires in the middle of a critical section. You cannot take the interrupt yet, and you cannot afford to lose it either. Two different bits decide what happens, and they are not the same decision. One says this source is allowed to interrupt. The other says the hart is taking interrupts at all.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. The program enabled only the machine timer interrupt, mie.MTIE set and mstatus.MIE clear, then armed the CLINT timer. The timer fired and went pending, mip.MTIP read 1, and through a gated window of 100,000 mtime ticks no trap arrived: traps during the window were 0. Opening the gate with one instruction delivered exactly one trap, mcause 0x8000000000000007. Fourteen checks, zero mismatches, and the run printed the same checksum the module records, 0xddb82db8ae1a497d. <a class=\"cite\" href=\"#src-the-gate-that-holds-the-interrupt-1\">[1]</a>",
+      "The witness, the gate and what it held:",
+      "CODEBLOCK",
+      "Why the gate is not the enable. mie.MTIE answers one question, whether this source may interrupt. mstatus.MIE answers another, whether the hart is taking interrupts at all. Closing MIE holds delivery for every enabled source at once, and it disturbs no per-source enable: when the gate reopened, the timer interrupt that had waited through the gated window arrived without anything being re-armed. The pending bit is the memory. mip.MTIP stayed 1 through the whole gated window, so nothing was lost while the gate was shut. The handler still has one job before it returns: disarm the source, here by writing all-ones to mtimecmp, because the timer is level-triggered and mret restores MIE, so an armed source would fire again at once. The run proves the disarm too: after the handler, mtimecmp read all-ones, mip.MTIP read 0, and through a quiet window of another 100,000 ticks the trap count stayed 1. <a class=\"cite\" href=\"#src-the-gate-that-holds-the-interrupt-1\">[1]</a>",
+      "That is the same gate xv6 closes in supervisor mode. xv6's intr_off clears sstatus.SIE, and intr_on sets it again, so kernel critical sections shut one global gate instead of saving and restoring every per-source enable. <a class=\"cite\" href=\"#src-the-gate-that-holds-the-interrupt-2\">[2]</a> The machine-level run proves the mechanism the supervisor-level idiom relies on: a pending interrupt waits at a shut gate instead of being lost. <a class=\"cite\" href=\"#src-the-gate-that-holds-the-interrupt-1\">[1]</a>",
+      "The bench habit: open and close a critical section with the gate, not with the per-source enables. Clear MIE on entry, set it on exit, and never return from a handler with the source still armed.",
+      "One sentence to carry away: mie says which interrupts may fire, MIE says whether any of them get through, and a pending interrupt waits at a shut gate instead of being lost."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-toggle",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the privileged-architecture delivery rule: an interrupt is taken only when its pending bit is set, its enable bit is set, and the global gate is open. The run shows each side directly: with mie.MTIE set and mstatus.MIE clear, mip.MTIP read 1 and traps stayed 0 through 100,000 ticks, and with MIE set, exactly one trap arrived with mcause 0x8000000000000007."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements interrupt delivery. QEMU serves as a functional executor only; no pipeline or execution-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the MIE gate itself."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The gate is the critical-section idiom kernels are written against: close one global enable around the critical section instead of disturbing per-source enables, and reopen it on exit. xv6's intr_off clears sstatus.SIE and intr_on sets it again, the supervisor form of the same gate, and the module verifies the machine form on mstatus.MIE."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed delivery rule exercised as a single gated window with pending-bit and trap-count readbacks, not a computation proved against an independent oracle. The results are shown as the consequence the delivery rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "mie-toggle PROOF.md: 14 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mie-toggle/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-gate-that-holds-the-interrupt/the-gate-that-holds-the-interrupt.jpg",
+    "image_alt": "Blueprint-style diagram of the mstatus.MIE gate in three panels: GATE SHUT shows mie.MTIE set and MIE clear with the timer pending and traps at 0; GATE OPENS shows csrsi mstatus, 8 delivering one trap; DISARM, QUIET shows mtimecmp set to all-ones with the trap count staying 1",
+    "image_caption": "The gate held the interrupt: pending through 100,000 gated ticks, exactly one trap when the gate opened, and quiet after the handler disarmed the source.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-gate-that-holds-the-interrupt/the-gate-that-holds-the-interrupt-social.jpg",
+    "sources": [
+      {
+        "title": "src/mie-toggle: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mie-toggle",
+        "note": "The QEMU 8.2.2 run behind the post: only mie.MTIE enabled with mstatus.MIE clear, the timer armed, mip.MTIP reading 1 with 0 traps through a gated window of 100,000 mtime ticks, csrsi mstatus, 8 opening the gate, exactly one trap with mcause 0x8000000000000007, the handler disarming with mtimecmp all-ones and mip.MTIP 0, and the trap count staying 1 through a quiet window of 100,000 ticks. 14 checks, 0 mismatches, checksum 0xddb82db8ae1a497d, re-run firsthand for this post with the same verdict."
+      },
+      {
+        "title": "kernel/riscv.h: intr_on and intr_off",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/riscv.h",
+        "note": "xv6 intr_on sets sstatus.SIE and intr_off clears it, the supervisor form of the same global gate: one bit opens or closes delivery without touching per-source enables."
+      }
+    ]
+  },
+  {
     "title": "The Swap That Needs No Spare Register",
     "slug": "the-swap-that-needs-no-spare-register",
     "date": "2026-10-29",
