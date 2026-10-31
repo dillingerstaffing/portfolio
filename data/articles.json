@@ -1,5 +1,70 @@
 [
   {
+    "title": "The Instruction That Reads Its Own Address",
+    "slug": "the-instruction-that-reads-its-own-address",
+    "date": "2026-10-31",
+    "description": "auipc is the one instruction that reads the program counter: auipc rd, 0 returns the instruction's own address, and the auipc and ld pair reaches any value through a link-time offset, with no load address named anywhere. Verified on QEMU 8.2.2, bare metal in M-mode.",
+    "paragraphs": [
+      "A program that can run from any address has a problem: it does not know where it is. The program counter holds the answer, but the program counter is not one of the 32 registers, and no instruction takes it as a source operand. You cannot move it into a register the ordinary way. One instruction can.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. auipc rd, 0 returned 0x800001d2, the address of the auipc itself, confirmed against the disassembly. auipc rd, 0x12345, sitting at 0x800001f4, returned 0x923451f4, its pc plus 0x12345000: the 20-bit immediate lands in the upper 20 bits and the low 12 stay zero. The auipc and ld pair then loaded 0x123456789abcdef0 from a marker through a link-time offset from the live pc, with the load address named nowhere in the instruction stream. Three checks, zero mismatches. <a class=\"cite\" href=\"#src-the-instruction-that-reads-its-own-address-1\">[1]</a>",
+      "The witness, the instruction and what it returned:",
+      "CODEBLOCK",
+      "Why one instruction matters. auipc is the anchor for everything position independent. A constant, a string, a table: the code does not need to know where it was loaded, it only needs the distance from here to there, and auipc turns here into a register. The linker fills in that distance at link time, and at run time the same two instructions reach the target wherever the code runs, because the offset is measured from the live pc, not from an assumed load address.",
+      "That is the first address xv6 builds. The kernel entry opens with la sp, stack0, which assembles to auipc sp, 0x8 at 0x80000000: the stack pointer comes from the pc, not from a baked-in constant. <a class=\"cite\" href=\"#src-the-instruction-that-reads-its-own-address-2\">[2]</a>",
+      "The bench habit: whenever a value must be reached without assuming where the code was loaded, anchor on auipc first and let the linker fill in the offset. Never hardcode an address the linker can compute as a distance.",
+      "One sentence to carry away: auipc is the one instruction that reads the program counter, and a program that knows where it stands never needs to be told where it was put."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the unprivileged auipc rule: rd receives pc plus the 20-bit immediate shifted left 12, so the low 12 bits stay zero. The run shows both sides directly: auipc rd, 0 returned the auipc's own address 0x800001d2, and auipc rd, 0x12345 returned 0x923451f4, its pc plus 0x12345000."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements auipc. QEMU serves as a functional executor only; no pipeline or execution-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the auipc instruction's own pc rule."
+      },
+      "KERNEL": {
+        "applies": true,
+        "because": "The pair is the addressing idiom kernels are written against: xv6 entry opens with la sp, stack0, which assembles to auipc, so the kernel's first stack address is computed from the live pc rather than baked in. The module verifies the same pc rule on bare metal in M-mode."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed instruction semantic exercised as three fixed checks with register readback, not a computation proved against an independent oracle. The results are shown as the consequence the auipc rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "auipc-pcread PROOF.md: 3 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/auipc-pcread/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-instruction-that-reads-its-own-address/the-instruction-that-reads-its-own-address.jpg",
+    "image_alt": "Blueprint-style diagram of the auipc pc rule in three panels: NO WAY IN shows the program counter is not a register and no instruction takes it as an operand; AUIPC RD, 0 shows auipc at 0x800001d2 returning 0x800001d2, its own address; THE PAIR REACHES shows auipc plus ld loading 0x123456789abcdef0 from marker with the load address named nowhere",
+    "image_caption": "One instruction reads the program counter: auipc rd, 0 returned its own address, auipc rd, 0x12345 added 0x12345000 to its pc, and the pair loaded the marker through a link-time offset.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-instruction-that-reads-its-own-address/the-instruction-that-reads-its-own-address-social.jpg",
+    "sources": [
+      {
+        "title": "src/auipc-pcread: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/auipc-pcread",
+        "note": "The QEMU 8.2.2 run behind the post: auipc rd, 0 returning 0x800001d2, the address of the auipc itself from the disassembly; auipc rd, 0x12345 at 0x800001f4 returning 0x923451f4, its pc plus 0x12345000; the auipc and ld pair loading 0x123456789abcdef0 from marker through a link-time offset, with the load address named nowhere in the instruction stream. 3 checks, 0 mismatches, re-run firsthand for this post with the same output."
+      },
+      {
+        "title": "kernel/entry.S: _entry opens with la sp, stack0",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/xv6-getscount/blob/main/kernel/entry.S",
+        "note": "xv6 _entry opens with la sp, stack0, which the build disassembly shows as auipc sp, 0x8 at 0x80000000: the kernel's first stack address is computed from the live pc, not baked in as a constant."
+      }
+    ]
+  },
+  {
     "title": "The Gate That Holds the Interrupt",
     "slug": "the-gate-that-holds-the-interrupt",
     "date": "2026-10-30",
