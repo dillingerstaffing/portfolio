@@ -1,5 +1,63 @@
 [
   {
+    "title": "The Counter You Can Rebase",
+    "slug": "the-counter-you-can-rebase",
+    "date": "2026-11-01",
+    "description": "mcycle accepts a write: writing 0x100000000 read back 0x100002940, and four later samples kept rising from that base, so a timing run can start at a known base instead of saving one. Verified on QEMU 8.2.2, bare metal in M-mode.",
+    "paragraphs": [
+      "Timing a section of code usually starts the same way: read a counter, save a large number, and subtract it at the end. The subtraction is easy to get wrong, and the saved baseline is one more value to carry through the code. There is a shorter way, if the counter itself accepts a write: put the counter where you want it first, then read it.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. Two baseline reads came back 0x17798beddac and then 0x17798bf0377, a delta of 9675, so the counter was live before anything was written. The program then wrote 0x100000000 to mcycle with csrw and read it back at once: 0x100002940, a delta of 10560 ticks. Four further samples followed, 0x10012c7da, 0x1001570a7, 0x10016c47f, and 0x10018182a, each strictly larger than the last and every one above the written base. RESULT: PASS. <a class=\"cite\" href=\"#src-the-counter-you-can-rebase-1\">[1]</a>",
+      "The witness, the write and what it returned:",
+      "CODEBLOCK",
+      "Why the readback matters more than the write. mcycle is a WARL register, which means the specification only requires a write followed by a read to return the written value filtered through the implementation's behavior. On some machine the write might not stick, and code that assumes it did would time everything against a base that never moved. The module does not assume: it reads back at once and requires the readback to sit within 100000 ticks above the written value. A readback below the written value would make the unsigned delta wrap to a huge number and fail the bound, with the actual values printed. Trust the readback, not the write.",
+      "The bench habit: in an M-mode timing harness, write a known base before the section under test and read the counter after it. The reading is already a delta from the base you chose, with no baseline saved and no subtraction to get wrong. On this machine the base was 0x100000000 and the first readback was only 10560 ticks past it, so the cost of the write itself is visible in the numbers, not hidden in a baseline.",
+      "One sentence to carry away: a counter you can write is a counter you can start at a round number, and a timing run that starts at a known base needs no baseline at all."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcycle-write",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the mcycle write and readback rule as this machine shows it: a csrw to mcycle takes effect, the next csrr returns the written value plus the ticks that passed, and later reads keep rising from that base. The run shows each side directly: written 0x100000000, read back 0x100002940, then four strictly increasing samples, all above the base."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements its cycle counter. QEMU serves as a functional executor only; no pipeline or execution-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the mcycle CSR's own write and readback."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel code runs in the claim. The binary is a bare-metal M-mode program with no supervisor, no scheduler, and no system call path; the write and readback are CSR operations, not a kernel mechanism."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed write and readback sequence with sample comparisons, not a computation proved against an independent oracle. The results are shown as the consequence the CSR write forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "mcycle-write PROOF.md: RESULT PASS, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mcycle-write/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-counter-you-can-rebase/the-counter-you-can-rebase.jpg",
+    "image_alt": "Blueprint-style diagram of the mcycle write and readback in three panels: BASELINE shows two reads 0x17798beddac then 0x17798bf0377 with delta 9675; WRITE AND READ BACK shows csrw mcycle with 0x100000000 read back as 0x100002940 with delta 10560; STILL ADVANCING shows four samples 0x10012c7da, 0x1001570a7, 0x10016c47f, 0x10018182a, each larger than the last",
+    "image_caption": "The counter took the base: written 0x100000000, read back 0x100002940, and four later samples kept rising from that base.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-counter-you-can-rebase/the-counter-you-can-rebase-social.jpg",
+    "sources": [
+      {
+        "title": "src/mcycle-write: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcycle-write",
+        "note": "The QEMU 8.2.2 run behind the post, re-run firsthand for this post: baseline reads 0x17798beddac then 0x17798bf0377 with delta 9675; written 0x100000000, read back 0x100002940 with delta 10560; four further samples 0x10012c7da, 0x1001570a7, 0x10016c47f, 0x10018182a, strictly increasing and all above the written base; RESULT: PASS."
+      }
+    ]
+  },
+  {
     "title": "The Instruction That Reads Its Own Address",
     "slug": "the-instruction-that-reads-its-own-address",
     "date": "2026-10-31",

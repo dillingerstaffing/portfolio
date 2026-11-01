@@ -1721,6 +1721,29 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Counter You Can Rebase</h3>
+          <!-- LAYER-STRIP:the-counter-you-can-rebase -->
+          <p class="research-date"><time datetime="2026-11-01">2026-11-01 11:14 EST</time></p>
+        </div>
+        <div class="research-body">
+          <p>Timing a section of code usually starts the same way: read a counter, save a large number, and subtract it at the end. The subtraction is easy to get wrong, and the saved baseline is one more value to carry through the code. There is a shorter way, if the counter itself accepts a write: put the counter where you want it first, then read it.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. Two baseline reads came back 0x17798beddac and then 0x17798bf0377, a delta of 9675, so the counter was live before anything was written. The program then wrote 0x100000000 to mcycle with csrw and read it back at once: 0x100002940, a delta of 10560 ticks. Four further samples followed, 0x10012c7da, 0x1001570a7, 0x10016c47f, and 0x10018182a, each strictly larger than the last and every one above the written base. RESULT: PASS. <a class="cite" href="#src-the-counter-you-can-rebase-1">[1]</a></p>
+          <p>The witness, the write and what it returned:</p>
+<pre><code>csrw mcycle, t0  # t0 = 0x100000000: rebase the counter
+csrr t1, mcycle  # t1 = 0x100002940: 10560 ticks later
+# later reads are already deltas from your base</code></pre>
+          <p>Why the readback matters more than the write. mcycle is a WARL register, which means the specification only requires a write followed by a read to return the written value filtered through the implementation's behavior. On some machine the write might not stick, and code that assumes it did would time everything against a base that never moved. The module does not assume: it reads back at once and requires the readback to sit within 100000 ticks above the written value. A readback below the written value would make the unsigned delta wrap to a huge number and fail the bound, with the actual values printed. Trust the readback, not the write.</p>
+          <p>The bench habit: in an M-mode timing harness, write a known base before the section under test and read the counter after it. The reading is already a delta from the base you chose, with no baseline saved and no subtraction to get wrong. On this machine the base was 0x100000000 and the first readback was only 10560 ticks past it, so the cost of the write itself is visible in the numbers, not hidden in a baseline.</p>
+          <p>One sentence to carry away: a counter you can write is a counter you can start at a round number, and a timing run that starts at a known base needs no baseline at all.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-counter-you-can-rebase/the-counter-you-can-rebase.jpg" alt="Blueprint-style diagram of the mcycle write and readback in three panels: BASELINE shows two reads 0x17798beddac then 0x17798bf0377 with delta 9675; WRITE AND READ BACK shows csrw mcycle with 0x100000000 read back as 0x100002940 with delta 10560; STILL ADVANCING shows four samples 0x10012c7da, 0x1001570a7, 0x10016c47f, 0x10018182a, each larger than the last" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">The counter took the base: written 0x100000000, read back 0x100002940, and four later samples kept rising from that base.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mcycle-write" target="_blank" rel="noopener">riscv-baremetal-demo/src/mcycle-write</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Instruction That Reads Its Own Address</h3>
           <!-- LAYER-STRIP:the-instruction-that-reads-its-own-address -->
           <p class="research-date"><time datetime="2026-10-31">2026-10-31 11:19 EDT</time></p>
