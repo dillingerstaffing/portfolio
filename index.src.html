@@ -1721,6 +1721,31 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Region Described by Trailing Ones</h3>
+          <!-- LAYER-STRIP:the-region-described-by-trailing-ones -->
+          <p class="research-date"><time datetime="2026-11-02">2026-11-02 11:15 EST</time></p>
+        </div>
+        <div class="research-body">
+          <p>Fencing a scratch buffer usually means checking every access by hand, or trusting a range you never tested. RISC-V physical memory protection gives a shorter way: one PMP entry can fence a whole region, and the fence is described by a single register value whose tail of trailing ones names the size.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. The program wrote pmpaddr0 = 0x200009ff and pmpcfg0 = 0x1f18, fencing 4 KiB at 0x80002000. Loads at the first word inside, 0x80002000, and the last word inside, 0x80002ffc, each trapped with mcause 0x5, and a store at 0x80002000 trapped with mcause 0x7. Loads one word below, at 0x80001ffc, and one word above, at 0x80003000, passed with their canary values, and stores at both outside addresses round-tripped. RESULT: PASS. <a class="cite" href="#src-the-region-described-by-trailing-ones-1">[1]</a></p>
+          <p>The encoding, and how to read it back:</p>
+<pre><code>csrw pmpaddr0, t0  # t0 = 0x200009ff: 4 KiB at 0x80002000
+csrw pmpaddr1, t1  # t1 = 0x200007ff: 16 KiB allow entry
+csrw pmpcfg0, t2   # t2 = 0x1f18: entry 0 deny, entry 1 allow
+# 9 trailing ones in 0x200009ff means 2^(9+3) = 4096 bytes</code></pre>
+          <p>Why there are two entries, not one. An unlocked PMP entry does not restrict M-mode at all, so the probes ran as S-mode accesses, with mstatus.MPRV set and MPP = S. And an S-mode access that matches no entry is denied whenever any entry is programmed, so entry 1, a 16 KiB allow entry at 0x80000000, covers the outside addresses. Inside the deny region, entry 0 wins because the lowest matching entry decides. Without entry 1, the outside probes would have trapped for the wrong reason, and the test would have proved nothing about the edge.</p>
+          <p>The readback alone would not prove the fence. Reading pmpaddr0 back as 0x200009ff proves the register took the value; only the boundary probes prove what the value matches. The first and last words inside trap, one word outside on either side passes, and mtval names the faulting address in each trap, 0x80002000 for the low edge. That is the whole test: program the value, then touch both edges and one word past each.</p>
+          <p>The bench habit: when you fence a buffer with PMP, program the deny entry and an allow entry for everything else, then probe the first word, the last word, and one word past each edge. If an outside probe traps, check whether it matched the fence or merely matched nothing; the two failures look identical from the trap alone.</p>
+          <p>One sentence to carry away: count the trailing ones in a NAPOT pmpaddr value and you know the size of the region it fences, and two probes on either side of each edge tell you whether the fence sits where you think it does.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-region-described-by-trailing-ones/the-region-described-by-trailing-ones.jpg" alt="Blueprint-style diagram of the PMP NAPOT fence in three panels: THE ENCODING shows pmpaddr0 = 0x200009ff with 9 trailing ones meaning 4096 bytes and pmpcfg0 = 0x1f18; INSIDE TRAPS shows loads at 0x80002000 and 0x80002ffc trapping with mcause 0x5 and a store at 0x80002000 trapping with mcause 0x7; OUTSIDE PASSES shows loads at 0x80001ffc and 0x80003000 passing with canary values and stores below and above round-tripping" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">One value fences the region: pmpaddr0 = 0x200009ff, 9 trailing ones, 4 KiB at 0x80002000, with both inside edges trapping and one word outside passing on either side.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/pmp-napot-match" target="_blank" rel="noopener">riscv-baremetal-demo/src/pmp-napot-match</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Counter You Can Rebase</h3>
           <!-- LAYER-STRIP:the-counter-you-can-rebase -->
           <p class="research-date"><time datetime="2026-11-01">2026-11-01 11:14 EST</time></p>
