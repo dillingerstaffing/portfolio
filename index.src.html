@@ -1721,6 +1721,30 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bit You Cannot Set</h3>
+          <!-- LAYER-STRIP:the-bit-you-cannot-set -->
+          <p class="research-date"><time datetime="2026-11-03">2026-11-03 11:16 EST</time></p>
+        </div>
+        <div class="research-body">
+          <p>Most status bits are switches: write 1 to set, write 0 to clear, and read back what you wrote. mstatus bit 63, SD, is not a switch. It is a summary, a single bit that reports whether the floating point state is dirty, and the only way to move it is to change the state it summarizes.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. At boot, mstatus read 0xa00000000, FS Off, SD 0. Writing FS Initial gave 0xa00004000, SD still 0: the floating point unit was enabled but not dirty. One fadd.d, 1.5 plus 2.25, left f0 holding 0x400e000000000000 (3.75) and mstatus at 0x8000000a00006000, FS Dirty, SD 1. Writing FS Clean gave 0xa00002000, SD back to 0. Forcing bit 63 with csrs left mstatus at 0xa00002000, SD still 0, FS unchanged. Restoring the boot word returned 0xa00000000 exactly. Fifteen checks, zero mismatches, traps 0, checksum 0xcd8421132251ca67, RESULT: PASS. <a class="cite" href="#src-the-bit-you-cannot-set-1">[1]</a></p>
+          <p>The four moves, and what SD did after each:</p>
+<pre><code>csrs mstatus, t0  # FS = Initial: SD reads 0
+fadd.d f0, f1, f2  # 1.5 + 2.25: FS = Dirty, SD reads 1
+csrs mstatus, t1  # t1 = bit 63: SD still reads 0
+# writing FS = Clean drops SD back to 0</code></pre>
+          <p>Why the forced write cannot stick. SD is defined as a summary of FS, not as a bit of its own: it reads 1 exactly when FS reads Dirty. A write to bit 63 therefore has nothing to change, and the readback shows the state FS is actually in, not the value software offered. A stored copy would disagree the moment the state changed, so the architecture does not store one.</p>
+          <p>The bench habit: never test SD by writing it. Test it by dirtying the state and by cleaning it: write FS Initial, execute one floating point operation, read SD, write FS Clean, read SD again. If the first read is not 0, the unit was already dirty before your test. If the forced write sticks, your test is reading a stored bit, not a summary, and every conclusion drawn from it is suspect.</p>
+          <p>One sentence to carry away: a summary bit answers a question about state, and it is not a place to store an answer.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-you-cannot-set/the-bit-you-cannot-set.jpg" alt="Blueprint-style diagram of the mstatus SD summary bit in three panels: THE SUMMARY shows mstatus bit 63 named SD above the FS field at bits 14 and 13; DIRTY MAKES IT 1 shows FS Initial with SD 0, then fadd.d on 1.5 and 2.25 giving 3.75 with FS Dirty and SD 1; NO WRITE MOVES IT shows a forced write to bit 63 reading back SD 0 and FS Clean reading back SD 0" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">SD reads 1 exactly when FS is Dirty: Initial leaves it 0, one fadd.d sets it, a forced write to bit 63 leaves it 0, and Clean drops it back to 0.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-sd-summary" target="_blank" rel="noopener">riscv-baremetal-demo/src/mstatus-sd-summary</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Region Described by Trailing Ones</h3>
           <!-- LAYER-STRIP:the-region-described-by-trailing-ones -->
           <p class="research-date"><time datetime="2026-11-02">2026-11-02 11:15 EST</time></p>

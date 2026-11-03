@@ -1,5 +1,63 @@
 [
   {
+    "title": "The Bit You Cannot Set",
+    "slug": "the-bit-you-cannot-set",
+    "date": "2026-11-03",
+    "description": "mstatus bit 63, SD, reads 1 exactly when the floating point state is Dirty and 0 otherwise, and a forced write to it reads back 0: a summary bit is not a switch. Verified on QEMU 8.2.2, bare metal in M-mode.",
+    "paragraphs": [
+      "Most status bits are switches: write 1 to set, write 0 to clear, and read back what you wrote. mstatus bit 63, SD, is not a switch. It is a summary, a single bit that reports whether the floating point state is dirty, and the only way to move it is to change the state it summarizes.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. At boot, mstatus read 0xa00000000, FS Off, SD 0. Writing FS Initial gave 0xa00004000, SD still 0: the floating point unit was enabled but not dirty. One fadd.d, 1.5 plus 2.25, left f0 holding 0x400e000000000000 (3.75) and mstatus at 0x8000000a00006000, FS Dirty, SD 1. Writing FS Clean gave 0xa00002000, SD back to 0. Forcing bit 63 with csrs left mstatus at 0xa00002000, SD still 0, FS unchanged. Restoring the boot word returned 0xa00000000 exactly. Fifteen checks, zero mismatches, traps 0, checksum 0xcd8421132251ca67, RESULT: PASS. <a class=\"cite\" href=\"#src-the-bit-you-cannot-set-1\">[1]</a>",
+      "The four moves, and what SD did after each:",
+      "CODEBLOCK",
+      "Why the forced write cannot stick. SD is defined as a summary of FS, not as a bit of its own: it reads 1 exactly when FS reads Dirty. A write to bit 63 therefore has nothing to change, and the readback shows the state FS is actually in, not the value software offered. A stored copy would disagree the moment the state changed, so the architecture does not store one.",
+      "The bench habit: never test SD by writing it. Test it by dirtying the state and by cleaning it: write FS Initial, execute one floating point operation, read SD, write FS Clean, read SD again. If the first read is not 0, the unit was already dirty before your test. If the forced write sticks, your test is reading a stored bit, not a summary, and every conclusion drawn from it is suspect.",
+      "One sentence to carry away: a summary bit answers a question about state, and it is not a place to store an answer."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-sd-summary",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the mstatus SD summary rule as this machine shows it: SD reads 1 exactly when FS reads Dirty, and a forced write to bit 63 reads back 0. The run shows each side directly: FS Initial read back with SD 0, one fadd.d moved FS to Dirty with SD 1, FS Clean returned SD to 0, and the forced bit-63 write left SD 0 with FS unchanged."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements the SD summary. QEMU serves as a functional executor only; no pipeline or execution-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the mstatus CSR's own summary rule."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel code runs in the claim. The binary is a bare-metal M-mode program with no supervisor, no scheduler, and no system call path; the SD readback is a CSR operation, not a kernel mechanism."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed sequence of FS writes, one floating point addition, and register readbacks, not a computation proved against an independent oracle. The results are shown as the consequence the SD summary rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "mstatus-sd-summary PROOF.md: 15 checks, 0 mismatches, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mstatus-sd-summary/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-bit-you-cannot-set/the-bit-you-cannot-set.jpg",
+    "image_alt": "Blueprint-style diagram of the mstatus SD summary bit in three panels: THE SUMMARY shows mstatus bit 63 named SD above the FS field at bits 14 and 13; DIRTY MAKES IT 1 shows FS Initial with SD 0, then fadd.d on 1.5 and 2.25 giving 3.75 with FS Dirty and SD 1; NO WRITE MOVES IT shows a forced write to bit 63 reading back SD 0 and FS Clean reading back SD 0",
+    "image_caption": "SD reads 1 exactly when FS is Dirty: Initial leaves it 0, one fadd.d sets it, a forced write to bit 63 leaves it 0, and Clean drops it back to 0.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-bit-you-cannot-set/the-bit-you-cannot-set-social.jpg",
+    "sources": [
+      {
+        "title": "src/mstatus-sd-summary: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-sd-summary",
+        "note": "The QEMU 8.2.2 run behind the post, re-run firsthand for this post: boot mstatus 0xa00000000, FS Off, SD 0; FS Initial 0xa00004000, SD 0; after fadd.d mstatus 0x8000000a00006000, FS Dirty, SD 1, f0 bits 0x400e000000000000; FS Clean 0xa00002000, SD 0; forced bit-63 write read back 0xa00002000, SD 0, FS unchanged; restore 0xa00000000; traps 0; 15 checks, 0 mismatches, checksum 0xcd8421132251ca67; RESULT: PASS."
+      }
+    ]
+  },
+  {
     "title": "The Region Described by Trailing Ones",
     "slug": "the-region-described-by-trailing-ones",
     "date": "2026-11-02",
