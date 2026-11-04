@@ -1,5 +1,63 @@
 [
   {
+    "title": "The Table That Only Jumps for Interrupts",
+    "slug": "the-table-that-only-jumps-for-interrupts",
+    "date": "2026-11-04",
+    "description": "In vectored mode on QEMU 8.2.2, a machine timer interrupt lands at base plus 28, entry 7, while a U-mode ecall lands at the base itself, not base plus 32: vectored dispatch vectors interrupts, and synchronous exceptions still enter at base. Verified bare metal in M-mode.",
+    "paragraphs": [
+      "A vectored trap table promises a shortcut. Set one register, mtvec, to a table base plus mode 1, and each trap jumps straight to its own stub, with no compare chain in the handler to sort out which trap arrived. The table is indexed by trap cause: entry 7 for cause 7, entry 8 for cause 8, each stub four bytes apart.",
+      "Measured on QEMU 8.2.2, bare metal in M-mode. The program wrote mtvec as 0x80000201 and read it back unchanged: base 0x80000200, mode 1, vectored. A control window before any trigger produced zero traps. Two U-mode ecalls, mcause 8 both times, both landed at 0x80000200, the base itself, not at base plus 32. One machine timer interrupt, mcause 0x8000000000000007, landed at 0x8000021c, base plus 28, exactly entry 7. The handler disarmed the source by writing all-ones to mtimecmp, and a quiet window after it produced no second delivery: the timer count stayed 1. RESULT: PASS. <a class=\"cite\" href=\"#src-the-table-that-only-jumps-for-interrupts-1\">[1]</a>",
+      "The two landings, side by side:",
+      "CODEBLOCK",
+      "Why the split matters. On this machine, vectored dispatch vectors interrupts and leaves synchronous exceptions at the base. That is the behavior the run shows, and it is not the whole specification: the privileged specification vectors synchronous exceptions in vectored mode too, so hardware built to the letter of the spec may send the ecall to base plus 32 after all. The landing is therefore a property to measure on the target, not a fact to assume from the mode bit. <a class=\"cite\" href=\"#src-the-table-that-only-jumps-for-interrupts-1\">[1]</a>",
+      "The bench habit: when you install a vectored table, provoke one interrupt and one exception and record the stub address that actually ran for each. If the exception lands at the base, put the shared exception entry there and do not leave entry 8 empty on the assumption that the hardware will use it. A table with an empty entry 8 is a trap that lands nowhere you tested.",
+      "One sentence to carry away: a vectored table jumps for interrupts, and for everything else it still starts at the base, at least on the machine you measured."
+    ],
+    "codeLink": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-vectored",
+    "layers": {
+      "ISA": {
+        "applies": true,
+        "because": "The claim is the mtvec vectored dispatch rule as this machine shows it: a timer interrupt with code 7 lands at base plus 28, and a U-mode ecall with code 8 lands at the base itself. The run shows each side directly: mtvec read back 0x80000201, the timer landing recorded from the entry 7 stub at 0x8000021c, and both ecall landings recorded from the base stub at 0x80000200."
+      },
+      "MICROARCH": {
+        "applies": false,
+        "because": "No claim depends on how any core implements trap dispatch. QEMU serves as a functional executor only; no pipeline or execution-unit behavior is asserted or measured, and the honest limit states the result is emulator-observed, not silicon-proved."
+      },
+      "FIRMWARE": {
+        "applies": false,
+        "because": "No firmware service takes part in the claim. The binary runs in M-mode on bare QEMU with no SBI or firmware calls; the behavior under test is the mtvec CSR's own dispatch rule."
+      },
+      "KERNEL": {
+        "applies": false,
+        "because": "No kernel code runs in the claim. The binary is a bare-metal M-mode program with no supervisor, no scheduler, and no system call path; the U-mode ecall is the test's own payload, handled by the M-mode handler, not a kernel service."
+      },
+      "ALGORITHM": {
+        "applies": false,
+        "because": "The claim is one fixed vector table and two fixed trap probes with landing comparisons, not a computation proved against an independent oracle. The results are shown as the consequence the dispatch rule forces, not as a verified algorithm."
+      }
+    },
+    "evidence": {
+      "label": "mtvec-vectored PROOF.md: RESULT PASS, QEMU 8.2.2",
+      "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/blob/main/src/mtvec-vectored/PROOF.md"
+    },
+    "offer": "Related work: kernel and driver correctness work, fixed price.",
+    "image": "blog/the-table-that-only-jumps-for-interrupts/the-table-that-only-jumps-for-interrupts.jpg",
+    "image_alt": "Blueprint-style diagram of mtvec vectored dispatch in three panels: THE TABLE shows mtvec 0x80000201 with base 0x80000200 and mode 1, entry 7 at base plus 28 and entry 8 at base plus 32; INTERRUPT JUMPS shows the timer interrupt with code 7 landing at 0x8000021c; EXCEPTION STAYS shows the U-mode ecall with code 8 landing at the base 0x80000200, not at base plus 32",
+    "image_caption": "Vectored dispatch on this machine: the timer interrupt lands at entry 7, base plus 28, while the U-mode ecall lands at the base itself, not at entry 8.",
+    "image_source": "Original diagram",
+    "image_license": "Original work",
+    "image_attribution": "Chris Dillinger",
+    "social_image": "blog/the-table-that-only-jumps-for-interrupts/the-table-that-only-jumps-for-interrupts-social.jpg",
+    "sources": [
+      {
+        "title": "src/mtvec-vectored: module PROOF.md and the QEMU run",
+        "publisher": "Chris Dillinger",
+        "url": "https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-vectored",
+        "note": "The QEMU 8.2.2 run behind the post, re-run firsthand for this post: mtvec written 0x80000201, read back 0x80000201; table base 0x80000200, entry 7 at 0x8000021c, entry 8 at 0x80000220; control traps 0; two U-mode ecalls, mcause 0x8, landings 0x80000200 both times; timer count 1, mcause 0x8000000000000007, landing 0x8000021c; mtimecmp after handler 0xffffffffffffffff; count after quiet window 1; RESULT: PASS."
+      }
+    ]
+  },
+  {
     "title": "The Bit You Cannot Set",
     "slug": "the-bit-you-cannot-set",
     "date": "2026-11-03",

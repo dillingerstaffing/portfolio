@@ -1721,6 +1721,29 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Table That Only Jumps for Interrupts</h3>
+          <!-- LAYER-STRIP:the-table-that-only-jumps-for-interrupts -->
+          <p class="research-date"><time datetime="2026-11-04">2026-11-04 11:16 EST</time></p>
+        </div>
+        <div class="research-body">
+          <p>A vectored trap table promises a shortcut. Set one register, mtvec, to a table base plus mode 1, and each trap jumps straight to its own stub, with no compare chain in the handler to sort out which trap arrived. The table is indexed by trap cause: entry 7 for cause 7, entry 8 for cause 8, each stub four bytes apart.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. The program wrote mtvec as 0x80000201 and read it back unchanged: base 0x80000200, mode 1, vectored. A control window before any trigger produced zero traps. Two U-mode ecalls, mcause 8 both times, both landed at 0x80000200, the base itself, not at base plus 32. One machine timer interrupt, mcause 0x8000000000000007, landed at 0x8000021c, base plus 28, exactly entry 7. The handler disarmed the source by writing all-ones to mtimecmp, and a quiet window after it produced no second delivery: the timer count stayed 1. RESULT: PASS. <a class="cite" href="#src-the-table-that-only-jumps-for-interrupts-1">[1]</a></p>
+          <p>The two landings, side by side:</p>
+<pre><code>csrw mtvec, t0  # t0 = 0x80000201: base, mode 1
+# timer, code 7: lands at base + 28 (0x8000021c)
+# ecall, code 8: lands at base (0x80000200), not + 32</code></pre>
+          <p>Why the split matters. On this machine, vectored dispatch vectors interrupts and leaves synchronous exceptions at the base. That is the behavior the run shows, and it is not the whole specification: the privileged specification vectors synchronous exceptions in vectored mode too, so hardware built to the letter of the spec may send the ecall to base plus 32 after all. The landing is therefore a property to measure on the target, not a fact to assume from the mode bit. <a class="cite" href="#src-the-table-that-only-jumps-for-interrupts-1">[1]</a></p>
+          <p>The bench habit: when you install a vectored table, provoke one interrupt and one exception and record the stub address that actually ran for each. If the exception lands at the base, put the shared exception entry there and do not leave entry 8 empty on the assumption that the hardware will use it. A table with an empty entry 8 is a trap that lands nowhere you tested.</p>
+          <p>One sentence to carry away: a vectored table jumps for interrupts, and for everything else it still starts at the base, at least on the machine you measured.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-table-that-only-jumps-for-interrupts/the-table-that-only-jumps-for-interrupts.jpg" alt="Blueprint-style diagram of mtvec vectored dispatch in three panels: THE TABLE shows mtvec 0x80000201 with base 0x80000200 and mode 1, entry 7 at base plus 28 and entry 8 at base plus 32; INTERRUPT JUMPS shows the timer interrupt with code 7 landing at 0x8000021c; EXCEPTION STAYS shows the U-mode ecall with code 8 landing at the base 0x80000200, not at base plus 32" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">Vectored dispatch on this machine: the timer interrupt lands at entry 7, base plus 28, while the U-mode ecall lands at the base itself, not at entry 8.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mtvec-vectored" target="_blank" rel="noopener">riscv-baremetal-demo/src/mtvec-vectored</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Bit You Cannot Set</h3>
           <!-- LAYER-STRIP:the-bit-you-cannot-set -->
           <p class="research-date"><time datetime="2026-11-03">2026-11-03 11:16 EST</time></p>
