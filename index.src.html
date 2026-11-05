@@ -1721,6 +1721,30 @@ header nav a[data-nav="first-principles"]::after { right: -2px; }
 <article class="research-note">
         <div>
           <p class="research-latest">LATEST</p>
+          <h3>The Bit That Traps the Page Table</h3>
+          <!-- LAYER-STRIP:the-bit-that-traps-the-page-table -->
+          <p class="research-date"><time datetime="2026-11-05">2026-11-05 11:20 EST</time></p>
+        </div>
+        <div class="research-body">
+          <p>One bit in mstatus decides whether supervisor mode may touch virtual-memory control. TVM, bit 20, is the trap switch: set it, and three ordinary S-mode operations trap to M-mode instead of running. Clear it, and the same three operations run normally. The bit lives in M-mode only. S-mode cannot read it or change it; sstatus carries no TVM bit. It can only feel the effect.</p>
+          <p>Measured on QEMU 8.2.2, bare metal in M-mode. The program set TVM with one csrs and read mstatus back as 0xa00100000, bit 20 set and nothing else disturbed. An S-mode pad then tried three operations: write satp, read satp, execute sfence.vma. All three trapped as illegal instruction, mcause 0x2, with mepc at the exact probe site each time: 0x800002cc, 0x800002d0, 0x800002e0. A closing ecall made the fourth trap, mcause 0x9. The trapped satp write had no effect: satp still read 0 from M-mode. With TVM clear, the identical pad took one trap only, the closing ecall, and the satp write stuck. 19 checks, 0 mismatches. RESULT: PASS. <a class="cite" href="#src-the-bit-that-traps-the-page-table-1">[1]</a></p>
+          <p>The three traps, side by side:</p>
+<pre><code>csrs mstatus, t0  # t0 = 1 &lt;&lt; 20: TVM set, bit 20
+# S-mode csrw satp, zero: trap, mcause 0x2, mepc 0x800002cc
+# S-mode csrr t1, satp: trap, mcause 0x2, mepc 0x800002d0
+# S-mode sfence.vma: trap, mcause 0x2, mepc 0x800002e0</code></pre>
+          <p>Why the read matters. The first guess was that only the write traps, and the first run proved that guess wrong: the S-mode satp read trapped too, at 0x800002d0, with the same illegal-instruction cause. The specification covers attempts to read or write satp, and this hart follows the letter of it. A hypervisor that sets TVM to trap a guest's page-table changes must therefore handle the read as well as the write, or the guest's innocent read of satp dies in a trap it never expected. <a class="cite" href="#src-the-bit-that-traps-the-page-table-1">[1]</a></p>
+          <p>The bench habit: when you install a trap-and-emulate switch, probe every operation the switch gates, not just the one you named it for. Here the switch is called a write trap in shorthand, and the read was the operation that actually surprised. A pad that tries the read, the write, and the fence, with the switch set and clear, turns a one-line gloss into a measured rule.</p>
+          <p>One sentence to carry away: one bit makes the page-table register untouchable from S-mode, and the read traps just like the write.</p>
+<figure style="margin:28px 0;max-width:560px">
+<img src="/portfolio/blog/the-bit-that-traps-the-page-table/the-bit-that-traps-the-page-table.jpg" alt="Blueprint-style diagram of the mstatus.TVM trap switch in three panels: THE SWITCH shows mstatus 0xa00000000 at boot and 0xa00100000 after csrs with bit 20 set; SET: THREE TRAPS shows csrw satp trapping with mcause 0x2 at 0x800002cc, csrr satp trapping at 0x800002d0, and sfence.vma trapping at 0x800002e0; CLEAR: NO TRAPS shows the same pad taking one trap only, the closing ecall, with 19 checks and 0 mismatches" style="width:100%;height:auto;display:block" loading="lazy" />
+<figcaption style="margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--muted);font-family:var(--mono)">TVM set: the satp write, the satp read, and sfence.vma all trap. TVM clear: the same pad takes no trap but the closing ecall.<br><span style="opacity:.7">Diagram: hand-built by Chris Dillinger for this post</span></figcaption>
+</figure>
+          <p class="research-code-link">Code: <a href="https://github.com/dillingerstaffing/riscv-baremetal-demo/tree/main/src/mstatus-tvm-trap" target="_blank" rel="noopener">riscv-baremetal-demo/src/mstatus-tvm-trap</a></p>
+        </div>
+      </article>
+<article class="research-note">
+        <div>
           <h3>The Table That Only Jumps for Interrupts</h3>
           <!-- LAYER-STRIP:the-table-that-only-jumps-for-interrupts -->
           <p class="research-date"><time datetime="2026-11-04">2026-11-04 11:16 EST</time></p>
